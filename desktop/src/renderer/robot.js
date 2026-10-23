@@ -49,10 +49,10 @@
     el('path', { class: 'inside', d: 'M16 33 Q16 14 34 14 L54 14 Q72 14 72 33 L72 80 Q72 90 62 90 L26 90 Q16 90 16 80 Z' }, svg);
     el('path', { class: 'fold', d: 'M22 30 q4 25 -1 55 M62 26 q-4 28 1 58' }, svg);
     // door, swung open in perspective (far edge shorter)
-    el('path', { class: 'door-edge', d: 'M71 12 L96 19 L96 87 L71 93 Z' }, svg);
-    el('path', { class: 'door', d: 'M73 15 L93.5 21 L93.5 85 L73 90 Z' }, svg);
-    [26, 38, 50, 62, 74].forEach((y, i) => el('circle', { class: 'rivet', cx: 91.5, cy: y + 0.6 * i, r: 0.9 }, svg));
-    el('rect', { class: 'hinge', x: 70, y: 18, width: 3.5, height: 68, rx: 1 }, svg);
+    el('path', { class: 'door-edge', d: 'M72 13 L86 18 L86 86 L72 92 Z' }, svg);
+    el('path', { class: 'door', d: 'M73.5 15.5 L84.6 19.6 L84.6 84.4 L73.5 89 Z' }, svg);
+    [27, 39, 51, 63, 75].forEach((y, i) => el('circle', { class: 'rivet', cx: 82.8, cy: y + 0.4 * i, r: 0.8 }, svg));
+    el('rect', { class: 'hinge', x: 70.5, y: 18, width: 3.2, height: 68, rx: 1 }, svg);
   }
 
   function character(svg, parent) {
@@ -70,19 +70,20 @@
     el('circle', { class: 'tie-knot', cx: 47, cy: 73.5, r: 2.5 }, tie);
 
     // head, leaning slightly out of the alcove
-    const lean = el('g', { class: 'lean', transform: 'rotate(-2.5 47 78)' }, parent);
+    const lean = el('g', { class: 'lean', transform: 'translate(2.5 0) rotate(3.5 47 82)' }, parent);
     el('rect', { class: 'head', x: 35, y: 17, width: 24, height: 60, rx: 11 }, lean);
     el('path', { class: 'shine', d: 'M38.8 30 q-.8 15 .8 30' }, lean);
-    el('path', { class: 'edge', d: 'M58 26 q1 18 -.5 40' }, lean);
+    el('path', { class: 'edge', d: 'M57.6 24 q1.6 20 -.3 44' }, lean);
 
-    eye(lean, 41.2, 33, 'clip-l', -1, 1);
-    eye(lean, 53, 33.6, 'clip-r', 1, 0.82);
+    const face = el('g', { class: 'face', transform: 'translate(2 0)' }, lean); // features slide toward the door: the head is turned
+    eye(face, 41.2, 33, 'clip-l', -1, 1);
+    eye(face, 53.4, 33.8, 'clip-r', 1, 0.66);
 
-    el('circle', { class: 'nose', cx: 47.4, cy: 45, r: 4.4 }, lean);
-    el('circle', { class: 'nose-shine', cx: 46, cy: 43.6, r: 1.1 }, lean);
+    el('circle', { class: 'nose', cx: 48.2, cy: 45, r: 4.2 }, face);
+    el('circle', { class: 'nose-shine', cx: 46.9, cy: 43.6, r: 1.1 }, face);
 
-    el('path', { class: 'mouth-in', d: 'M35.5 55 Q47 57.5 58.5 55 L58.5 59 Q47 62 35.5 59 Z' }, lean);
-    const flap = el('g', { class: 'flap' }, lean);
+    el('path', { class: 'mouth-in', d: 'M35.5 55 Q47 57.5 58.5 55 L58.5 59 Q47 62 35.5 59 Z' }, face);
+    const flap = el('g', { class: 'flap' }, face);
     el('path', { class: 'chin', d: 'M35 55.4 Q47 58.4 59 55.4 L57 68 Q47 72.5 37 68 Z' }, flap);
     el('path', { class: 'chin-line', d: 'M35 55.4 Q47 58.4 59 55.4' }, flap);
     el('circle', { class: 'screw', cx: 38.6, cy: 62, r: 1 }, flap);
@@ -98,7 +99,7 @@
   }
 
   function create(container, { scene: withScene = true } = {}) {
-    const svg = el('svg', { viewBox: withScene ? '0 0 100 100' : '27 0 40 82', class: 'robot', 'data-mood': 'idle', role: 'img', 'aria-label': 'Chakmati' }, container);
+    const svg = el('svg', { viewBox: withScene ? '2 0 88 100' : '27 0 40 82', class: 'robot', 'data-mood': 'idle', role: 'img', 'aria-label': 'Chakmati' }, container);
     defs(svg);
     if (withScene) scene(svg);
     const group = el('g', {}, svg);
