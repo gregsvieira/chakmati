@@ -50,3 +50,14 @@ def test_strategy_report_keep_everything():
         "irrelevant_dropped": 0.0,
         "wrong_dropped": 0.0,
     }
+
+
+from liteagent.loop.evalset import ALL_ITEMS, ITEMS_EXTRA
+
+
+def test_extra_items_shape_and_combined_set():
+    assert len(ITEMS_EXTRA) == 20
+    assert len({i.question for i in ITEMS_EXTRA}) == 5
+    assert {i.kind for i in ITEMS_EXTRA} == {"good", "irrelevant", "wrong"}
+    assert ALL_ITEMS == ITEMS + ITEMS_EXTRA
+    assert len({i.question for i in ALL_ITEMS}) == 8

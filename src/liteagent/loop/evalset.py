@@ -44,6 +44,46 @@ ITEMS: list[LabelledPart] = [
 ]
 
 
+ITEMS_EXTRA: list[LabelledPart] = [
+    *_group(
+        "Qual é a maior cidade do Brasil?",
+        ["A maior cidade do Brasil é São Paulo.",
+         "São Paulo tem mais de 11 milhões de habitantes no município."],
+        "A fotossíntese ocorre nos cloroplastos.",
+        "A maior cidade do Brasil é o Rio de Janeiro.",
+    ),
+    *_group(
+        "Quanto é 15% de 200?",
+        ["15% de 200 é 30.", "Calcula-se multiplicando 200 por 0,15."],
+        "O Rio Amazonas é o mais volumoso do mundo.",
+        "15% de 200 é 15.",
+    ),
+    *_group(
+        "Quem escreveu Dom Casmurro?",
+        ["Dom Casmurro foi escrito por Machado de Assis.",
+         "O livro foi publicado em 1899."],
+        "A água ferve a 100 graus ao nível do mar.",
+        "Dom Casmurro foi escrito por José de Alencar.",
+    ),
+    *_group(
+        "Como reiniciar um roteador?",
+        ["Desligue o roteador da tomada por cerca de 30 segundos.",
+         "Religue-o e aguarde as luzes estabilizarem."],
+        "O Sol é uma estrela de tamanho médio.",
+        "Para reiniciar um roteador, mergulhe-o em água por 10 minutos.",
+    ),
+    *_group(
+        "Por que o céu é azul?",
+        ["A luz azul é espalhada mais que as outras cores pela atmosfera.",
+         "Esse fenômeno se chama espalhamento de Rayleigh."],
+        "Canberra é a capital da Austrália.",
+        "O céu é azul porque reflete a cor do oceano.",
+    ),
+]
+
+ALL_ITEMS: list[LabelledPart] = ITEMS + ITEMS_EXTRA
+
+
 def pairwise_accuracy(
     items: Sequence[LabelledPart], scores: Sequence[float]
 ) -> dict[str, float]:
