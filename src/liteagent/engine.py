@@ -28,14 +28,14 @@ SYSTEM_PROMPTS: dict[Route, str] = {
 
 
 CALENDAR_OFF = (
-    "A integração com a agenda está desativada. Ative com LITEAGENT_CALENDAR_BACKEND=auto "
-    "(ou macos / ics) e reinicie."
+    "A integração com a agenda está desativada. No robô, ligue em Ajustes > Integrações; "
+    "ou use LITEAGENT_CALENDAR_BACKEND=auto (ou macos / ics) e reinicie."
 )
 
 
 WHATSAPP_OFF = (
-    "A integração com o WhatsApp está desativada. Ative com LITEAGENT_WHATSAPP_BACKEND=openwa "
-    "(com o OpenWA em execução) e reinicie."
+    "A integração com o WhatsApp está desativada. No robô, ligue em Ajustes > Integrações; "
+    "ou use LITEAGENT_WHATSAPP_BACKEND=openwa (com o OpenWA em execução) e reinicie."
 )
 
 

@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('assistant', {
     close: () => send('panel:close'),
     refresh: () => send('panel:refresh'),
     panic: () => send('panel:panic'),
+    openWa: () => send('panel:openwa'),
     send: (text) => ipcRenderer.invoke('panel:send', text),
     cancel: (id) => send('panel:cancel', id),
     approve: (id) => ipcRenderer.invoke('panel:approve', id),

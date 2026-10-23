@@ -10,6 +10,8 @@ const DEFAULTS = Object.freeze({
   bubbleSide: 'auto',
   icon: null,             // {x, y} of the robot on screen, null = default corner
   engineUrl: 'http://127.0.0.1:8765',
+  whatsapp: false,        // integrations the app switches on when it starts the engine itself
+  calendar: false,
 });
 
 function normalize(raw) {
@@ -17,6 +19,8 @@ function normalize(raw) {
   const s = { ...DEFAULTS };
   if (typeof r.protect === 'boolean') s.protect = r.protect;
   if (typeof r.masked === 'boolean') s.masked = r.masked;
+  if (typeof r.whatsapp === 'boolean') s.whatsapp = r.whatsapp;
+  if (typeof r.calendar === 'boolean') s.calendar = r.calendar;
   if (SIDES.includes(r.bubbleSide)) s.bubbleSide = r.bubbleSide;
   if (r.icon && Number.isFinite(r.icon.x) && Number.isFinite(r.icon.y)) s.icon = { x: Math.round(r.icon.x), y: Math.round(r.icon.y) };
   if (typeof r.engineUrl === 'string') {
@@ -36,4 +40,12 @@ function save(file, settings) {
   fs.renameSync(tmp, file); // atomic: a crash never leaves a half-written file
 }
 
-module.exports = { DEFAULTS, SIDES, normalize, load, save };
+// Environment the engine is started with, so the person never has to type LITEAGENT_* variables.
+function engineEnv(settings) {
+  return {
+    LITEAGENT_WHATSAPP_BACKEND: settings.whatsapp ? 'openwa' : 'off',
+    LITEAGENT_CALENDAR_BACKEND: settings.calendar ? 'auto' : 'off',
+  };
+}
+
+module.exports = { DEFAULTS, SIDES, normalize, load, save, engineEnv };

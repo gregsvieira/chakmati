@@ -182,7 +182,9 @@ function panelState() {
     busy: state.busy > 0,
     describe: currentDescription(),
     notices: state.notices.slice(-20),
-    settings: { protect: settings.protect, masked: settings.masked, bubbleSide: settings.bubbleSide },
+    settings: { protect: settings.protect, masked: settings.masked, bubbleSide: settings.bubbleSide, whatsapp: settings.whatsapp, calendar: settings.calendar },
+    ownsEngine: !!engineProcess,
+    canOpenWa: !!projectRoot(),
     hotkeys: { toggle: prettyHotkey(HOTKEYS.toggle), panic: prettyHotkey(HOTKEYS.panic) },
   };
 }
@@ -277,12 +279,42 @@ async function noticeLoop() {
   }
 }
 
-function startEngineIfAsked() {
-  if (process.env.LITEAGENT_DESKTOP_SPAWN !== '1') return;
+const projectRoot = () => {
   const root = path.resolve(__dirname, '..', '..');
-  if (!fs.existsSync(path.join(root, 'pyproject.toml'))) return;
-  engineProcess = spawn('uv', ['run', 'python', '-m', 'liteagent.main'], { cwd: root, stdio: 'ignore' });
+  return fs.existsSync(path.join(root, 'pyproject.toml')) ? root : null;
+};
+
+// The app starts the engine itself when none is running, with the integrations the person switched on in Ajustes.
+// An engine started by hand is left alone (and then the integrations are chosen by its own environment).
+function startEngine() {
+  const root = projectRoot();
+  if (!root || engineProcess) return false;
+  const logFile = path.join(app.getPath('userData'), 'engine.log');
+  const log = fs.openSync(logFile, 'a');
+  engineProcess = spawn('uv', ['run', 'python', '-m', 'liteagent.main'], {
+    cwd: root, stdio: ['ignore', log, log], env: { ...process.env, ...settingsLib.engineEnv(settings) },
+  });
+  fs.closeSync(log);
   engineProcess.on('error', () => { engineProcess = null; });
+  engineProcess.on('exit', () => { engineProcess = null; });
+  return true;
+}
+
+async function restartEngine() {
+  if (!engineProcess) return false;
+  const old = engineProcess;
+  await new Promise((resolve) => { old.once('exit', resolve); old.kill(); setTimeout(resolve, 4000); });
+  engineProcess = null;
+  await sleep(500);
+  return startEngine();
+}
+
+function openWaSetup() {
+  const root = projectRoot();
+  if (!root) return false;
+  // visible browser window: the QR code is scanned there on first use
+  spawn('bash', [path.join(root, 'scripts', 'openwa.sh'), 'start'], { cwd: root, stdio: 'ignore', detached: true }).unref();
+  return true;
 }
 
 // ---------------------------------------------------------------------------------------------------- tray and shortcuts
@@ -318,7 +350,10 @@ function updateSetting(key, value) {
   if (key === 'protect' && typeof value === 'boolean') settings.protect = value;
   else if (key === 'masked' && typeof value === 'boolean') settings.masked = value;
   else if (key === 'bubbleSide' && settingsLib.SIDES.includes(value)) settings.bubbleSide = value;
-  else return false;
+  else if ((key === 'whatsapp' || key === 'calendar') && typeof value === 'boolean') {
+    settings[key] = value;
+    if (engineProcess) restartEngine().then(refreshOverview);
+  } else return false;
   settingsLib.save(settingsFile, settings);
   protect(widgetWin);
   protect(panelWin);
@@ -365,6 +400,7 @@ function registerIpc() {
   ipcMain.on('panel:panic', () => setHidden(true));
   ipcMain.on('panel:cancel', (_e, id) => { const ac = streams.get(id); if (ac) ac.abort(); });
 
+  ipcMain.on('panel:openwa', openWaSetup);
   ipcMain.handle('panel:set-setting', (_e, payload) => (payload && updateSetting(payload.key, payload.value) ? { ok: true } : { ok: false }));
 
   ipcMain.handle('panel:send', async (_e, text) => {
@@ -545,12 +581,12 @@ if (!app.requestSingleInstanceLock()) {
     engine = new EngineClient({ baseUrl: settings.engineUrl });
     icon = settings.icon || defaultIcon();
 
-    startEngineIfAsked();
     createWidget();
     await new Promise((resolve) => ipcMain.once('widget:ready', resolve));
     widgetWin.showInactive();
     createTray();
     registerShortcuts();
+    if (!(await engine.health())) startEngine();
     healthLoop();
     noticeLoop();
     screen.on('display-metrics-changed', applyLayout);

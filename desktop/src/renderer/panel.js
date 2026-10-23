@@ -110,6 +110,15 @@
     $('set-protect').checked = !!state.settings.protect;
     $('set-masked').checked = !!state.settings.masked;
     $('set-side').value = state.settings.bubbleSide;
+    $('set-whatsapp').checked = !!state.settings.whatsapp;
+    $('set-calendar').checked = !!state.settings.calendar;
+    const wa = (state.overview && state.overview.whatsapp) || { enabled: false };
+    $('wa-status').textContent = !wa.enabled ? 'Ler, resumir e enviar mensagens (sempre com a sua aprovação).'
+      : wa.connected ? 'Conectado.' : 'Ligado, mas sem conexão. Conecte abaixo.';
+    $('wa-connect').hidden = !(state.settings.whatsapp && state.canOpenWa && wa.enabled && !wa.connected);
+    const hint = $('engine-hint');
+    hint.hidden = state.ownsEngine || !state.engineUp;
+    hint.textContent = 'O motor foi iniciado por fora do robô: reinicie-o para aplicar estas opções.';
     $('hotkeys').textContent = `Atalhos: abrir ou fechar ${state.hotkeys.toggle}; ocultar tudo ${state.hotkeys.panic}.`;
   }
 
@@ -185,6 +194,9 @@
   $('panic').addEventListener('click', () => api.panic());
   $('set-protect').addEventListener('change', (e) => api.setSetting('protect', e.target.checked));
   $('set-masked').addEventListener('change', (e) => api.setSetting('masked', e.target.checked));
+  $('set-whatsapp').addEventListener('change', (e) => api.setSetting('whatsapp', e.target.checked));
+  $('set-calendar').addEventListener('change', (e) => api.setSetting('calendar', e.target.checked));
+  $('wa-connect').addEventListener('click', () => api.openWa());
   $('set-side').addEventListener('change', (e) => api.setSetting('bubbleSide', e.target.value));
 
   api.onState((s) => { state = s; render(); });

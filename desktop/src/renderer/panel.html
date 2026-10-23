@@ -51,6 +51,16 @@
       <details id="settings">
         <summary>Ajustes</summary>
         <div class="settings-body">
+          <div class="group">
+            <label class="switch"><input type="checkbox" id="set-whatsapp"><span class="track"></span>
+              <span class="switch-text">WhatsApp
+                <small id="wa-status">Ler, resumir e enviar mensagens (sempre com a sua aprovação).</small></span></label>
+            <button type="button" id="wa-connect" class="ghost" hidden>Conectar WhatsApp (escanear QR)</button>
+            <label class="switch"><input type="checkbox" id="set-calendar"><span class="track"></span>
+              <span class="switch-text">Agenda
+                <small>Ver e marcar compromissos no calendário do computador.</small></span></label>
+            <p class="hint" id="engine-hint" hidden></p>
+          </div>
           <label class="switch"><input type="checkbox" id="set-protect"><span class="track"></span>
             <span class="switch-text">Esconder do compartilhamento de tela
               <small>Pede ao sistema para deixar o robô fora de gravações e compartilhamentos. Funciona no Windows e em parte do macOS: teste antes de compartilhar.</small></span></label>

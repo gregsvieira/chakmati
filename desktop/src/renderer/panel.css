@@ -85,3 +85,7 @@ summary { cursor: pointer; color: var(--muted); font-size: 13px; width: max-cont
 .hint { margin: 0; color: var(--muted); font-size: 12.5px; }
 
 @media (prefers-reduced-motion: reduce) { .switch .track, .switch .track::after { transition: none; } }
+
+.group { display: grid; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--rule); }
+.hint[hidden], #wa-connect[hidden] { display: none; }
+#wa-connect { justify-self: start; }
