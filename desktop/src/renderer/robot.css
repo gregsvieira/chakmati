@@ -1,36 +1,51 @@
 /* Chakmati. Colours come from the character: yellow hat, red band and nose, blue eyelids, green chin flap. */
 .robot {
   display: block; width: 100%; height: 100%; overflow: visible;
-  --hat: #f6d21a; --band: #e5432d; --metal: #78b6da; --metal-edge: #3f7ea6; --lid: #4f94bf;
+  --hat: #f6d21a; --band: #e5432d; --metal: #86bde0; --metal-hi: #bcdff3; --metal-lo: #5a96bf; --metal-edge: #3f7ea6; --green-hi: #4fb865; --lid: #4f94bf;
   --green: #2f9a43; --nose: #e2452a; --tie: #f2c200;
 }
-.robot .shadow { fill: rgba(20, 33, 61, 0.2); }
-.robot .head { fill: var(--metal); stroke: var(--metal-edge); stroke-width: 1.4; transition: fill 0.3s; }
-.robot .shine { fill: none; stroke: rgba(255, 255, 255, 0.55); stroke-width: 2; stroke-linecap: round; }
+.robot .head { fill: url(#g-head); stroke: var(--metal-edge); stroke-width: 1.2; }
+#g-head .hi { stop-color: var(--metal-hi); } #g-head .mid { stop-color: var(--metal); } #g-head .lo { stop-color: var(--metal-lo); }
+#g-wood .wood-hi { stop-color: #b66a3b; } #g-wood .wood-lo { stop-color: #5e2e14; }
+#g-door .door-hi { stop-color: #2f6b3d; } #g-door .door-lo { stop-color: #0f3a22; }
+#g-flap .flap-hi { stop-color: var(--green-hi); } #g-flap .flap-lo { stop-color: var(--green); }
+.robot .frame { fill: url(#g-wood); stroke: #3d1c0b; stroke-width: 0.8; }
+.robot .inside { fill: #16110f; }
+.robot .fold { fill: none; stroke: rgba(255, 255, 255, 0.07); stroke-width: 3; stroke-linecap: round; }
+.robot .door-edge { fill: #5e2e14; }
+.robot .door { fill: url(#g-door); stroke: #0a2515; stroke-width: 0.6; }
+.robot .rivet { fill: #c9a86a; }
+.robot .hinge { fill: #8a8f96; }
+.robot .sill { fill: #7a3f1d; stroke: #3d1c0b; stroke-width: 0.6; }
+.robot .spring { fill: #b8402a; }
+.robot .spring-line { fill: none; stroke: #6f2216; stroke-width: 1; }
+.robot .shine { fill: none; stroke: rgba(255, 255, 255, 0.6); stroke-width: 1.8; stroke-linecap: round; }
+.robot .edge { fill: none; stroke: rgba(20, 50, 80, 0.35); stroke-width: 2; stroke-linecap: round; }
 .robot .socket { fill: #1f3a52; }
 .robot .sclera { fill: #f4f0df; }
-.robot .iris { fill: #a9a23a; }
+.robot .iris { fill: #7fbf3a; }
 .robot .pupil { fill: #101820; }
 .robot .glint { fill: #fff; }
-.robot .lash { fill: none; stroke: #1b1b24; stroke-width: 1.1; stroke-linecap: round; }
-.robot .curl { fill: none; stroke: #1b1b24; stroke-width: 1.3; stroke-linecap: round; }
+.robot .lash { fill: none; stroke: #1b1b24; stroke-width: 1; stroke-linecap: round; }
+.robot .curl { fill: none; stroke: #1b1b24; stroke-width: 1.2; stroke-linecap: round; }
 .robot .nose { fill: var(--nose); }
 .robot .nose-shine { fill: rgba(255, 255, 255, 0.5); }
 .robot .mouth-in { fill: #c8283a; }
-.robot .chin { fill: var(--green); }
-.robot .chin-line { fill: none; stroke: #162a1c; stroke-width: 1.4; stroke-linecap: round; }
+.robot .chin { fill: url(#g-flap); }
+.robot .chin-line { fill: none; stroke: #162a1c; stroke-width: 1.3; stroke-linecap: round; }
 .robot .screw { fill: #cfd5dc; stroke: #6b7480; stroke-width: 0.4; }
 .robot .crown, .robot .brim { fill: var(--hat); }
+.robot .crown-top { fill: #fbe56a; }
 .robot .band { fill: var(--band); }
 .robot .tie-wing, .robot .tie-knot { fill: var(--tie); }
-.robot .tie-dot { fill: #3a2a12; }
+.robot .tie-dot { fill: #6a3a10; }
 
 /* eyelids: the blue half-moons. --up / --down = how much of the eye each one covers (0 open, 1 closed) */
 .robot .lid { fill: var(--lid); transform-box: fill-box; }
 .robot .lid-up { transform-origin: 50% 0; transform: scaleY(var(--up, 0.42)); }
 .robot .lid-down { transform-origin: 50% 100%; transform: scaleY(var(--down, 0.22)); }
 .robot .look, .robot .hat, .robot .flap { transition: transform 0.25s ease; }
-.robot .hat, .robot .flap { transform-box: view-box; }
+
 
 /* idle: sleepy half-lids and a slow blink */
 .robot[data-mood="idle"] .lid-up { animation: blink 5.5s infinite; }
@@ -51,7 +66,7 @@
 .robot[data-mood="happy"] .flap { transform: translateY(2.6px); }
 
 /* offline: eyes shut, colours drained */
-.robot[data-mood="offline"] { --up: 1; --down: 0.1; --metal: #aeb7c2; --metal-edge: #7b8594; --lid: #8e98a6; --hat: #cfc79a; --band: #b98a80; --green: #7f9a86; --nose: #b98a80; --tie: #cfc79a; }
+.robot[data-mood="offline"] { --up: 1; --down: 0.1; --metal: #aeb7c2; --metal-hi: #cfd5dc; --metal-lo: #8892a0; --metal-edge: #7b8594; --green-hi: #9db5a4; --lid: #8e98a6; --hat: #cfc79a; --band: #b98a80; --green: #7f9a86; --nose: #b98a80; --tie: #cfc79a; }
 .robot[data-mood="offline"] .lid-up { animation: none; }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,7 +1,7 @@
 (function () {
   const api = window.assistant.panel;
   const $ = (id) => document.getElementById(id);
-  const robot = window.Robot.create($('head-robot'));
+  const robot = window.Robot.create($('head-robot'), { scene: false });
   const { relativeTime } = window.RelTime;
 
   let state = null;
