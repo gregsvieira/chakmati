@@ -13,6 +13,8 @@ dependencies = [
   "recurring-ical-events>=3.8.2",
   "pyobjc-framework-eventkit>=12.2.2 ; sys_platform == 'darwin'",
   "cryptography>=50.0.2",
+  "faster-whisper>=1.2.1",
+  "av>=14,<17",
 ]
 
 [project.optional-dependencies]

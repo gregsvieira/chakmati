@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager, suppress
 
 from datetime import datetime, timedelta
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -15,6 +15,7 @@ from .approvals import ApprovalService
 from .engine import Engine
 from .jobs import DONE, FAILED, JobStore, Worker
 from .notices import NoticeBoard, Notifier
+from .stt import SpeechToText, TranscribeError
 from .whatsapp.media import MediaError
 from .whatsapp.openwa import WhatsAppError
 from .whatsapp.service import RateLimited, WhatsAppService
@@ -56,6 +57,7 @@ def create_app(
     whatsapp: WhatsAppService | None = None,
     board: NoticeBoard | None = None,
     notifier: Notifier | None = None,
+    stt: SpeechToText | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -264,6 +266,19 @@ def create_app(
         except (WhatsAppError, MediaError) as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from None
         return Response(audio, media_type=mime, headers={"Cache-Control": "no-store"})
+
+    @app.post("/transcribe", dependencies=[Depends(ui_only)])
+    async def transcribe(request: Request):
+        if stt is None:
+            raise HTTPException(status_code=503, detail="speech recognition is off (LITEAGENT_STT_MODEL)")
+        if not (request.headers.get("content-type") or "").lower().startswith("audio/"):
+            raise HTTPException(status_code=415, detail="send the recording with an audio/* content type")
+        audio = await request.body()
+        try:
+            text, language = await asyncio.to_thread(stt.transcribe, audio)
+        except TranscribeError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        return {"text": text, "language": language}
 
     @app.post("/actions/{action_id}/approve", dependencies=[Depends(ui_only)])
     async def approve_action(action_id: str):

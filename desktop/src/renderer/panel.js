@@ -288,6 +288,7 @@
     else api.close();
   });
   $('panic').addEventListener('click', () => api.panic());
+  $('restart').addEventListener('click', () => api.restart());
   $('set-protect').addEventListener('change', (e) => api.setSetting('protect', e.target.checked));
   $('set-masked').addEventListener('change', (e) => api.setSetting('masked', e.target.checked));
   $('set-whatsapp').addEventListener('change', (e) => api.setSetting('whatsapp', e.target.checked));

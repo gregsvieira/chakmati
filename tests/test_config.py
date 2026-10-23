@@ -102,3 +102,8 @@ def test_notice_settings():
     s = Settings.from_env({"LITEAGENT_NOTICES": "0", "LITEAGENT_WHATSAPP_POLL_SECONDS": "5",
                            "LITEAGENT_CALENDAR_POLL_SECONDS": "30", "LITEAGENT_CALENDAR_LEAD_MINUTES": "15"})
     assert (s.notices_enabled, s.whatsapp_poll_seconds, s.calendar_poll_seconds, s.calendar_lead_minutes) == (False, 5.0, 30.0, 15)
+
+
+def test_stt_model_setting():
+    assert Settings.from_env({}).stt_model == "base"
+    assert Settings.from_env({"LITEAGENT_STT_MODEL": "off"}).stt_model == "off"

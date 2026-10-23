@@ -330,7 +330,7 @@ async function restartEngine() {
 // ---- OpenWA (the WhatsApp bridge). Its browser window is only needed once, to scan the QR code; closing that window
 // stops the session, so after the link is made the app restarts OpenWA without a window (the login stays saved).
 const OPENWA_URL = process.env.LITEAGENT_OPENWA_URL || 'http://127.0.0.1:8081';
-let owaWatching = false;
+let owaWatch = null; // { abort: AbortController } while a link attempt is being watched
 
 async function owaHealth() {
   try {
@@ -352,23 +352,59 @@ function owaScript(arg, { detached = false } = {}) {
 
 const owaRun = (arg) => new Promise((resolve) => { const c = owaScript(arg); c.once('exit', resolve); c.once('error', resolve); setTimeout(resolve, 25000); });
 
-async function watchOwaLink() {
-  if (owaWatching) return;
-  owaWatching = true;
+// Watches a link attempt. OpenWA often stays "ready but not connected" after the QR is scanned until it is restarted, so
+// the watcher does not wait for `connected`: it restarts OpenWA (without a window) once the scan happened, or once the
+// session has been READY for a while, or as soon as it reports connected.
+async function owaEventsSawScan(signal, onScan) {
   try {
-    const deadline = Date.now() + 15 * 60 * 1000;
-    while (!quitting && Date.now() < deadline) {
+    const key = (() => { try { return fs.readFileSync(path.join(require('node:os').homedir(), '.lite-agent', 'openwa', 'api_key.txt'), 'utf8').trim(); } catch { return ''; } })();
+    const res = await fetch(`${OPENWA_URL}/api/events?topics=*&api_key=${encodeURIComponent(key)}`, { signal, headers: { Accept: 'text/event-stream' } });
+    const decoder = new TextDecoder();
+    for await (const chunk of res.body) {
+      if (/event:\s*launch\.auth\.qr\.scanned/.test(decoder.decode(chunk, { stream: true }))) onScan();
+    }
+  } catch { /* the stream ends when the watcher is aborted or OpenWA restarts */ }
+}
+
+async function finishOwaLink() {
+  // restart without a window: closing the Chrome window would end the session, and the login stays saved
+  for (let attempt = 0; attempt < 2 && !quitting; attempt += 1) {
+    await owaRun('stop');
+    for (let i = 0; i < 10 && (await owaHealth()); i += 1) await sleep(1000);
+    owaScript('start-bg', { detached: true });
+    for (let i = 0; i < 30 && !quitting; i += 1) {
       await sleep(3000);
       const h = await owaHealth();
-      if (h && h.connected) {
-        await owaRun('stop');
-        owaScript('start-bg', { detached: true });
-        for (let i = 0; i < 30 && !quitting; i += 1) { await sleep(3000); const again = await owaHealth(); if (again && again.connected) break; }
+      if (h && h.connected) return true;
+    }
+  }
+  return false;
+}
+
+async function watchOwaLink() {
+  if (owaWatch) owaWatch.abort.abort();
+  const abort = new AbortController();
+  const me = { abort };
+  owaWatch = me;
+  let scannedAt = 0;
+  let readySince = 0;
+  owaEventsSawScan(abort.signal, () => { scannedAt = Date.now(); });
+  try {
+    const deadline = Date.now() + 15 * 60 * 1000;
+    while (!quitting && !abort.signal.aborted && Date.now() < deadline) {
+      await sleep(3000);
+      const h = await owaHealth();
+      if (!h) continue;
+      const ready = h.session && h.session.state === 'READY';
+      readySince = ready ? readySince || Date.now() : 0;
+      if (h.connected || (scannedAt && Date.now() - scannedAt > 15000) || (readySince && Date.now() - readySince > 15000)) {
+        await finishOwaLink();
         break;
       }
     }
   } finally {
-    owaWatching = false;
+    abort.abort();
+    if (owaWatch === me) owaWatch = null;
     refreshOverview();
   }
 }
@@ -378,8 +414,10 @@ async function openWaSetup() {
   if (!root) return { ok: false, error: 'Não encontrei a pasta do lite-agent.' };
   const health = await owaHealth();
   if (health && health.connected) { refreshOverview(); return { ok: true, message: 'O WhatsApp já está conectado.' }; }
-  if (owaWatching) return { ok: true, message: 'A janela do OpenWA já está aberta. Escaneie o QR nela.' };
-  if (health) { // running but not linked (or without a window): restart it with a window, once the old one is really gone
+  // Not connected: always start again with a fresh visible window. An old one may be minimized, hidden or stuck, and
+  // there is no way to reopen it from here.
+  if (owaWatch) owaWatch.abort.abort();
+  if (health) {
     await owaRun('stop');
     for (let i = 0; i < 10 && (await owaHealth()); i += 1) await sleep(1000);
   }
@@ -395,11 +433,18 @@ async function openWaSetup() {
     if (/not installed|setup/.test(tail)) return { ok: false, error: 'O OpenWA não está instalado. Rode scripts/openwa.sh setup uma vez.' };
     return { ok: false, error: early.message || tail || 'Não consegui abrir o OpenWA.' };
   }
+  spawn('osascript', ['-e', 'tell application "Google Chrome" to activate'], { stdio: 'ignore' }).on('error', () => {}); // best effort
   watchOwaLink();
-  return { ok: true, message: 'OpenWA aberto. Escaneie o QR na janela; depois pode fechá-la, eu mantenho o WhatsApp conectado.' };
+  return { ok: true, message: 'Janela do OpenWA aberta. Escaneie o QR nela; depois pode fechá-la, eu mantenho o WhatsApp conectado.' };
 }
 
 // ---------------------------------------------------------------------------------------------------- tray and shortcuts
+// Quits and starts again (the engine started by the app is stopped and started with it).
+function restartApp() {
+  app.relaunch();
+  app.quit();
+}
+
 function buildMenu() {
   return Menu.buildFromTemplate([
     { label: state.panelOpen ? 'Fechar painel' : 'Abrir painel', click: togglePanel },
@@ -408,6 +453,7 @@ function buildMenu() {
     { label: 'Esconder do compartilhamento de tela', type: 'checkbox', checked: settings.protect, click: (i) => updateSetting('protect', i.checked) },
     { label: 'Modo discreto (sem nomes nos avisos)', type: 'checkbox', checked: settings.masked, click: (i) => updateSetting('masked', i.checked) },
     { type: 'separator' },
+    { label: 'Reiniciar o Chakmati', click: restartApp },
     { label: 'Sair', click: () => app.quit() },
   ]);
 }
@@ -483,6 +529,7 @@ function registerIpc() {
   ipcMain.on('panel:close', closePanel);
   ipcMain.on('panel:refresh', refreshOverview);
   ipcMain.on('panel:panic', () => setHidden(true));
+  ipcMain.on('panel:restart', restartApp);
   ipcMain.on('panel:cancel', (_e, id) => { const ac = streams.get(id); if (ac) ac.abort(); });
 
   // Reading a conversation. Names and texts are hidden in discreet mode, so these refuse to run then.
