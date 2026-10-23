@@ -16,6 +16,14 @@ from liteagent.gate.heuristic import HeuristicGate
         ("write a python script that renames files", Route.TASK),
         ("crie um script que organize meus arquivos", Route.TASK),
         ("rode os testes do projeto", Route.TASK),
+        ("o que tenho na agenda amanhã?", Route.CALENDAR),
+        ("marque uma reunião sexta às 15h", Route.CALENDAR),
+        ("quando é minha próxima reunião?", Route.CALENDAR),
+        ("agende dentista dia 30", Route.CALENDAR),
+        ("what is on my calendar today?", Route.CALENDAR),
+        ("cancele o evento de sexta", Route.CALENDAR),
+        ("pesquise a agenda política do governo", Route.RESEARCH),
+        ("search the web for meeting scheduling tips", Route.RESEARCH),
     ],
 )
 def test_classifies(text, expected):

@@ -76,3 +76,11 @@ def test_contact_and_target_pages_settings():
     assert Settings().research_target_pages == 2
     s = Settings.from_env({"LITEAGENT_CONTACT": "https://example.org/me", "LITEAGENT_RESEARCH_TARGET_PAGES": "2"})
     assert (s.contact, s.research_target_pages) == ("https://example.org/me", 2)
+
+
+def test_calendar_settings_are_off_by_default():
+    d = Settings()
+    assert (d.calendar_backend, d.calendar_ics_path, d.calendar_name) == ("off", "agenda.ics", "")
+    s = Settings.from_env({"LITEAGENT_CALENDAR_BACKEND": "ics", "LITEAGENT_CALENDAR_ICS_PATH": "/tmp/a.ics",
+                           "LITEAGENT_CALENDAR_NAME": "Trabalho"})
+    assert (s.calendar_backend, s.calendar_ics_path, s.calendar_name) == ("ics", "/tmp/a.ics", "Trabalho")

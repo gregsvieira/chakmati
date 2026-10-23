@@ -15,10 +15,23 @@ _TASK = re.compile(
 )
 
 
+# Explicit "go and look it up" verbs win over calendar words ("pesquise a agenda política").
+_EXPLICIT_SEARCH = re.compile(
+    r"\b(?:pesquis\w*|busc\w*|busq\w*|procur\w*|search|google|look up|find out)\b", re.IGNORECASE
+)
+_CALENDAR = re.compile(
+    r"\b(?:calend[aá]rio|agenda|agend\w+|reuni[aã]o|reuni[oõ]es|compromissos?|eventos?"
+    r"|meetings?|calendar|appointments?|schedule)\b",
+    re.IGNORECASE,
+)
+
+
 class HeuristicGate:
     source = "heuristic"
 
     def classify(self, text: str) -> GateResult:
+        if _CALENDAR.search(text) and not _EXPLICIT_SEARCH.search(text):
+            return GateResult(Route.CALENDAR, 0.9, self.source)
         if _RESEARCH.search(text):
             return GateResult(Route.RESEARCH, 0.9, self.source)
         if _TASK.search(text):

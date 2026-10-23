@@ -24,6 +24,9 @@ class Settings:
     research_target_pages: int = 2  # stop waiting once this many pages succeeded; 0 = wait for all
     # Put in the User-Agent: Wikipedia answers 403 to anonymous bots. Replace with the project's own
     # URL once it is published, or set LITEAGENT_CONTACT (empty = send no contact).
+    calendar_backend: str = "off"  # "off" | "auto" | "macos" | "ics"
+    calendar_ics_path: str = "agenda.ics"
+    calendar_name: str = ""  # calendar that new events go to (empty = the system default)
     contact: str = "https://github.com/gregsvieira"
 
     @classmethod
@@ -50,5 +53,8 @@ class Settings:
             fetch_deadline=float(env.get("LITEAGENT_FETCH_DEADLINE", d.fetch_deadline)),
             research_max_pages=int(env.get("LITEAGENT_RESEARCH_MAX_PAGES", d.research_max_pages)),
             research_target_pages=int(env.get("LITEAGENT_RESEARCH_TARGET_PAGES", d.research_target_pages)),
+            calendar_backend=env.get("LITEAGENT_CALENDAR_BACKEND", d.calendar_backend),
+            calendar_ics_path=env.get("LITEAGENT_CALENDAR_ICS_PATH", d.calendar_ics_path),
+            calendar_name=env.get("LITEAGENT_CALENDAR_NAME", d.calendar_name),
             contact=env.get("LITEAGENT_CONTACT", d.contact),
         )

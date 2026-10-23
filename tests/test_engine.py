@@ -127,3 +127,32 @@ async def test_on_job_created_is_called_for_slow_routes_only(store):
     chat = Engine(FakeGate(Route.CHAT), StreamingLLM(), store, on_job_created=lambda: calls.append(2))
     await chat.handle("oi")
     assert calls == [1, 1]
+
+
+class FakeAssistant:
+    def __init__(self):
+        self.asked = []
+
+    async def handle(self, text):
+        self.asked.append(text)
+        return "agenda: 2 eventos"
+
+
+async def test_calendar_job_uses_the_assistant_and_never_the_plain_llm(store):
+    llm, assistant = StreamingLLM(), FakeAssistant()
+    engine = Engine(FakeGate(Route.CALENDAR), llm, store, calendar_assistant=assistant)
+    reply = await engine.handle("o que tenho amanhã?")
+    assert reply.kind == "job" and reply.route is Route.CALENDAR
+    job = store.get(reply.job_id)
+    assert await engine.run_job(job) == "agenda: 2 eventos"
+    assert await collect(engine.run_job_stream(job)) == ["agenda: 2 eventos"]
+    assert assistant.asked == ["o que tenho amanhã?"] * 2 and llm.calls == []
+
+
+async def test_calendar_job_without_an_assistant_says_the_feature_is_off(store):
+    llm = StreamingLLM()
+    engine = Engine(FakeGate(Route.CALENDAR), llm, store)
+    job = store.get((await engine.handle("marque reunião")).job_id)
+    text = await engine.run_job(job)
+    assert "desativ" in text.lower() and "LITEAGENT_CALENDAR_BACKEND" in text and llm.calls == []
+    assert "".join(await collect(engine.run_job_stream(job))) == text

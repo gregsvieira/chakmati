@@ -13,11 +13,21 @@ SYSTEM_PROMPTS: dict[Route, str] = {
         "You are a research assistant. Answer in the user's language. "
         "You have no web access yet: say what you know and what you could not verify."
     ),
+    Route.CALENDAR: (
+        "You are a calendar assistant, but the calendar is not connected. Say so briefly "
+        "in the user's language."
+    ),
     Route.TASK: (
         "You are a careful assistant for multi-step tasks. Answer in the user's "
         "language. You cannot run code or touch files yet: describe the steps."
     ),
 }
+
+
+CALENDAR_OFF = (
+    "A integração com a agenda está desativada. Ative com LITEAGENT_CALENDAR_BACKEND=auto "
+    "(ou macos / ics) e reinicie."
+)
 
 
 @dataclass(frozen=True)
@@ -43,12 +53,14 @@ class Engine:
         store: JobStore,
         researcher: ResearchTool | None = None,
         on_job_created: Callable[[], object] | None = None,
+        calendar_assistant=None,
     ):
         self._gate = gate
         self._llm = llm
         self._store = store
         self._researcher = researcher
         self._on_job_created = on_job_created
+        self._calendar = calendar_assistant
 
     def _notify_job(self) -> None:
         if self._on_job_created is not None:
@@ -63,7 +75,14 @@ class Engine:
         self._notify_job()
         return Reply("job", decision.route, job_id=job_id)
 
+    async def _calendar_job(self, job: Job) -> str:
+        if self._calendar is None:
+            return CALENDAR_OFF
+        return await self._calendar.handle(job.prompt)
+
     async def run_job(self, job: Job) -> str:
+        if job.route == Route.CALENDAR.value:
+            return await self._calendar_job(job)
         if self._researcher is not None and job.route == Route.RESEARCH.value:
             return (await self._researcher.answer(job.prompt)).render()
         return await self._llm.chat(_messages(Route(job.route), job.prompt))
@@ -86,6 +105,9 @@ class Engine:
 
     async def run_job_stream(self, job: Job) -> AsyncIterator[str]:
         """Streaming counterpart of `run_job`: yields the answer as it is produced."""
+        if job.route == Route.CALENDAR.value:
+            yield await self._calendar_job(job)
+            return
         if self._researcher is not None and job.route == Route.RESEARCH.value:
             async for delta in self._researcher.stream_answer(job.prompt):
                 yield delta
