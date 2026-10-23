@@ -24,13 +24,23 @@ _CALENDAR = re.compile(
     r"|meetings?|calendar|appointments?|schedule)\b",
     re.IGNORECASE,
 )
+# "marque dentista dia 30 às 9h": a scheduling verb PLUS a hint of WHEN (a verb alone is too common: "marque o gol").
+_SCHEDULE_VERB = re.compile(
+    r"\b(?:(?:des|re)?marcar|(?:des|re)?marque[m]?)\b", re.IGNORECASE
+)  # marcar -> marque (c becomes qu)
+_WHEN = re.compile(
+    r"\b(?:dia\s+\d{1,2}|\d{1,2}\s*h\b|\d{1,2}:\d{2}|\d{1,2}\s*horas?|amanh[ãa]|segunda|ter[çc]a|quarta|quinta|sexta"
+    r"|s[áa]bado|domingo|pr[óo]xim[ao]|meio-dia|meia-noite)\b",
+    re.IGNORECASE,
+)
 
 
 class HeuristicGate:
     source = "heuristic"
 
     def classify(self, text: str) -> GateResult:
-        if _CALENDAR.search(text) and not _EXPLICIT_SEARCH.search(text):
+        is_calendar = _CALENDAR.search(text) or (_SCHEDULE_VERB.search(text) and _WHEN.search(text))
+        if is_calendar and not _EXPLICIT_SEARCH.search(text):
             return GateResult(Route.CALENDAR, 0.9, self.source)
         if _RESEARCH.search(text):
             return GateResult(Route.RESEARCH, 0.9, self.source)
