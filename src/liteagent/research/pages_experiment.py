@@ -23,7 +23,7 @@ from ..llm import OllamaClient
 from ..loop.scorer import KeepAllScorer
 from .fetch import PageFetcher
 from .rankers import EmbeddingScorer
-from .search import SearchResult
+from .search import SearchResult, build_user_agent
 from .searxng import SearxngBackend
 from .tool import ResearchTool
 
@@ -65,6 +65,22 @@ def usable_pages(
     ]
 
 
+def first_k_successes(
+    bodies: Sequence[str | None], durations: Sequence[float], k: int, deadline: float
+) -> tuple[list[int], float]:
+    """`target_pages` simulated on measured data. Returns (indices in rank order of the pages used,
+    seconds waited). Waits until the k-th successful download; if fewer than k succeed within the
+    deadline, uses what arrived and waits the deadline (or until every download ended, if sooner)."""
+    ok = sorted(
+        (dur, i) for i, (b, dur) in enumerate(zip(bodies, durations, strict=True)) if b is not None and dur <= deadline
+    )
+    if len(ok) >= k:
+        chosen = ok[:k]
+        return sorted(i for _, i in chosen), chosen[-1][0]
+    ended = max(durations) if durations else 0.0
+    return sorted(i for _, i in ok), min(deadline, ended)
+
+
 class ReplaySearch:
     def __init__(self, results: dict[str, list[SearchResult]]):
         self._results = results
@@ -85,7 +101,7 @@ class ReplayFetcher:
 
 async def collect(settings: Settings) -> dict[str, dict]:
     backend = SearxngBackend(settings.searxng_url)
-    fetcher = PageFetcher(timeout=10.0)
+    fetcher = PageFetcher(timeout=10.0, user_agent=build_user_agent(settings.contact))
     data: dict[str, dict] = {}
     for query, _ in QUESTIONS:
         results = (await backend.search(query, 10))[:4]
@@ -108,7 +124,7 @@ async def collect(settings: Settings) -> dict[str, dict]:
 
 
 async def run_config(
-    settings: Settings, data: dict, ranker_name: str, pages: int
+    settings: Settings, data: dict, ranker_name: str, pages: int, target: bool = False
 ) -> tuple[int, float]:
     scorer = EmbeddingScorer(settings.ollama_url) if ranker_name == "embeddings" else KeepAllScorer()
     llm = OllamaClient(settings.ollama_url, settings.chat_model, num_predict=200)
@@ -116,11 +132,17 @@ async def run_config(
     for query, expected in QUESTIONS:
         entry = data[query]
         results = [SearchResult(**r) for r in entry["results"]]
-        bodies = usable_pages(entry["bodies"], entry["durations"], pages, DEADLINE)
-        urls = {r.url: b for r, b in zip(results[:pages], bodies, strict=True)}
+        if target:  # consider all candidates, keep the `pages` fastest successes
+            chosen, _ = first_k_successes(entry["bodies"], entry["durations"], pages, DEADLINE)
+            urls = {results[i].url: entry["bodies"][i] for i in chosen}
+            considered = len(results)
+        else:
+            bodies = usable_pages(entry["bodies"], entry["durations"], pages, DEADLINE)
+            urls = {r.url: b for r, b in zip(results[:pages], bodies, strict=True)}
+            considered = pages
         tool = ResearchTool(
             ReplaySearch({query: results}), ReplayFetcher(urls), llm, scorer,
-            max_pages=pages, concise=True, result_cutoff=0.0,
+            max_pages=considered, concise=True, result_cutoff=0.0,
         )
         start = time.perf_counter()
         answer = await tool.answer(query)
@@ -148,17 +170,20 @@ async def main() -> None:
     for p in PAGES:
         waits = [fetch_wait(data[q]["durations"], p, DEADLINE) for q, _ in QUESTIONS]
         print(f"{p:>6d}  {sum(waits) / n:7.2f}s  {ok_pages[p]}/{n}")
+    tw = [first_k_successes(data[q]["bodies"], data[q]["durations"], 2, DEADLINE)[1] for q, _ in QUESTIONS]
+    tu = sum(1 for q, _ in QUESTIONS if first_k_successes(data[q]["bodies"], data[q]["durations"], 2, DEADLINE)[0])
+    print(f"{'2 of 4':>6s}  {sum(tw) / n:7.2f}s  {tu}/{n}   <- target: stop at the 2nd successful page among 4 candidates")
 
     print(f"\nAnswer correctness (real ResearchTool + qwen3.5, {REPS} repetitions each)")
     print(f"{'ranker':>11s} {'pages':>5s}  correct/{n}   (per repetition)   mean compute time (rank+LLM)")
     for ranker in ("keepall", "embeddings"):
-        for p in PAGES:
+        for label, p, target in [("1", 1, False), ("2", 2, False), ("4", 4, False), ("2of4", 2, True)]:
             scores, times = [], []
             for _ in range(REPS):
-                c, t = await run_config(settings, data, ranker, p)
+                c, t = await run_config(settings, data, ranker, p, target)
                 scores.append(c)
                 times.append(t)
-            print(f"{ranker:>11s} {p:>5d}  {sum(scores) / REPS:8.1f}   {scores}   {sum(times) / REPS:6.2f}s", flush=True)
+            print(f"{ranker:>11s} {label:>5s}  {sum(scores) / REPS:8.1f}   {scores}   {sum(times) / REPS:6.2f}s", flush=True)
 
 
 if __name__ == "__main__":
