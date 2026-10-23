@@ -82,10 +82,11 @@ class WhatsAppWatcher:
     """Announces new unread messages. The first poll is only a baseline (plus one summary), so starting the app
     does not replay every old unread chat. Muted and archived chats stay silent, as they do on the phone."""
 
-    def __init__(self, service, board: NoticeBoard, interval: float = 10.0):
+    def __init__(self, service, board: NoticeBoard, interval: float = 10.0, announce_connection: bool = True):
         self._service = service
         self._board = board
         self.interval = interval
+        self._announce_connection = announce_connection  # False when the live event stream already says it
         self._seen: dict[str, int] | None = None
         self._down = False
 
@@ -95,12 +96,14 @@ class WhatsAppWatcher:
         except WhatsAppError:
             if not self._down:
                 self._down = True
-                self._board.add("system", "O WhatsApp está desconectado. Abra o OpenWA e escaneie o QR.",
-                                "O WhatsApp está desconectado.")
+                if self._announce_connection:
+                    self._board.add("system", "O WhatsApp está desconectado. Abra o OpenWA e escaneie o QR.",
+                                    "O WhatsApp está desconectado.")
             return
         if self._down:
             self._down = False
-            self._board.add("system", "O WhatsApp voltou a funcionar.", "O WhatsApp voltou a funcionar.")
+            if self._announce_connection:
+                self._board.add("system", "O WhatsApp voltou a funcionar.", "O WhatsApp voltou a funcionar.")
 
         if self._seen is None:  # baseline
             self._seen = {c.id: c.unread for c in chats}

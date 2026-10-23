@@ -67,15 +67,15 @@ def build_app(settings: Settings | None = None) -> FastAPI:
     worker = Worker(store, engine.run_job, stream_handler=engine.run_job_stream)
     worker_ref.append(worker)
     board = NoticeBoard()
+    events = build_whatsapp_events(s, board)
     watchers = []
     if whatsapp is not None:
-        watchers.append(WhatsAppWatcher(whatsapp, board, s.whatsapp_poll_seconds))
+        watchers.append(WhatsAppWatcher(whatsapp, board, s.whatsapp_poll_seconds, announce_connection=events is None))
     if calendar is not None:
         watchers.append(CalendarWatcher(calendar, board, s.calendar_poll_seconds, s.calendar_lead_minutes))
     services = [x for x in (calendar, whatsapp) if x is not None]
     if services:
         watchers.append(ApprovalWatcher(services, board))
-    events = build_whatsapp_events(s, board)
     notifier = Notifier(watchers, background=[events.run] if events else []) if watchers and s.notices_enabled else None
     return create_app(
         engine,

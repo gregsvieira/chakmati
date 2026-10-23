@@ -258,3 +258,14 @@ async def test_notifier_runs_background_listeners_and_cancels_them_on_stop():
     await asyncio.wait_for(started.wait(), 1)
     await notifier.stop()
     assert cancelled.is_set()
+
+
+async def test_whatsapp_watcher_can_stay_silent_about_the_connection():
+    class Down:
+        async def chats(self, limit=500):
+            raise WhatsAppError("down")
+
+    board = NoticeBoard()
+    watcher = WhatsAppWatcher(Down(), board, announce_connection=False)
+    await watcher.poll_once()
+    assert board.since(0) == []
