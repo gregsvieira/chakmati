@@ -3,10 +3,20 @@
 (function (root) {
   const MAX = 600;
 
+  // The wake greetings are shown in full, but SAID short: the microphone is muted while Chakmati talks, and the person
+  // should not have to wait long before giving the command.
+  const SPOKEN_GREETINGS = new Map([
+    ['Klift, kloft, still, a porta se abriu!', 'Klift, kloft! A porta abriu!'],
+    ['Klift, still, kloft! fala fióti.', 'Klift, kloft! Fala, fióti!'],
+    ['Klift, kloft, stão! fala paizão!', 'Klift, kloft! Fala, paizão!'],
+  ]);
+
   const EMOJI = /[\p{Extended_Pictographic}\p{Emoji_Modifier}\u200d\ufe0f\u20e3\u{1F1E6}-\u{1F1FF}\u{E0020}-\u{E007F}]/gu;
 
   // `emojis`: say what the emojis are ("rosto sorrindo"). Off by default: they are simply skipped.
   function speakable(text, { emojis = false } = {}) {
+    const greeting = SPOKEN_GREETINGS.get(String(text || '').trim());
+    if (greeting) return greeting;
     let t = String(text || '');
     if (!emojis) t = t.replace(EMOJI, ' ');
     t = t.replace(/\n+\s*(Fontes?|Sources?)\s*:[\s\S]*$/i, ''); // the list of links that follows an answer

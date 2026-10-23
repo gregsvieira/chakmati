@@ -30,3 +30,12 @@ test('emojis are skipped by default and kept when the option asks to describe th
   assert.ok(speakable(text, { emojis: true }).includes('😊'));
   assert.equal(speakable('Preço: 10 e 2 dígitos 1234'), 'Preço: 10 e 2 dígitos 1234'); // digits are not emoji
 });
+
+test('the three wake greetings are spoken in a shorter form', () => {
+  assert.equal(speakable('Klift, kloft, still, a porta se abriu!'), 'Klift, kloft! A porta abriu!');
+  assert.equal(speakable('Klift, still, kloft! fala fióti.'), 'Klift, kloft! Fala, fióti!');
+  assert.equal(speakable('Klift, kloft, stão! fala paizão!'), 'Klift, kloft! Fala, paizão!');
+  for (const g of ['Klift, kloft, still, a porta se abriu!', 'Klift, still, kloft! fala fióti.', 'Klift, kloft, stão! fala paizão!']) {
+    assert.ok(speakable(g).length < g.length);
+  }
+});

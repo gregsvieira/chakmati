@@ -236,7 +236,7 @@
 
   function sayAloud(text) {
     if (!state || !state.settings.hear) return;
-    window.Voice.speak(text, { emojis: !!state.settings.speakEmojis, onStart: () => { speaking = true; speakingSince = Date.now(); syncTalking(); }, onEnd: () => { speaking = false; quietUntil = Date.now() + 700; syncTalking(); updateHint(); } });
+    window.Voice.speak(text, { emojis: !!state.settings.speakEmojis, onStart: () => { speaking = true; speakingSince = Date.now(); syncTalking(); }, onEnd: () => { speaking = false; quietUntil = Date.now() + 700; syncTalking(); updateHint(); chimeIfWaiting(); } });
   }
 
   // "Falar com o Chakmati": the microphone is always listening, with no button to press. It acts only on a wake phrase
@@ -267,6 +267,37 @@
     micButton.classList.toggle('recording', talk && speechInProgress);
     micButton.hidden = !talk;
     micButton.title = talk ? 'Escutando. Clique para desligar.' : 'Falar com o Chakmati';
+  }
+
+  // A short "plim": the assistant finished talking and is now waiting for the command.
+  let chimeCtx = null;
+  function chime() {
+    diag.chimes = (diag.chimes || 0) + 1;
+    try {
+      chimeCtx = chimeCtx || new AudioContext();
+      if (chimeCtx.state === 'suspended') chimeCtx.resume();
+      const t0 = chimeCtx.currentTime + 0.02;
+      [[660, 0], [990, 0.11]].forEach(([freq, offset]) => {
+        const osc = chimeCtx.createOscillator();
+        const gain = chimeCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t0 + offset);
+        gain.gain.exponentialRampToValueAtTime(0.18, t0 + offset + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + offset + 0.16);
+        osc.connect(gain);
+        gain.connect(chimeCtx.destination);
+        osc.start(t0 + offset);
+        osc.stop(t0 + offset + 0.18);
+      });
+      quietUntil = Date.now() + 1000; // do not listen to our own chime
+    } catch { /* no sound is not a problem */ }
+  }
+  diag.chime = chime;
+
+  // Only when the speech that just ended leaves the assistant waiting for a command (not after an ordinary answer).
+  function chimeIfWaiting() {
+    if (state && state.settings.talk && state.overview && state.overview.awake) chime();
   }
 
   function say(text) { thread.push({ role: 'assistant', text, status: 'error' }); renderThread(); }
@@ -527,7 +558,7 @@
   $('set-mood').addEventListener('change', (e) => api.setSetting('mood', e.target.value));
   $('set-side').addEventListener('change', (e) => api.setSetting('bubbleSide', e.target.value));
 
-  api.onOtherSpeaking((on) => { otherSpeaking = on; if (!on) quietUntil = Date.now() + 700; });
+  api.onOtherSpeaking((on) => { otherSpeaking = on; if (!on) { quietUntil = Date.now() + 700; chimeIfWaiting(); } });
   api.onState((s) => { state = s; stateVersion += 1; render(); if (thread.length) renderThread(false); runQueued(); });
   api.ready();
 })();
