@@ -557,9 +557,9 @@ async function runSnapshots() {
   sendPanelState();
   await shot('panel.png', panelWin);
 
-  await panelWin.webContents.executeJavaScript("document.getElementById('settings').open = true");
+  await panelWin.webContents.executeJavaScript("document.getElementById('open-settings').click()");
   await shot('panel-settings.png', panelWin);
-  await panelWin.webContents.executeJavaScript("document.getElementById('settings').open = false");
+  await panelWin.webContents.executeJavaScript("document.getElementById('back').click()");
   nativeTheme.themeSource = 'dark';
   await shot('panel-dark.png', panelWin);
   nativeTheme.themeSource = 'light';

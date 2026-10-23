@@ -42,15 +42,12 @@
       </section>
     </main>
 
-    <footer id="foot">
-      <div id="chips" role="group" aria-label="Atalhos"></div>
-      <form id="composer" autocomplete="off">
-        <textarea id="input" rows="1" maxlength="2000" placeholder="Peça algo ao Chakmati…" aria-label="Pedido ao Chakmati"></textarea>
-        <button id="send" type="submit" aria-label="Enviar"><span></span></button>
-      </form>
-      <details id="settings">
-        <summary>Ajustes</summary>
-        <div class="settings-body">
+    <section id="settings-view" hidden>
+      <div class="settings-head">
+        <button type="button" id="back" class="ghost">Voltar</button>
+        <h2>Ajustes</h2>
+      </div>
+      <div class="settings-body">
           <div class="group">
             <label class="switch"><input type="checkbox" id="set-whatsapp"><span class="track"></span>
               <span class="switch-text">WhatsApp
@@ -80,7 +77,15 @@
           <button type="button" id="panic" class="ghost">Ocultar tudo agora</button>
           <p class="hint" id="hotkeys"></p>
         </div>
-      </details>
+    </section>
+
+    <footer id="foot">
+      <div id="chips" role="group" aria-label="Atalhos"></div>
+      <form id="composer" autocomplete="off">
+        <textarea id="input" rows="1" maxlength="2000" placeholder="Peça algo ao Chakmati…" aria-label="Pedido ao Chakmati"></textarea>
+        <button id="send" type="submit" aria-label="Enviar"><span></span></button>
+      </form>
+      <button type="button" id="open-settings" class="link">Ajustes</button>
     </footer>
   </div>
   <script src="../lib/reltime.js"></script>

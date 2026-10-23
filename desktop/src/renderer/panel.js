@@ -191,8 +191,23 @@
     submit(text);
   });
 
-  $('close').addEventListener('click', () => api.close());
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') api.close(); });
+  // Ajustes is its own screen: it replaces the main view and the command line until the person goes back
+  function showSettings(on) {
+    $('settings-view').hidden = !on;
+    $('content').hidden = on;
+    $('foot').hidden = on;
+    if (on) $('settings-view').scrollTop = 0;
+    else $('input').focus();
+  }
+  $('open-settings').addEventListener('click', () => showSettings(true));
+  $('back').addEventListener('click', () => showSettings(false));
+
+  $('close').addEventListener('click', () => { showSettings(false); api.close(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (!$('settings-view').hidden) showSettings(false);
+    else api.close();
+  });
   $('panic').addEventListener('click', () => api.panic());
   $('set-protect').addEventListener('change', (e) => api.setSetting('protect', e.target.checked));
   $('set-masked').addEventListener('change', (e) => api.setSetting('masked', e.target.checked));

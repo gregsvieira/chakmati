@@ -70,8 +70,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 
 details { margin-top: 10px; }
 summary { cursor: pointer; color: var(--muted); font-size: 13px; width: max-content; }
-.settings-body { padding: 10px 4px 2px 0; display: grid; gap: 14px; max-height: 180px; overflow-y: auto; }
-#foot:has(details[open]) #chips { display: none; } /* settings never push the main view out of the panel */
+.settings-body { padding: 10px 4px 2px 0; display: grid; gap: 14px; }
 #foot { flex: none; }
 .switch { display: grid; grid-template-columns: 38px 1fr; gap: 12px; align-items: start; cursor: pointer; }
 .switch input { position: absolute; opacity: 0; }
@@ -91,3 +90,12 @@ summary { cursor: pointer; color: var(--muted); font-size: 13px; width: max-cont
 .group { display: grid; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--rule); }
 .hint[hidden], #wa-connect[hidden] { display: none; }
 #wa-connect { justify-self: start; }
+
+/* Ajustes screen */
+#settings-view { flex: 1; overflow-y: auto; padding: 4px 18px 18px; border-top: 1px solid var(--rule); user-select: text; }
+#settings-view[hidden], #content[hidden], #foot[hidden] { display: none; }
+.settings-head { display: flex; align-items: center; gap: 14px; padding: 12px 0 6px; }
+.settings-head h2 { margin: 0; font-size: 17px; }
+.settings-head .ghost { height: 30px; padding: 0 14px; }
+button.link { margin-top: 8px; padding: 0; border: 0; background: none; color: var(--muted); font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+button.link:hover { color: var(--text); }
