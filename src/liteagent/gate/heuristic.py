@@ -26,7 +26,7 @@ _CALENDAR = re.compile(
 )
 # "marque dentista dia 30 às 9h": a scheduling verb PLUS a hint of WHEN (a verb alone is too common: "marque o gol").
 _SCHEDULE_VERB = re.compile(
-    r"\b(?:(?:des|re)?marcar|(?:des|re)?marque[m]?)\b", re.IGNORECASE
+    r"\b(?:(?:des|re)?marcar|(?:des|re)?marque[m]?|cancelar|cancele[m]?)\b", re.IGNORECASE
 )  # marcar -> marque (c becomes qu)
 _WHEN = re.compile(
     r"\b(?:dia\s+\d{1,2}|\d{1,2}\s*h\b|\d{1,2}:\d{2}|\d{1,2}\s*horas?|amanh[ãa]|segunda|ter[çc]a|quarta|quinta|sexta"
