@@ -96,3 +96,16 @@ async def test_only_max_pages_are_fetched():
 def test_render_appends_sources():
     assert ResearchAnswer("ok", ["https://a", "https://b"]).render() == "ok\n\nFontes:\n- https://a\n- https://b"
     assert ResearchAnswer("ok", []).render() == "ok"
+
+
+async def test_concise_flag_appends_the_brevity_instruction_only_when_enabled():
+    from liteagent.research.tool import CONCISE_SUFFIX
+
+    results = [SearchResult("A", "https://a.test/1", "s")]
+    mapping = {"https://a.test/1": PAGE.format(text="Texto suficiente para ser extraído da página de teste.")}
+    llm = FakeLLM()
+    await ResearchTool(FakeSearch(results), pages(mapping), llm, ByLength(), result_cutoff=0.0, concise=True).answer("q")
+    assert llm.calls[0][0]["content"] == COMPOSE_SYSTEM + CONCISE_SUFFIX
+    llm2 = FakeLLM()
+    await ResearchTool(FakeSearch(results), pages(mapping), llm2, ByLength(), result_cutoff=0.0).answer("q")
+    assert llm2.calls[0][0]["content"] == COMPOSE_SYSTEM

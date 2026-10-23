@@ -73,3 +73,36 @@ async def test_last_usage_is_recorded():
     await client.chat([{"role": "user", "content": "hi"}])
     await client.aclose()
     assert client.last_usage == {"prompt_tokens": 12, "completion_tokens": 34}
+
+
+async def test_optional_keep_alive_and_num_predict_are_sent_only_when_set():
+    bodies = []
+
+    def handler(request):
+        bodies.append(json.loads(request.content))
+        return httpx.Response(200, json={"message": {"content": "x"}})
+
+    plain = OllamaClient("http://ollama.test", "m", transport=httpx.MockTransport(handler))
+    await plain.chat([{"role": "user", "content": "hi"}])
+    tuned = OllamaClient(
+        "http://ollama.test", "m", transport=httpx.MockTransport(handler), keep_alive="30m", num_predict=120
+    )
+    await tuned.chat([{"role": "user", "content": "hi"}])
+    assert "keep_alive" not in bodies[0] and "options" not in bodies[0]
+    assert bodies[1]["keep_alive"] == "30m" and bodies[1]["options"] == {"num_predict": 120}
+
+
+async def test_preload_posts_an_empty_generate_and_never_raises():
+    seen = {}
+
+    def handler(request):
+        seen["url"] = str(request.url)
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"done": True})
+
+    ok = OllamaClient("http://ollama.test", "m", transport=httpx.MockTransport(handler), keep_alive="10m")
+    assert await ok.preload() is True
+    assert seen["url"] == "http://ollama.test/api/generate"
+    assert seen["body"] == {"model": "m", "prompt": "", "keep_alive": "10m", "stream": False}
+    bad = OllamaClient("http://ollama.test", "m", transport=httpx.MockTransport(lambda r: httpx.Response(500)))
+    assert await bad.preload() is False

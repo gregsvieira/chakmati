@@ -79,3 +79,17 @@ def test_worker_completes_job_in_background(engine, store):
 def test_build_app_smoke():
     app = build_app(Settings(db_path=":memory:"))
     assert TestClient(app).get("/health").status_code == 200
+
+
+def test_on_startup_hook_runs_in_the_background(engine, store):
+    called = []
+
+    async def hook():
+        called.append(True)
+
+    with TestClient(create_app(engine, store, on_startup=hook)):
+        for _ in range(50):
+            if called:
+                break
+            time.sleep(0.02)
+    assert called == [True]

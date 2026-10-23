@@ -12,6 +12,9 @@ COMPOSE_SYSTEM = (
     "Cite the passages you use as [n]. If the passages do not contain the answer, say so "
     "instead of guessing."
 )
+CONCISE_SUFFIX = (
+    " Be concise: answer in at most 3 short sentences unless the question explicitly asks for detail."
+)
 NOTHING_FOUND = "Não encontrei informações utilizáveis na web para esta pergunta."
 
 
@@ -36,6 +39,7 @@ class ResearchTool:
         max_pages: int = 4,
         passages: int = 4,
         result_cutoff: float = 0.2,
+        concise: bool = False,
     ):
         self._search = search
         self._fetcher = fetcher
@@ -44,6 +48,7 @@ class ResearchTool:
         self._max_pages = max_pages
         self._passages = passages
         self._cutoff = result_cutoff
+        self._system = COMPOSE_SYSTEM + CONCISE_SUFFIX if concise else COMPOSE_SYSTEM
 
     async def answer(self, query: str) -> ResearchAnswer:
         results = await self._search.search(query, limit=10)
@@ -71,7 +76,7 @@ class ResearchTool:
         numbered = "\n".join(f"[{i}] {p}" for i, p in enumerate(best, 1))
         reply = await self._llm.chat(
             [
-                {"role": "system", "content": COMPOSE_SYSTEM},
+                {"role": "system", "content": self._system},
                 {"role": "user", "content": f"Question: {query}\n\nPassages:\n{numbered}"},
             ]
         )

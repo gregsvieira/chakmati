@@ -101,3 +101,20 @@ def test_build_app_selects_search_backend(monkeypatch):
     assert isinstance(captured[0], DuckDuckGoHtmlBackend)
     assert isinstance(captured[1], SearxngBackend)
     assert captured[1]._base == "http://searx.test:8080"
+
+
+def test_build_app_applies_speed_settings_to_the_research_client(monkeypatch):
+    from liteagent.research import tool as tool_module
+
+    captured = {}
+    real_init = tool_module.ResearchTool.__init__
+
+    def spy(self, search, fetcher, llm, scorer, **kwargs):
+        captured["llm"], captured["kwargs"] = llm, kwargs
+        real_init(self, search, fetcher, llm, scorer, **kwargs)
+
+    monkeypatch.setattr(tool_module.ResearchTool, "__init__", spy)
+    build_app(Settings(db_path=":memory:", research_backend="ddg", research_max_tokens=150,
+                       keep_alive="20m", research_concise=True))
+    assert captured["llm"]._num_predict == 150 and captured["llm"]._keep_alive == "20m"
+    assert captured["kwargs"]["concise"] is True

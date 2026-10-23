@@ -45,3 +45,17 @@ def test_research_scorer_setting():
 def test_searxng_url_setting():
     assert Settings().searxng_url == "http://localhost:8080"
     assert Settings.from_env({"LITEAGENT_SEARXNG_URL": "http://searx:8080"}).searxng_url == "http://searx:8080"
+
+
+def test_speed_settings():
+    d = Settings()
+    assert (d.keep_alive, d.preload_model, d.research_max_tokens, d.research_concise) == ("", False, 200, True)
+    s = Settings.from_env(
+        {
+            "LITEAGENT_KEEP_ALIVE": "30m",
+            "LITEAGENT_PRELOAD_MODEL": "1",
+            "LITEAGENT_RESEARCH_MAX_TOKENS": "120",
+            "LITEAGENT_RESEARCH_CONCISE": "0",
+        }
+    )
+    assert (s.keep_alive, s.preload_model, s.research_max_tokens, s.research_concise) == ("30m", True, 120, False)

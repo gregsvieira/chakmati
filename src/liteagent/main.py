@@ -18,7 +18,8 @@ from .research.tool import ResearchTool
 def build_app(settings: Settings | None = None) -> FastAPI:
     s = settings or Settings.from_env()
     store = JobStore(s.db_path)
-    llm = OllamaClient(s.ollama_url, s.chat_model, think=s.think)
+    keep_alive = s.keep_alive or None
+    llm = OllamaClient(s.ollama_url, s.chat_model, think=s.think, keep_alive=keep_alive)
     researcher = None
     if s.research_backend in {"ddg", "searxng"}:
         search = (
@@ -26,15 +27,28 @@ def build_app(settings: Settings | None = None) -> FastAPI:
             if s.research_backend == "searxng"
             else DuckDuckGoHtmlBackend()
         )
+        research_llm = OllamaClient(
+            s.ollama_url,
+            s.chat_model,
+            think=s.think,
+            keep_alive=keep_alive,
+            num_predict=s.research_max_tokens,
+        )
         researcher = ResearchTool(
             search,
             PageFetcher(),
-            llm,
+            research_llm,
             LayaRelevanceScorer() if s.research_scorer == "laya" else KeepAllScorer(),
             result_cutoff=s.result_cutoff,
+            concise=s.research_concise,
         )
     engine = Engine(build_gate(s), llm, store, researcher=researcher)
-    return create_app(engine, store, Worker(store, engine.run_job))
+    return create_app(
+        engine,
+        store,
+        Worker(store, engine.run_job),
+        on_startup=llm.preload if s.preload_model else None,
+    )
 
 
 def main() -> None:
