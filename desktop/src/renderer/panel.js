@@ -238,6 +238,7 @@
   let transcribing = false;
   let speechInProgress = false;
   let ambientWarned = false;
+  const diag = (window.__listening = { frames: 0, starts: 0, ends: 0, drops: 0, sent: 0, heard: [], peak: 0, floor: 0, muted: 0 }); // for support: what the microphone loop saw
   const isMuted = () => speaking || !!(state && state.busy); // not while Chakmati talks or works: it would hear itself
 
   function updateHint() {
@@ -257,7 +258,9 @@
     if (transcribing) return;
     transcribing = true;
     try {
+      diag.sent += 1;
       const res = await api.transcribe(window.Wav.encodeWav(chunks, rate), 'audio/wav');
+      diag.heard.push(res && (res.text || res.error)); if (diag.heard.length > 8) diag.heard.shift();
       if (!res || res.error) {
         if (!ambientWarned) { ambientWarned = true; say((res && res.error) || 'Não consegui entender o áudio.'); }
         return;
@@ -302,9 +305,13 @@
       for (const v of data) sum += v * v;
       const rms = Math.sqrt(sum / data.length);
       micButton.style.setProperty('--level', String(Math.min(rms * 6, 0.6)));
-      if (isMuted()) { utterance = null; preRoll.length = 0; if (speechInProgress) { speechInProgress = false; updateHint(); } return; }
+      diag.frames += 1; diag.peak = Math.max(diag.peak, rms); diag.floor = detector.floor || 0;
+      if (isMuted()) { diag.muted += 1; utterance = null; preRoll.length = 0; if (speechInProgress) { speechInProgress = false; updateHint(); } return; }
       const event = detector.push(rms, (data.length / ctx.sampleRate) * 1000);
       if (utterance) utterance.push(data);
+      if (event === 'start') diag.starts += 1;
+      if (event === 'end') diag.ends += 1;
+      if (event === 'drop') diag.drops += 1;
       if (event === 'start') { utterance = [...preRoll, data]; speechInProgress = true; updateHint(); }
       else if (!utterance) { preRoll.push(data); if (preRoll.length > 8) preRoll.shift(); }
       if (event === 'end' || event === 'drop') {
