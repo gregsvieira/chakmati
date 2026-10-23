@@ -12,6 +12,7 @@ dependencies = [
   "icalendar>=7.3.0",
   "recurring-ical-events>=3.8.2",
   "pyobjc-framework-eventkit>=12.2.2 ; sys_platform == 'darwin'",
+  "cryptography>=50.0.2",
 ]
 
 [project.optional-dependencies]

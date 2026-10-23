@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timedelta
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from .agenda.models import CalendarEvent
@@ -15,6 +15,7 @@ from .approvals import ApprovalService
 from .engine import Engine
 from .jobs import DONE, FAILED, JobStore, Worker
 from .notices import NoticeBoard, Notifier
+from .whatsapp.media import MediaError
 from .whatsapp.openwa import WhatsAppError
 from .whatsapp.service import RateLimited, WhatsAppService
 
@@ -241,6 +242,28 @@ def create_app(
              "last": c.ts.isoformat() if c.ts else None}
             for c in chats
         ]
+
+    @app.get("/whatsapp/chats/{chat_id}/messages", dependencies=[Depends(ui_only)])
+    async def whatsapp_messages(chat_id: str, last: int = 40):
+        try:
+            messages = await need_whatsapp().messages(chat_id, max(1, min(last, 200)))
+        except WhatsAppError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from None
+        return [
+            {"id": m.id, "sender": m.sender, "text": m.text, "ts": m.ts.isoformat(), "from_me": m.from_me, "kind": m.kind,
+             "duration": m.duration, "audio": m.media is not None}  # the media key and URL stay inside the engine
+            for m in messages
+        ]
+
+    @app.get("/whatsapp/chats/{chat_id}/messages/{message_id}/audio", dependencies=[Depends(ui_only)])
+    async def whatsapp_audio(chat_id: str, message_id: str):
+        try:
+            audio, mime = await need_whatsapp().audio(chat_id, message_id)
+        except LookupError:
+            raise HTTPException(status_code=404, detail="that message has no playable audio") from None
+        except (WhatsAppError, MediaError) as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from None
+        return Response(audio, media_type=mime, headers={"Cache-Control": "no-store"})
 
     @app.post("/actions/{action_id}/approve", dependencies=[Depends(ui_only)])
     async def approve_action(action_id: str):

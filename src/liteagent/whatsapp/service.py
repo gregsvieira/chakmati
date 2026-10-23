@@ -10,7 +10,10 @@ import time
 from collections import deque
 from collections.abc import Awaitable, Callable
 
+import httpx
+
 from ..approvals import Action, ActionStore, ApprovalService
+from .media import fetch_audio
 from .models import Chat, Message, MessagingProvider, Outgoing, Status
 
 
@@ -30,12 +33,14 @@ class WhatsAppService(ApprovalService):
         max_sends_per_hour: int = 20,
         min_interval: float = 3.0,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+        audio_client_factory: Callable[[], httpx.AsyncClient] = lambda: httpx.AsyncClient(timeout=30.0),
     ):
         super().__init__(actions, ttl_seconds, now)
         self._provider = provider
         self._max = max_sends_per_hour
         self._min_interval = min_interval
         self._sleep = sleep
+        self._audio_client_factory = audio_client_factory
         self._sent_at: deque[float] = deque()
 
     # ---- reading (no approval needed)
@@ -47,6 +52,14 @@ class WhatsAppService(ApprovalService):
 
     async def messages(self, chat_id: str, last: int = 20) -> list[Message]:
         return await self._provider.get_messages(chat_id, last)
+
+    async def audio(self, chat_id: str, message_id: str) -> tuple[bytes, str]:
+        """The decrypted voice note, or LookupError when that message has none to play."""
+        found = next((m for m in await self._provider.get_messages(chat_id, 500) if m.id == message_id), None)
+        if found is None or found.media is None:
+            raise LookupError("no playable audio in that message")
+        async with self._audio_client_factory() as client:  # a plain client: the OpenWA key must not reach WhatsApp's CDN
+            return await fetch_audio(found.media, client)
 
     # ---- proposing
     def propose_send(self, chat: Chat, text: str) -> Action:

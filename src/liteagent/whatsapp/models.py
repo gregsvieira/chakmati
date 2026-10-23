@@ -27,6 +27,16 @@ class Chat:
 
 
 @dataclass(frozen=True)
+class MediaRef:
+    """What is needed to download and decrypt a voice note: nothing else about the media is kept."""
+
+    url: str
+    key: str  # base64 media key
+    enc_hash: str | None
+    mime: str
+
+
+@dataclass(frozen=True)
 class Message:
     id: str
     chat_id: str
@@ -35,6 +45,8 @@ class Message:
     ts: datetime
     from_me: bool
     kind: str = "chat"
+    duration: int | None = None  # seconds, voice notes only
+    media: MediaRef | None = None  # voice notes only
 
     def display(self) -> str:
         """One line: time, sender, text. Media never shows its raw body, only a [type] marker."""

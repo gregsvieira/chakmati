@@ -15,7 +15,7 @@ from typing import Any
 
 import httpx
 
-from .models import Chat, Message, Outgoing, Status
+from .models import Chat, MediaRef, Message, Outgoing, Status
 
 _KNOWN_SUFFIXES = {"c.us", "lid", "g.us"}
 
@@ -108,7 +108,18 @@ def parse_message(raw: Any) -> Message | None:
         _first_text(raw.get("notifyName"), sender_obj.get("pushname"), sender_obj.get("formattedName"))
         or author.partition("@")[0] or "?"
     )
-    return Message(msg_id, chat_id, sender, text, ts, from_me, kind)
+    duration = media = None
+    if kind in ("ptt", "audio"):
+        raw_duration = raw.get("duration")
+        try:
+            duration = int(raw_duration)
+        except (TypeError, ValueError):
+            duration = None
+        url = _first_text(raw.get("clientUrl"), raw.get("deprecatedMms3Url"))
+        key = _first_text(raw.get("mediaKey"))
+        if url and key:
+            media = MediaRef(url, key, _first_text(raw.get("encFilehash")), _first_text(raw.get("mimetype")) or "audio/ogg")
+    return Message(msg_id, chat_id, sender, text, ts, from_me, kind, duration, media)
 
 
 class OpenWAClient:
