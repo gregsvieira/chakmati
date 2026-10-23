@@ -2,6 +2,7 @@ import asyncio
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 
+from .canned import canned_answer
 from .gate.base import Gate, Route
 from .jobs import Job, JobStore
 from .llm import ChatClient
@@ -78,6 +79,9 @@ class Engine:
             self._on_job_created()
 
     async def handle(self, text: str) -> Reply:
+        fixed = canned_answer(text)
+        if fixed is not None:
+            return Reply("answer", Route.CHAT, text=fixed)
         decision = await asyncio.to_thread(self._gate.classify, text)
         if not decision.route.is_slow:
             answer = await self._llm.chat(_messages(decision.route, text))
@@ -108,6 +112,12 @@ class Engine:
     async def handle_stream(self, text: str) -> AsyncIterator[dict]:
         """Like `handle`, as a sequence of events: route, then either the reply as delta events
         followed by done (chat), or a single job event for slow work (follow it via the job stream)."""
+        fixed = canned_answer(text)
+        if fixed is not None:
+            yield {"type": "route", "route": Route.CHAT.value}
+            yield {"type": "delta", "text": fixed}
+            yield {"type": "done", "result": fixed}
+            return
         decision = await asyncio.to_thread(self._gate.classify, text)
         yield {"type": "route", "route": decision.route.value}
         if decision.route.is_slow:
