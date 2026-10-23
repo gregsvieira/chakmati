@@ -25,6 +25,22 @@ Each line is `data: {json}`. Event types: `route` (`chat|research|task`), `job` 
 Chat replies stream directly; research/task replies stream as the worker produces them.
 `GET /jobs/<id>` also returns `partial`, the text so far.
 
+## Calendar (agenda)
+
+Off by default. Turn it on with `LITEAGENT_CALENDAR_BACKEND=auto` (macOS Calendar.app on a Mac, an `.ics` file elsewhere),
+`macos`, or `ics` (file at `LITEAGENT_CALENDAR_ICS_PATH`, default `agenda.ics`). On the first use macOS asks you to allow access.
+
+Ask in natural language ("o que tenho amanhã?", "marque dentista dia 30 às 9h", "cancele a reunião de sexta").
+Reading is immediate. **Writing is always a proposal that you approve**: nothing is created or deleted until the UI calls
+
+    curl localhost:8765/actions                                   # pending proposals
+    curl -X POST -H 'X-LiteAgent-UI: 1' localhost:8765/actions/<id>/approve    # or /reject
+    curl 'localhost:8765/agenda/events?start=2026-10-24T00:00:00-03:00&end=2026-10-25T00:00:00-03:00'
+
+The model only turns your request into a small JSON; event titles and notes are never sent back to it, so text inside an
+event cannot instruct the agent. Proposals expire after 1 hour. To cancel, mention the calendar or a time
+("cancele o dentista **de sexta**", "... **da agenda**"). Not implemented yet: Windows (Outlook) and Linux (Evolution/CalDAV) native backends.
+
 ## Settings (env)
 
 | Variable | Default |
@@ -46,6 +62,9 @@ Chat replies stream directly; research/task replies stream as the worker produce
 | `LITEAGENT_FETCH_DEADLINE` | `2.0` seconds to wait for page downloads (`0` = wait for all); a site that hangs is dropped |
 | `LITEAGENT_RESEARCH_MAX_PAGES` | `4` candidate pages downloaded per question |
 | `LITEAGENT_RESEARCH_TARGET_PAGES` | `2`: stop waiting as soon as 2 pages downloaded successfully (`0` = wait for all) |
+| `LITEAGENT_CALENDAR_BACKEND` | `off` (`auto` \| `macos` \| `ics`) |
+| `LITEAGENT_CALENDAR_ICS_PATH` | `agenda.ics` |
+| `LITEAGENT_CALENDAR_NAME` | empty = the system's default calendar for new events |
 | `LITEAGENT_CONTACT` | `https://github.com/gregsvieira`: added to the User-Agent (Wikipedia rejects anonymous bots); empty = none |
 
 ## Test
