@@ -41,6 +41,27 @@ The model only turns your request into a small JSON; event titles and notes are 
 event cannot instruct the agent. Proposals expire after 1 hour. To cancel, mention the calendar or a time
 ("cancele o dentista **de sexta**", "... **da agenda**"). Not implemented yet: Windows (Outlook) and Linux (Evolution/CalDAV) native backends.
 
+## WhatsApp (via OpenWA)
+
+Off by default. **Read this first:** OpenWA drives WhatsApp Web, which WhatsApp's terms do not allow; the linked number can be
+banned. Use a secondary number, keep volumes low, never expose OpenWA beyond 127.0.0.1.
+
+    scripts/openwa.sh setup      # once: installs OpenWA and its own Node.js under ~/.lite-agent/openwa (system Node untouched)
+    scripts/openwa.sh start      # opens a window with a QR code: WhatsApp > Linked devices > Link a device
+    LITEAGENT_WHATSAPP_BACKEND=openwa uv run python -m liteagent.main
+
+Then, in natural language: "tenho mensagens novas?", "o que o João disse?", "resuma a conversa com a Maria",
+"manda pro João: chego em 10 min". After the first login the session is kept; later use `scripts/openwa.sh start-bg`.
+
+Safety model (same as the calendar): reading is free, **sending is always a proposal you approve** in the same inbox
+(`GET /actions`, `POST /actions/<id>/approve` with `X-LiteAgent-UI: 1`). The recipient is matched by code against your chat
+list (ambiguous names ask which one), the text sent is exactly what you wrote and is shown before approval, approved sends are
+limited to 20/hour with a 3 s gap, and message contents are treated as untrusted data: they never trigger a send. Summaries
+are the only place where other people's text reaches the local model; it is quoted, cleaned, size-capped, and its output is text only.
+
+    curl localhost:8765/whatsapp/status
+    curl 'localhost:8765/whatsapp/chats?unread=true'
+
 ## Settings (env)
 
 | Variable | Default |
@@ -65,6 +86,10 @@ event cannot instruct the agent. Proposals expire after 1 hour. To cancel, menti
 | `LITEAGENT_CALENDAR_BACKEND` | `off` (`auto` \| `macos` \| `ics`) |
 | `LITEAGENT_CALENDAR_ICS_PATH` | `agenda.ics` |
 | `LITEAGENT_CALENDAR_NAME` | empty = the system's default calendar for new events |
+| `LITEAGENT_WHATSAPP_BACKEND` | `off` (`openwa`) |
+| `LITEAGENT_OPENWA_URL` | `http://127.0.0.1:8081` |
+| `LITEAGENT_OPENWA_API_KEY` | empty = read `~/.lite-agent/openwa/api_key.txt` (`LITEAGENT_OPENWA_API_KEY_FILE`) |
+| `LITEAGENT_WHATSAPP_MAX_SENDS_PER_HOUR` | `20` |
 | `LITEAGENT_CONTACT` | `https://github.com/gregsvieira`: added to the User-Agent (Wikipedia rejects anonymous bots); empty = none |
 
 ## Test
