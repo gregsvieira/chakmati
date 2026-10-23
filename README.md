@@ -95,3 +95,31 @@ are the only place where other people's text reaches the local model; it is quot
 ## Test
 
     uv run pytest
+
+## Desktop: robô flutuante (Electron)
+
+Um robozinho fica sempre por cima das janelas. Quando algo acontece, ele escreve um balão em cima, embaixo ou ao lado
+(o lado com mais espaço na tela): "Você recebeu uma nova mensagem de Maria Victoria". Clicar no robô abre o painel com
+o resumo, as ações para você aprovar ou recusar, mensagens não lidas, agenda de hoje, avisos recentes, atalhos e uma
+caixa para dar ordens ao agente. Arraste o robô para mudar de lugar.
+
+```bash
+uv run python -m liteagent.main          # motor em 127.0.0.1:8765
+cd desktop && npm install && npm start   # robô (LITEAGENT_DESKTOP_SPAWN=1 inicia o motor junto)
+```
+
+Atalhos: `Ctrl/⌘+Shift+Espaço` abre/fecha o painel; `Ctrl/⌘+Shift+H` oculta tudo na hora.
+
+**Segurança:** as janelas não têm Node nem rede (CSP `default-src 'none'`); só o processo principal fala com o motor, e só
+em loopback. Aprovar/recusar exige o cabeçalho `X-LiteAgent-UI` e id validado. Nenhum texto de terceiros vira HTML.
+
+**Janela invisível na tela compartilhada:** "Esconder do compartilhamento" usa `setContentProtection`. Limites reais:
+Windows funciona; macOS depende do app de captura (apps que usam ScreenCaptureKit podem ainda enxergar a janela);
+Linux não tem suporte. Teste antes de depender disso:
+
+```bash
+cd desktop && LITEAGENT_DESKTOP_PROTECT_TEST=/tmp/prot ./node_modules/.bin/electron .
+# gera unprotected.png e protected.png (exige permissão de Gravação de Tela ao terminal)
+```
+
+Também há o modo discreto (balões sem nomes) e `LITEAGENT_DESKTOP_SNAPSHOT=/pasta` para gerar imagens do visual.

@@ -19,6 +19,7 @@ const PANEL = { w: 400, h: 640 };
 const HOTKEYS = { toggle: 'CommandOrControl+Shift+Space', panic: 'CommandOrControl+Shift+H' };
 const MAX_TEXT = 2000;
 const SNAPSHOT = process.env.LITEAGENT_DESKTOP_SNAPSHOT;
+const PROTECT_TEST = process.env.LITEAGENT_DESKTOP_PROTECT_TEST;
 const isMac = process.platform === 'darwin';
 const isLinux = process.platform === 'linux';
 
@@ -431,6 +432,32 @@ async function capture(win, file) {
   fs.writeFileSync(file, image.toPNG());
 }
 
+// Asks the OS for a real screenshot with the panel shown, protected and unprotected, so the claim is measured, not assumed.
+async function runProtectTest() {
+  const out = PROTECT_TEST;
+  fs.mkdirSync(out, { recursive: true });
+  settings = { ...settingsLib.DEFAULTS, protect: false };
+  engine = { overview: async () => SAMPLE_OVERVIEW };
+  state.engineUp = true;
+  state.overview = SAMPLE_OVERVIEW;
+  icon = { x: 200, y: 200 };
+  createPanel();
+  await new Promise((r) => ipcMain.once('panel:ready', r));
+  state.panelOpen = true;
+  positionPanel();
+  panelWin.show();
+  sendPanelState();
+  const run = (file) => new Promise((res) => spawn('screencapture', ['-x', path.join(out, file)]).on('close', res));
+  await sleep(800);
+  await run('unprotected.png');
+  settings.protect = true;
+  protect(panelWin);
+  await sleep(800);
+  await run('protected.png');
+  console.log('panel bounds', JSON.stringify(panelWin.getBounds()));
+  app.quit();
+}
+
 async function runSnapshots() {
   const out = SNAPSHOT === '1' ? path.join(app.getPath('temp'), 'liteagent-desktop-snapshots') : SNAPSHOT;
   fs.mkdirSync(out, { recursive: true });
@@ -511,6 +538,7 @@ if (!app.requestSingleInstanceLock()) {
     if (isMac) { app.dock?.hide(); app.setActivationPolicy?.('accessory'); }
     registerIpc();
     if (SNAPSHOT) { await runSnapshots(); return; }
+    if (PROTECT_TEST) { await runProtectTest(); return; }
 
     settingsFile = path.join(app.getPath('userData'), 'settings.json');
     settings = settingsLib.load(settingsFile);
