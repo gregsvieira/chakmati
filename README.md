@@ -96,16 +96,16 @@ are the only place where other people's text reaches the local model; it is quot
 
     uv run pytest
 
-## Desktop: robô flutuante (Electron)
+## Desktop: Chakmati, o assistente flutuante (Electron)
 
-Um robozinho fica sempre por cima das janelas. Quando algo acontece, ele escreve um balão em cima, embaixo ou ao lado
-(o lado com mais espaço na tela): "Você recebeu uma nova mensagem de Maria Victoria". Clicar no robô abre o painel com
+O Chakmati, um robozinho de lata com chapéu amarelo, fica sempre por cima das janelas. Quando algo acontece, ele escreve um balão em cima, embaixo ou ao lado
+(o lado com mais espaço na tela): "Você recebeu uma nova mensagem de Maria Victoria". Clicar no Chakmati abre o painel com
 o resumo, as ações para você aprovar ou recusar, mensagens não lidas, agenda de hoje, avisos recentes, atalhos e uma
-caixa para dar ordens ao agente. Arraste o robô para mudar de lugar.
+caixa para dar ordens ao agente. Arraste o Chakmati para mudar de lugar.
 
 ```bash
 uv run python -m liteagent.main          # motor em 127.0.0.1:8765
-cd desktop && npm install && npm start   # robô (LITEAGENT_DESKTOP_SPAWN=1 inicia o motor junto)
+cd desktop && npm install && npm start   # Chakmati (LITEAGENT_DESKTOP_SPAWN=1 inicia o motor junto)
 ```
 
 Atalhos: `Ctrl/⌘+Shift+Espaço` abre/fecha o painel; `Ctrl/⌘+Shift+H` oculta tudo na hora.

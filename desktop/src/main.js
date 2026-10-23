@@ -321,7 +321,7 @@ function openWaSetup() {
 function buildMenu() {
   return Menu.buildFromTemplate([
     { label: state.panelOpen ? 'Fechar painel' : 'Abrir painel', click: togglePanel },
-    { label: state.hidden ? 'Mostrar o robô' : 'Ocultar tudo agora', click: () => setHidden(!state.hidden) },
+    { label: state.hidden ? 'Mostrar o Chakmati' : 'Ocultar tudo agora', click: () => setHidden(!state.hidden) },
     { type: 'separator' },
     { label: 'Esconder do compartilhamento de tela', type: 'checkbox', checked: settings.protect, click: (i) => updateSetting('protect', i.checked) },
     { label: 'Modo discreto (sem nomes nos avisos)', type: 'checkbox', checked: settings.masked, click: (i) => updateSetting('masked', i.checked) },
@@ -336,7 +336,7 @@ function createTray() {
   const image = nativeImage.createFromBuffer(robotPng({ size: 32, template: isMac }), { scaleFactor: 2 });
   if (isMac) image.setTemplateImage(true);
   tray = new Tray(image);
-  tray.setToolTip('Robô assistente');
+  tray.setToolTip('Chakmati');
   rebuildMenu();
 }
 

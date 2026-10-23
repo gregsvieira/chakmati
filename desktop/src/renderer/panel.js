@@ -118,7 +118,7 @@
     $('wa-connect').hidden = !(state.settings.whatsapp && state.canOpenWa && wa.enabled && !wa.connected);
     const hint = $('engine-hint');
     hint.hidden = state.ownsEngine || !state.engineUp;
-    hint.textContent = 'O motor foi iniciado por fora do robô: reinicie-o para aplicar estas opções.';
+    hint.textContent = 'O motor foi iniciado por fora do Chakmati: reinicie-o para aplicar estas opções.';
     $('hotkeys').textContent = `Atalhos: abrir ou fechar ${state.hotkeys.toggle}; ocultar tudo ${state.hotkeys.panic}.`;
   }
 

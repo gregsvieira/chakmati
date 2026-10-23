@@ -35,26 +35,29 @@ const inRoundRect = (x, y, x0, y0, x1, y1, r) => {
 };
 const inCircle = (x, y, cx, cy, r) => (x - cx) ** 2 + (y - cy) ** 2 <= r * r;
 
-// Layers drawn in order, in unit coordinates.
+// Layers drawn in order, in unit coordinates: hat, tin-can head, two round eyes, nose, chin flap.
 function shapes(template) {
-  const head = (x, y) => inRoundRect(x, y, 0.1, 0.22, 0.9, 0.92, 0.22);
-  const face = (x, y) => inRoundRect(x, y, 0.21, 0.34, 0.79, 0.8, 0.13);
-  const ears = (x, y) => inRoundRect(x, y, 0.02, 0.46, 0.1, 0.7, 0.03) || inRoundRect(x, y, 0.9, 0.46, 0.98, 0.7, 0.03);
-  const mast = (x, y) => inRoundRect(x, y, 0.465, 0.07, 0.535, 0.23, 0.03) || inCircle(x, y, 0.5, 0.075, 0.075);
-  const eyes = (x, y) => inRoundRect(x, y, 0.31, 0.46, 0.42, 0.68, 0.045) || inRoundRect(x, y, 0.58, 0.46, 0.69, 0.68, 0.045);
-  if (template) {
-    // monochrome: macOS recolours "template" images for light and dark menu bars
+  const head = (x, y) => inRoundRect(x, y, 0.28, 0.22, 0.72, 0.9, 0.2);
+  const hat = (x, y) => inRoundRect(x, y, 0.27, 0.04, 0.73, 0.26, 0.05) || inRoundRect(x, y, 0.1, 0.22, 0.9, 0.3, 0.04);
+  const eyes = (x, y) => inCircle(x, y, 0.4, 0.42, 0.1) || inCircle(x, y, 0.6, 0.42, 0.1);
+  const nose = (x, y) => inCircle(x, y, 0.5, 0.57, 0.07);
+  const chin = (x, y) => inRoundRect(x, y, 0.32, 0.67, 0.68, 0.86, 0.08);
+  if (template) { // monochrome: macOS recolours "template" images for light and dark menu bars
     return [
-      { hit: (x, y) => head(x, y) || ears(x, y) || mast(x, y), color: [0, 0, 0, 255] },
-      { hit: face, color: [0, 0, 0, 0], erase: true },
-      { hit: eyes, color: [0, 0, 0, 255] },
+      { hit: (x, y) => head(x, y) || hat(x, y), color: [0, 0, 0, 255] },
+      { hit: eyes, color: [0, 0, 0, 0], erase: true },
+      { hit: chin, color: [0, 0, 0, 0], erase: true },
+      { hit: nose, color: [0, 0, 0, 255] },
     ];
   }
   return [
-    { hit: (x, y) => head(x, y) || ears(x, y) || mast(x, y), color: [86, 98, 120, 255] },          // slate outline
-    { hit: (x, y) => inRoundRect(x, y, 0.14, 0.26, 0.86, 0.88, 0.2), color: [238, 241, 245, 255] }, // porcelain head
-    { hit: face, color: [20, 33, 61, 255] },                                                         // ink screen
-    { hit: (x, y) => eyes(x, y) || inCircle(x, y, 0.5, 0.075, 0.05), color: [242, 169, 0, 255] },   // amber eyes and lamp
+    { hit: head, color: [120, 182, 218, 255] },
+    { hit: hat, color: [246, 210, 26, 255] },
+    { hit: (x, y) => inRoundRect(x, y, 0.27, 0.15, 0.73, 0.19, 0.0), color: [229, 67, 45, 255] },
+    { hit: eyes, color: [244, 240, 223, 255] },
+    { hit: (x, y) => inCircle(x, y, 0.4, 0.43, 0.045) || inCircle(x, y, 0.6, 0.43, 0.045), color: [16, 24, 32, 255] },
+    { hit: nose, color: [226, 69, 42, 255] },
+    { hit: chin, color: [47, 154, 67, 255] },
   ];
 }
 
