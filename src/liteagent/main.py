@@ -46,7 +46,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
     return create_app(
         engine,
         store,
-        Worker(store, engine.run_job),
+        Worker(store, engine.run_job, stream_handler=engine.run_job_stream),
         on_startup=llm.preload if s.preload_model else None,
     )
 
