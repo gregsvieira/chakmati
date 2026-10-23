@@ -42,7 +42,7 @@ class LazyProvider:
         self._get().delete_event(event_id)
 
 
-def build_calendar(settings: Settings) -> CalendarService | None:
+def build_calendar(settings: Settings, actions: ActionStore | None = None) -> CalendarService | None:
     backend = settings.calendar_backend
     if backend == "off":
         return None
@@ -54,4 +54,4 @@ def build_calendar(settings: Settings) -> CalendarService | None:
         # Windows (Outlook COM) and Linux (Evolution Data Server / CalDAV) backends are not implemented
         # yet; the portable .ics file works everywhere.
         provider = IcsCalendarProvider(settings.calendar_ics_path, settings.calendar_name or "Agenda")
-    return CalendarService(provider, ActionStore(settings.db_path))
+    return CalendarService(provider, actions or ActionStore(settings.db_path))

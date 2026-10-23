@@ -11,8 +11,11 @@ from pydantic import BaseModel, Field
 
 from .agenda.models import CalendarEvent
 from .agenda.service import Action, ActionExpired, ActionNotPending, CalendarService
+from .approvals import ApprovalService
 from .engine import Engine
 from .jobs import DONE, FAILED, JobStore, Worker
+from .whatsapp.openwa import WhatsAppError
+from .whatsapp.service import RateLimited, WhatsAppService
 
 
 class MessageIn(BaseModel):
@@ -48,6 +51,7 @@ def create_app(
     worker: Worker | None = None,
     on_startup: Callable[[], Awaitable[object]] | None = None,
     calendar: CalendarService | None = None,
+    whatsapp: WhatsAppService | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -170,22 +174,64 @@ def create_app(
         events = await asyncio.to_thread(service.events, start, end)
         return [_event_json(e) for e in events]
 
+    # ---- one approval inbox for every integration
+    def approval_services() -> list[ApprovalService]:
+        services: list[ApprovalService] = [x for x in (calendar, whatsapp) if x is not None]
+        if not services:
+            raise HTTPException(status_code=503, detail="no integration is enabled (calendar or WhatsApp backend)")
+        return services
+
     @app.get("/actions")
     async def pending_actions():
-        service = need_calendar()
-        return [_action_json(a) for a in await asyncio.to_thread(service.pending)]
+        items = []
+        for service in approval_services():
+            items.extend(await asyncio.to_thread(service.pending))
+        return [_action_json(a) for a in sorted(items, key=lambda a: a.expires_at)]
 
     async def decide(action_id: str, approve: bool) -> dict:
-        service = need_calendar()
+        owner = next((s for s in approval_services() if s.owns(action_id)), None)
+        if owner is None:
+            raise HTTPException(status_code=404, detail="action not found")
         try:
-            action = await asyncio.to_thread(service.approve if approve else service.reject, action_id)
+            if approve:
+                action = await owner.aapprove(action_id)  # async-native integrations run on the loop, the rest in a thread
+            else:
+                action = await asyncio.to_thread(owner.reject, action_id)
         except KeyError:
             raise HTTPException(status_code=404, detail="action not found") from None
         except ActionExpired:
             raise HTTPException(status_code=410, detail="the proposal expired") from None
         except ActionNotPending as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from None
+        except RateLimited as exc:
+            raise HTTPException(status_code=429, detail=str(exc)) from None
         return _action_json(action)
+
+    # ---- whatsapp (reading; sending goes through /actions)
+    def need_whatsapp() -> WhatsAppService:
+        if whatsapp is None:
+            raise HTTPException(status_code=503, detail="WhatsApp integration is disabled (LITEAGENT_WHATSAPP_BACKEND)")
+        return whatsapp
+
+    @app.get("/whatsapp/status")
+    async def whatsapp_status():
+        try:
+            status = await need_whatsapp().status()
+        except WhatsAppError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from None
+        return {"connected": status.connected, "state": status.state}
+
+    @app.get("/whatsapp/chats")
+    async def whatsapp_chats(unread: bool = False, limit: int = 50):
+        try:
+            chats = await need_whatsapp().chats(unread_only=unread, limit=max(1, min(limit, 500)))
+        except WhatsAppError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from None
+        return [
+            {"id": c.id, "name": c.name, "is_group": c.is_group, "unread": c.unread, "phone": c.phone,
+             "last": c.ts.isoformat() if c.ts else None}
+            for c in chats
+        ]
 
     @app.post("/actions/{action_id}/approve", dependencies=[Depends(ui_only)])
     async def approve_action(action_id: str):

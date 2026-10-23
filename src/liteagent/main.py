@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from .agenda.assistant import CalendarAssistant
 from .agenda.factory import build_calendar
 from .api import create_app
+from .approvals import ActionStore
 from .config import Settings
 from .engine import Engine
 from .gate import build_gate
@@ -15,6 +16,8 @@ from .research.fetch import PageFetcher
 from .research.search import DuckDuckGoHtmlBackend, build_user_agent
 from .research.searxng import SearxngBackend
 from .research.tool import ResearchTool
+from .whatsapp.assistant import WhatsAppAssistant
+from .whatsapp.factory import build_whatsapp
 
 
 def build_app(settings: Settings | None = None) -> FastAPI:
@@ -47,7 +50,9 @@ def build_app(settings: Settings | None = None) -> FastAPI:
             max_pages=s.research_max_pages,
             target_pages=s.research_target_pages or None,
         )
-    calendar = build_calendar(s)
+    actions = ActionStore(s.db_path)  # one approval inbox shared by every integration
+    calendar = build_calendar(s, actions)
+    whatsapp = build_whatsapp(s, actions)
     worker_ref: list[Worker] = []
     engine = Engine(
         build_gate(s),
@@ -56,6 +61,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         researcher=researcher,
         on_job_created=lambda: worker_ref[0].wake() if worker_ref else None,
         calendar_assistant=CalendarAssistant(llm, calendar) if calendar is not None else None,
+        whatsapp_assistant=WhatsAppAssistant(llm, whatsapp) if whatsapp is not None else None,
     )
     worker = Worker(store, engine.run_job, stream_handler=engine.run_job_stream)
     worker_ref.append(worker)
@@ -65,6 +71,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         worker,
         on_startup=llm.preload if s.preload_model else None,
         calendar=calendar,
+        whatsapp=whatsapp,
     )
 
 
