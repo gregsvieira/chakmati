@@ -4,3 +4,7 @@ __pycache__/
 .pytest_cache/
 compare_scores.json
 bench_runs*.json
+
+# desktop app
+desktop/node_modules/
+desktop/dist/

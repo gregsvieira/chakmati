@@ -1,0 +1,16 @@
+{
+  "name": "lite-agent-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Floating robot assistant for lite-agent",
+  "main": "src/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.js",
+    "snapshot": "LITEAGENT_DESKTOP_SNAPSHOT=1 electron ."
+  },
+  "devDependencies": {
+    "electron": "^45.0.0"
+  }
+}
