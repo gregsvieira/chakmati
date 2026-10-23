@@ -29,6 +29,10 @@ Local assistant engine: simple messages answer inline in seconds; slow work
 | `LITEAGENT_SEARXNG_URL` | `http://localhost:8080` |
 | `LITEAGENT_RESEARCH_SCORER` | `keepall` (`laya` is opt-in) |
 | `LITEAGENT_RESULT_CUTOFF` | `0.2` |
+| `LITEAGENT_KEEP_ALIVE` | empty = Ollama default (5 min); e.g. `30m` keeps the model in RAM longer |
+| `LITEAGENT_PRELOAD_MODEL` | `0`; `1` loads the model at startup (first request ~4 s faster, ~6 GB RAM resident) |
+| `LITEAGENT_RESEARCH_MAX_TOKENS` | `200` (`0` = no cap) |
+| `LITEAGENT_RESEARCH_CONCISE` | `1` (answers in at most 3 short sentences) |
 
 ## Test
 
