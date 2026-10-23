@@ -122,6 +122,11 @@ class Worker:
         self._poll = poll_seconds
         self._stream_handler = stream_handler
         self._flush = flush_interval
+        self._wakeup = asyncio.Event()
+
+    def wake(self) -> None:
+        """Tell an idle worker that a job was just queued, so it does not wait for the next poll."""
+        self._wakeup.set()
 
     async def _run_stream(self, job: Job) -> str:
         """Consume the stream, saving the text so far (`partial`) at most every `flush_interval`."""
@@ -159,4 +164,8 @@ class Worker:
     async def run_forever(self) -> None:
         while True:
             if not await self.run_once():
-                await asyncio.sleep(self._poll)
+                try:
+                    await asyncio.wait_for(self._wakeup.wait(), timeout=self._poll)
+                except asyncio.TimeoutError:
+                    pass
+                self._wakeup.clear()

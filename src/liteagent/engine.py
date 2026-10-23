@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 
 from .gate.base import Gate, Route
@@ -42,11 +42,17 @@ class Engine:
         llm: ChatClient,
         store: JobStore,
         researcher: ResearchTool | None = None,
+        on_job_created: Callable[[], object] | None = None,
     ):
         self._gate = gate
         self._llm = llm
         self._store = store
         self._researcher = researcher
+        self._on_job_created = on_job_created
+
+    def _notify_job(self) -> None:
+        if self._on_job_created is not None:
+            self._on_job_created()
 
     async def handle(self, text: str) -> Reply:
         decision = await asyncio.to_thread(self._gate.classify, text)
@@ -54,6 +60,7 @@ class Engine:
             answer = await self._llm.chat(_messages(decision.route, text))
             return Reply("answer", decision.route, text=answer)
         job_id = self._store.create(decision.route.value, text)
+        self._notify_job()
         return Reply("job", decision.route, job_id=job_id)
 
     async def run_job(self, job: Job) -> str:
@@ -68,6 +75,7 @@ class Engine:
         yield {"type": "route", "route": decision.route.value}
         if decision.route.is_slow:
             job_id = self._store.create(decision.route.value, text)
+            self._notify_job()
             yield {"type": "job", "job_id": job_id, "route": decision.route.value}
             return
         parts: list[str] = []

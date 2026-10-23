@@ -116,3 +116,14 @@ async def test_run_job_stream_uses_llm_stream_or_researcher_stream(store):
     engine2 = Engine(FakeGate(Route.RESEARCH), llm, store, researcher=R())
     rid = store.create("research", "q")
     assert await collect(engine2.run_job_stream(store.get(rid))) == ["web:q"]
+
+
+async def test_on_job_created_is_called_for_slow_routes_only(store):
+    calls = []
+    slow = Engine(FakeGate(Route.TASK), StreamingLLM(), store, on_job_created=lambda: calls.append(1))
+    await slow.handle("faça")
+    await collect(slow.handle_stream("faça de novo"))
+    assert calls == [1, 1]
+    chat = Engine(FakeGate(Route.CHAT), StreamingLLM(), store, on_job_created=lambda: calls.append(2))
+    await chat.handle("oi")
+    assert calls == [1, 1]

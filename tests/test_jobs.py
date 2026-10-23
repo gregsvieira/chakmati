@@ -1,3 +1,4 @@
+import asyncio
 import pytest
 
 from liteagent.jobs import DONE, FAILED, QUEUED, RUNNING, JobStore, Worker
@@ -132,3 +133,19 @@ async def test_worker_stream_failure_midway_is_recorded(store):
     job = store.get(job_id)
     assert job.status == FAILED and job.error == "ValueError: cut"
     assert job.partial == "par"
+
+
+async def test_wake_makes_the_worker_pick_up_a_job_without_waiting_for_the_poll(store):
+    done = asyncio.Event()
+
+    async def handler(job):
+        done.set()
+        return "ok"
+
+    worker = Worker(store, handler, poll_seconds=30)  # would sleep 30 s between polls
+    task = asyncio.create_task(worker.run_forever())
+    await asyncio.sleep(0.05)  # the worker is now idle, sleeping
+    store.create("research", "q")
+    worker.wake()
+    await asyncio.wait_for(done.wait(), timeout=2)
+    task.cancel()

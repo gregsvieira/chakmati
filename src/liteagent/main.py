@@ -42,11 +42,20 @@ def build_app(settings: Settings | None = None) -> FastAPI:
             result_cutoff=s.result_cutoff,
             concise=s.research_concise,
         )
-    engine = Engine(build_gate(s), llm, store, researcher=researcher)
+    worker_ref: list[Worker] = []
+    engine = Engine(
+        build_gate(s),
+        llm,
+        store,
+        researcher=researcher,
+        on_job_created=lambda: worker_ref[0].wake() if worker_ref else None,
+    )
+    worker = Worker(store, engine.run_job, stream_handler=engine.run_job_stream)
+    worker_ref.append(worker)
     return create_app(
         engine,
         store,
-        Worker(store, engine.run_job, stream_handler=engine.run_job_stream),
+        worker,
         on_startup=llm.preload if s.preload_model else None,
     )
 
