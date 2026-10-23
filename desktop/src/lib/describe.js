@@ -10,6 +10,8 @@ function describe({ engineUp, overview, busy = false } = {}) {
   if (busy) return { title: 'Pensando…', detail: 'Já volto com a resposta.', mood: 'thinking' };
 
   const o = overview || {};
+  // after a wake phrase ("Ôh, Xácmáti") the assistant waits for the command
+  if (o.awake) return { title: 'Aguardando seu comando.', detail: 'Pode falar ou digitar.', mood: 'alert' };
   const pending = (o.pending || []).length;
   if (pending > 0) {
     const what = pending === 1 ? 'Há 1 ação aguardando' : `Há ${pending} ações aguardando`;

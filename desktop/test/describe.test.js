@@ -66,3 +66,10 @@ test('busy wins over everything else but offline', () => {
 test('no overview yet (first seconds) does not crash', () => {
   assert.equal(describe({ engineUp: true, overview: null }).mood, 'idle');
 });
+
+test('after a wake phrase it waits for the command, ahead of everything but being offline or busy', () => {
+  const awake = { awake: true, pending: [{ id: 'a' }] };
+  assert.deepEqual(describe({ engineUp: true, overview: awake }), { title: 'Aguardando seu comando.', detail: 'Pode falar ou digitar.', mood: 'alert' });
+  assert.equal(describe({ engineUp: true, overview: awake, busy: true }).mood, 'thinking');
+  assert.equal(describe({ engineUp: false, overview: awake }).mood, 'offline');
+});

@@ -32,6 +32,7 @@
     $('title').textContent = d.title;
     $('detail').textContent = d.detail;
     robot.setMood(d.mood);
+    if (state.overview && state.overview.awake && screen === 'main') $('input').focus();
   }
 
   function renderDecisions() {
@@ -223,7 +224,7 @@
   // ------------------------------------------------------------------ listen and speak
   function sayAloud(text) {
     if (!state || !state.settings.voice) return;
-    window.Voice.speak(text, { onStart: () => { speaking = true; syncTalking(); }, onEnd: () => { speaking = false; syncTalking(); } });
+    window.Voice.speak(text, { onStart: () => { speaking = true; syncTalking(); }, onEnd: () => { speaking = false; syncTalking(); listenIfAwake(); } });
   }
 
   let recorder = null;
@@ -233,6 +234,11 @@
     micButton.classList.toggle('recording', on);
     micButton.title = on ? 'Parar e enviar' : 'Falar';
     micButton.setAttribute('aria-label', on ? 'Parar de gravar e enviar' : 'Falar com o Chakmati');
+  }
+
+  // After a wake phrase the assistant waits for the command: with the microphone on, it starts listening by itself.
+  function listenIfAwake() {
+    if (state && state.settings.voice && state.overview && state.overview.awake && !recorder) startListening();
   }
 
   async function startListening() {
