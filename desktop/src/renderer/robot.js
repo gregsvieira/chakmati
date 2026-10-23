@@ -43,26 +43,22 @@
     el('path', { class: 'lash', d: `M${5 * side} -5.6 q${2.6 * side} -.6 ${3.1 * side} -3.6` }, outer);
   }
 
+  // Props only: a small wooden window and a half-open door at his neck, as if he had climbed out of the computer screen.
   function scene(svg) {
-    // wooden frame with a dark opening (even-odd hole), cloth folds inside
-    el('path', { class: 'frame', 'fill-rule': 'evenodd', d: 'M8 40 Q8 26 26 26 L62 26 Q80 26 80 40 L80 74 Q80 86 68 86 L20 86 Q8 86 8 74 Z M16 41 Q16 32 28 32 L58 32 Q72 32 72 41 L72 72 Q72 80 62 80 L26 80 Q16 80 16 72 Z' }, svg);
-    el('path', { class: 'inside', d: 'M16 41 Q16 32 28 32 L58 32 Q72 32 72 41 L72 72 Q72 80 62 80 L26 80 Q16 80 16 72 Z' }, svg);
-    el('path', { class: 'fold', d: 'M22 42 q3 12 -1 32 M62 40 q-3 14 1 34' }, svg);
-    // door, swung open in perspective (far edge shorter)
-    el('path', { class: 'door-edge', d: 'M72 31 L86 35 L86 77 L72 81 Z' }, svg);
-    el('path', { class: 'door', d: 'M73.5 33 L84.6 36.4 L84.6 75.4 L73.5 78.8 Z' }, svg);
-    [44, 56, 68].forEach((y, i) => el('circle', { class: 'rivet', cx: 82.8, cy: y + 0.3 * i, r: 0.8 }, svg));
-    el('rect', { class: 'hinge', x: 70.5, y: 33, width: 3.2, height: 46, rx: 1 }, svg);
+    el('path', { class: 'frame', 'fill-rule': 'evenodd', d: 'M27 90 Q27 84 33 84 L63 84 Q69 84 69 90 L69 102 Q69 108 63 108 L33 108 Q27 108 27 102 Z M33 90 Q33 88.5 35 88.5 L61 88.5 Q63 88.5 63 90 L63 102 Q63 103.5 61 103.5 L35 103.5 Q33 103.5 33 102 Z' }, svg);
+    el('path', { class: 'inside', d: 'M33 90 Q33 88.5 35 88.5 L61 88.5 Q63 88.5 63 90 L63 102 Q63 103.5 61 103.5 L35 103.5 Q33 103.5 33 102 Z' }, svg);
+    // door swung open in perspective, same height as the window
+    el('path', { class: 'door-edge', d: 'M69 88 L79 91 L79 101.5 L69 104 Z' }, svg);
+    el('path', { class: 'door', d: 'M70 89.2 L77.8 91.8 L77.8 100.6 L70 102.6 Z' }, svg);
+    [93.5, 97.5].forEach((y) => el('circle', { class: 'rivet', cx: 76.4, cy: y, r: 0.7 }, svg));
+    el('rect', { class: 'hinge', x: 68, y: 88.5, width: 2.4, height: 15, rx: 0.8 }, svg);
   }
 
   function character(svg, parent) {
-    // soft shadow of the head on the cloth behind it
-    el('ellipse', { cx: 50, cy: 79, rx: 18, ry: 3.5, fill: 'url(#g-shade)' }, parent);
-
     // spring neck and bow tie (the frame's sill hides the bottom of the spring)
     const neck = el('g', { class: 'neck' }, parent);
-    el('rect', { class: 'spring', x: 41, y: 74, width: 12, height: 7, rx: 2 }, neck);
-    [76, 79].forEach((y) => el('path', { class: 'spring-line', d: `M41 ${y} q6 2 12 0` }, neck));
+    el('rect', { class: 'spring', x: 41, y: 74, width: 12, height: 26, rx: 2 }, neck);
+    [77, 80, 83, 86, 89, 92, 95, 98].forEach((y) => el('path', { class: 'spring-line', d: `M41 ${y} q6 2 12 0` }, neck));
     const tie = el('g', { class: 'tie', transform: 'translate(0 0)' }, parent);
     el('path', { class: 'tie-wing', d: 'M47 73.5 L33 68 Q31 73.5 33 79 Z' }, tie);
     el('path', { class: 'tie-wing', d: 'M47 73.5 L61 68 Q63 73.5 61 79 Z' }, tie);
@@ -99,12 +95,12 @@
   }
 
   function create(container, { scene: withScene = true } = {}) {
-    const svg = el('svg', { viewBox: withScene ? '2 0 88 100' : '27 0 40 82', class: 'robot', 'data-mood': 'idle', role: 'img', 'aria-label': 'Chakmati' }, container);
+    const svg = el('svg', { viewBox: withScene ? '6 0 80 110' : '27 0 40 100', class: 'robot', 'data-mood': 'idle', role: 'img', 'aria-label': 'Chakmati' }, container);
     defs(svg);
     if (withScene) scene(svg);
     const group = el('g', {}, svg);
     character(svg, group);
-    if (withScene) el('path', { class: 'sill', d: 'M12 76.5 Q12 80.5 26 80.5 L62 80.5 Q76 80.5 76 76.5 L76 82 Q76 86 62 86 L26 86 Q12 86 12 82 Z' }, svg);
+    if (withScene) el('path', { class: 'sill', d: 'M31 99.5 Q31 98 33 98 L63 98 Q65 98 65 99.5 L65 105 Q65 107 63 107 L33 107 Q31 107 31 105 Z' }, svg);
     return {
       svg,
       setTalking(on) { svg.setAttribute('data-talking', on ? 'true' : 'false'); },

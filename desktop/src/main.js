@@ -13,7 +13,7 @@ const { NoticeQueue, present, bubbleDuration } = require('./lib/notice-queue');
 const { describe } = require('./lib/describe');
 const { robotPng } = require('./lib/trayicon');
 
-const ICON = 112;
+const ICON = 124;
 const BUBBLE = { w: 320, h: 120 };
 const PANEL = { w: 400, h: 640 };
 const HOTKEYS = { toggle: 'CommandOrControl+Shift+Space', panic: 'CommandOrControl+Shift+H' };

@@ -102,6 +102,7 @@
   function renderThread() {
     $('thread-section').hidden = thread.length === 0;
     fill($('thread'), thread.map((t) => h('div', { class: `turn ${t.role}${t.status === 'pending' ? ' pending' : ''}${t.status === 'error' ? ' error' : ''}` }, t.text || '…')));
+    robot.setTalking(thread.some((t) => t.status === 'pending')); // the mouth moves while an answer is on its way
     const content = $('content');
     content.scrollTop = content.scrollHeight;
   }
