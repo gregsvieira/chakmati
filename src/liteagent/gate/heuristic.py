@@ -24,6 +24,11 @@ _CALENDAR = re.compile(
     r"|meetings?|calendar|appointments?|schedule)\b",
     re.IGNORECASE,
 )
+_WHATSAPP = re.compile(
+    r"\b(?:whats\w*|zap(?:zap)?|wpp|mensagens?\s+(?:novas?|n[ãa]o\s+lidas?)"
+    r"|(?:manda|mande|envie|enviar|mandar)\s+(?:uma?\s+)?mensagem)\b",
+    re.IGNORECASE,
+)
 # "marque dentista dia 30 às 9h": a scheduling verb PLUS a hint of WHEN (a verb alone is too common: "marque o gol").
 _SCHEDULE_VERB = re.compile(
     r"\b(?:(?:des|re)?marcar|(?:des|re)?marque[m]?|cancelar|cancele[m]?)\b", re.IGNORECASE
@@ -39,6 +44,8 @@ class HeuristicGate:
     source = "heuristic"
 
     def classify(self, text: str) -> GateResult:
+        if _WHATSAPP.search(text) and not _EXPLICIT_SEARCH.search(text):
+            return GateResult(Route.WHATSAPP, 0.9, self.source)
         is_calendar = _CALENDAR.search(text) or (_SCHEDULE_VERB.search(text) and _WHEN.search(text))
         if is_calendar and not _EXPLICIT_SEARCH.search(text):
             return GateResult(Route.CALENDAR, 0.9, self.source)

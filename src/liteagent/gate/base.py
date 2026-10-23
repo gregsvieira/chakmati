@@ -8,6 +8,7 @@ class Route(str, Enum):
     RESEARCH = "research"
     TASK = "task"
     CALENDAR = "calendar"
+    WHATSAPP = "whatsapp"
 
     @property
     def is_slow(self) -> bool:

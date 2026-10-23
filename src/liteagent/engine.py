@@ -17,6 +17,9 @@ SYSTEM_PROMPTS: dict[Route, str] = {
         "You are a calendar assistant, but the calendar is not connected. Say so briefly "
         "in the user's language."
     ),
+    Route.WHATSAPP: (
+        "You are a WhatsApp assistant, but WhatsApp is not connected. Say so briefly in the user's language."
+    ),
     Route.TASK: (
         "You are a careful assistant for multi-step tasks. Answer in the user's "
         "language. You cannot run code or touch files yet: describe the steps."
@@ -27,6 +30,12 @@ SYSTEM_PROMPTS: dict[Route, str] = {
 CALENDAR_OFF = (
     "A integração com a agenda está desativada. Ative com LITEAGENT_CALENDAR_BACKEND=auto "
     "(ou macos / ics) e reinicie."
+)
+
+
+WHATSAPP_OFF = (
+    "A integração com o WhatsApp está desativada. Ative com LITEAGENT_WHATSAPP_BACKEND=openwa "
+    "(com o OpenWA em execução) e reinicie."
 )
 
 
@@ -54,6 +63,7 @@ class Engine:
         researcher: ResearchTool | None = None,
         on_job_created: Callable[[], object] | None = None,
         calendar_assistant=None,
+        whatsapp_assistant=None,
     ):
         self._gate = gate
         self._llm = llm
@@ -61,6 +71,7 @@ class Engine:
         self._researcher = researcher
         self._on_job_created = on_job_created
         self._calendar = calendar_assistant
+        self._whatsapp = whatsapp_assistant
 
     def _notify_job(self) -> None:
         if self._on_job_created is not None:
@@ -80,9 +91,16 @@ class Engine:
             return CALENDAR_OFF
         return await self._calendar.handle(job.prompt)
 
+    async def _whatsapp_job(self, job: Job) -> str:
+        if self._whatsapp is None:
+            return WHATSAPP_OFF
+        return await self._whatsapp.handle(job.prompt)
+
     async def run_job(self, job: Job) -> str:
         if job.route == Route.CALENDAR.value:
             return await self._calendar_job(job)
+        if job.route == Route.WHATSAPP.value:
+            return await self._whatsapp_job(job)
         if self._researcher is not None and job.route == Route.RESEARCH.value:
             return (await self._researcher.answer(job.prompt)).render()
         return await self._llm.chat(_messages(Route(job.route), job.prompt))
@@ -107,6 +125,9 @@ class Engine:
         """Streaming counterpart of `run_job`: yields the answer as it is produced."""
         if job.route == Route.CALENDAR.value:
             yield await self._calendar_job(job)
+            return
+        if job.route == Route.WHATSAPP.value:
+            yield await self._whatsapp_job(job)
             return
         if self._researcher is not None and job.route == Route.RESEARCH.value:
             async for delta in self._researcher.stream_answer(job.prompt):

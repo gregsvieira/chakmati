@@ -27,6 +27,11 @@ class Settings:
     calendar_backend: str = "off"  # "off" | "auto" | "macos" | "ics"
     calendar_ics_path: str = "agenda.ics"
     calendar_name: str = ""  # calendar that new events go to (empty = the system default)
+    whatsapp_backend: str = "off"  # "off" | "openwa"
+    openwa_url: str = "http://127.0.0.1:8081"
+    openwa_api_key: str = ""
+    openwa_api_key_file: str = os.path.expanduser("~/.lite-agent/openwa/api_key.txt")
+    whatsapp_max_sends_per_hour: int = 20
     contact: str = "https://github.com/gregsvieira"
 
     @classmethod
@@ -56,5 +61,10 @@ class Settings:
             calendar_backend=env.get("LITEAGENT_CALENDAR_BACKEND", d.calendar_backend),
             calendar_ics_path=env.get("LITEAGENT_CALENDAR_ICS_PATH", d.calendar_ics_path),
             calendar_name=env.get("LITEAGENT_CALENDAR_NAME", d.calendar_name),
+            whatsapp_backend=env.get("LITEAGENT_WHATSAPP_BACKEND", d.whatsapp_backend),
+            openwa_url=env.get("LITEAGENT_OPENWA_URL", d.openwa_url),
+            openwa_api_key=env.get("LITEAGENT_OPENWA_API_KEY", d.openwa_api_key),
+            openwa_api_key_file=env.get("LITEAGENT_OPENWA_API_KEY_FILE", d.openwa_api_key_file),
+            whatsapp_max_sends_per_hour=int(env.get("LITEAGENT_WHATSAPP_MAX_SENDS_PER_HOUR", d.whatsapp_max_sends_per_hour)),
             contact=env.get("LITEAGENT_CONTACT", d.contact),
         )

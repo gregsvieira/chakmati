@@ -84,3 +84,13 @@ def test_calendar_settings_are_off_by_default():
     s = Settings.from_env({"LITEAGENT_CALENDAR_BACKEND": "ics", "LITEAGENT_CALENDAR_ICS_PATH": "/tmp/a.ics",
                            "LITEAGENT_CALENDAR_NAME": "Trabalho"})
     assert (s.calendar_backend, s.calendar_ics_path, s.calendar_name) == ("ics", "/tmp/a.ics", "Trabalho")
+
+
+def test_whatsapp_settings_are_off_by_default():
+    d = Settings()
+    assert (d.whatsapp_backend, d.openwa_url, d.openwa_api_key, d.whatsapp_max_sends_per_hour) == (
+        "off", "http://127.0.0.1:8081", "", 20)
+    assert d.openwa_api_key_file.endswith("/.lite-agent/openwa/api_key.txt")
+    s = Settings.from_env({"LITEAGENT_WHATSAPP_BACKEND": "openwa", "LITEAGENT_OPENWA_URL": "http://h:1",
+                           "LITEAGENT_OPENWA_API_KEY": "k", "LITEAGENT_WHATSAPP_MAX_SENDS_PER_HOUR": "5"})
+    assert (s.whatsapp_backend, s.openwa_url, s.openwa_api_key, s.whatsapp_max_sends_per_hour) == ("openwa", "http://h:1", "k", 5)

@@ -22,6 +22,7 @@ CASES: list[tuple[str, Route]] = [
     ("rode os testes do projeto", Route.TASK),
     ("o que tenho na agenda amanhã?", Route.CALENDAR),
     ("marque uma reunião sexta às 15h", Route.CALENDAR),
+    ("tenho mensagens novas no whatsapp?", Route.WHATSAPP),
 ]
 
 
