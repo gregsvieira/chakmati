@@ -42,6 +42,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
             result_cutoff=s.result_cutoff,
             concise=s.research_concise,
             fetch_deadline=s.fetch_deadline or None,
+            max_pages=s.research_max_pages,
         )
     worker_ref: list[Worker] = []
     engine = Engine(

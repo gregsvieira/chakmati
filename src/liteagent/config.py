@@ -19,7 +19,8 @@ class Settings:
     preload_model: bool = False
     research_max_tokens: int = 200
     research_concise: bool = True
-    fetch_deadline: float = 3.0  # seconds to wait for the page downloads; 0 = wait for all
+    fetch_deadline: float = 2.0  # seconds to wait for the page downloads; 0 = wait for all
+    research_max_pages: int = 4
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "Settings":
@@ -43,4 +44,5 @@ class Settings:
             research_max_tokens=int(env.get("LITEAGENT_RESEARCH_MAX_TOKENS", d.research_max_tokens)),
             research_concise=env.get("LITEAGENT_RESEARCH_CONCISE", "1").lower() in {"1", "true", "yes"},
             fetch_deadline=float(env.get("LITEAGENT_FETCH_DEADLINE", d.fetch_deadline)),
+            research_max_pages=int(env.get("LITEAGENT_RESEARCH_MAX_PAGES", d.research_max_pages)),
         )

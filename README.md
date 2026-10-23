@@ -43,7 +43,8 @@ Chat replies stream directly; research/task replies stream as the worker produce
 | `LITEAGENT_PRELOAD_MODEL` | `0`; `1` loads the model at startup (first request ~4 s faster, ~6 GB RAM resident) |
 | `LITEAGENT_RESEARCH_MAX_TOKENS` | `200` (`0` = no cap) |
 | `LITEAGENT_RESEARCH_CONCISE` | `1` (answers in at most 3 short sentences) |
-| `LITEAGENT_FETCH_DEADLINE` | `3.0` seconds to wait for page downloads (`0` = wait for all); a site that hangs is dropped |
+| `LITEAGENT_FETCH_DEADLINE` | `2.0` seconds to wait for page downloads (`0` = wait for all); a site that hangs is dropped |
+| `LITEAGENT_RESEARCH_MAX_PAGES` | `4` pages fetched per question |
 
 ## Test
 

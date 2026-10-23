@@ -62,5 +62,10 @@ def test_speed_settings():
 
 
 def test_fetch_deadline_setting():
-    assert Settings().fetch_deadline == 3.0
+    assert Settings().fetch_deadline == 2.0
     assert Settings.from_env({"LITEAGENT_FETCH_DEADLINE": "0"}).fetch_deadline == 0.0
+
+
+def test_research_max_pages_setting():
+    assert Settings().research_max_pages == 4
+    assert Settings.from_env({"LITEAGENT_RESEARCH_MAX_PAGES": "2"}).research_max_pages == 2
