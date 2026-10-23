@@ -28,9 +28,12 @@ run_cmd() {  # $1 = extra flags
   [ -x "$BIN/wa-automate" ] || { echo "OpenWA is not installed: run '$0 setup' first" >&2; exit 1; }
   if curl -s -m 2 -o /dev/null "http://127.0.0.1:$PORT/health"; then echo "already running on :$PORT"; exit 0; fi
   mkdir -p "$DIR/run" && cd "$DIR/run"
+  # authTimeout: OpenWA gives up 60 s after launch if nobody scanned the QR (fatal error); 15 min is plenty
+  # chromiumArgs: a small window, enough for the QR
+  [ -f wa.config.json ] || printf '{ "authTimeout": 900, "qrTimeout": 900, "chromiumArgs": ["--window-size=470,760", "--window-position=80,60"] }\n' > wa.config.json
   # shellcheck disable=SC2086
   PATH="$BIN:$PATH" nohup "$BIN/wa-automate" --session-id "$SESSION" --host 127.0.0.1 --port "$PORT" \
-      --api-key "$(cat "$DIR/api_key.txt")" $1 > "$DIR/openwa.log" 2>&1 &
+      --api-key "$(cat "$DIR/api_key.txt")" --config "$DIR/run/wa.config.json" $1 > "$DIR/openwa.log" 2>&1 &
   echo "started (pid $!). Waiting for it to be ready..."
   for _ in $(seq 1 40); do
     sleep 3
