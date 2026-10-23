@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('assistant', {
     onBackdrop: (cb) => listen('widget:backdrop', cb),
     ready: () => send('widget:ready'),
     hover: (inside) => send('widget:hover', !!inside),
+    speaking: (on) => send('widget:speaking', !!on),
     dragStart: () => send('widget:drag-start'),
     dragMove: (dx, dy) => send('widget:drag-move', { dx, dy }),
     dragEnd: (moved) => send('widget:drag-end', !!moved),
@@ -29,6 +30,7 @@ contextBridge.exposeInMainWorld('assistant', {
   },
   panel: {
     onState: (cb) => listen('panel:state', cb),
+    onOtherSpeaking: (cb) => listen('panel:other-speaking', cb),
     onMessage: (cb) => listen('panel:message', cb),
     ready: () => send('panel:ready'),
     close: () => send('panel:close'),

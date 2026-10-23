@@ -168,6 +168,8 @@
     $('set-still').checked = !!state.settings.still;
     $('set-hear').checked = !!state.settings.hear;
     $('set-talk').checked = !!state.settings.talk;
+    $('set-emojis').checked = !!state.settings.speakEmojis;
+    $('set-mic').value = state.settings.micSource;
     $('set-autosend').checked = !!state.settings.autoSend;
     if (!state.settings.hear) { window.Voice.stop(); speaking = false; }
     syncAmbient();
@@ -226,7 +228,7 @@
   // ------------------------------------------------------------------ hear and talk
   function sayAloud(text) {
     if (!state || !state.settings.hear) return;
-    window.Voice.speak(text, { onStart: () => { speaking = true; syncTalking(); }, onEnd: () => { speaking = false; syncTalking(); updateHint(); } });
+    window.Voice.speak(text, { emojis: !!state.settings.speakEmojis, onStart: () => { speaking = true; syncTalking(); }, onEnd: () => { speaking = false; quietUntil = Date.now() + 700; syncTalking(); updateHint(); } });
   }
 
   // "Falar com o Chakmati": the microphone is always listening, with no button to press. It acts only on a wake phrase
@@ -239,7 +241,9 @@
   let speechInProgress = false;
   let ambientWarned = false;
   const diag = (window.__listening = { frames: 0, starts: 0, ends: 0, drops: 0, sent: 0, heard: [], peak: 0, floor: 0, muted: 0 }); // for support: what the microphone loop saw
-  const isMuted = () => speaking || !!(state && state.busy); // not while Chakmati talks or works: it would hear itself
+  let otherSpeaking = false; // the floating widget is reading a notice
+  let quietUntil = 0;        // a short tail after any speech, while the room still echoes
+  const isMuted = () => speaking || otherSpeaking || Date.now() < quietUntil || !!(state && state.busy); // not while Chakmati talks or works: it would hear itself
 
   function updateHint() {
     if (!state) return;
@@ -274,12 +278,30 @@
     }
   }
 
+  // The computer's own microphone (the built-in one), not whatever virtual or Bluetooth device the system made the default.
+  // The names of the devices are only readable after the first permission, hence the second open.
+  async function openMicrophone() {
+    const base = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+    let stream = await navigator.mediaDevices.getUserMedia({ audio: base });
+    ambientSource = state.settings.micSource;
+    if (ambientSource !== 'computer') return stream;
+    const builtIn = /built-?in|macbook|interno|integrado|internal|imac|studio display/i;
+    const devices = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audioinput' && !['default', 'communications'].includes(d.deviceId));
+    const wanted = devices.find((d) => builtIn.test(d.label));
+    if (wanted && !builtIn.test(stream.getAudioTracks()[0].label || '')) {
+      stream.getTracks().forEach((t) => t.stop());
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { ...base, deviceId: { exact: wanted.deviceId } } });
+    }
+    diag.microphone = stream.getAudioTracks()[0].label;
+    return stream;
+  }
+
   async function startAmbient() {
     if (ambient || starting || !state || !state.settings.talk) return;
     starting = true;
     let stream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+      stream = await openMicrophone();
     } catch {
       starting = false;
       say('Não consegui usar o microfone. Libere em Ajustes do Sistema > Privacidade > Microfone e ligue de novo.');
@@ -334,7 +356,11 @@
     micButton.style.setProperty('--level', '0');
   }
 
-  const syncAmbient = () => { if (state && state.settings.talk) startAmbient(); else stopAmbient(); };
+  let ambientSource = null;
+  const syncAmbient = () => {
+    if (ambient && state && ambientSource !== state.settings.micSource) stopAmbient(); // the person chose another microphone
+    if (state && state.settings.talk) startAmbient(); else stopAmbient();
+  };
 
   // ------------------------------------------------------------------ wiring
   const CHIPS = [
@@ -459,6 +485,8 @@
   $('set-calendar').addEventListener('change', (e) => api.setSetting('calendar', e.target.checked));
   $('wa-connect').addEventListener('click', connectWhatsApp);
   $('set-autosend').addEventListener('change', (e) => api.setSetting('autoSend', e.target.checked));
+  $('set-emojis').addEventListener('change', (e) => api.setSetting('speakEmojis', e.target.checked));
+  $('set-mic').addEventListener('change', (e) => api.setSetting('micSource', e.target.value));
   $('set-hear').addEventListener('change', (e) => api.setSetting('hear', e.target.checked));
   $('set-talk').addEventListener('change', (e) => api.setSetting('talk', e.target.checked));
   micButton.addEventListener('click', () => api.setSetting('talk', !state.settings.talk));
@@ -466,6 +494,7 @@
   $('set-mood').addEventListener('change', (e) => api.setSetting('mood', e.target.value));
   $('set-side').addEventListener('change', (e) => api.setSetting('bubbleSide', e.target.value));
 
+  api.onOtherSpeaking((on) => { otherSpeaking = on; if (!on) quietUntil = Date.now() + 700; });
   api.onState((s) => { state = s; stateVersion += 1; render(); if (thread.length) renderThread(false); });
   api.ready();
 })();

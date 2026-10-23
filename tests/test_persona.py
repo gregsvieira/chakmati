@@ -49,7 +49,10 @@ def test_the_three_greetings_are_exactly_the_requested_ones():
 
 
 def test_the_persona_is_the_requested_pre_prompt():
-    assert PERSONA == "Você é um agente brasileiro chamado de Chakmati, que responde e recebe comandos em português brasileiro."
+    assert PERSONA == (
+        "Você é um agente brasileiro chamado de Chakmati, que responde e recebe comandos em português brasileiro, "
+        "tem bom humor e ironia."
+    )
 
 
 @pytest.mark.parametrize("prompt", [*SYSTEM_PROMPTS.values(), COMPOSE_SYSTEM, SUMMARY_SYSTEM])

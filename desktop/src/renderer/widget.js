@@ -36,14 +36,15 @@
 
   api.onLayout((l) => { layout = l; placeBubble(); });
   let voiceOn = false;
-  api.onVoice((on) => { voiceOn = !!on; if (!voiceOn) window.Voice.stop(); });
+  let voiceEmojis = false;
+  api.onVoice((v) => { voiceOn = !!(v && v.hear); voiceEmojis = !!(v && v.emojis); if (!voiceOn) window.Voice.stop(); });
   api.onStill((on) => document.body.toggleAttribute('data-still', !!on));
   api.onMood((m) => robot.setMood(m));
   api.onBackdrop((on) => document.body.classList.toggle('backdrop', !!on));
   api.onBubble((b) => {
     robot.setTalking(!!b);
     if (!b) { bubble.classList.add('hidden'); window.Voice.stop(); return; }
-    if (voiceOn) window.Voice.speak(b.text);
+    if (voiceOn) window.Voice.speak(b.text, { emojis: voiceEmojis, onStart: () => api.speaking(true), onEnd: () => api.speaking(false) });
     bubbleText.textContent = b.text;
     bubble.dataset.kind = b.kind || 'system';
     bubble.classList.remove('hidden', 'enter');

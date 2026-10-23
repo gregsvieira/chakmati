@@ -70,3 +70,12 @@ test('automatic approval of WhatsApp sends is off by default and only a boolean 
   assert.equal(normalize({ autoSend: true }).autoSend, true);
   assert.equal(normalize({ autoSend: 'sim' }).autoSend, false);
 });
+
+test('emojis are not described by default, and the microphone defaults to the computer\'s own', () => {
+  assert.equal(DEFAULTS.speakEmojis, false);
+  assert.equal(normalize({ speakEmojis: true }).speakEmojis, true);
+  assert.equal(normalize({ speakEmojis: 'sim' }).speakEmojis, false);
+  assert.equal(DEFAULTS.micSource, 'computer');
+  assert.equal(normalize({ micSource: 'system' }).micSource, 'system');
+  assert.equal(normalize({ micSource: 'usb' }).micSource, 'computer');
+});

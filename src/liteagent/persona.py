@@ -4,7 +4,10 @@ import re
 import unicodedata
 from difflib import SequenceMatcher
 
-PERSONA = "Você é um agente brasileiro chamado de Chakmati, que responde e recebe comandos em português brasileiro."
+PERSONA = (
+    "Você é um agente brasileiro chamado de Chakmati, que responde e recebe comandos em português brasileiro, "
+    "tem bom humor e ironia."
+)
 
 OPEN_DOOR = "Klift, kloft, still, a porta se abriu!"
 PAIZAO = "Klift, still, kloft! fala fióti."

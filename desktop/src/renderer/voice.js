@@ -11,9 +11,9 @@
   }
 
   // onStart/onEnd let the character's mouth follow the speech.
-  function speak(text, { onStart, onEnd } = {}) {
+  function speak(text, { onStart, onEnd, emojis = false } = {}) {
     if (!('speechSynthesis' in window)) return;
-    const clean = window.SpeechText.speakable(text);
+    const clean = window.SpeechText.speakable(text, { emojis });
     speechSynthesis.cancel();
     if (!clean) return;
     const u = new SpeechSynthesisUtterance(clean);

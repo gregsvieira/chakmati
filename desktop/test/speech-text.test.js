@@ -23,3 +23,10 @@ test('long answers are cut at a sentence end, short ones are kept', () => {
 test('interface markers are never spoken', () => {
   assert.equal(speakable('Aguardando sua aprovação - nada foi enviado ainda.\n[[action:abc123]]'), 'Aguardando sua aprovação - nada foi enviado ainda.');
 });
+
+test('emojis are skipped by default and kept when the option asks to describe them', () => {
+  const text = 'Claro! São quatro. 😊 Boa sorte 👍🏽 e 🇧🇷 feliz ❤️';
+  assert.equal(speakable(text), 'Claro! São quatro. Boa sorte e feliz');
+  assert.ok(speakable(text, { emojis: true }).includes('😊'));
+  assert.equal(speakable('Preço: 10 e 2 dígitos 1234'), 'Preço: 10 e 2 dígitos 1234'); // digits are not emoji
+});

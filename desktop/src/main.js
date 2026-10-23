@@ -199,7 +199,7 @@ function panelState() {
     busy: state.busy > 0,
     describe: { ...currentDescription(), mood: effectiveMood(currentDescription().mood) },
     notices: state.notices.slice(-20),
-    settings: { protect: settings.protect, masked: settings.masked, autoSend: settings.autoSend, hear: settings.hear, talk: settings.talk, still: settings.still, bubbleSide: settings.bubbleSide, mood: settings.mood, whatsapp: settings.whatsapp, calendar: settings.calendar, research: settings.research },
+    settings: { protect: settings.protect, masked: settings.masked, autoSend: settings.autoSend, hear: settings.hear, talk: settings.talk, speakEmojis: settings.speakEmojis, micSource: settings.micSource, still: settings.still, bubbleSide: settings.bubbleSide, mood: settings.mood, whatsapp: settings.whatsapp, calendar: settings.calendar, research: settings.research },
     ownsEngine: !!engineProcess,
     canOpenWa: !!projectRoot(),
     hotkeys: { toggle: prettyHotkey(HOTKEYS.toggle), panic: prettyHotkey(HOTKEYS.panic) },
@@ -498,20 +498,24 @@ function registerShortcuts() {
 }
 
 // ---------------------------------------------------------------------------------------------------- settings
+const sendVoice = () => sendTo(widgetWin, 'widget:voice', { hear: settings.hear, emojis: settings.speakEmojis });
+
 function updateSetting(key, value) {
   if (key === 'protect' && typeof value === 'boolean') settings.protect = value;
   else if (key === 'masked' && typeof value === 'boolean') settings.masked = value;
   else if (key === 'bubbleSide' && settingsLib.SIDES.includes(value)) settings.bubbleSide = value;
-  else if (key === 'hear' && typeof value === 'boolean') { settings.hear = value; sendTo(widgetWin, 'widget:voice', value); }
+  else if (key === 'hear' && typeof value === 'boolean') { settings.hear = value; sendVoice(); }
   else if (key === 'talk' && typeof value === 'boolean') {
     settings.talk = value;
     if (value) { // talking to Chakmati also means hearing it
       settings.hear = true;
-      sendTo(widgetWin, 'widget:voice', true);
+      sendVoice();
       if (process.platform === 'darwin') systemPreferences.askForMediaAccess('microphone').catch(() => {});
       if (!alive(panelWin)) createPanel(); // the always-on microphone lives in the panel window, which can stay hidden
     }
   }
+  else if (key === 'speakEmojis' && typeof value === 'boolean') { settings.speakEmojis = value; sendVoice(); }
+  else if (key === 'micSource' && (value === 'computer' || value === 'system')) settings.micSource = value;
   else if (key === 'autoSend' && typeof value === 'boolean') { settings.autoSend = value; autoApproveNew(); }
   else if (key === 'still' && typeof value === 'boolean') { settings.still = value; sendTo(widgetWin, 'widget:still', value); }
   else if (key === 'mood' && settingsLib.MOODS.includes(value)) settings.mood = value;
@@ -544,7 +548,9 @@ function friendlyError(e) {
 }
 
 function registerIpc() {
-  ipcMain.on('widget:ready', () => { applyLayout(); refreshMood(); sendTo(widgetWin, 'widget:still', settings.still); sendTo(widgetWin, 'widget:voice', settings.hear); });
+  // The floating widget reads notices aloud; tell the panel's microphone so it does not hear (and transcribe) them.
+  ipcMain.on('widget:speaking', (_e, on) => sendTo(panelWin, 'panel:other-speaking', on === true));
+  ipcMain.on('widget:ready', () => { applyLayout(); refreshMood(); sendTo(widgetWin, 'widget:still', settings.still); sendVoice(); });
   ipcMain.on('widget:hover', (_e, inside) => { if (!isLinux && alive(widgetWin)) widgetWin.setIgnoreMouseEvents(!inside, { forward: true }); });
   ipcMain.on('widget:drag-start', () => { dragStart = { ...icon }; });
   ipcMain.on('widget:drag-move', (_e, d) => {
