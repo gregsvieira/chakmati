@@ -109,3 +109,34 @@ async def test_concise_flag_appends_the_brevity_instruction_only_when_enabled():
     llm2 = FakeLLM()
     await ResearchTool(FakeSearch(results), pages(mapping), llm2, ByLength(), result_cutoff=0.0).answer("q")
     assert llm2.calls[0][0]["content"] == COMPOSE_SYSTEM
+
+
+class StreamLLM:
+    def __init__(self, deltas):
+        self.deltas, self.calls = deltas, []
+
+    async def chat(self, messages):
+        raise AssertionError("stream_answer must not call chat()")
+
+    async def stream_chat(self, messages):
+        self.calls.append(messages)
+        for d in self.deltas:
+            yield d
+
+
+async def test_stream_answer_yields_deltas_then_sources():
+    results = [SearchResult("A", "https://a.test/1", "s")]
+    mapping = {"https://a.test/1": PAGE.format(text="O Python 3.13 é a versão estável mais recente da linguagem.")}
+    llm = StreamLLM(["Python ", "3.13 [1]."])
+    tool = ResearchTool(FakeSearch(results), pages(mapping), llm, ByLength(), result_cutoff=0.0)
+    out = [d async for d in tool.stream_answer("versão do python")]
+    assert out[:2] == ["Python ", "3.13 [1]."]
+    assert "".join(out[2:]) == "\n\nFontes:\n- https://a.test/1"
+    assert llm.calls[0][0]["content"] == COMPOSE_SYSTEM
+
+
+async def test_stream_answer_without_usable_pages_yields_the_notice_and_skips_the_llm():
+    llm = StreamLLM(["x"])
+    out = [d async for d in ResearchTool(FakeSearch([]), pages({}), llm, ByLength()).stream_answer("q")]
+    assert out == ["Não encontrei informações utilizáveis na web para esta pergunta."]
+    assert llm.calls == []

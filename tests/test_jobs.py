@@ -75,3 +75,60 @@ async def test_worker_run_once_empty_queue(store):
         raise AssertionError("must not run")
 
     assert await Worker(store, handler).run_once() is False
+
+
+import sqlite3
+
+from liteagent.jobs import Worker as _Worker  # noqa: E402  (same class, explicit for the streaming tests)
+
+
+def test_partial_defaults_empty_and_can_be_updated(store):
+    job_id = store.create("research", "q")
+    assert store.get(job_id).partial == ""
+    store.set_partial(job_id, "Olá")
+    assert store.get(job_id).partial == "Olá"
+
+
+def test_existing_database_without_partial_column_is_migrated(tmp_path):
+    path = str(tmp_path / "old.db")
+    db = sqlite3.connect(path)
+    db.execute(
+        """CREATE TABLE jobs (id TEXT PRIMARY KEY, route TEXT NOT NULL, prompt TEXT NOT NULL,
+           status TEXT NOT NULL, result TEXT, error TEXT, created_at REAL NOT NULL, updated_at REAL NOT NULL)"""
+    )
+    db.execute("INSERT INTO jobs VALUES ('a','task','p','queued',NULL,NULL,1,1)")
+    db.commit()
+    db.close()
+    migrated = JobStore(path)
+    assert migrated.get("a").partial == ""
+    migrated.set_partial("a", "x")
+    assert migrated.get("a").partial == "x"
+
+
+async def test_worker_stream_handler_accumulates_partial_and_finishes(store):
+    job_id = store.create("research", "q")
+    snapshots = []
+
+    async def stream(job):
+        for piece in ["Ol", "á", "!"]:
+            yield piece
+            snapshots.append(store.get(job.id).partial)
+
+    worker = _Worker(store, handler=None, stream_handler=stream, flush_interval=0)
+    assert await worker.run_once() is True
+    job = store.get(job_id)
+    assert job.status == DONE and job.result == "Olá!"
+    assert snapshots == ["Ol", "Olá", "Olá!"][: len(snapshots)] and snapshots[0] == "Ol"
+
+
+async def test_worker_stream_failure_midway_is_recorded(store):
+    job_id = store.create("research", "q")
+
+    async def stream(job):
+        yield "par"
+        raise ValueError("cut")
+
+    await _Worker(store, handler=None, stream_handler=stream, flush_interval=0).run_once()
+    job = store.get(job_id)
+    assert job.status == FAILED and job.error == "ValueError: cut"
+    assert job.partial == "par"

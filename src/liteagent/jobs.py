@@ -2,7 +2,7 @@ import asyncio
 import sqlite3
 import time
 import uuid
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
 
 QUEUED, RUNNING, DONE, FAILED = "queued", "running", "done", "failed"
@@ -16,6 +16,7 @@ class Job:
     status: str
     result: str | None
     error: str | None
+    partial: str = ""
 
 
 class JobStore:
@@ -31,23 +32,28 @@ class JobStore:
                  result TEXT,
                  error TEXT,
                  created_at REAL NOT NULL,
-                 updated_at REAL NOT NULL
+                 updated_at REAL NOT NULL,
+                 partial TEXT NOT NULL DEFAULT ''
                )"""
         )
+        columns = {row["name"] for row in self._db.execute("PRAGMA table_info(jobs)")}
+        if "partial" not in columns:  # database created before streaming existed
+            self._db.execute("ALTER TABLE jobs ADD COLUMN partial TEXT NOT NULL DEFAULT ''")
         self._db.commit()
 
     @staticmethod
     def _job(row: sqlite3.Row) -> Job:
         return Job(
             row["id"], row["route"], row["prompt"],
-            row["status"], row["result"], row["error"],
+            row["status"], row["result"], row["error"], row["partial"],
         )
 
     def create(self, route: str, prompt: str) -> str:
         job_id = uuid.uuid4().hex
         now = time.time()
         self._db.execute(
-            "INSERT INTO jobs VALUES (?, ?, ?, ?, NULL, NULL, ?, ?)",
+            "INSERT INTO jobs (id, route, prompt, status, result, error, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, NULL, NULL, ?, ?)",
             (job_id, route, prompt, QUEUED, now, now),
         )
         self._db.commit()
@@ -77,6 +83,12 @@ class JobStore:
         )
         self._db.commit()
 
+    def set_partial(self, job_id: str, text: str) -> None:
+        self._db.execute(
+            "UPDATE jobs SET partial = ?, updated_at = ? WHERE id = ?", (text, time.time(), job_id)
+        )
+        self._db.commit()
+
     def finish(self, job_id: str, result: str) -> None:
         self._set(job_id, DONE, result, None)
 
@@ -93,20 +105,51 @@ class JobStore:
 
 
 Handler = Callable[[Job], Awaitable[str]]
+StreamHandler = Callable[[Job], AsyncIterator[str]]
 
 
 class Worker:
-    def __init__(self, store: JobStore, handler: Handler, poll_seconds: float = 0.5):
+    def __init__(
+        self,
+        store: JobStore,
+        handler: Handler | None,
+        poll_seconds: float = 0.5,
+        stream_handler: StreamHandler | None = None,
+        flush_interval: float = 0.1,
+    ):
         self._store = store
         self._handler = handler
         self._poll = poll_seconds
+        self._stream_handler = stream_handler
+        self._flush = flush_interval
+
+    async def _run_stream(self, job: Job) -> str:
+        """Consume the stream, saving the text so far (`partial`) at most every `flush_interval`."""
+        assert self._stream_handler is not None
+        parts: list[str] = []
+        last = 0.0
+        loop = asyncio.get_running_loop()
+        try:
+            async for delta in self._stream_handler(job):
+                parts.append(delta)
+                now = loop.time()
+                if now - last >= self._flush:
+                    self._store.set_partial(job.id, "".join(parts))
+                    last = now
+        finally:
+            self._store.set_partial(job.id, "".join(parts))
+        return "".join(parts)
 
     async def run_once(self) -> bool:
         job = self._store.claim_next()
         if job is None:
             return False
         try:
-            result = await self._handler(job)
+            if self._stream_handler is not None:
+                result = await self._run_stream(job)
+            else:
+                assert self._handler is not None
+                result = await self._handler(job)
         except Exception as exc:
             self._store.fail(job.id, f"{type(exc).__name__}: {exc}")
         else:

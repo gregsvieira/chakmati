@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
 from .gate.base import Gate, Route
@@ -59,3 +60,27 @@ class Engine:
         if self._researcher is not None and job.route == Route.RESEARCH.value:
             return (await self._researcher.answer(job.prompt)).render()
         return await self._llm.chat(_messages(Route(job.route), job.prompt))
+
+    async def handle_stream(self, text: str) -> AsyncIterator[dict]:
+        """Like `handle`, as a sequence of events: route, then either the reply as delta events
+        followed by done (chat), or a single job event for slow work (follow it via the job stream)."""
+        decision = await asyncio.to_thread(self._gate.classify, text)
+        yield {"type": "route", "route": decision.route.value}
+        if decision.route.is_slow:
+            job_id = self._store.create(decision.route.value, text)
+            yield {"type": "job", "job_id": job_id, "route": decision.route.value}
+            return
+        parts: list[str] = []
+        async for delta in self._llm.stream_chat(_messages(decision.route, text)):  # type: ignore[attr-defined]
+            parts.append(delta)
+            yield {"type": "delta", "text": delta}
+        yield {"type": "done", "result": "".join(parts)}
+
+    async def run_job_stream(self, job: Job) -> AsyncIterator[str]:
+        """Streaming counterpart of `run_job`: yields the answer as it is produced."""
+        if self._researcher is not None and job.route == Route.RESEARCH.value:
+            async for delta in self._researcher.stream_answer(job.prompt):
+                yield delta
+            return
+        async for delta in self._llm.stream_chat(_messages(Route(job.route), job.prompt)):  # type: ignore[attr-defined]
+            yield delta

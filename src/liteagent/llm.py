@@ -1,3 +1,5 @@
+import json
+from collections.abc import AsyncIterator
 from typing import Protocol
 
 import httpx
@@ -5,6 +7,10 @@ import httpx
 
 class ChatClient(Protocol):
     async def chat(self, messages: list[dict[str, str]]) -> str: ...
+
+
+class StreamingChatClient(ChatClient, Protocol):
+    def stream_chat(self, messages: list[dict[str, str]]) -> AsyncIterator[str]: ...
 
 
 class OllamaClient:
@@ -27,17 +33,35 @@ class OllamaClient:
         )
         self.last_usage: dict[str, int] = {}
 
-    async def chat(self, messages: list[dict[str, str]]) -> str:
+    def _payload(self, messages: list[dict[str, str]], stream: bool) -> dict:
         payload: dict = {
             "model": self._model,
             "messages": messages,
-            "stream": False,
+            "stream": stream,
             "think": self._think,
         }
         if self._keep_alive:
             payload["keep_alive"] = self._keep_alive
         if self._num_predict:
             payload["options"] = {"num_predict": self._num_predict}
+        return payload
+
+    async def stream_chat(self, messages: list[dict[str, str]]) -> AsyncIterator[str]:
+        """Yield the reply piece by piece as Ollama produces it (thinking tokens are skipped)."""
+        async with self._http.stream("POST", "/api/chat", json=self._payload(messages, True)) as response:
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if not line.strip():
+                    continue
+                data = json.loads(line)
+                if "error" in data:
+                    raise RuntimeError(data["error"])
+                content = data.get("message", {}).get("content", "")
+                if content:
+                    yield content
+
+    async def chat(self, messages: list[dict[str, str]]) -> str:
+        payload = self._payload(messages, False)
         response = await self._http.post("/api/chat", json=payload)
         response.raise_for_status()
         data = response.json()

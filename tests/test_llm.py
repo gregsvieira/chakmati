@@ -106,3 +106,40 @@ async def test_preload_posts_an_empty_generate_and_never_raises():
     assert seen["body"] == {"model": "m", "prompt": "", "keep_alive": "10m", "stream": False}
     bad = OllamaClient("http://ollama.test", "m", transport=httpx.MockTransport(lambda r: httpx.Response(500)))
     assert await bad.preload() is False
+
+
+NDJSON = (
+    b'{"message":{"role":"assistant","content":"Ol"},"done":false}\n'
+    b'{"message":{"role":"assistant","content":"","thinking":"hmm"},"done":false}\n'
+    b'{"message":{"role":"assistant","content":"\xc3\xa1"},"done":false}\n'
+    b'{"message":{"role":"assistant","content":""},"done":true}\n'
+)
+
+
+async def test_stream_chat_yields_content_deltas_and_ignores_thinking_and_empty():
+    seen = {}
+
+    def handler(request):
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(200, content=NDJSON)
+
+    client = OllamaClient(
+        "http://ollama.test", "m", transport=httpx.MockTransport(handler), keep_alive="5m", num_predict=50
+    )
+    deltas = [d async for d in client.stream_chat([{"role": "user", "content": "oi"}])]
+    assert deltas == ["Ol", "á"]
+    assert seen["body"] == {
+        "model": "m",
+        "messages": [{"role": "user", "content": "oi"}],
+        "stream": True,
+        "think": False,
+        "keep_alive": "5m",
+        "options": {"num_predict": 50},
+    }
+
+
+async def test_stream_chat_http_error_raises():
+    client = OllamaClient("http://ollama.test", "m", transport=httpx.MockTransport(lambda r: httpx.Response(500)))
+    with pytest.raises(httpx.HTTPStatusError):
+        async for _ in client.stream_chat([{"role": "user", "content": "oi"}]):
+            pass
