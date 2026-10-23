@@ -227,4 +227,4 @@ async def test_the_assistant_applies_the_correction_before_proposing():
     a, _, service = assistant('{"action":"create","title":"Dentista","start":"2026-11-30T09:00:00"}')
     out = await a.handle("marque dentista dia 30 às 9h")
     assert service.proposed[0][1].start == datetime(2026, 10, 30, 9, 0, tzinfo=BRT)
-    assert "2026-10-30" in out
+    assert out.startswith("Aguardando sua aprovação") and "[[action:" in out  # the details are shown by the approval card

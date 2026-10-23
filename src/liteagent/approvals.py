@@ -184,3 +184,9 @@ class ApprovalService:
         if not self._actions.transition(action_id, PENDING, REJECTED):
             raise ActionNotPending(f"{action_id} is {action.status}")
         return self._actions.get(action_id)  # type: ignore[return-value]
+
+
+def awaiting_approval(action_id: str, done: str = "enviado") -> str:
+    """What the assistant says when it only PROPOSED something. The short sentence is for people; the marker line is for
+    the desktop app, which shows approval buttons in its place (the id is not a secret: approving still needs the UI header)."""
+    return f"Aguardando sua aprovação - nada foi {done} ainda.\n[[action:{action_id}]]"

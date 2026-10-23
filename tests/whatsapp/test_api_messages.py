@@ -98,3 +98,17 @@ def test_a_corrupt_download_is_a_502_not_a_crash():
     wa = WhatsAppService(FakeProvider(), ActionStore(":memory:"), audio_client_factory=bad)
     client = TestClient(create_app(Engine(FakeGate(), FakeLLM(), store), store, whatsapp=wa))
     assert client.get(f"/whatsapp/chats/{CHAT}/messages/m2/audio", headers=UI).status_code == 502
+
+
+def test_system_events_are_not_shown_and_the_limit_counts_only_what_is_shown():
+    class Provider(FakeProvider):
+        async def get_messages(self, chat_id, last=20):
+            noise = [Message(f"n{i}", chat_id, "x", "", TS, False, "call_log") for i in range(50)]
+            real = [Message("a1", chat_id, "Maria", "", TS, False, "ptt", 10, REF), Message("a2", chat_id, "Maria", "oi", TS, False)]
+            return (real[:1] + noise + real[1:])[-last:]
+
+    store = JobStore(":memory:")
+    wa = WhatsAppService(Provider(), ActionStore(":memory:"))
+    client = TestClient(create_app(Engine(FakeGate(), FakeLLM(), store), store, whatsapp=wa))
+    items = client.get(f"/whatsapp/chats/{CHAT}/messages?last=2", headers=UI).json()
+    assert [i["id"] for i in items] == ["a1", "a2"]  # the earlier voice note is not pushed out by 50 call-log entries

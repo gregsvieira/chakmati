@@ -14,6 +14,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, tzinfo
 from typing import Protocol
 
+from ..approvals import awaiting_approval
 from ..llm import ChatClient
 from .models import CalendarEvent, NewEvent
 
@@ -203,12 +204,8 @@ class CalendarAssistant:
             return f"Não consegui montar o evento: {exc}."
         clashes = [e for e in await self._events(new.start, new.end, now.tzinfo) if not e.all_day][:3]
         action = self._service.propose_create(new)
-        text = (
-            f"Proposta {action.id} (aguardando a sua aprovação — nada foi gravado ainda):\n{action.summary}\n"
-        )
-        if clashes:
-            text += "Atenção, conflita com: " + "; ".join(e.summary() for e in clashes) + "\n"
-        return text + "Aprove ou rejeite na interface (POST /actions/{id}/approve ou /reject). Expira em 1 hora."
+        warning = "Atenção, conflita com: " + "; ".join(e.summary() for e in clashes) + "\n" if clashes else ""
+        return warning + awaiting_approval(action.id, "criado")
 
     # ------------------------------------------------------------------ delete
     async def _delete(self, intent: Intent, now: datetime) -> str:
@@ -223,7 +220,4 @@ class CalendarAssistant:
             listed = "\n".join(f"- {e.summary()}" for e in matches[:5])
             return f"Encontrei {len(matches)} eventos parecidos. Diga qual:\n{listed}"
         action = self._service.propose_delete(matches[0])
-        return (
-            f"Proposta {action.id} (aguardando a sua aprovação — nada foi apagado ainda):\n{action.summary}\n"
-            "Aprove ou rejeite na interface (POST /actions/{id}/approve ou /reject). Expira em 1 hora."
-        )
+        return awaiting_approval(action.id, "apagado")

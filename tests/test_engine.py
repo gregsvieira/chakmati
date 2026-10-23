@@ -173,3 +173,29 @@ async def test_whatsapp_job_without_an_assistant_says_the_feature_is_off(store):
     text = await engine.run_job(job)
     assert "desativ" in text.lower() and "LITEAGENT_WHATSAPP_BACKEND" in text
     assert "".join(await collect(engine.run_job_stream(job))) == text
+
+
+class PendingWhatsApp:
+    def __init__(self):
+        self.waiting_for = "Maria Souza"
+
+    def awaiting_choice(self, text):
+        return text == self.waiting_for
+
+    async def handle(self, text):
+        return f"continued with {text}"
+
+
+async def test_an_answer_to_a_pending_whatsapp_question_goes_back_to_the_whatsapp_assistant(store):
+    engine = Engine(FakeGate(Route.CHAT), FakeLLM(), store, whatsapp_assistant=PendingWhatsApp())
+    reply = await engine.handle("Maria Souza")  # the gate alone would call this plain chat
+    assert reply.kind == "job" and reply.route is Route.WHATSAPP
+    assert store.get(reply.job_id).prompt == "Maria Souza"
+    other = await engine.handle("olá")
+    assert other.kind == "answer" and other.route is Route.CHAT
+
+
+async def test_the_stream_also_routes_a_pending_answer_to_whatsapp(store):
+    engine = Engine(FakeGate(Route.CHAT), FakeLLM(), store, whatsapp_assistant=PendingWhatsApp())
+    events = [e async for e in engine.handle_stream("Maria Souza")]
+    assert events[0] == {"type": "route", "route": "whatsapp"} and events[1]["type"] == "job"

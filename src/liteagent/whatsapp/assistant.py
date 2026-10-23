@@ -10,10 +10,13 @@ Trust boundaries, in order of importance:
 
 import json
 import re
+import time
 import unicodedata
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, replace
 from typing import Protocol
 
+from ..approvals import awaiting_approval
 from ..llm import ChatClient
 from .models import Chat, Message, Status
 from .openwa import WhatsAppError
@@ -36,7 +39,8 @@ HELP = (
     "Não entendi o pedido de WhatsApp. Exemplos: \"tenho mensagens novas?\", \"o que o João disse?\", "
     "\"resuma a conversa com a Maria\", \"manda pro João: chego em 10 min\"."
 )
-APPROVAL_NOTE = "Aprove ou rejeite na interface (POST /actions/{id}/approve ou /reject). Expira em 1 hora."
+PENDING_SECONDS = 300.0  # how long a question like "which Maria?" waits for its answer
+_ORDINALS = {"primeiro": 1, "primeira": 1, "um": 1, "segundo": 2, "segunda": 2, "dois": 2, "terceiro": 3, "terceira": 3, "tres": 3, "quarto": 4, "quarta": 4, "quatro": 4, "quinto": 5, "quinta": 5, "cinco": 5}
 MAX_LINE = 500
 MAX_BLOCK = 6000
 _CONTROL = re.compile(r"[\x00-\x1f\x7f]")
@@ -111,12 +115,66 @@ def _clean_line(message: Message) -> str:
     return line if len(line) <= MAX_LINE else line[: MAX_LINE - 1] + "…"
 
 
+@dataclass(frozen=True)
+class _Pending:
+    """A question the assistant asked ("which of these?") and the request it is waiting to finish."""
+
+    intent: Intent
+    candidates: list[Chat]
+    expires: float
+
+
+def pick_candidate(text: str, candidates: list[Chat]) -> Chat | None:
+    """Which of the offered chats the person answered with: a position ("2", "o segundo"), part of the phone number,
+    or the name. None when the answer does not point at exactly one."""
+    q = _norm(text)
+    if not q:
+        return None
+    digits = re.fullmatch(r"(?:o |a )?(\d)", q)
+    if digits and 1 <= int(digits.group(1)) <= len(candidates):
+        return candidates[int(digits.group(1)) - 1]
+    words = [w for w in q.replace(",", " ").split() if w not in {"o", "a", "os", "as", "da", "do"}]
+    if len(words) == 1 and words[0] in _ORDINALS and _ORDINALS[words[0]] <= len(candidates):
+        return candidates[_ORDINALS[words[0]] - 1]
+    number = re.sub(r"\D", "", text)
+    if len(number) >= 4:
+        by_phone = [c for c in candidates if c.phone and c.phone.endswith(number)]
+        if len(by_phone) == 1:
+            return by_phone[0]
+    match, _ = resolve_chat(text, candidates)
+    return match
+
+
 class WhatsAppAssistant:
-    def __init__(self, llm: ChatClient, service: WhatsAppReader):
+    def __init__(self, llm: ChatClient, service: WhatsAppReader, now: Callable[[], float] = time.time):
         self._llm = llm
         self._service = service
+        self._now = now
+        self._pending: _Pending | None = None
+
+    def _live_pending(self) -> _Pending | None:
+        if self._pending is not None and self._now() > self._pending.expires:
+            self._pending = None
+        return self._pending
+
+    def awaiting_choice(self, text: str) -> bool:
+        """True when `text` answers the "which one?" question asked a moment ago, so the engine routes it here."""
+        pending = self._live_pending()
+        return pending is not None and pick_candidate(text, pending.candidates) is not None
 
     async def handle(self, text: str) -> str:
+        pending = self._live_pending()
+        if pending is not None:
+            chosen = pick_candidate(text, pending.candidates)
+            if chosen is not None:  # the answer to our own question: finish the request without asking the model again
+                self._pending = None
+                try:
+                    status = await self._service.status()
+                    if not status.connected:
+                        return self._not_connected(status)
+                    return await getattr(self, f"_{pending.intent.action}")(pending.intent, chosen)
+                except WhatsAppError as exc:
+                    return f"Não consegui falar com o WhatsApp: {exc}"
         reply = await self._llm.chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": text}])
         intent = parse_intent(reply)
         if intent.action == "other":
@@ -124,13 +182,17 @@ class WhatsAppAssistant:
         try:
             status = await self._service.status()
             if not status.connected:
-                return (
-                    f"O WhatsApp não está conectado ao OpenWA (estado: {status.state}). Abra a janela do OpenWA e "
-                    "escaneie o QR em Aparelhos conectados."
-                )
+                return self._not_connected(status)
             return await getattr(self, f"_{intent.action}")(intent)
         except WhatsAppError as exc:
             return f"Não consegui falar com o WhatsApp: {exc}"
+
+    @staticmethod
+    def _not_connected(status: Status) -> str:
+        return (
+            f"O WhatsApp não está conectado ao OpenWA (estado: {status.state}). Abra a janela do OpenWA e "
+            "escaneie o QR em Aparelhos conectados."
+        )
 
     # ---------------------------------------------------------------- shared
     async def _find(self, intent: Intent) -> tuple[Chat | None, str | None]:
@@ -141,20 +203,23 @@ class WhatsAppAssistant:
         if match:
             return match, None
         if candidates:
+            self._pending = _Pending(intent, candidates, self._now() + PENDING_SECONDS)
             listed = "\n".join(f"- {c.label()}" for c in candidates)
             return None, f"Qual destes você quer dizer?\n{listed}"
         return None, f"Não encontrei nenhuma conversa chamada \"{intent.contact}\"."
 
     # ---------------------------------------------------------------- actions
-    async def _unread(self, intent: Intent) -> str:
+    async def _unread(self, intent: Intent, chat: Chat | None = None) -> str:
         chats = await self._service.chats(unread_only=True, limit=15)
         if not chats:
             return "Nenhuma conversa com mensagens não lidas."
         lines = [f"- {c.label()}: {c.unread} não lida(s)" for c in chats]
         return "Conversas com mensagens não lidas:\n" + "\n".join(lines)
 
-    async def _read(self, intent: Intent) -> str:
-        chat, problem = await self._find(intent)
+    async def _read(self, intent: Intent, chat: Chat | None = None) -> str:
+        problem = None
+        if chat is None:
+            chat, problem = await self._find(intent)
         if chat is None:
             return problem or HELP
         messages = await self._service.messages(chat.id, min(intent.count or 10, 30))
@@ -162,8 +227,10 @@ class WhatsAppAssistant:
             return f"Não há mensagens carregadas na conversa com {chat.label()}."
         return f"Últimas mensagens com {chat.label()}:\n" + "\n".join(_clean_line(m) for m in messages)
 
-    async def _summarize(self, intent: Intent) -> str:
-        chat, problem = await self._find(intent)
+    async def _summarize(self, intent: Intent, chat: Chat | None = None) -> str:
+        problem = None
+        if chat is None:
+            chat, problem = await self._find(intent)
         if chat is None:
             return problem or HELP
         messages = await self._service.messages(chat.id, min(intent.count or 30, 50))
@@ -182,19 +249,18 @@ class WhatsAppAssistant:
         )
         return f"Resumo da conversa com {chat.label()} (gerado por IA, pode conter erros):\n{summary.strip()}"
 
-    async def _send(self, intent: Intent) -> str:
+    async def _send(self, intent: Intent, chat: Chat | None = None) -> str:
         if not intent.contact:
             return "Para quem devo enviar a mensagem?"
         if not intent.text:
             return f"O quê exatamente devo enviar para {intent.contact}?"
-        chat, problem = await self._find(intent)
+        problem = None
+        if chat is None:
+            chat, problem = await self._find(intent)
         if chat is None:
             return problem or HELP
         try:
             action = self._service.propose_send(chat, intent.text)
         except ValueError as exc:
             return f"Não consegui montar a mensagem: {exc}."
-        return (
-            f"Proposta {action.id} (aguardando a sua aprovação — nada foi enviado ainda):\n{action.summary}\n"
-            + APPROVAL_NOTE
-        )
+        return awaiting_approval(action.id, "enviado")

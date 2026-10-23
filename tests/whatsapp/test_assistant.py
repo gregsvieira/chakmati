@@ -166,7 +166,7 @@ async def test_send_proposes_with_the_users_exact_text_and_never_sends():
 async def test_send_to_a_group_is_flagged():
     a, _, svc = make('{"action":"send","contact":"família","text":"bom dia"}')
     out = await a.handle("manda bom dia pra família")
-    assert svc.proposed[0][0] is FAMILIA and "(grupo)" in out
+    assert svc.proposed[0][0] is FAMILIA and out.startswith("Aguardando sua aprovação")  # the card shows the group label from the proposal summary
 
 
 async def test_send_with_an_ambiguous_contact_asks_which_one():
@@ -204,3 +204,47 @@ async def test_provider_errors_become_a_friendly_message():
 async def test_other_requests_get_help():
     a, _, svc = make("não sei")
     assert await a.handle("blá") == HELP and svc.proposed == []
+
+
+# ----------------------------------------------------------------------------- short approval text
+async def test_proposal_text_is_one_short_line_plus_a_marker_for_the_ui():
+    a, _, _ = make('{"action":"send","contact":"joão","text":"Chego em 10 min"}')
+    out = await a.handle("manda pro João: Chego em 10 min")
+    assert out == "Aguardando sua aprovação - nada foi enviado ainda.\n[[action:act1]]"
+
+
+# ----------------------------------------------------------------------------- remembering the question it asked
+async def test_choosing_one_of_the_ambiguous_contacts_finishes_the_send_without_asking_the_model_again():
+    a, llm, svc = make('{"action":"send","contact":"maria","text":"perai que nao carregou"}')
+    out = await a.handle("manda no whatsapp pra Maria: perai que nao carregou")
+    assert "Maria Silva" in out and svc.proposed == [] and len(llm.calls) == 1
+    assert a.awaiting_choice("Maria Souza") is True
+    assert a.awaiting_choice("quanto é dois mais dois") is False
+    final = await a.handle("Maria Souza")
+    assert svc.proposed == [(MARIA2, "perai que nao carregou")] and "act1" in final
+    assert len(llm.calls) == 1  # the answer was understood by code, not by the model
+    assert a.awaiting_choice("Maria Souza") is False  # one question, one answer
+
+
+async def test_a_choice_by_phone_digits_or_position_also_works():
+    a, _, svc = make('{"action":"send","contact":"maria","text":"oi"}')
+    await a.handle("manda oi pra maria")
+    assert a.awaiting_choice("o segundo") is True
+    await a.handle("2")
+    assert svc.proposed == [(MARIA2, "oi")]
+
+
+async def test_the_pending_question_expires_and_an_unrelated_message_clears_it():
+    clock = [1000.0]
+    llm, svc = ScriptedLLM('{"action":"send","contact":"maria","text":"oi"}'), FakeService()
+    a = WhatsAppAssistant(llm, svc, now=lambda: clock[0])
+    await a.handle("manda oi pra maria")
+    clock[0] += 301
+    assert a.awaiting_choice("Maria Souza") is False
+
+
+async def test_ambiguous_read_and_summarize_are_remembered_too():
+    a, _, svc = make('{"action":"read","contact":"maria"}', service=FakeService(messages=msgs("oi", "tudo bem?")))
+    await a.handle("o que a maria disse?")
+    out = await a.handle("Maria Silva")
+    assert "oi" in out and "tudo bem?" in out

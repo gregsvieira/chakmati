@@ -78,17 +78,26 @@ class Engine:
         if self._on_job_created is not None:
             self._on_job_created()
 
+    def _awaiting_whatsapp_choice(self, text: str) -> bool:
+        """The text answers "which Maria?", a question the WhatsApp assistant just asked: it must go back to it."""
+        return self._whatsapp is not None and hasattr(self._whatsapp, "awaiting_choice") and self._whatsapp.awaiting_choice(text)
+
+    async def _classify(self, text: str) -> Route:
+        if self._awaiting_whatsapp_choice(text):
+            return Route.WHATSAPP
+        return (await asyncio.to_thread(self._gate.classify, text)).route
+
     async def handle(self, text: str) -> Reply:
         fixed = canned_answer(text)
         if fixed is not None:
             return Reply("answer", Route.CHAT, text=fixed)
-        decision = await asyncio.to_thread(self._gate.classify, text)
-        if not decision.route.is_slow:
-            answer = await self._llm.chat(_messages(decision.route, text))
-            return Reply("answer", decision.route, text=answer)
-        job_id = self._store.create(decision.route.value, text)
+        route = await self._classify(text)
+        if not route.is_slow:
+            answer = await self._llm.chat(_messages(route, text))
+            return Reply("answer", route, text=answer)
+        job_id = self._store.create(route.value, text)
         self._notify_job()
-        return Reply("job", decision.route, job_id=job_id)
+        return Reply("job", route, job_id=job_id)
 
     async def _calendar_job(self, job: Job) -> str:
         if self._calendar is None:
@@ -118,15 +127,15 @@ class Engine:
             yield {"type": "delta", "text": fixed}
             yield {"type": "done", "result": fixed}
             return
-        decision = await asyncio.to_thread(self._gate.classify, text)
-        yield {"type": "route", "route": decision.route.value}
-        if decision.route.is_slow:
-            job_id = self._store.create(decision.route.value, text)
+        route = await self._classify(text)
+        yield {"type": "route", "route": route.value}
+        if route.is_slow:
+            job_id = self._store.create(route.value, text)
             self._notify_job()
-            yield {"type": "job", "job_id": job_id, "route": decision.route.value}
+            yield {"type": "job", "job_id": job_id, "route": route.value}
             return
         parts: list[str] = []
-        async for delta in self._llm.stream_chat(_messages(decision.route, text)):  # type: ignore[attr-defined]
+        async for delta in self._llm.stream_chat(_messages(route, text)):  # type: ignore[attr-defined]
             parts.append(delta)
             yield {"type": "delta", "text": delta}
         yield {"type": "done", "result": "".join(parts)}

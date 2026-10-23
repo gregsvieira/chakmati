@@ -44,6 +44,10 @@ def _action_json(a: Action) -> dict:
     }
 
 
+HIDDEN_KINDS = {"call_log", "e2e_notification", "notification", "notification_template", "gp2", "protocol", "ciphertext",
+                "broadcast_notification", "oversized", "debug", "unknown"}
+
+
 def _sse(event: dict) -> str:
     return f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
 
@@ -248,9 +252,11 @@ def create_app(
     @app.get("/whatsapp/chats/{chat_id}/messages", dependencies=[Depends(ui_only)])
     async def whatsapp_messages(chat_id: str, last: int = 40):
         try:
-            messages = await need_whatsapp().messages(chat_id, max(1, min(last, 200)))
+            messages = await need_whatsapp().messages(chat_id, 500)
         except WhatsAppError as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from None
+        # WhatsApp also stores call records, encryption notices and group events in a chat: not part of the conversation
+        messages = [m for m in messages if m.kind not in HIDDEN_KINDS][-max(1, min(last, 200)):]
         return [
             {"id": m.id, "sender": m.sender, "text": m.text, "ts": m.ts.isoformat(), "from_me": m.from_me, "kind": m.kind,
              "duration": m.duration, "audio": m.media is not None}  # the media key and URL stay inside the engine
