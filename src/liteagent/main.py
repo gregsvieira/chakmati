@@ -7,6 +7,7 @@ from .engine import Engine
 from .gate import build_gate
 from .jobs import JobStore, Worker
 from .llm import OllamaClient
+from .loop.scorer import KeepAllScorer
 from .loop.twostage import LayaRelevanceScorer
 from .research.fetch import PageFetcher
 from .research.search import DuckDuckGoHtmlBackend
@@ -23,7 +24,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
             DuckDuckGoHtmlBackend(),
             PageFetcher(),
             llm,
-            LayaRelevanceScorer(),
+            LayaRelevanceScorer() if s.research_scorer == "laya" else KeepAllScorer(),
             result_cutoff=s.result_cutoff,
         )
     engine = Engine(build_gate(s), llm, store, researcher=researcher)

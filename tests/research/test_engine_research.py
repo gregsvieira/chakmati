@@ -62,3 +62,22 @@ def test_build_app_wires_researcher_only_when_enabled(monkeypatch):
     assert captured["researcher"] is not None
     build_app(Settings(db_path=":memory:"))
     assert captured["researcher"] is None
+
+
+def test_build_app_research_scorer_selection(monkeypatch):
+    from liteagent.loop.scorer import KeepAllScorer
+    from liteagent.loop.twostage import LayaRelevanceScorer
+    from liteagent.research import tool as tool_module
+
+    captured = []
+    real_init = tool_module.ResearchTool.__init__
+
+    def spy(self, search, fetcher, llm, scorer, **kwargs):
+        captured.append(scorer)
+        real_init(self, search, fetcher, llm, scorer, **kwargs)
+
+    monkeypatch.setattr(tool_module.ResearchTool, "__init__", spy)
+    build_app(Settings(db_path=":memory:", research_backend="ddg"))
+    build_app(Settings(db_path=":memory:", research_backend="ddg", research_scorer="laya"))
+    assert isinstance(captured[0], KeepAllScorer)
+    assert isinstance(captured[1], LayaRelevanceScorer)

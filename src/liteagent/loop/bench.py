@@ -24,6 +24,7 @@ from ..llm import OllamaClient
 from .metered import MeteredLLM
 from .prune import PruneConfig
 from .runner import ThinkLoop
+from .scorer import KeepAllScorer
 from .twostage import LayaRelevanceScorer, LLMVerifier, TwoStageScorer
 
 QUESTIONS = [
@@ -36,11 +37,6 @@ QUESTIONS = [
 ]
 MODES = ("plain", "plain-concise", "native-think", "loop-keepall", "loop-llm", "loop-2stage")
 PRUNE = PruneConfig(threshold=0.5, max_keep=5, min_keep=1)
-
-
-class KeepAll:
-    def score(self, question: str, parts: Sequence[str]) -> list[float]:
-        return [1.0] * len(parts)
 
 
 async def run_mode(
@@ -62,7 +58,7 @@ async def run_mode(
         )
     else:
         if mode == "loop-keepall":
-            scorer: Any = KeepAll()
+            scorer: Any = KeepAllScorer()
         elif mode == "loop-llm":
             scorer = verifier
         else:

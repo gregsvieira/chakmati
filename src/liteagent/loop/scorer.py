@@ -50,3 +50,10 @@ class LayaPartScorer:
                 log.warning("laya scoring failed for a part; keeping it", exc_info=True)
                 scores.append(1.0)
         return scores
+
+
+class KeepAllScorer:
+    """Scores everything 1.0: no filtering, order decides (the safe default)."""
+
+    def score(self, question: str, parts: Sequence[str]) -> list[float]:
+        return [1.0] * len(parts)

@@ -35,3 +35,8 @@ def test_research_settings():
     assert (d.research_backend, d.result_cutoff) == ("off", 0.2)
     s = Settings.from_env({"LITEAGENT_RESEARCH_BACKEND": "ddg", "LITEAGENT_RESULT_CUTOFF": "0.3"})
     assert (s.research_backend, s.result_cutoff) == ("ddg", 0.3)
+
+
+def test_research_scorer_setting():
+    assert Settings().research_scorer == "keepall"
+    assert Settings.from_env({"LITEAGENT_RESEARCH_SCORER": "laya"}).research_scorer == "laya"

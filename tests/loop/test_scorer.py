@@ -50,3 +50,11 @@ def test_laya_missing_scores_everything_one(monkeypatch):
 
 def test_empty_parts():
     assert LayaPartScorer(lambda t, q: noul_result(0.5)).score("Q", []) == []
+
+
+from liteagent.loop.scorer import KeepAllScorer
+
+
+def test_keep_all_scorer_scores_everything_one():
+    assert KeepAllScorer().score("Q", ["a", "b", "c"]) == [1.0, 1.0, 1.0]
+    assert KeepAllScorer().score("Q", []) == []

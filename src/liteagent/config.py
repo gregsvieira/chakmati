@@ -13,6 +13,7 @@ class Settings:
     db_path: str = "liteagent.db"
     research_backend: str = "off"  # "off" | "ddg"
     result_cutoff: float = 0.2
+    research_scorer: str = "keepall"  # "keepall" | "laya"
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "Settings":
@@ -29,4 +30,5 @@ class Settings:
             db_path=env.get("LITEAGENT_DB_PATH", d.db_path),
             research_backend=env.get("LITEAGENT_RESEARCH_BACKEND", d.research_backend),
             result_cutoff=float(env.get("LITEAGENT_RESULT_CUTOFF", d.result_cutoff)),
+            research_scorer=env.get("LITEAGENT_RESEARCH_SCORER", d.research_scorer),
         )
