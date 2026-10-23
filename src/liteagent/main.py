@@ -1,6 +1,8 @@
 import uvicorn
 from fastapi import FastAPI
 
+from .agenda.assistant import CalendarAssistant
+from .agenda.factory import build_calendar
 from .api import create_app
 from .config import Settings
 from .engine import Engine
@@ -45,6 +47,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
             max_pages=s.research_max_pages,
             target_pages=s.research_target_pages or None,
         )
+    calendar = build_calendar(s)
     worker_ref: list[Worker] = []
     engine = Engine(
         build_gate(s),
@@ -52,6 +55,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         store,
         researcher=researcher,
         on_job_created=lambda: worker_ref[0].wake() if worker_ref else None,
+        calendar_assistant=CalendarAssistant(llm, calendar) if calendar is not None else None,
     )
     worker = Worker(store, engine.run_job, stream_handler=engine.run_job_stream)
     worker_ref.append(worker)
@@ -60,6 +64,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         store,
         worker,
         on_startup=llm.preload if s.preload_model else None,
+        calendar=calendar,
     )
 
 

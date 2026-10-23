@@ -3,10 +3,14 @@ import json
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager, suppress
 
-from fastapi import FastAPI, HTTPException
+from datetime import datetime
+
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from .agenda.models import CalendarEvent
+from .agenda.service import Action, ActionExpired, ActionNotPending, CalendarService
 from .engine import Engine
 from .jobs import DONE, FAILED, JobStore, Worker
 
@@ -20,6 +24,20 @@ STREAM_MAX_SECONDS = 600.0
 SSE_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
 
 
+def _event_json(e: CalendarEvent) -> dict:
+    return {
+        "id": e.id, "title": e.title, "start": e.start.isoformat(), "end": e.end.isoformat(),
+        "all_day": e.all_day, "location": e.location, "notes": e.notes, "calendar": e.calendar,
+    }
+
+
+def _action_json(a: Action) -> dict:
+    return {
+        "id": a.id, "kind": a.kind, "summary": a.summary, "status": a.status,
+        "result": a.result, "error": a.error, "expires_at": a.expires_at,
+    }
+
+
 def _sse(event: dict) -> str:
     return f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
 
@@ -29,6 +47,7 @@ def create_app(
     store: JobStore,
     worker: Worker | None = None,
     on_startup: Callable[[], Awaitable[object]] | None = None,
+    calendar: CalendarService | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -128,5 +147,52 @@ def create_app(
                         yield _sse(job_event)
 
         return StreamingResponse(events(), media_type="text/event-stream", headers=SSE_HEADERS)
+
+    # ------------------------------------------------------------------ calendar
+    def need_calendar() -> CalendarService:
+        if calendar is None:
+            raise HTTPException(status_code=503, detail="calendar integration is disabled (LITEAGENT_CALENDAR_BACKEND)")
+        return calendar
+
+    def ui_only(x_liteagent_ui: str | None = Header(default=None)) -> None:
+        # Writes are decided by the user's own UI. A custom header cannot be sent by a web page on another
+        # origin without a CORS preflight, which this server never grants, so a random site cannot approve.
+        if x_liteagent_ui != "1":
+            raise HTTPException(status_code=403, detail="approval must come from the user interface (X-LiteAgent-UI: 1)")
+
+    @app.get("/agenda/events")
+    async def agenda_events(start: datetime, end: datetime):
+        service = need_calendar()
+        if start.tzinfo is None or end.tzinfo is None:
+            raise HTTPException(status_code=422, detail="start and end must include a timezone")
+        if end <= start:
+            raise HTTPException(status_code=422, detail="end must be after start")
+        events = await asyncio.to_thread(service.events, start, end)
+        return [_event_json(e) for e in events]
+
+    @app.get("/actions")
+    async def pending_actions():
+        service = need_calendar()
+        return [_action_json(a) for a in await asyncio.to_thread(service.pending)]
+
+    async def decide(action_id: str, approve: bool) -> dict:
+        service = need_calendar()
+        try:
+            action = await asyncio.to_thread(service.approve if approve else service.reject, action_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail="action not found") from None
+        except ActionExpired:
+            raise HTTPException(status_code=410, detail="the proposal expired") from None
+        except ActionNotPending as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from None
+        return _action_json(action)
+
+    @app.post("/actions/{action_id}/approve", dependencies=[Depends(ui_only)])
+    async def approve_action(action_id: str):
+        return await decide(action_id, True)
+
+    @app.post("/actions/{action_id}/reject", dependencies=[Depends(ui_only)])
+    async def reject_action(action_id: str):
+        return await decide(action_id, False)
 
     return app
