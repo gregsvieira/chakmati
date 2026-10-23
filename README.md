@@ -15,6 +15,16 @@ Local assistant engine: simple messages answer inline in seconds; slow work
          -d '{"text":"pesquise a versão atual do Python"}'   # returns a job_id
     curl -s localhost:8765/jobs/<job_id>
 
+## Streaming (Server-Sent Events)
+
+    curl -N localhost:8765/message/stream -H 'content-type: application/json' -d '{"text":"pesquise a capital da Austrália"}'
+    curl -N localhost:8765/jobs/<job_id>/stream      # follow an existing job; late/reconnecting clients get the text from the start
+
+Each line is `data: {json}`. Event types: `route` (`chat|research|task`), `job` (slow work was queued),
+`status` (`queued|running|done|failed`), `delta` (a piece of text), `done` (full `result`), `error`.
+Chat replies stream directly; research/task replies stream as the worker produces them.
+`GET /jobs/<id>` also returns `partial`, the text so far.
+
 ## Settings (env)
 
 | Variable | Default |
@@ -33,6 +43,7 @@ Local assistant engine: simple messages answer inline in seconds; slow work
 | `LITEAGENT_PRELOAD_MODEL` | `0`; `1` loads the model at startup (first request ~4 s faster, ~6 GB RAM resident) |
 | `LITEAGENT_RESEARCH_MAX_TOKENS` | `200` (`0` = no cap) |
 | `LITEAGENT_RESEARCH_CONCISE` | `1` (answers in at most 3 short sentences) |
+| `LITEAGENT_FETCH_DEADLINE` | `3.0` seconds to wait for page downloads (`0` = wait for all); a site that hangs is dropped |
 
 ## Test
 
