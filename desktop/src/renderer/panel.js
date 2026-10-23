@@ -66,7 +66,7 @@
     waNote = 'Abrindo o OpenWA…';
     renderMessages();
     const res = await api.openWa();
-    waNote = res && res.ok ? 'OpenWA aberto. Escaneie o QR na janela que apareceu e volte aqui.' : (res && res.error) || 'Não consegui abrir o OpenWA.';
+    waNote = res && res.ok ? res.message || 'OpenWA aberto.' : (res && res.error) || 'Não consegui abrir o OpenWA.';
     renderMessages();
   }
 

@@ -322,28 +322,73 @@ async function restartEngine() {
   return startEngine();
 }
 
-// Starts OpenWA with its visible browser window (the QR code is scanned there). Reports what happened instead of failing silently.
-async function openWaSetup() {
+// ---- OpenWA (the WhatsApp bridge). Its browser window is only needed once, to scan the QR code; closing that window
+// stops the session, so after the link is made the app restarts OpenWA without a window (the login stays saved).
+const OPENWA_URL = process.env.LITEAGENT_OPENWA_URL || 'http://127.0.0.1:8081';
+let owaWatching = false;
+
+async function owaHealth() {
+  try {
+    const res = await fetch(`${OPENWA_URL}/health`, { signal: AbortSignal.timeout(2500) });
+    return res.ok ? await res.json() : null;
+  } catch { return null; }
+}
+
+function owaScript(arg, { detached = false } = {}) {
   const root = projectRoot();
-  if (!root) return { ok: false, error: 'Não encontrei a pasta do lite-agent.' };
   const logFile = path.join(app.getPath('userData'), 'openwa.log');
   const log = fs.openSync(logFile, 'a');
   const env = { ...process.env, PATH: `${process.env.PATH || ''}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin` };
-  const child = spawn('bash', [path.join(root, 'scripts', 'openwa.sh'), 'start'], { cwd: root, stdio: ['ignore', log, log], env, detached: true });
+  const child = spawn('bash', [path.join(root, 'scripts', 'openwa.sh'), arg], { cwd: root, stdio: ['ignore', log, log], env, detached });
   fs.closeSync(log);
+  if (detached) child.unref();
+  return child;
+}
+
+const owaRun = (arg) => new Promise((resolve) => { const c = owaScript(arg); c.once('exit', resolve); c.once('error', resolve); setTimeout(resolve, 20000); });
+
+async function watchOwaLink() {
+  if (owaWatching) return;
+  owaWatching = true;
+  try {
+    const deadline = Date.now() + 15 * 60 * 1000;
+    while (!quitting && Date.now() < deadline) {
+      await sleep(3000);
+      const h = await owaHealth();
+      if (h && h.connected) {
+        await owaRun('stop');
+        owaScript('start-bg', { detached: true });
+        for (let i = 0; i < 30 && !quitting; i += 1) { await sleep(3000); const again = await owaHealth(); if (again && again.connected) break; }
+        break;
+      }
+    }
+  } finally {
+    owaWatching = false;
+    refreshOverview();
+  }
+}
+
+async function openWaSetup() {
+  const root = projectRoot();
+  if (!root) return { ok: false, error: 'Não encontrei a pasta do lite-agent.' };
+  const health = await owaHealth();
+  if (health && health.connected) { refreshOverview(); return { ok: true, message: 'O WhatsApp já está conectado.' }; }
+  if (owaWatching) return { ok: true, message: 'A janela do OpenWA já está aberta. Escaneie o QR nela.' };
+  if (health) await owaRun('stop'); // running but not linked (or without a window): restart it with a window
+  const child = owaScript('start', { detached: true });
   const early = await new Promise((resolve) => {
     child.once('error', (e) => resolve({ code: -1, message: e.message }));
     child.once('exit', (code) => resolve({ code }));
     setTimeout(() => resolve(null), 2500);
   });
-  child.unref();
   if (early && early.code !== 0) {
     let tail = '';
-    try { tail = fs.readFileSync(logFile, 'utf8').trim().split('\n').slice(-2).join(' '); } catch { /* no log */ }
+    try { tail = fs.readFileSync(path.join(app.getPath('userData'), 'openwa.log'), 'utf8').trim().split('\n').slice(-2).join(' '); } catch { /* no log */ }
     if (/not installed|setup/.test(tail)) return { ok: false, error: 'O OpenWA não está instalado. Rode scripts/openwa.sh setup uma vez.' };
     return { ok: false, error: early.message || tail || 'Não consegui abrir o OpenWA.' };
   }
-  return { ok: true };
+  watchOwaLink();
+  return { ok: true, message: 'OpenWA aberto. Escaneie o QR na janela; depois pode fechá-la, eu mantenho o WhatsApp conectado.' };
 }
 
 // ---------------------------------------------------------------------------------------------------- tray and shortcuts
