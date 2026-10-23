@@ -345,7 +345,7 @@ function owaScript(arg, { detached = false } = {}) {
   return child;
 }
 
-const owaRun = (arg) => new Promise((resolve) => { const c = owaScript(arg); c.once('exit', resolve); c.once('error', resolve); setTimeout(resolve, 20000); });
+const owaRun = (arg) => new Promise((resolve) => { const c = owaScript(arg); c.once('exit', resolve); c.once('error', resolve); setTimeout(resolve, 25000); });
 
 async function watchOwaLink() {
   if (owaWatching) return;
@@ -374,7 +374,10 @@ async function openWaSetup() {
   const health = await owaHealth();
   if (health && health.connected) { refreshOverview(); return { ok: true, message: 'O WhatsApp já está conectado.' }; }
   if (owaWatching) return { ok: true, message: 'A janela do OpenWA já está aberta. Escaneie o QR nela.' };
-  if (health) await owaRun('stop'); // running but not linked (or without a window): restart it with a window
+  if (health) { // running but not linked (or without a window): restart it with a window, once the old one is really gone
+    await owaRun('stop');
+    for (let i = 0; i < 10 && (await owaHealth()); i += 1) await sleep(1000);
+  }
   const child = owaScript('start', { detached: true });
   const early = await new Promise((resolve) => {
     child.once('error', (e) => resolve({ code: -1, message: e.message }));

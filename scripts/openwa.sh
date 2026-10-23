@@ -63,7 +63,12 @@ case "${1:-}" in
     ;;
   start)    run_cmd "--headful --qr-timeout 900" ;;
   start-bg) run_cmd "" ;;
-  stop)     pkill -f "wa-automate" && echo "stopped" || echo "was not running" ;;
+  stop)
+    pkill -f "wa-automate" || { echo "was not running"; exit 0; }
+    # SIGTERM is not always enough (a leftover process keeps the port and a later start says "already running")
+    for _ in 1 2 3 4 5 6; do pgrep -f "wa-automate" >/dev/null || break; sleep 1; done
+    pgrep -f "wa-automate" >/dev/null && { pkill -9 -f "wa-automate"; sleep 1; }
+    echo "stopped" ;;
   status)   curl -s -m 3 "http://127.0.0.1:$PORT/health" | python3 -c 'import sys,json;h=json.load(sys.stdin);print("connected:",h["connected"],"| state:",h["session"]["state"])' 2>/dev/null || echo "not running" ;;
   logs)     tail -n 40 "$DIR/openwa.log" ;;
   *)        sed -n '2,10p' "$0"; exit 2 ;;
