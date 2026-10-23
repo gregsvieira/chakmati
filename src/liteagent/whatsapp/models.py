@@ -17,6 +17,8 @@ class Chat:
     unread: int
     ts: datetime | None
     phone: str | None = None
+    archived: bool = False
+    muted: bool = False
 
     def label(self) -> str:
         kind = " (grupo)" if self.is_group else ""

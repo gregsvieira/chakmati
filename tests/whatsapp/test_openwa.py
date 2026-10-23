@@ -176,3 +176,16 @@ async def test_errors_are_translated():
         await client(Server(httpx.Response(500, text="oops"))).send_text("5511@c.us", "x")
     with pytest.raises(WhatsAppError, match="Validation Error"):
         await client(Server(httpx.Response(400, json={"error": "Validation Error", "details": []}))).get_messages("1@lid")
+
+
+# ----------------------------------------------------------------------------- archived / muted (used by the notifier)
+def test_archived_and_muted_flags_are_read_from_the_chat():
+    base = {"id": "1@lid", "formattedTitle": "x"}
+    assert parse_chat(base).archived is False and parse_chat(base).muted is False
+    assert parse_chat({**base, "archive": True}).archived is True
+    assert parse_chat({**base, "muteExpiration": -1}).muted is True            # muted "forever"
+    assert parse_chat({**base, "muteExpiration": 0}).muted is False
+    future = int(__import__("time").time()) + 3600
+    assert parse_chat({**base, "muteExpiration": future}).muted is True
+    assert parse_chat({**base, "muteExpiration": 1000}).muted is False         # an expired mute
+    assert parse_chat({**base, "muteExpiration": "oops", "archive": "yes"}).muted is False

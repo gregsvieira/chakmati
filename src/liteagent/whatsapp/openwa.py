@@ -9,6 +9,7 @@ Authentication is the X-API-Key header. Query parameters are validated with stri
 be sent as query strings: only `chatId` is passed and the server defaults are used (own messages included).
 """
 
+import time
 from datetime import datetime
 from typing import Any
 
@@ -78,8 +79,10 @@ def parse_chat(raw: Any) -> Chat | None:
             if number and number.endswith("@c.us"):
                 phone = number.partition("@")[0]
     unread = raw.get("unreadCount")
+    mute = raw.get("muteExpiration")
+    muted = isinstance(mute, int) and not isinstance(mute, bool) and (mute == -1 or mute > time.time())
     return Chat(chat_id, name, is_group, unread if isinstance(unread, int) and not isinstance(unread, bool) else 0,
-                _ts(raw.get("t")), phone)
+                _ts(raw.get("t")), phone, archived=raw.get("archive") is True, muted=muted)
 
 
 def parse_message(raw: Any) -> Message | None:
