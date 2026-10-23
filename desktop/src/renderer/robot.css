@@ -65,10 +65,15 @@
 .robot[data-mood="happy"] { --up: 0.5; --down: 0.35; }
 .robot[data-mood="happy"] .flap { transform: translateY(2.6px); }
 
+/* talking: while a notice is spoken the chin flap opens and closes */
+.robot[data-talking="true"] .flap { animation: talk 0.32s ease-in-out infinite alternate; }
+@keyframes talk { from { transform: translateY(0); } to { transform: translateY(3.2px); } }
+
 /* offline: eyes shut, colours drained */
 .robot[data-mood="offline"] { --up: 1; --down: 0.1; --metal: #aeb7c2; --metal-hi: #cfd5dc; --metal-lo: #8892a0; --metal-edge: #7b8594; --green-hi: #9db5a4; --lid: #8e98a6; --hat: #cfc79a; --band: #b98a80; --green: #7f9a86; --nose: #b98a80; --tie: #cfc79a; }
 .robot[data-mood="offline"] .lid-up { animation: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .robot *, .robot[data-mood] * { animation: none !important; transition: none !important; }
+  .robot[data-talking="true"] .flap { transform: translateY(2px); }
 }

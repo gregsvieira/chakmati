@@ -104,9 +104,16 @@ function currentDescription() {
   return describe({ engineUp: state.engineUp, overview: state.overview, busy: state.busy > 0 });
 }
 
+// the face: what is happening, unless the person pinned a mood in Ajustes (an unreachable engine always shows as offline)
+function effectiveMood(base) {
+  if (base === 'offline' || settings.mood === 'auto') return base;
+  return settings.mood;
+}
+
 function refreshMood() {
   let mood = currentDescription().mood;
-  if (mood !== 'offline' && mood !== 'thinking') {
+  if (settings.mood !== 'auto') mood = effectiveMood(mood);
+  else if (mood !== 'offline' && mood !== 'thinking') {
     if (Date.now() < happyUntil) mood = 'happy';
     else if (state.bubbleVisible) mood = 'alert';
   }
@@ -180,9 +187,9 @@ function panelState() {
     engineUp: state.engineUp,
     overview: state.overview,
     busy: state.busy > 0,
-    describe: currentDescription(),
+    describe: { ...currentDescription(), mood: effectiveMood(currentDescription().mood) },
     notices: state.notices.slice(-20),
-    settings: { protect: settings.protect, masked: settings.masked, bubbleSide: settings.bubbleSide, whatsapp: settings.whatsapp, calendar: settings.calendar },
+    settings: { protect: settings.protect, masked: settings.masked, bubbleSide: settings.bubbleSide, mood: settings.mood, whatsapp: settings.whatsapp, calendar: settings.calendar },
     ownsEngine: !!engineProcess,
     canOpenWa: !!projectRoot(),
     hotkeys: { toggle: prettyHotkey(HOTKEYS.toggle), panic: prettyHotkey(HOTKEYS.panic) },
@@ -350,6 +357,7 @@ function updateSetting(key, value) {
   if (key === 'protect' && typeof value === 'boolean') settings.protect = value;
   else if (key === 'masked' && typeof value === 'boolean') settings.masked = value;
   else if (key === 'bubbleSide' && settingsLib.SIDES.includes(value)) settings.bubbleSide = value;
+  else if (key === 'mood' && settingsLib.MOODS.includes(value)) settings.mood = value;
   else if ((key === 'whatsapp' || key === 'calendar') && typeof value === 'boolean') {
     settings[key] = value;
     if (engineProcess) restartEngine().then(refreshOverview);
@@ -358,6 +366,7 @@ function updateSetting(key, value) {
   protect(widgetWin);
   protect(panelWin);
   applyLayout();
+  refreshMood();
   sendPanelState();
   rebuildMenu();
   return true;
@@ -378,7 +387,7 @@ function friendlyError(e) {
 }
 
 function registerIpc() {
-  ipcMain.on('widget:ready', () => { applyLayout(); sendTo(widgetWin, 'widget:mood', currentDescription().mood); });
+  ipcMain.on('widget:ready', () => { applyLayout(); refreshMood(); });
   ipcMain.on('widget:hover', (_e, inside) => { if (!isLinux && alive(widgetWin)) widgetWin.setIgnoreMouseEvents(!inside, { forward: true }); });
   ipcMain.on('widget:drag-start', () => { dragStart = { ...icon }; });
   ipcMain.on('widget:drag-move', (_e, d) => {
@@ -548,6 +557,9 @@ async function runSnapshots() {
   sendPanelState();
   await shot('panel.png', panelWin);
 
+  await panelWin.webContents.executeJavaScript("document.getElementById('settings').open = true");
+  await shot('panel-settings.png', panelWin);
+  await panelWin.webContents.executeJavaScript("document.getElementById('settings').open = false");
   nativeTheme.themeSource = 'dark';
   await shot('panel-dark.png', panelWin);
   nativeTheme.themeSource = 'light';

@@ -4,10 +4,12 @@ const path = require('node:path');
 const { assertLoopback } = require('./engine-client');
 
 const SIDES = ['auto', 'top', 'bottom', 'left', 'right'];
+const MOODS = ['auto', 'idle', 'alert', 'thinking', 'happy'];
 const DEFAULTS = Object.freeze({
   protect: true,          // ask the OS to leave the windows out of screen sharing and recordings (best effort)
   masked: false,          // discreet mode: bubbles never show names or titles
   bubbleSide: 'auto',
+  mood: 'auto',           // 'auto' follows what is happening; the others pin Chakmati's face (offline still shows)
   icon: null,             // {x, y} of the robot on screen, null = default corner
   engineUrl: 'http://127.0.0.1:8765',
   whatsapp: false,        // integrations the app switches on when it starts the engine itself
@@ -22,6 +24,7 @@ function normalize(raw) {
   if (typeof r.whatsapp === 'boolean') s.whatsapp = r.whatsapp;
   if (typeof r.calendar === 'boolean') s.calendar = r.calendar;
   if (SIDES.includes(r.bubbleSide)) s.bubbleSide = r.bubbleSide;
+  if (MOODS.includes(r.mood)) s.mood = r.mood;
   if (r.icon && Number.isFinite(r.icon.x) && Number.isFinite(r.icon.y)) s.icon = { x: Math.round(r.icon.x), y: Math.round(r.icon.y) };
   if (typeof r.engineUrl === 'string') {
     try { assertLoopback(r.engineUrl); s.engineUrl = r.engineUrl; } catch { /* keep the default */ }
@@ -48,4 +51,4 @@ function engineEnv(settings) {
   };
 }
 
-module.exports = { DEFAULTS, SIDES, normalize, load, save, engineEnv };
+module.exports = { DEFAULTS, SIDES, MOODS, normalize, load, save, engineEnv };

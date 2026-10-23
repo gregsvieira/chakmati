@@ -107,6 +107,7 @@
     if (withScene) el('path', { class: 'sill', d: 'M12 76.5 Q12 80.5 26 80.5 L62 80.5 Q76 80.5 76 76.5 L76 82 Q76 86 62 86 L26 86 Q12 86 12 82 Z' }, svg);
     return {
       svg,
+      setTalking(on) { svg.setAttribute('data-talking', on ? 'true' : 'false'); },
       setMood(mood) { svg.setAttribute('data-mood', ['idle', 'alert', 'thinking', 'happy', 'offline'].includes(mood) ? mood : 'idle'); },
     };
   }

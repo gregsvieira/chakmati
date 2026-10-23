@@ -38,6 +38,7 @@
   api.onMood((m) => robot.setMood(m));
   api.onBackdrop((on) => document.body.classList.toggle('backdrop', !!on));
   api.onBubble((b) => {
+    robot.setTalking(!!b);
     if (!b) { bubble.classList.add('hidden'); return; }
     bubbleText.textContent = b.text;
     bubble.dataset.kind = b.kind || 'system';

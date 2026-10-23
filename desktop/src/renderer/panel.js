@@ -110,6 +110,7 @@
     $('set-protect').checked = !!state.settings.protect;
     $('set-masked').checked = !!state.settings.masked;
     $('set-side').value = state.settings.bubbleSide;
+    $('set-mood').value = state.settings.mood;
     $('set-whatsapp').checked = !!state.settings.whatsapp;
     $('set-calendar').checked = !!state.settings.calendar;
     const wa = (state.overview && state.overview.whatsapp) || { enabled: false };
@@ -197,6 +198,7 @@
   $('set-whatsapp').addEventListener('change', (e) => api.setSetting('whatsapp', e.target.checked));
   $('set-calendar').addEventListener('change', (e) => api.setSetting('calendar', e.target.checked));
   $('wa-connect').addEventListener('click', () => api.openWa());
+  $('set-mood').addEventListener('change', (e) => api.setSetting('mood', e.target.value));
   $('set-side').addEventListener('change', (e) => api.setSetting('bubbleSide', e.target.value));
 
   api.onState((s) => { state = s; render(); });

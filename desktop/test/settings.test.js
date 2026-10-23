@@ -35,6 +35,13 @@ test('save then load round-trips, and a missing or corrupt file gives the defaul
   assert.equal(fs.readdirSync(dir).filter((f) => f.endsWith('.tmp')).length, 0);
 });
 
+test('the mood is auto unless one of the known moods is pinned', () => {
+  assert.equal(DEFAULTS.mood, 'auto');
+  assert.equal(normalize({ mood: 'happy' }).mood, 'happy');
+  assert.equal(normalize({ mood: 'offline' }).mood, 'auto'); // offline is a fact, not a choice
+  assert.equal(normalize({ mood: 'angry' }).mood, 'auto');
+});
+
 test('integrations are off by default and map to the engine environment', () => {
   assert.deepEqual(engineEnv(DEFAULTS), { LITEAGENT_WHATSAPP_BACKEND: 'off', LITEAGENT_CALENDAR_BACKEND: 'off' });
   assert.deepEqual(engineEnv({ ...DEFAULTS, whatsapp: true, calendar: true }), { LITEAGENT_WHATSAPP_BACKEND: 'openwa', LITEAGENT_CALENDAR_BACKEND: 'auto' });

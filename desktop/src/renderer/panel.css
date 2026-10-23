@@ -70,7 +70,9 @@ button:disabled { opacity: 0.5; cursor: default; }
 
 details { margin-top: 10px; }
 summary { cursor: pointer; color: var(--muted); font-size: 13px; width: max-content; }
-.settings-body { padding: 10px 0 2px; display: grid; gap: 14px; }
+.settings-body { padding: 10px 4px 2px 0; display: grid; gap: 14px; max-height: 180px; overflow-y: auto; }
+#foot:has(details[open]) #chips { display: none; } /* settings never push the main view out of the panel */
+#foot { flex: none; }
 .switch { display: grid; grid-template-columns: 38px 1fr; gap: 12px; align-items: start; cursor: pointer; }
 .switch input { position: absolute; opacity: 0; }
 .switch .track { width: 38px; height: 22px; border-radius: 999px; background: var(--rule); position: relative; transition: background 0.15s; margin-top: 1px; }
