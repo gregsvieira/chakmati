@@ -81,3 +81,23 @@ def test_build_app_research_scorer_selection(monkeypatch):
     build_app(Settings(db_path=":memory:", research_backend="ddg", research_scorer="laya"))
     assert isinstance(captured[0], KeepAllScorer)
     assert isinstance(captured[1], LayaRelevanceScorer)
+
+
+def test_build_app_selects_search_backend(monkeypatch):
+    from liteagent.research import tool as tool_module
+    from liteagent.research.search import DuckDuckGoHtmlBackend
+    from liteagent.research.searxng import SearxngBackend
+
+    captured = []
+    real_init = tool_module.ResearchTool.__init__
+
+    def spy(self, search, *args, **kwargs):
+        captured.append(search)
+        real_init(self, search, *args, **kwargs)
+
+    monkeypatch.setattr(tool_module.ResearchTool, "__init__", spy)
+    build_app(Settings(db_path=":memory:", research_backend="ddg"))
+    build_app(Settings(db_path=":memory:", research_backend="searxng", searxng_url="http://searx.test:8080"))
+    assert isinstance(captured[0], DuckDuckGoHtmlBackend)
+    assert isinstance(captured[1], SearxngBackend)
+    assert captured[1]._base == "http://searx.test:8080"

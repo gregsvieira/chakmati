@@ -11,6 +11,7 @@ from .loop.scorer import KeepAllScorer
 from .loop.twostage import LayaRelevanceScorer
 from .research.fetch import PageFetcher
 from .research.search import DuckDuckGoHtmlBackend
+from .research.searxng import SearxngBackend
 from .research.tool import ResearchTool
 
 
@@ -19,9 +20,14 @@ def build_app(settings: Settings | None = None) -> FastAPI:
     store = JobStore(s.db_path)
     llm = OllamaClient(s.ollama_url, s.chat_model, think=s.think)
     researcher = None
-    if s.research_backend == "ddg":
+    if s.research_backend in {"ddg", "searxng"}:
+        search = (
+            SearxngBackend(s.searxng_url)
+            if s.research_backend == "searxng"
+            else DuckDuckGoHtmlBackend()
+        )
         researcher = ResearchTool(
-            DuckDuckGoHtmlBackend(),
+            search,
             PageFetcher(),
             llm,
             LayaRelevanceScorer() if s.research_scorer == "laya" else KeepAllScorer(),

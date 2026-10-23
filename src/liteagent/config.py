@@ -11,7 +11,8 @@ class Settings:
     gate_backend: str = "heuristic"  # "heuristic" | "laya"
     gate_min_confidence: float = 0.6
     db_path: str = "liteagent.db"
-    research_backend: str = "off"  # "off" | "ddg"
+    research_backend: str = "off"  # "off" | "ddg" | "searxng"
+    searxng_url: str = "http://localhost:8080"
     result_cutoff: float = 0.2
     research_scorer: str = "keepall"  # "keepall" | "laya"
 
@@ -29,6 +30,7 @@ class Settings:
             ),
             db_path=env.get("LITEAGENT_DB_PATH", d.db_path),
             research_backend=env.get("LITEAGENT_RESEARCH_BACKEND", d.research_backend),
+            searxng_url=env.get("LITEAGENT_SEARXNG_URL", d.searxng_url),
             result_cutoff=float(env.get("LITEAGENT_RESULT_CUTOFF", d.result_cutoff)),
             research_scorer=env.get("LITEAGENT_RESEARCH_SCORER", d.research_scorer),
         )

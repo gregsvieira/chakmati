@@ -40,3 +40,8 @@ def test_research_settings():
 def test_research_scorer_setting():
     assert Settings().research_scorer == "keepall"
     assert Settings.from_env({"LITEAGENT_RESEARCH_SCORER": "laya"}).research_scorer == "laya"
+
+
+def test_searxng_url_setting():
+    assert Settings().searxng_url == "http://localhost:8080"
+    assert Settings.from_env({"LITEAGENT_SEARXNG_URL": "http://searx:8080"}).searxng_url == "http://searx:8080"
