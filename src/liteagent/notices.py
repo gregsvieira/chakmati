@@ -11,7 +11,7 @@ import logging
 import math
 import time
 from collections import deque
-from collections.abc import Callable, Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Protocol
@@ -189,8 +189,9 @@ class ApprovalWatcher:
 
 # ----------------------------------------------------------------------------- runner
 class Notifier:
-    def __init__(self, watchers: Sequence[Watcher]):
+    def __init__(self, watchers: Sequence[Watcher], background: Sequence[Callable[[], Awaitable[None]]] = ()):
         self._watchers = list(watchers)
+        self._background = list(background)  # long-running listeners (e.g. an event stream), restarted by themselves
         self._tasks: list[asyncio.Task] = []
 
     @staticmethod
@@ -204,6 +205,7 @@ class Notifier:
 
     def start(self) -> None:
         self._tasks = [asyncio.create_task(self._loop(w)) for w in self._watchers]
+        self._tasks += [asyncio.create_task(run()) for run in self._background]
 
     async def stop(self) -> None:
         for task in self._tasks:

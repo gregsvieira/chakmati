@@ -42,3 +42,12 @@ def test_the_send_limit_comes_from_the_settings():
 def test_unknown_backend_is_an_error():
     with pytest.raises(ValueError, match="whatsapp_backend"):
         build_whatsapp(Settings(db_path=":memory:", whatsapp_backend="baileys"))
+
+
+def test_events_listener_exists_only_when_whatsapp_is_on():
+    from liteagent.config import Settings
+    from liteagent.notices import NoticeBoard
+    from liteagent.whatsapp.factory import build_whatsapp_events
+
+    assert build_whatsapp_events(Settings(whatsapp_backend="off"), NoticeBoard()) is None
+    assert build_whatsapp_events(Settings(whatsapp_backend="openwa", openwa_api_key="k"), NoticeBoard()) is not None

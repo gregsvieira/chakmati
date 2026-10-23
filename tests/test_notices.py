@@ -239,3 +239,22 @@ async def test_notifier_polls_every_watcher_on_its_own_interval_and_survives_err
     before = dict(calls)
     await asyncio.sleep(0.05)
     assert calls == before  # stopped
+
+
+async def test_notifier_runs_background_listeners_and_cancels_them_on_stop():
+    started = asyncio.Event()
+    cancelled = asyncio.Event()
+
+    async def listener():
+        started.set()
+        try:
+            await asyncio.sleep(3600)
+        except asyncio.CancelledError:
+            cancelled.set()
+            raise
+
+    notifier = Notifier([], background=[listener])
+    notifier.start()
+    await asyncio.wait_for(started.wait(), 1)
+    await notifier.stop()
+    assert cancelled.is_set()

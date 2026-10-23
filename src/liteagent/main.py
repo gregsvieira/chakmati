@@ -18,7 +18,7 @@ from .research.search import DuckDuckGoHtmlBackend, build_user_agent
 from .research.searxng import SearxngBackend
 from .research.tool import ResearchTool
 from .whatsapp.assistant import WhatsAppAssistant
-from .whatsapp.factory import build_whatsapp
+from .whatsapp.factory import build_whatsapp, build_whatsapp_events
 
 
 def build_app(settings: Settings | None = None) -> FastAPI:
@@ -75,7 +75,8 @@ def build_app(settings: Settings | None = None) -> FastAPI:
     services = [x for x in (calendar, whatsapp) if x is not None]
     if services:
         watchers.append(ApprovalWatcher(services, board))
-    notifier = Notifier(watchers) if watchers and s.notices_enabled else None
+    events = build_whatsapp_events(s, board)
+    notifier = Notifier(watchers, background=[events.run] if events else []) if watchers and s.notices_enabled else None
     return create_app(
         engine,
         store,

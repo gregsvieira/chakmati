@@ -4,6 +4,8 @@ import os
 
 from ..approvals import ActionStore
 from ..config import Settings
+from ..notices import NoticeBoard
+from .events import WhatsAppEvents
 from .openwa import OpenWAClient
 from .service import WhatsAppService
 
@@ -28,3 +30,10 @@ def build_whatsapp(settings: Settings, actions: ActionStore | None = None) -> Wh
     return WhatsAppService(
         client, actions or ActionStore(settings.db_path), max_sends_per_hour=settings.whatsapp_max_sends_per_hour
     )
+
+
+def build_whatsapp_events(settings: Settings, board: NoticeBoard) -> WhatsAppEvents | None:
+    """The live event listener for the same OpenWA server, or None when WhatsApp is off."""
+    if settings.whatsapp_backend != "openwa":
+        return None
+    return WhatsAppEvents(settings.openwa_url, _api_key(settings), board)
