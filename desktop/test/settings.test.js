@@ -55,3 +55,9 @@ test('integrations map to the engine environment: web search on by default, the 
   assert.deepEqual(engineEnv({ ...DEFAULTS, whatsapp: true, calendar: true }), { LITEAGENT_RESEARCH_BACKEND: 'ddg', LITEAGENT_WHATSAPP_BACKEND: 'openwa', LITEAGENT_CALENDAR_BACKEND: 'auto' });
   assert.equal(normalize({ whatsapp: 'yes' }).whatsapp, false);
 });
+
+test('voice (listen and speak) is off by default and only a boolean turns it on', () => {
+  assert.equal(DEFAULTS.voice, false);
+  assert.equal(normalize({ voice: true }).voice, true);
+  assert.equal(normalize({ voice: 'yes' }).voice, false);
+});

@@ -67,6 +67,9 @@
           <label class="switch"><input type="checkbox" id="set-masked"><span class="track"></span>
             <span class="switch-text">Modo discreto
               <small>Avisos e listas sem nomes nem títulos. Os pedidos de aprovação sempre mostram o texto completo.</small></span></label>
+          <label class="switch"><input type="checkbox" id="set-voice"><span class="track"></span>
+            <span class="switch-text">Ouvir e falar com o Chakmati
+              <small>Fale pelo microfone e ouça as respostas e os avisos. O reconhecimento de voz roda no seu computador; na primeira vez ele baixa um modelo de cerca de 140 MB.</small></span></label>
           <label class="switch"><input type="checkbox" id="set-still"><span class="track"></span>
             <span class="switch-text">Desativar animações
               <small>O Chakmati fica parado: sem piscar, sem pulinho e sem a boca mexendo.</small></span></label>
@@ -100,12 +103,15 @@
       <div id="chips" role="group" aria-label="Atalhos"></div>
       <form id="composer" autocomplete="off">
         <textarea id="input" rows="1" maxlength="2000" placeholder="Peça algo ao Chakmati…" aria-label="Pedido ao Chakmati"></textarea>
+        <button id="mic" type="button" aria-label="Falar com o Chakmati" title="Falar" hidden><span></span></button>
         <button id="send" type="submit" aria-label="Enviar"><span></span></button>
       </form>
       <button type="button" id="open-settings" class="link">Ajustes</button>
     </footer>
   </div>
   <script src="../lib/reltime.js"></script>
+  <script src="../lib/speech-text.js"></script>
+  <script src="voice.js"></script>
   <script src="robot.js"></script>
   <script src="panel.js"></script>
 </body>

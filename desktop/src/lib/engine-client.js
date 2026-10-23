@@ -108,6 +108,16 @@ class EngineClient {
     return { mime, base64: Buffer.from(await res.arrayBuffer()).toString('base64') };
   }
 
+  // Speech to text: the recording goes to the local engine (faster-whisper); nothing leaves the computer.
+  async transcribe(bytes, mime) {
+    const type = String(mime || '').split(';')[0].trim().toLowerCase();
+    if (!type.startsWith('audio/')) throw new Error('not audio');
+    if (!bytes || !bytes.length) throw new Error('empty recording');
+    if (bytes.length > 20 * 1024 * 1024) throw new Error('recording too large');
+    const res = await this._request('/transcribe', { method: 'POST', headers: { ...UI, 'content-type': type }, body: bytes });
+    return res.json();
+  }
+
   async _decide(id, verb) {
     if (!ACTION_ID.test(id)) throw new Error('invalid action id');
     return (await this._request(`/actions/${id}/${verb}`, { method: 'POST', headers: { 'X-LiteAgent-UI': '1' } })).json();

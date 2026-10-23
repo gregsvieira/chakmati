@@ -118,3 +118,21 @@ test('audio refuses a response that is not audio', async () => {
   const c = new EngineClient({ fetchImpl: async () => new Response('<html>', { status: 200, headers: { 'content-type': 'text/html' } }) });
   await assert.rejects(() => c.audio('1@lid', 'm1'), /not audio/);
 });
+
+test('transcribe posts the recording as audio with the UI header', async () => {
+  let seen;
+  const c = new EngineClient({ fetchImpl: async (url, init) => { seen = { url, init }; return new Response(JSON.stringify({ text: 'oi', language: 'pt' }), { status: 200 }); } });
+  const out = await c.transcribe(new Uint8Array([1, 2, 3]), 'audio/webm;codecs=opus');
+  assert.deepEqual(out, { text: 'oi', language: 'pt' });
+  assert.equal(seen.url, 'http://127.0.0.1:8765/transcribe');
+  assert.equal(seen.init.method, 'POST');
+  assert.equal(seen.init.headers['content-type'], 'audio/webm');
+  assert.equal(seen.init.headers['X-LiteAgent-UI'], '1');
+});
+
+test('transcribe refuses empty, non-audio and oversized recordings without calling the network', async () => {
+  const c = new EngineClient({ fetchImpl: async () => { throw new Error('should not be called'); } });
+  await assert.rejects(() => c.transcribe(new Uint8Array(), 'audio/webm'), /empty/);
+  await assert.rejects(() => c.transcribe(new Uint8Array([1]), 'text/plain'), /not audio/);
+  await assert.rejects(() => c.transcribe(new Uint8Array(21 * 1024 * 1024), 'audio/webm'), /too large/);
+});

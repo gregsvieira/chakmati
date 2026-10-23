@@ -5,6 +5,8 @@
   const { relativeTime } = window.RelTime;
 
   let state = null;
+  let speaking = false;
+  const syncTalking = () => robot.setTalking(speaking || thread.some((t) => t.status === 'pending')); // the mouth moves while answering and while speaking
   const thread = []; // {id, role, text, status: 'pending'|'done'|'error'}
   const decided = new Map(); // action id -> {text, error} shown briefly after the person decides
 
@@ -119,7 +121,7 @@
   function renderThread() {
     $('thread-section').hidden = thread.length === 0;
     fill($('thread'), thread.map((t) => h('div', { class: `turn ${t.role}${t.status === 'pending' ? ' pending' : ''}${t.status === 'error' ? ' error' : ''}` }, t.text || '…')));
-    robot.setTalking(thread.some((t) => t.status === 'pending')); // the mouth moves while an answer is on its way
+    syncTalking();
     const content = $('content');
     content.scrollTop = content.scrollHeight;
   }
@@ -130,6 +132,9 @@
     $('set-side').value = state.settings.bubbleSide;
     $('set-mood').value = state.settings.mood;
     $('set-still').checked = !!state.settings.still;
+    $('set-voice').checked = !!state.settings.voice;
+    $('mic').hidden = !state.settings.voice;
+    if (!state.settings.voice) { window.Voice.stop(); speaking = false; }
     document.body.toggleAttribute('data-still', !!state.settings.still);
     $('set-whatsapp').checked = !!state.settings.whatsapp;
     $('set-calendar').checked = !!state.settings.calendar;
@@ -175,11 +180,57 @@
     if (!turn) return;
     if (event.type === 'job') turn.text = turn.text || 'Trabalhando nisso…';
     else if (event.type === 'delta') { if (turn.text === 'Trabalhando nisso…') turn.text = ''; turn.text += event.text; }
-    else if (event.type === 'done') { turn.text = event.result || turn.text; turn.status = 'done'; }
-    else if (event.type === 'error') { turn.text = event.error || 'Algo deu errado.'; turn.status = 'error'; }
+    else if (event.type === 'done') { turn.text = event.result || turn.text; turn.status = 'done'; sayAloud(turn.text); }
+    else if (event.type === 'error') { turn.text = event.error || 'Algo deu errado.'; turn.status = 'error'; sayAloud(turn.text); }
     else if (event.type === 'end' && turn.status === 'pending') turn.status = 'done';
     renderThread();
   });
+
+  // ------------------------------------------------------------------ listen and speak
+  function sayAloud(text) {
+    if (!state || !state.settings.voice) return;
+    window.Voice.speak(text, { onStart: () => { speaking = true; syncTalking(); }, onEnd: () => { speaking = false; syncTalking(); } });
+  }
+
+  let recorder = null;
+  let recordTimer = null;
+  const micButton = $('mic');
+  function micState(on) {
+    micButton.classList.toggle('recording', on);
+    micButton.title = on ? 'Parar e enviar' : 'Falar';
+    micButton.setAttribute('aria-label', on ? 'Parar de gravar e enviar' : 'Falar com o Chakmati');
+  }
+
+  async function startListening() {
+    window.Voice.stop();
+    let stream;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch {
+      input.placeholder = 'Não consegui usar o microfone. Libere em Ajustes do Sistema > Privacidade > Microfone.';
+      return;
+    }
+    const chunks = [];
+    recorder = new MediaRecorder(stream);
+    recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+    recorder.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop());
+      clearTimeout(recordTimer);
+      micState(false);
+      const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+      recorder = null;
+      if (!blob.size) return;
+      input.placeholder = 'Transcrevendo…';
+      const res = await api.transcribe(new Uint8Array(await blob.arrayBuffer()), blob.type);
+      input.placeholder = 'Peça algo ao Chakmati…';
+      if (!res || res.error) { thread.push({ role: 'assistant', text: (res && res.error) || 'Não consegui entender o áudio.', status: 'error' }); renderThread(); return; }
+      if (!res.text) { thread.push({ role: 'assistant', text: 'Não ouvi nada. Tente de novo, mais perto do microfone.', status: 'error' }); renderThread(); return; }
+      submit(res.text);
+    };
+    recorder.start();
+    micState(true);
+    input.placeholder = 'Ouvindo… clique no microfone para enviar';
+    recordTimer = setTimeout(() => recorder && recorder.stop(), 30000);
+  }
+  micButton.addEventListener('click', () => { if (recorder) recorder.stop(); else startListening(); });
 
   // ------------------------------------------------------------------ wiring
   const CHIPS = [
@@ -295,6 +346,7 @@
   $('set-research').addEventListener('change', (e) => api.setSetting('research', e.target.checked));
   $('set-calendar').addEventListener('change', (e) => api.setSetting('calendar', e.target.checked));
   $('wa-connect').addEventListener('click', connectWhatsApp);
+  $('set-voice').addEventListener('change', (e) => api.setSetting('voice', e.target.checked));
   $('set-still').addEventListener('change', (e) => api.setSetting('still', e.target.checked));
   $('set-mood').addEventListener('change', (e) => api.setSetting('mood', e.target.value));
   $('set-side').addEventListener('change', (e) => api.setSetting('bubbleSide', e.target.value));
