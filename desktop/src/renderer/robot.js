@@ -49,10 +49,10 @@
     el('path', { class: 'inside', d: 'M16 33 Q16 14 34 14 L54 14 Q72 14 72 33 L72 80 Q72 90 62 90 L26 90 Q16 90 16 80 Z' }, svg);
     el('path', { class: 'fold', d: 'M22 30 q4 25 -1 55 M62 26 q-4 28 1 58' }, svg);
     // door, swung open in perspective (far edge shorter)
-    el('path', { class: 'door-edge', d: 'M72 13 L86 18 L86 86 L72 92 Z' }, svg);
-    el('path', { class: 'door', d: 'M73.5 15.5 L84.6 19.6 L84.6 84.4 L73.5 89 Z' }, svg);
-    [27, 39, 51, 63, 75].forEach((y, i) => el('circle', { class: 'rivet', cx: 82.8, cy: y + 0.4 * i, r: 0.8 }, svg));
-    el('rect', { class: 'hinge', x: 70.5, y: 18, width: 3.2, height: 68, rx: 1 }, svg);
+    el('path', { class: 'door-edge', d: 'M72 47 L86 50 L86 77 L72 81 Z' }, svg);
+    el('path', { class: 'door', d: 'M73.5 49 L84.6 51.6 L84.6 75.4 L73.5 78.8 Z' }, svg);
+    [55, 63, 71].forEach((y, i) => el('circle', { class: 'rivet', cx: 82.8, cy: y + 0.3 * i, r: 0.8 }, svg));
+    el('rect', { class: 'hinge', x: 70.5, y: 49, width: 3.2, height: 31, rx: 1 }, svg);
   }
 
   function character(svg, parent) {
