@@ -45,9 +45,9 @@
 
   function scene(svg) {
     // wooden frame with a dark opening (even-odd hole), cloth folds inside
-    el('path', { class: 'frame', 'fill-rule': 'evenodd', d: 'M8 32 Q8 8 34 8 L54 8 Q80 8 80 32 L80 82 Q80 96 66 96 L22 96 Q8 96 8 82 Z M16 33 Q16 14 34 14 L54 14 Q72 14 72 33 L72 80 Q72 90 62 90 L26 90 Q16 90 16 80 Z' }, svg);
-    el('path', { class: 'inside', d: 'M16 33 Q16 14 34 14 L54 14 Q72 14 72 33 L72 80 Q72 90 62 90 L26 90 Q16 90 16 80 Z' }, svg);
-    el('path', { class: 'fold', d: 'M22 30 q4 25 -1 55 M62 26 q-4 28 1 58' }, svg);
+    el('path', { class: 'frame', 'fill-rule': 'evenodd', d: 'M18 32 Q18 8 40 8 L56 8 Q80 8 80 32 L80 82 Q80 96 68 96 L30 96 Q18 96 18 82 Z M26 33 Q26 14 40 14 L56 14 Q72 14 72 33 L72 80 Q72 90 64 90 L34 90 Q26 90 26 80 Z' }, svg);
+    el('path', { class: 'inside', d: 'M26 33 Q26 14 40 14 L56 14 Q72 14 72 33 L72 80 Q72 90 64 90 L34 90 Q26 90 26 80 Z' }, svg);
+    el('path', { class: 'fold', d: 'M31 30 q3 25 -1 55 M63 26 q-3 28 1 58' }, svg);
     // door, swung open in perspective (far edge shorter)
     el('path', { class: 'door-edge', d: 'M72 47 L86 50 L86 77 L72 81 Z' }, svg);
     el('path', { class: 'door', d: 'M73.5 49 L84.6 51.6 L84.6 75.4 L73.5 78.8 Z' }, svg);
@@ -99,12 +99,12 @@
   }
 
   function create(container, { scene: withScene = true } = {}) {
-    const svg = el('svg', { viewBox: withScene ? '2 0 88 100' : '27 0 40 82', class: 'robot', 'data-mood': 'idle', role: 'img', 'aria-label': 'Chakmati' }, container);
+    const svg = el('svg', { viewBox: withScene ? '16 0 72 100' : '27 0 40 82', class: 'robot', 'data-mood': 'idle', role: 'img', 'aria-label': 'Chakmati' }, container);
     defs(svg);
     if (withScene) scene(svg);
     const group = el('g', {}, svg);
     character(svg, group);
-    if (withScene) el('path', { class: 'sill', d: 'M12 86.5 Q12 90.5 26 90.5 L62 90.5 Q76 90.5 76 86.5 L76 92 Q76 96 62 96 L26 96 Q12 96 12 92 Z' }, svg);
+    if (withScene) el('path', { class: 'sill', d: 'M22 86.5 Q22 90.5 34 90.5 L64 90.5 Q76 90.5 76 86.5 L76 92 Q76 96 64 96 L34 96 Q22 96 22 92 Z' }, svg);
     return {
       svg,
       setMood(mood) { svg.setAttribute('data-mood', ['idle', 'alert', 'thinking', 'happy', 'offline'].includes(mood) ? mood : 'idle'); },
