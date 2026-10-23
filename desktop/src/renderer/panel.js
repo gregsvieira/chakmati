@@ -166,10 +166,12 @@
     $('set-side').value = state.settings.bubbleSide;
     $('set-mood').value = state.settings.mood;
     $('set-still').checked = !!state.settings.still;
-    $('set-voice').checked = !!state.settings.voice;
+    $('set-hear').checked = !!state.settings.hear;
+    $('set-talk').checked = !!state.settings.talk;
     $('set-autosend').checked = !!state.settings.autoSend;
-    $('mic').hidden = !state.settings.voice;
-    if (!state.settings.voice) { window.Voice.stop(); speaking = false; }
+    if (!state.settings.hear) { window.Voice.stop(); speaking = false; }
+    syncAmbient();
+    updateHint();
     document.body.toggleAttribute('data-still', !!state.settings.still);
     $('set-whatsapp').checked = !!state.settings.whatsapp;
     $('set-calendar').checked = !!state.settings.calendar;
@@ -221,88 +223,111 @@
     renderThread();
   });
 
-  // ------------------------------------------------------------------ listen and speak
+  // ------------------------------------------------------------------ hear and talk
   function sayAloud(text) {
-    if (!state || !state.settings.voice) return;
-    window.Voice.speak(text, { onStart: () => { speaking = true; syncTalking(); }, onEnd: () => { speaking = false; syncTalking(); listenIfAwake(); } });
+    if (!state || !state.settings.hear) return;
+    window.Voice.speak(text, { onStart: () => { speaking = true; syncTalking(); }, onEnd: () => { speaking = false; syncTalking(); updateHint(); } });
   }
 
-  let recorder = null;
-  let recordTimer = null;
+  // "Falar com o Chakmati": the microphone is always listening, with no button to press. It acts only on a wake phrase
+  // ("Ôh, Xácmáti") or while it is already waiting for a command, so conversation in the room never reaches the assistant.
   const micButton = $('mic');
-  function micState(on) {
-    micButton.classList.toggle('recording', on);
-    micButton.title = on ? 'Parar e enviar' : 'Falar';
-    micButton.setAttribute('aria-label', on ? 'Parar de gravar e enviar' : 'Falar com o Chakmati');
+  const JUNK = /^(obrigad[oa]\.?|tchau\.?|legendas.*|\.+|…)$/i; // what the recogniser invents from noise
+  let ambient = null;
+  let starting = false;
+  let transcribing = false;
+  let speechInProgress = false;
+  let ambientWarned = false;
+  const isMuted = () => speaking || !!(state && state.busy); // not while Chakmati talks or works: it would hear itself
+
+  function updateHint() {
+    if (!state) return;
+    const talk = state.settings.talk;
+    const awake = !!(state.overview && state.overview.awake);
+    input.placeholder = !talk ? 'Peça algo ao Chakmati…' : awake ? 'Aguardando seu comando… fale agora' : 'Escutando… diga “Ôh, Xácmáti”';
+    micButton.classList.toggle('on', talk);
+    micButton.classList.toggle('recording', talk && speechInProgress);
+    micButton.hidden = !talk;
+    micButton.title = talk ? 'Escutando. Clique para desligar.' : 'Falar com o Chakmati';
   }
 
-  // After a wake phrase the assistant waits for the command: with the microphone on, it starts listening by itself.
-  function listenIfAwake() {
-    if (state && state.settings.voice && state.overview && state.overview.awake && !recorder) startListening();
-  }
+  function say(text) { thread.push({ role: 'assistant', text, status: 'error' }); renderThread(); }
 
-  async function startListening() {
-    window.Voice.stop();
-    let stream;
-    try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch {
-      input.placeholder = 'Não consegui usar o microfone. Libere em Ajustes do Sistema > Privacidade > Microfone.';
-      return;
-    }
-    const chunks = [];
-    let discard = false;
-    let audioCtx = null;
-    recorder = new MediaRecorder(stream);
-    recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
-    recorder.onstop = async () => {
-      stream.getTracks().forEach((t) => t.stop());
-      if (audioCtx) audioCtx.close().catch(() => {});
-      clearTimeout(recordTimer);
-      micState(false);
-      micButton.style.setProperty('--level', '0');
-      const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
-      recorder = null;
-      if (discard || !blob.size) {
-        input.placeholder = 'Peça algo ao Chakmati…';
-        if (discard) { thread.push({ role: 'assistant', text: 'Não ouvi nada. Clique no microfone e fale de novo.', status: 'error' }); renderThread(); }
+  async function handleUtterance(chunks, rate) {
+    if (transcribing) return;
+    transcribing = true;
+    try {
+      const res = await api.transcribe(window.Wav.encodeWav(chunks, rate), 'audio/wav');
+      if (!res || res.error) {
+        if (!ambientWarned) { ambientWarned = true; say((res && res.error) || 'Não consegui entender o áudio.'); }
         return;
       }
-      input.placeholder = 'Transcrevendo…';
-      const res = await api.transcribe(new Uint8Array(await blob.arrayBuffer()), blob.type);
-      input.placeholder = 'Peça algo ao Chakmati…';
-      if (!res || res.error) { thread.push({ role: 'assistant', text: (res && res.error) || 'Não consegui entender o áudio.', status: 'error' }); renderThread(); return; }
-      if (!res.text) { thread.push({ role: 'assistant', text: 'Não ouvi nada. Tente de novo, mais perto do microfone.', status: 'error' }); renderThread(); return; }
-      submit(res.text);
-    };
-    recorder.start();
-    micState(true);
-    input.placeholder = 'Ouvindo… fale agora';
-    // It stops by itself when the person finishes speaking (or never starts); the microphone also shows the level it hears.
-    try {
-      audioCtx = new AudioContext();
-      const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 1024;
-      audioCtx.createMediaStreamSource(stream).connect(analyser);
-      const samples = new Float32Array(analyser.fftSize);
-      const detector = window.Vad.createDetector({});
-      const current = recorder;
-      const tick = setInterval(() => {
-        if (recorder !== current) { clearInterval(tick); return; }
-        analyser.getFloatTimeDomainData(samples);
-        let sum = 0;
-        for (const v of samples) sum += v * v;
-        const rms = Math.sqrt(sum / samples.length);
-        micButton.style.setProperty('--level', String(Math.min(rms * 6, 0.6)));
-        if (detector.speaking) input.placeholder = 'Ouvindo… (vou enviar quando você parar de falar)';
-        const verdict = detector.push(rms, 80);
-        if (verdict === 'continue') return;
-        clearInterval(tick);
-        discard = verdict === 'no-speech';
-        current.stop();
-      }, 80);
-    } catch { /* without the level meter it still works: click the microphone again to send */ }
-    recordTimer = setTimeout(() => recorder && recorder.stop(), 35000);
+      const text = (res.text || '').trim();
+      if (!text || JUNK.test(text)) return;
+      if (res.wake) api.wake();
+      if (res.wake || res.awake) submit(text);
+    } finally {
+      transcribing = false;
+    }
   }
-  micButton.addEventListener('click', () => { if (recorder) recorder.stop(); else startListening(); });
+
+  async function startAmbient() {
+    if (ambient || starting || !state || !state.settings.talk) return;
+    starting = true;
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    } catch {
+      starting = false;
+      say('Não consegui usar o microfone. Libere em Ajustes do Sistema > Privacidade > Microfone e ligue de novo.');
+      api.setSetting('talk', false);
+      return;
+    }
+    starting = false;
+    if (!state || !state.settings.talk) { stream.getTracks().forEach((t) => t.stop()); return; }
+    const ctx = new AudioContext();
+    const source = ctx.createMediaStreamSource(stream);
+    const node = ctx.createScriptProcessor(4096, 1, 1);
+    const silent = ctx.createGain();
+    silent.gain.value = 0; // the processor must be connected to run, but nothing is played back
+    source.connect(node);
+    node.connect(silent);
+    silent.connect(ctx.destination);
+    const detector = window.Vad.createAmbient({});
+    const preRoll = [];
+    let utterance = null;
+    node.onaudioprocess = (e) => {
+      const data = new Float32Array(e.inputBuffer.getChannelData(0));
+      let sum = 0;
+      for (const v of data) sum += v * v;
+      const rms = Math.sqrt(sum / data.length);
+      micButton.style.setProperty('--level', String(Math.min(rms * 6, 0.6)));
+      if (isMuted()) { utterance = null; preRoll.length = 0; if (speechInProgress) { speechInProgress = false; updateHint(); } return; }
+      const event = detector.push(rms, (data.length / ctx.sampleRate) * 1000);
+      if (utterance) utterance.push(data);
+      if (event === 'start') { utterance = [...preRoll, data]; speechInProgress = true; updateHint(); }
+      else if (!utterance) { preRoll.push(data); if (preRoll.length > 8) preRoll.shift(); }
+      if (event === 'end' || event === 'drop') {
+        const chunks = utterance;
+        utterance = null;
+        preRoll.length = 0;
+        speechInProgress = false;
+        updateHint();
+        if (event === 'end' && chunks) handleUtterance(chunks, ctx.sampleRate);
+      }
+    };
+    ambient = { stop() { node.onaudioprocess = null; stream.getTracks().forEach((t) => t.stop()); ctx.close().catch(() => {}); } };
+  }
+
+  function stopAmbient() {
+    if (!ambient) return;
+    ambient.stop();
+    ambient = null;
+    speechInProgress = false;
+    micButton.style.setProperty('--level', '0');
+  }
+
+  const syncAmbient = () => { if (state && state.settings.talk) startAmbient(); else stopAmbient(); };
 
   // ------------------------------------------------------------------ wiring
   const CHIPS = [
@@ -315,14 +340,22 @@
   fill($('chips'), CHIPS.map((c) => h('button', {
     class: 'chip', type: 'button',
     onclick: () => {
+      showSuggestions(false);
       if (c.run) submit(c.run);
       else { $('input').value = c.fill; $('input').focus(); }
     },
   }, c.label)));
 
+  // The shortcuts are suggestions: they rise above the command line when the person clicks it, and go away again.
+  const showSuggestions = (on) => $('chips').classList.toggle('open', on);
+  $('chips').addEventListener('mousedown', (e) => e.preventDefault()); // clicking a suggestion must not take the focus from the field
+
   const input = $('input');
   const grow = () => { input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 110)}px`; };
   input.addEventListener('input', grow);
+  input.addEventListener('pointerdown', () => { if (!input.value.trim()) showSuggestions(true); });
+  input.addEventListener('input', () => { if (input.value.trim()) showSuggestions(false); });
+  input.addEventListener('blur', () => showSuggestions(false));
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('composer').requestSubmit(); }
   });
@@ -419,7 +452,9 @@
   $('set-calendar').addEventListener('change', (e) => api.setSetting('calendar', e.target.checked));
   $('wa-connect').addEventListener('click', connectWhatsApp);
   $('set-autosend').addEventListener('change', (e) => api.setSetting('autoSend', e.target.checked));
-  $('set-voice').addEventListener('change', (e) => api.setSetting('voice', e.target.checked));
+  $('set-hear').addEventListener('change', (e) => api.setSetting('hear', e.target.checked));
+  $('set-talk').addEventListener('change', (e) => api.setSetting('talk', e.target.checked));
+  micButton.addEventListener('click', () => api.setSetting('talk', !state.settings.talk));
   $('set-still').addEventListener('change', (e) => api.setSetting('still', e.target.checked));
   $('set-mood').addEventListener('change', (e) => api.setSetting('mood', e.target.value));
   $('set-side').addEventListener('change', (e) => api.setSetting('bubbleSide', e.target.value));

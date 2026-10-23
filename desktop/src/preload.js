@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('assistant', {
     onMessage: (cb) => listen('panel:message', cb),
     ready: () => send('panel:ready'),
     close: () => send('panel:close'),
+    wake: () => send('panel:wake'),
     refresh: () => send('panel:refresh'),
     panic: () => send('panel:panic'),
     restart: () => send('panel:restart'),

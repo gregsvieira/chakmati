@@ -56,10 +56,13 @@ test('integrations map to the engine environment: web search on by default, the 
   assert.equal(normalize({ whatsapp: 'yes' }).whatsapp, false);
 });
 
-test('voice (listen and speak) is off by default and only a boolean turns it on', () => {
-  assert.equal(DEFAULTS.voice, false);
-  assert.equal(normalize({ voice: true }).voice, true);
-  assert.equal(normalize({ voice: 'yes' }).voice, false);
+test('hearing Chakmati and talking to it are two separate switches, both off by default', () => {
+  assert.equal(DEFAULTS.hear, false);
+  assert.equal(DEFAULTS.talk, false);
+  assert.deepEqual([normalize({ hear: true }).hear, normalize({ hear: true }).talk], [true, false]);
+  assert.deepEqual([normalize({ talk: true }).hear, normalize({ talk: true }).talk], [false, true]);
+  assert.equal(normalize({ hear: 'sim', talk: 1 }).hear, false);
+  assert.equal(normalize({ voice: true }).hear, false); // the old single switch is not carried over silently
 });
 
 test('automatic approval of WhatsApp sends is off by default and only a boolean turns it on', () => {

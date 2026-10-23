@@ -8,7 +8,8 @@ const MOODS = ['auto', 'idle', 'alert', 'thinking', 'happy'];
 const DEFAULTS = Object.freeze({
   protect: true,          // ask the OS to leave the windows out of screen sharing and recordings (best effort)
   still: false,           // true = no animations: Chakmati stays still
-  voice: false,           // "listen and speak": microphone input and spoken answers/notices
+  hear: false,            // "Ouvir o Chakmati": answers and notices are spoken aloud
+  talk: false,            // "Falar com o Chakmati": the microphone is always listening for the wake phrases and commands
   autoSend: false,        // approve WhatsApp sends automatically (the person's standing permission; the engine still rate-limits)
   masked: false,          // discreet mode: bubbles never show names or titles
   bubbleSide: 'auto',
@@ -26,7 +27,8 @@ function normalize(raw) {
   if (typeof r.protect === 'boolean') s.protect = r.protect;
   if (typeof r.masked === 'boolean') s.masked = r.masked;
   if (typeof r.autoSend === 'boolean') s.autoSend = r.autoSend;
-  if (typeof r.voice === 'boolean') s.voice = r.voice;
+  if (typeof r.hear === 'boolean') s.hear = r.hear;
+  if (typeof r.talk === 'boolean') s.talk = r.talk;
   if (typeof r.still === 'boolean') s.still = r.still;
   if (typeof r.whatsapp === 'boolean') s.whatsapp = r.whatsapp;
   if (typeof r.calendar === 'boolean') s.calendar = r.calendar;

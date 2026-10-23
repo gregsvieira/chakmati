@@ -37,6 +37,7 @@ def test_transcribe_joins_segments_and_loads_the_model_lazily_once():
     assert stt.transcribe(b"AUDIO2")[0] == "Olá, Chakmati."
     assert loads == ["base"]
     assert model.calls[0][0] == b"AUDIO" and model.calls[0][1]["vad_filter"] is True
+    assert "Xácmáti" in model.calls[0][1]["initial_prompt"]  # the name is given to the recogniser as vocabulary
 
 
 def test_empty_and_oversized_audio_are_refused_before_the_model_runs():
@@ -76,7 +77,7 @@ def test_transcribe_endpoint_returns_text_and_needs_the_ui_header():
     client = make_client(stt)
     assert client.post("/transcribe", content=b"AUDIO", headers={"content-type": "audio/webm"}).status_code == 403
     r = client.post("/transcribe", content=b"AUDIO", headers={**UI, "content-type": "audio/webm"})
-    assert r.status_code == 200 and r.json() == {"text": "Olá, Chakmati.", "language": "pt"}
+    assert r.status_code == 200 and r.json() == {"text": "Olá, Chakmati.", "language": "pt", "wake": True, "awake": False}  # greeting him by name is a call
 
 
 def test_transcribe_endpoint_errors():
@@ -85,3 +86,14 @@ def test_transcribe_endpoint_errors():
     assert client.post("/transcribe", content=b"", headers={**UI, "content-type": "audio/webm"}).status_code == 422
     assert client.post("/transcribe", content=b"x", headers={**UI, "content-type": "text/plain"}).status_code == 415
     assert make_client(None).post("/transcribe", content=b"x", headers={**UI, "content-type": "audio/webm"}).status_code == 503
+
+
+class WakeModel(FakeModel):
+    def transcribe(self, audio, **kwargs):
+        return iter([FakeSegment("Ôh, paizão")]), FakeInfo()
+
+
+def test_transcribe_tells_the_app_when_the_text_is_a_wake_phrase():
+    client = make_client(SpeechToText("base", loader=lambda n: WakeModel()))
+    r = client.post("/transcribe", content=b"AUDIO", headers={**UI, "content-type": "audio/wav"})
+    assert r.json()["wake"] is True and r.json()["text"] == "Ôh, paizão"

@@ -25,6 +25,11 @@ AGENTE = "Klift, kloft, stão! fala paizão!"
     ("agente chakmati", AGENTE),
     ("Agente Chacmati", AGENTE),
     ("agente shakmati", AGENTE),        # how a speech recogniser may write it
+    ("chá comatii", OPEN_DOOR),         # ... or split it
+    ("Oh, Chacmate", OPEN_DOOR),
+    ("ô pai zão", PAIZAO),
+    ("Oh, paizão.", PAIZAO),
+    ("agente cha comati", AGENTE),
 ])
 def test_wake_phrases_get_the_fixed_greeting(text, expected):
     assert wake_reply(text) == expected
@@ -32,7 +37,8 @@ def test_wake_phrases_get_the_fixed_greeting(text, expected):
 
 @pytest.mark.parametrize("text", [
     "", "olá", "quem é o chakmati?", "oi tudo bem", "paizão, que horas são?", "manda no whatsapp pra Maria: oi",
-    "agente secreto", "o chakmati pode me ajudar com a agenda",
+    "agente secreto", "o chakmati pode me ajudar com a agenda", "só como sinto circumflexo a gás chá comatii", "chato", "que horas são",
+    "oi tudo bem comigo", "pai nosso",
 ])
 def test_everything_else_is_not_a_wake_phrase(text):
     assert wake_reply(text) is None

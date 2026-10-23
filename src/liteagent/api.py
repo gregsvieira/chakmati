@@ -15,6 +15,7 @@ from .approvals import ApprovalService
 from .engine import Engine
 from .jobs import DONE, FAILED, JobStore, Worker
 from .notices import NoticeBoard, Notifier
+from .persona import wake_reply
 from .stt import SpeechToText, TranscribeError
 from .whatsapp.media import MediaError
 from .whatsapp.openwa import WhatsAppError
@@ -284,7 +285,9 @@ def create_app(
             text, language = await asyncio.to_thread(stt.transcribe, audio)
         except TranscribeError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from None
-        return {"text": text, "language": language}
+        # `wake`: this is one of the wake phrases; `awake`: the assistant is already waiting for a command. The always-on
+        # microphone acts only on those two, so ordinary talk in the room never reaches the model.
+        return {"text": text, "language": language, "wake": wake_reply(text) is not None, "awake": engine.awake}
 
     @app.post("/actions/{action_id}/approve", dependencies=[Depends(ui_only)])
     async def approve_action(action_id: str):

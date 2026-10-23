@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createDetector } = require('../src/lib/vad');
+const { createDetector, createAmbient } = require('../src/lib/vad');
 
 const feed = (d, rms, ms, frame = 80) => { let last = 'continue'; for (let t = 0; t < ms; t += frame) last = d.push(rms, frame); return last; };
 
@@ -53,4 +53,48 @@ test('the recording is capped', () => {
   feed(d, 0.001, 400);
   assert.equal(feed(d, 0.05, 29000), 'continue');
   assert.equal(feed(d, 0.05, 2000), 'stop');
+});
+
+const run = (a, rms, ms, frame = 80) => { const seen = []; for (let t = 0; t < ms; t += frame) { const e = a.push(rms, frame); if (e) seen.push(e); } return seen; };
+
+test('ambient: reports each utterance as start then end, and keeps listening for the next one', () => {
+  const a = createAmbient({});
+  assert.deepEqual(run(a, 0.001, 800), []);
+  assert.deepEqual(run(a, 0.05, 1200), ['start']);
+  assert.deepEqual(run(a, 0.001, 1200), ['end']);
+  assert.deepEqual(run(a, 0.001, 3000), []);
+  assert.deepEqual(run(a, 0.05, 1000), ['start']);
+  assert.deepEqual(run(a, 0.001, 1000), ['end']);
+});
+
+test('ambient: a pause inside a sentence does not split the utterance', () => {
+  const a = createAmbient({ silenceMs: 900 });
+  run(a, 0.001, 800);
+  assert.deepEqual(run(a, 0.05, 800), ['start']);
+  assert.deepEqual(run(a, 0.001, 600), []);
+  assert.deepEqual(run(a, 0.05, 800), []);
+  assert.deepEqual(run(a, 0.001, 1000), ['end']);
+});
+
+test('ambient: a short blip is dropped, not sent', () => {
+  const a = createAmbient({ minSpeechMs: 400 });
+  run(a, 0.001, 800);
+  assert.deepEqual(run(a, 0.05, 280), ['start']);
+  assert.deepEqual(run(a, 0.001, 1000), ['drop']);
+});
+
+test('ambient: it follows a slowly rising noise floor without mistaking it for speech', () => {
+  const a = createAmbient({});
+  run(a, 0.002, 800);
+  let seen = [];
+  for (let level = 0.002; level < 0.02; level += 0.0005) seen = seen.concat(run(a, level, 400));
+  assert.deepEqual(seen, []);
+  assert.deepEqual(run(a, 0.2, 800), ['start']);
+});
+
+test('ambient: a very long utterance is cut at the cap', () => {
+  const a = createAmbient({ maxMs: 5000 });
+  run(a, 0.001, 800);
+  // cut at 5 s; speech that goes on right after it simply begins the next utterance
+  assert.deepEqual(run(a, 0.05, 6000), ['start', 'end', 'start']);
 });

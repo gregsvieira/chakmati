@@ -29,19 +29,25 @@ def _is_name(word: str) -> bool:
     return SequenceMatcher(None, sound, _NAME).ratio() >= 0.8
 
 
+def _similar(a: str, b: str) -> float:
+    return SequenceMatcher(None, a, b).ratio()
+
+
 def wake_reply(text: str) -> str | None:
     """The fixed greeting when `text` is exactly one of the wake phrases, otherwise None. Only the whole message counts:
-    "quem é o chakmati?" is a question, not a call."""
+    "quem é o chakmati?" is a question, not a call. A speech recogniser may split or bend the words ("pai zão",
+    "chá comatii", "Chacmate"), so the words are joined and compared by sound, not letter by letter."""
     words = _plain(text).split()
+    if words and words[0] in {"oh", "o", "ei", "oi", "e"}:
+        words = words[1:]
     if not words or len(words) > 3:
         return None
-    if words[0] in {"oh", "o", "ei", "oi", "e"}:
-        words = words[1:]
-    if len(words) == 1:
-        if words[0] == "paizao":
-            return PAIZAO
-        if _is_name(words[0]):
-            return OPEN_DOOR
-    if len(words) == 2 and words[0] == "agente" and _is_name(words[1]):
-        return AGENTE
+    if words[0] == "agente" or (len(words) > 1 and _similar(words[0], "agente") >= 0.8):
+        rest = "".join(words[1:])
+        return AGENTE if len(rest) >= 5 and _is_name(rest) else None
+    joined = "".join(words)
+    if len(joined) >= 5 and _similar(joined, "paizao") >= 0.85:
+        return PAIZAO
+    if len(joined) >= 5 and _is_name(joined):
+        return OPEN_DOOR
     return None

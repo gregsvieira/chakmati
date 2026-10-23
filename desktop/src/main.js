@@ -51,7 +51,7 @@ app.on('web-contents-created', (_event, contents) => {
   contents.on('will-navigate', (e) => e.preventDefault());
   contents.setWindowOpenHandler(() => ({ action: 'deny' }));
   // Everything is denied except the microphone, and only for the panel and only while "Ouvir e falar" is on.
-  const micAllowed = (wc, permission, details) => permission === 'media' && !!settings && settings.voice === true
+  const micAllowed = (wc, permission, details) => permission === 'media' && !!settings && settings.talk === true
     && !!wc && wc.getURL().endsWith('panel.html') && (!details || !details.mediaTypes || details.mediaTypes.every((t) => t === 'audio'));
   contents.session.setPermissionRequestHandler((wc, permission, callback, details) => callback(micAllowed(wc, permission, details)));
   contents.session.setPermissionCheckHandler((wc, permission, _origin, details) => micAllowed(wc, permission, details));
@@ -171,7 +171,8 @@ function localNotice(text, kind = 'system') {
 function createPanel() {
   panelWin = new BrowserWindow({
     ...PANEL, show: false, frame: false, transparent: true, resizable: false, hasShadow: true, alwaysOnTop: true,
-    skipTaskbar: true, fullscreenable: false, webPreferences: webPreferences(),
+    skipTaskbar: true, fullscreenable: false,
+    webPreferences: { ...webPreferences(), backgroundThrottling: false }, // a hidden panel must keep listening at full speed
   });
   panelWin.setAlwaysOnTop(true, 'floating');
   panelWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
@@ -198,7 +199,7 @@ function panelState() {
     busy: state.busy > 0,
     describe: { ...currentDescription(), mood: effectiveMood(currentDescription().mood) },
     notices: state.notices.slice(-20),
-    settings: { protect: settings.protect, masked: settings.masked, autoSend: settings.autoSend, voice: settings.voice, still: settings.still, bubbleSide: settings.bubbleSide, mood: settings.mood, whatsapp: settings.whatsapp, calendar: settings.calendar, research: settings.research },
+    settings: { protect: settings.protect, masked: settings.masked, autoSend: settings.autoSend, hear: settings.hear, talk: settings.talk, still: settings.still, bubbleSide: settings.bubbleSide, mood: settings.mood, whatsapp: settings.whatsapp, calendar: settings.calendar, research: settings.research },
     ownsEngine: !!engineProcess,
     canOpenWa: !!projectRoot(),
     hotkeys: { toggle: prettyHotkey(HOTKEYS.toggle), panic: prettyHotkey(HOTKEYS.panic) },
@@ -501,10 +502,15 @@ function updateSetting(key, value) {
   if (key === 'protect' && typeof value === 'boolean') settings.protect = value;
   else if (key === 'masked' && typeof value === 'boolean') settings.masked = value;
   else if (key === 'bubbleSide' && settingsLib.SIDES.includes(value)) settings.bubbleSide = value;
-  else if (key === 'voice' && typeof value === 'boolean') {
-    settings.voice = value;
-    sendTo(widgetWin, 'widget:voice', value);
-    if (value && process.platform === 'darwin') systemPreferences.askForMediaAccess('microphone').catch(() => {});
+  else if (key === 'hear' && typeof value === 'boolean') { settings.hear = value; sendTo(widgetWin, 'widget:voice', value); }
+  else if (key === 'talk' && typeof value === 'boolean') {
+    settings.talk = value;
+    if (value) { // talking to Chakmati also means hearing it
+      settings.hear = true;
+      sendTo(widgetWin, 'widget:voice', true);
+      if (process.platform === 'darwin') systemPreferences.askForMediaAccess('microphone').catch(() => {});
+      if (!alive(panelWin)) createPanel(); // the always-on microphone lives in the panel window, which can stay hidden
+    }
   }
   else if (key === 'autoSend' && typeof value === 'boolean') { settings.autoSend = value; autoApproveNew(); }
   else if (key === 'still' && typeof value === 'boolean') { settings.still = value; sendTo(widgetWin, 'widget:still', value); }
@@ -538,7 +544,7 @@ function friendlyError(e) {
 }
 
 function registerIpc() {
-  ipcMain.on('widget:ready', () => { applyLayout(); refreshMood(); sendTo(widgetWin, 'widget:still', settings.still); sendTo(widgetWin, 'widget:voice', settings.voice); });
+  ipcMain.on('widget:ready', () => { applyLayout(); refreshMood(); sendTo(widgetWin, 'widget:still', settings.still); sendTo(widgetWin, 'widget:voice', settings.hear); });
   ipcMain.on('widget:hover', (_e, inside) => { if (!isLinux && alive(widgetWin)) widgetWin.setIgnoreMouseEvents(!inside, { forward: true }); });
   ipcMain.on('widget:drag-start', () => { dragStart = { ...icon }; });
   ipcMain.on('widget:drag-move', (_e, d) => {
@@ -556,6 +562,7 @@ function registerIpc() {
 
   ipcMain.on('panel:ready', sendPanelState);
   ipcMain.on('panel:close', closePanel);
+  ipcMain.on('panel:wake', () => { if (!state.panelOpen) openPanel(); }); // someone said the wake phrase: show the panel
   ipcMain.on('panel:refresh', refreshOverview);
   ipcMain.on('panel:panic', () => setHidden(true));
   ipcMain.on('panel:restart', restartApp);
@@ -582,7 +589,7 @@ function registerIpc() {
     } catch (e) { return { error: e instanceof EngineError && e.status === 404 ? 'Este áudio não pode ser reproduzido.' : friendlyError(e) }; }
   });
   ipcMain.handle('panel:transcribe', async (_e, bytes, mime) => {
-    if (!settings.voice) return { error: 'Ative "Ouvir e falar" em Ajustes.' };
+    if (!settings.talk) return { error: 'Ative "Falar com o Chakmati" em Ajustes.' };
     if (!state.engineUp) return { error: 'O motor não está rodando.' };
     if (!(bytes instanceof Uint8Array) || typeof mime !== 'string') return { error: 'Gravação inválida.' };
     try { return await engine.transcribe(bytes, mime); } catch (e) {
@@ -686,7 +693,7 @@ async function runProtectTest() {
 async function runSnapshots() {
   const out = SNAPSHOT === '1' ? path.join(app.getPath('temp'), 'liteagent-desktop-snapshots') : SNAPSHOT;
   fs.mkdirSync(out, { recursive: true });
-  settings = { ...settingsLib.DEFAULTS, protect: false, voice: true };
+  settings = { ...settingsLib.DEFAULTS, protect: false, hear: true, talk: true };
   const SAMPLE_CHATS = [
     { id: '162457238634742@lid', name: 'Maria Victoria', is_group: false, unread: 2 },
     { id: '120363@g.us', name: 'Família', is_group: true, unread: 5 },
@@ -750,6 +757,9 @@ async function runSnapshots() {
   sendPanelState();
   await shot('panel.png', panelWin);
 
+  await panelWin.webContents.executeJavaScript("document.getElementById('chips').classList.add('open')");
+  await shot('panel-suggestions.png', panelWin);
+  await panelWin.webContents.executeJavaScript("document.getElementById('chips').classList.remove('open')");
   const click = (sel) => panelWin.webContents.executeJavaScript(`document.querySelector(${JSON.stringify(sel)}).click()`);
   await click('.more');
   await shot('panel-chats.png', panelWin);
@@ -800,6 +810,7 @@ if (!app.requestSingleInstanceLock()) {
     createWidget();
     await new Promise((resolve) => ipcMain.once('widget:ready', resolve));
     widgetWin.showInactive();
+    if (settings.talk) createPanel(); // keep the microphone listening even with the panel closed
     createTray();
     registerShortcuts();
     if (!(await engine.health())) await startEngine();

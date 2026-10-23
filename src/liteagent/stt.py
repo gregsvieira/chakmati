@@ -9,6 +9,8 @@ import threading
 from collections.abc import Callable
 
 MAX_AUDIO_BYTES = 20 * 1024 * 1024
+# Words the recogniser would otherwise get wrong: the assistant's name and its wake phrases.
+VOCABULARY = "Chakmati, Xácmáti. Ôh, Xácmáti. Ôh, paizão. Agente Xácmáti."
 
 
 class TranscribeError(Exception):
@@ -38,7 +40,7 @@ class SpeechToText:
             try:
                 if self._model is None:
                     self._model = self._loader(self._name)
-                segments, info = self._model.transcribe(io.BytesIO(audio), beam_size=1, vad_filter=True)  # type: ignore[attr-defined]
+                segments, info = self._model.transcribe(io.BytesIO(audio), beam_size=1, vad_filter=True, initial_prompt=VOCABULARY)  # type: ignore[attr-defined]
                 text = " ".join(s.text.strip() for s in segments).strip()
             except TranscribeError:
                 raise

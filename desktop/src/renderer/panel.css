@@ -54,8 +54,14 @@ button:disabled { opacity: 0.5; cursor: default; }
 .turn.assistant.error { color: var(--wine); }
 
 /* footer: shortcuts, the command line, settings */
-#foot { padding: 10px 14px 12px; border-top: 1px solid var(--rule); background: var(--surface); }
-#chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+#foot { position: relative; padding: 10px 14px 12px; border-top: 1px solid var(--rule); background: var(--surface); }
+/* suggestions rise from the command line only while it is being clicked */
+#chips { display: none; flex-wrap: wrap; gap: 6px; position: absolute; left: 10px; right: 10px; bottom: calc(100% - 6px); padding: 10px;
+  background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; box-shadow: var(--shadow); z-index: 5; }
+#chips.open { display: flex; animation: rise 0.16s ease-out; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+body[data-still] #chips.open { animation: none; }
+@media (prefers-reduced-motion: reduce) { #chips.open { animation: none; } }
 .chip { height: 28px; padding: 0 12px; border: 1px solid var(--rule); border-radius: 999px; background: none; cursor: pointer; font-size: 13px; }
 .chip:hover { background: var(--surface-2); }
 #composer { display: flex; gap: 8px; align-items: flex-end; }
@@ -138,3 +144,6 @@ body[data-still] #mic.recording { animation: none; }
 #mic.recording { transform: scale(calc(1 + var(--level, 0))); transition: transform 0.08s linear; }
 body[data-still] #mic.recording { transform: none; }
 @media (prefers-reduced-motion: reduce) { #mic.recording { transform: none; transition: none; } }
+
+#mic.on { border-color: var(--leaf); box-shadow: 0 0 0 2px rgba(47, 125, 91, 0.35); }
+#mic.recording.on { border-color: var(--wine); }
