@@ -25,6 +25,10 @@ Local assistant engine: simple messages answer inline in seconds; slow work
 | `LITEAGENT_GATE_BACKEND` | `heuristic` (`laya` needs `uv sync --extra laya`) |
 | `LITEAGENT_GATE_MIN_CONFIDENCE` | `0.6` |
 | `LITEAGENT_DB_PATH` | `liteagent.db` |
+| `LITEAGENT_RESEARCH_BACKEND` | `off` (`ddg` = DuckDuckGo HTML, `searxng` = a SearXNG instance) |
+| `LITEAGENT_SEARXNG_URL` | `http://localhost:8080` |
+| `LITEAGENT_RESEARCH_SCORER` | `keepall` (`laya` is opt-in) |
+| `LITEAGENT_RESULT_CUTOFF` | `0.2` |
 
 ## Test
 
