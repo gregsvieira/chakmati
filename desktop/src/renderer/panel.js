@@ -249,15 +249,23 @@
       return;
     }
     const chunks = [];
+    let discard = false;
+    let audioCtx = null;
     recorder = new MediaRecorder(stream);
     recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
     recorder.onstop = async () => {
       stream.getTracks().forEach((t) => t.stop());
+      if (audioCtx) audioCtx.close().catch(() => {});
       clearTimeout(recordTimer);
       micState(false);
+      micButton.style.setProperty('--level', '0');
       const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
       recorder = null;
-      if (!blob.size) return;
+      if (discard || !blob.size) {
+        input.placeholder = 'Peça algo ao Chakmati…';
+        if (discard) { thread.push({ role: 'assistant', text: 'Não ouvi nada. Clique no microfone e fale de novo.', status: 'error' }); renderThread(); }
+        return;
+      }
       input.placeholder = 'Transcrevendo…';
       const res = await api.transcribe(new Uint8Array(await blob.arrayBuffer()), blob.type);
       input.placeholder = 'Peça algo ao Chakmati…';
@@ -267,8 +275,32 @@
     };
     recorder.start();
     micState(true);
-    input.placeholder = 'Ouvindo… clique no microfone para enviar';
-    recordTimer = setTimeout(() => recorder && recorder.stop(), 30000);
+    input.placeholder = 'Ouvindo… fale agora';
+    // It stops by itself when the person finishes speaking (or never starts); the microphone also shows the level it hears.
+    try {
+      audioCtx = new AudioContext();
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 1024;
+      audioCtx.createMediaStreamSource(stream).connect(analyser);
+      const samples = new Float32Array(analyser.fftSize);
+      const detector = window.Vad.createDetector({});
+      const current = recorder;
+      const tick = setInterval(() => {
+        if (recorder !== current) { clearInterval(tick); return; }
+        analyser.getFloatTimeDomainData(samples);
+        let sum = 0;
+        for (const v of samples) sum += v * v;
+        const rms = Math.sqrt(sum / samples.length);
+        micButton.style.setProperty('--level', String(Math.min(rms * 6, 0.6)));
+        if (detector.speaking) input.placeholder = 'Ouvindo… (vou enviar quando você parar de falar)';
+        const verdict = detector.push(rms, 80);
+        if (verdict === 'continue') return;
+        clearInterval(tick);
+        discard = verdict === 'no-speech';
+        current.stop();
+      }, 80);
+    } catch { /* without the level meter it still works: click the microphone again to send */ }
+    recordTimer = setTimeout(() => recorder && recorder.stop(), 35000);
   }
   micButton.addEventListener('click', () => { if (recorder) recorder.stop(); else startListening(); });
 

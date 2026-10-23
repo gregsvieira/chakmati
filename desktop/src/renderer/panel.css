@@ -134,3 +134,7 @@ body[data-still] #mic.recording { animation: none; }
 .turn.assistant .turn-actions button { height: 30px; padding: 0 12px; font-size: 13px; }
 .turn.assistant .decision-result { margin: 6px 0 0; }
 .audio audio { color-scheme: light dark; }
+
+#mic.recording { transform: scale(calc(1 + var(--level, 0))); transition: transform 0.08s linear; }
+body[data-still] #mic.recording { transform: none; }
+@media (prefers-reduced-motion: reduce) { #mic.recording { transform: none; transition: none; } }
