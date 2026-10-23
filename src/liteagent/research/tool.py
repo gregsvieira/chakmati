@@ -1,0 +1,83 @@
+import asyncio
+from dataclasses import dataclass
+
+from ..llm import ChatClient
+from ..loop.scorer import PartScorer
+from .fetch import PageFetcher, chunk_text, extract_text
+from .filter import filter_results, rank_passages
+from .search import SearchBackend
+
+COMPOSE_SYSTEM = (
+    "Answer the question in the user's language using ONLY the numbered passages below. "
+    "Cite the passages you use as [n]. If the passages do not contain the answer, say so "
+    "instead of guessing."
+)
+NOTHING_FOUND = "Não encontrei informações utilizáveis na web para esta pergunta."
+
+
+@dataclass(frozen=True)
+class ResearchAnswer:
+    answer: str
+    sources: list[str]
+
+    def render(self) -> str:
+        if not self.sources:
+            return self.answer
+        return self.answer + "\n\nFontes:\n" + "\n".join(f"- {u}" for u in self.sources)
+
+
+class ResearchTool:
+    def __init__(
+        self,
+        search: SearchBackend,
+        fetcher: PageFetcher,
+        llm: ChatClient,
+        scorer: PartScorer,
+        max_pages: int = 4,
+        passages: int = 4,
+        result_cutoff: float = 0.2,
+    ):
+        self._search = search
+        self._fetcher = fetcher
+        self._llm = llm
+        self._scorer = scorer
+        self._max_pages = max_pages
+        self._passages = passages
+        self._cutoff = result_cutoff
+
+    async def answer(self, query: str) -> ResearchAnswer:
+        results = await self._search.search(query, limit=10)
+        results = await asyncio.to_thread(
+            filter_results, query, results, self._scorer, self._cutoff
+        )
+        chosen = results[: self._max_pages]
+        bodies = await asyncio.gather(*(self._fetcher.fetch(r.url) for r in chosen))
+
+        pairs: list[tuple[str, str]] = []  # (passage, url)
+        for result, body in zip(chosen, bodies, strict=True):
+            if body is None:
+                continue
+            for passage in chunk_text(extract_text(body, result.url)):
+                pairs.append((passage, result.url))
+        if not pairs:
+            return ResearchAnswer(NOTHING_FOUND, [])
+
+        best = await asyncio.to_thread(
+            rank_passages, query, [p for p, _ in pairs], self._scorer, self._passages
+        )
+        url_of: dict[str, str] = {}
+        for passage, url in pairs:
+            url_of.setdefault(passage, url)
+        numbered = "\n".join(f"[{i}] {p}" for i, p in enumerate(best, 1))
+        reply = await self._llm.chat(
+            [
+                {"role": "system", "content": COMPOSE_SYSTEM},
+                {"role": "user", "content": f"Question: {query}\n\nPassages:\n{numbered}"},
+            ]
+        )
+        sources: list[str] = []
+        for passage in best:
+            url = url_of[passage]
+            if url not in sources:
+                sources.append(url)
+        return ResearchAnswer(reply.strip(), sources)
