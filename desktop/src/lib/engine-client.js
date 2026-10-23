@@ -5,6 +5,9 @@
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]']);
 const ACTION_ID = /^[0-9a-f]{32}$/;
 const MAX_TEXT = 8000;
+const CHAT_ID = /^[0-9A-Za-z._-]+@(?:c\.us|lid|g\.us)$/;
+const MESSAGE_ID = /^[0-9A-Za-z_.@:-]{1,160}$/;
+const UI = { 'X-LiteAgent-UI': '1' };
 
 class EngineError extends Error {
   constructor(status, message) {
@@ -83,6 +86,26 @@ class EngineClient {
 
   async notices(after, wait, signal) {
     return (await this._request(`/notices?after=${Number(after) || 0}&wait=${Number(wait) || 0}`, { signal })).json();
+  }
+
+  async chats(limit = 60) {
+    return (await this._request(`/whatsapp/chats?limit=${Math.max(1, Math.min(Number(limit) || 60, 200))}`)).json();
+  }
+
+  async messages(chatId, last = 40) {
+    if (!CHAT_ID.test(chatId)) throw new Error('invalid chat id');
+    const n = Math.max(1, Math.min(Number(last) || 40, 200));
+    return (await this._request(`/whatsapp/chats/${encodeURIComponent(chatId)}/messages?last=${n}`, { headers: UI })).json();
+  }
+
+  // The decrypted voice note as { mime, base64 }. The engine does the downloading and decrypting.
+  async audio(chatId, messageId) {
+    if (!CHAT_ID.test(chatId)) throw new Error('invalid chat id');
+    if (!MESSAGE_ID.test(messageId)) throw new Error('invalid message id');
+    const res = await this._request(`/whatsapp/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}/audio`, { headers: UI });
+    const mime = (res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    if (!mime.startsWith('audio/')) throw new Error('not audio');
+    return { mime, base64: Buffer.from(await res.arrayBuffer()).toString('base64') };
   }
 
   async _decide(id, verb) {

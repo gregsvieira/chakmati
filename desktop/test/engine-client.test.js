@@ -89,3 +89,32 @@ test('streamMessage refuses empty or oversized text', async () => {
   await assert.rejects(() => collect(c.streamMessage('   ')), /empty/i);
   await assert.rejects(() => collect(c.streamMessage('x'.repeat(8001))), /too long/i);
 });
+
+test('messages and audio use the UI header and url-encode the ids', async () => {
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    calls.push({ url, headers: init && init.headers });
+    if (url.endsWith('/audio')) return new Response(Buffer.from('OggS-bytes'), { status: 200, headers: { 'content-type': 'audio/ogg' } });
+    return new Response(JSON.stringify([{ id: 'm1' }]), { status: 200 });
+  };
+  const c = new EngineClient({ fetchImpl });
+  assert.deepEqual(await c.messages('162457@lid', 500), [{ id: 'm1' }]);
+  assert.equal(calls[0].url, 'http://127.0.0.1:8765/whatsapp/chats/162457%40lid/messages?last=200');
+  assert.equal(calls[0].headers['X-LiteAgent-UI'], '1');
+  const a = await c.audio('162457@lid', 'false_162457@lid_AB12');
+  assert.equal(a.mime, 'audio/ogg');
+  assert.equal(Buffer.from(a.base64, 'base64').toString(), 'OggS-bytes');
+  assert.equal(calls[1].url, 'http://127.0.0.1:8765/whatsapp/chats/162457%40lid/messages/false_162457%40lid_AB12/audio');
+});
+
+test('bad chat or message ids never reach the network', async () => {
+  const c = new EngineClient({ fetchImpl: async () => { throw new Error('should not be called'); } });
+  await assert.rejects(() => c.messages('../../etc'), /invalid chat id/);
+  await assert.rejects(() => c.audio('1@lid', 'a b/c'), /invalid message id/);
+  await assert.rejects(() => c.audio('x', 'ok'), /invalid chat id/);
+});
+
+test('audio refuses a response that is not audio', async () => {
+  const c = new EngineClient({ fetchImpl: async () => new Response('<html>', { status: 200, headers: { 'content-type': 'text/html' } }) });
+  await assert.rejects(() => c.audio('1@lid', 'm1'), /not audio/);
+});

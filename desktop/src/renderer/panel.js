@@ -17,10 +17,10 @@
       else if (v === true) node.setAttribute(k, '');
       else if (v !== false && v != null) node.setAttribute(k, String(v));
     }
-    for (const kid of kids.flat()) if (kid != null) node.append(kid);
+    for (const kid of kids.flat(Infinity)) if (kid != null && kid !== false) node.append(kid);
     return node;
   }
-  const fill = (parent, ...kids) => parent.replaceChildren(...kids.flat().filter(Boolean));
+  const fill = (parent, ...kids) => parent.replaceChildren(...kids.flat(Infinity).filter(Boolean));
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
   // ------------------------------------------------------------------ rendering
@@ -84,9 +84,14 @@
     const unread = wa.unread || [];
     if (!unread.length) { fill($('messages-body'), h('p', { class: 'empty' }, 'Nenhuma mensagem nova.')); return; }
     const masked = state.settings.masked;
-    fill($('messages-body'), unread.map((c) => h('div', { class: 'row' },
-      h('span', { class: 'name' }, masked ? 'Uma conversa' : c.name, c.is_group && !masked ? h('span', { class: 'tag' }, ' (grupo)') : null),
-      h('span', { class: 'badge', 'aria-label': plural(c.unread, 'mensagem nova', 'mensagens novas') }, String(c.unread)))));
+    const shown = unread.slice(0, 2);
+    const rowFor = (c) => {
+      const label = [h('span', { class: 'name' }, masked ? 'Uma conversa' : c.name, c.is_group && !masked ? h('span', { class: 'tag' }, ' (grupo)') : null),
+        h('span', { class: 'badge', 'aria-label': plural(c.unread, 'mensagem nova', 'mensagens novas') }, String(c.unread))];
+      return masked ? h('div', { class: 'row' }, label) : h('button', { class: 'row row-btn', type: 'button', onclick: () => openChat(c, 'main') }, label);
+    };
+    fill($('messages-body'), shown.map(rowFor),
+      unread.length > 2 && !masked ? h('button', { class: 'more', type: 'button', onclick: openChats }, `Ver mais (${unread.length - 2})`) : null);
   }
 
   function renderAgenda() {
@@ -206,16 +211,75 @@
     submit(text);
   });
 
-  // Ajustes is its own screen: it replaces the main view and the command line until the person goes back
-  function showSettings(on) {
-    $('settings-view').hidden = !on;
-    $('content').hidden = on;
-    $('foot').hidden = on;
-    if (on) $('settings-view').scrollTop = 0;
+  // Each screen replaces the others: main (with the command line), Ajustes, the list of conversations, one conversation.
+  const SCREENS = { main: ['content', 'foot'], settings: ['settings-view'], chats: ['chats-view'], chat: ['chat-view'] };
+  let screen = 'main';
+  let backTo = 'main';
+  function showView(name) {
+    screen = name;
+    for (const [view, ids] of Object.entries(SCREENS)) for (const id of ids) $(id).hidden = view !== name;
+    if (name !== 'main') $(SCREENS[name][0]).scrollTop = 0;
     else $('input').focus();
   }
-  $('open-settings').addEventListener('click', () => showSettings(true));
-  $('back').addEventListener('click', () => showSettings(false));
+  const showSettings = (on) => showView(on ? 'settings' : 'main');
+  $('open-settings').addEventListener('click', () => showView('settings'));
+  $('back').addEventListener('click', () => showView('main'));
+  for (const b of document.querySelectorAll('[data-back]')) b.addEventListener('click', () => showView(screen === 'chat' ? backTo : 'main'));
+
+  const fmtDuration = (s) => (Number.isFinite(s) ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '');
+  const fmtTime = (iso) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+  async function openChats() {
+    backTo = 'main';
+    showView('chats');
+    fill($('chats-body'), h('p', { class: 'empty' }, 'Carregando…'));
+    const res = await api.chats();
+    if (!res || res.error) { fill($('chats-body'), h('p', { class: 'warn' }, (res && res.error) || 'Não consegui carregar as conversas.')); return; }
+    const unread = res.chats.filter((c) => c.unread > 0);
+    const rest = res.chats.filter((c) => c.unread === 0).slice(0, 30);
+    const row = (c) => h('button', { class: 'row row-btn', type: 'button', onclick: () => openChat(c, 'chats') },
+      h('span', { class: 'name' }, c.name, c.is_group ? h('span', { class: 'tag' }, ' (grupo)') : null),
+      c.unread > 0 ? h('span', { class: 'badge' }, String(c.unread)) : null);
+    fill($('chats-body'),
+      unread.length ? [h('h3', {}, 'Com mensagens novas'), unread.map(row)] : h('p', { class: 'empty' }, 'Nenhuma mensagem nova.'),
+      rest.length ? [h('h3', {}, 'Recentes'), rest.map(row)] : null);
+  }
+
+  async function openChat(chat, from) {
+    backTo = from;
+    showView('chat');
+    $('chat-title').textContent = chat.name;
+    fill($('chat-body'), h('p', { class: 'empty' }, 'Carregando…'));
+    const res = await api.messages(chat.id);
+    if (!res || res.error) { fill($('chat-body'), h('p', { class: 'warn' }, (res && res.error) || 'Não consegui carregar as mensagens.')); return; }
+    if (!res.messages.length) { fill($('chat-body'), h('p', { class: 'empty' }, 'Nenhuma mensagem carregada.')); return; }
+    fill($('chat-body'), res.messages.map((m) => messageNode(chat, m)));
+    $('chat-view').scrollTop = $('chat-view').scrollHeight;
+  }
+
+  function messageNode(chat, m) {
+    let body;
+    if (m.audio) body = audioNode(chat, m);
+    else if (m.kind !== 'chat') body = h('span', { class: 'media-note' }, `[${m.kind === 'ptt' || m.kind === 'audio' ? 'áudio' : m.kind === 'image' ? 'imagem' : m.kind}]`, m.text ? ` ${m.text}` : '');
+    else body = h('span', {}, m.text);
+    return h('div', { class: `msg ${m.from_me ? 'out' : 'in'}` }, body, h('span', { class: 'msg-time' }, fmtTime(m.ts)));
+  }
+
+  function audioNode(chat, m) {
+    const holder = h('div', { class: 'audio' });
+    const play = h('button', { class: 'ghost play', type: 'button' }, `▶ Ouvir áudio ${fmtDuration(m.duration)}`.trim());
+    play.addEventListener('click', async () => {
+      play.disabled = true;
+      play.textContent = 'Carregando…';
+      const res = await api.audio(chat.id, m.id);
+      if (!res || res.error) { play.disabled = false; play.textContent = '▶ Tentar de novo'; holder.append(h('p', { class: 'warn' }, (res && res.error) || 'Não foi possível carregar o áudio.')); return; }
+      const player = h('audio', { controls: true, src: res.dataUrl, 'aria-label': 'Áudio de ' + chat.name });
+      holder.replaceChildren(player);
+      player.play().catch(() => { /* the person can press play */ });
+    });
+    holder.append(play);
+    return holder;
+  }
 
   $('close').addEventListener('click', () => { showSettings(false); api.close(); });
   document.addEventListener('keydown', (e) => {

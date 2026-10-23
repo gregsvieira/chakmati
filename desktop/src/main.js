@@ -62,6 +62,11 @@ const webPreferences = () => ({
   spellcheck: false,
 });
 
+// Saves the settings file; a no-op when there is none (design-snapshot mode), so a stray click can never crash the app.
+function persistSettings() {
+  if (settingsFile) settingsLib.save(settingsFile, settings);
+}
+
 // ---------------------------------------------------------------------------------------------------- display helpers
 function nearestWorkArea(point) { return screen.getDisplayNearestPoint(point).workArea; }
 
@@ -433,7 +438,7 @@ function updateSetting(key, value) {
     settings[key] = value;
     if (engineProcess) restartEngine().then(refreshOverview);
   } else return false;
-  settingsLib.save(settingsFile, settings);
+  persistSettings();
   protect(widgetWin);
   protect(panelWin);
   applyLayout();
@@ -468,7 +473,7 @@ function registerIpc() {
   });
   ipcMain.on('widget:drag-end', (_e, moved) => {
     dragStart = null;
-    if (moved === true) { settings.icon = { ...icon }; settingsLib.save(settingsFile, settings); }
+    if (moved === true) { settings.icon = { ...icon }; persistSettings(); }
   });
   ipcMain.on('widget:toggle', togglePanel);
   ipcMain.on('widget:bubble-click', openPanel);
@@ -480,6 +485,26 @@ function registerIpc() {
   ipcMain.on('panel:panic', () => setHidden(true));
   ipcMain.on('panel:cancel', (_e, id) => { const ac = streams.get(id); if (ac) ac.abort(); });
 
+  // Reading a conversation. Names and texts are hidden in discreet mode, so these refuse to run then.
+  const guard = () => (settings.masked ? 'Modo discreto ligado: desligue em Ajustes para ver as conversas.' : state.engineUp ? null : 'O motor não está rodando.');
+  ipcMain.handle('panel:chats', async () => {
+    const blocked = guard();
+    if (blocked) return { error: blocked };
+    try { return { chats: await engine.chats(80) }; } catch (e) { return { error: friendlyError(e) }; }
+  });
+  ipcMain.handle('panel:messages', async (_e, chatId) => {
+    const blocked = guard();
+    if (blocked || typeof chatId !== 'string') return { error: blocked || 'Conversa inválida.' };
+    try { return { messages: await engine.messages(chatId, 40) }; } catch (e) { return { error: friendlyError(e) }; }
+  });
+  ipcMain.handle('panel:audio', async (_e, chatId, messageId) => {
+    const blocked = guard();
+    if (blocked || typeof chatId !== 'string' || typeof messageId !== 'string') return { error: blocked || 'Áudio inválido.' };
+    try {
+      const a = await engine.audio(chatId, messageId);
+      return { dataUrl: `data:${a.mime};base64,${a.base64}` };
+    } catch (e) { return { error: e instanceof EngineError && e.status === 404 ? 'Este áudio não pode ser reproduzido.' : friendlyError(e) }; }
+  });
   ipcMain.handle('panel:openwa', () => openWaSetup());
   ipcMain.handle('panel:set-setting', (_e, payload) => (payload && updateSetting(payload.key, payload.value) ? { ok: true } : { ok: false }));
 
@@ -578,7 +603,20 @@ async function runSnapshots() {
   const out = SNAPSHOT === '1' ? path.join(app.getPath('temp'), 'liteagent-desktop-snapshots') : SNAPSHOT;
   fs.mkdirSync(out, { recursive: true });
   settings = { ...settingsLib.DEFAULTS, protect: false };
-  engine = { overview: async () => SAMPLE_OVERVIEW };
+  const SAMPLE_CHATS = [
+    { id: '162457238634742@lid', name: 'Maria Victoria', is_group: false, unread: 2 },
+    { id: '120363@g.us', name: 'Família', is_group: true, unread: 5 },
+    { id: '222@lid', name: 'João Pereira', is_group: false, unread: 1 },
+    { id: '333@lid', name: 'Tio Alex', is_group: false, unread: 0 },
+  ];
+  const now = new Date().toISOString();
+  const SAMPLE_MESSAGES = [
+    { id: 'm1', sender: 'Maria Victoria', text: 'Oi! Chego em 10 minutos', ts: now, from_me: false, kind: 'chat', duration: null, audio: false },
+    { id: 'm2', sender: 'Maria Victoria', text: '', ts: now, from_me: false, kind: 'ptt', duration: 25, audio: true },
+    { id: 'm3', sender: 'eu', text: 'Combinado, te espero na portaria', ts: now, from_me: true, kind: 'chat', duration: null, audio: false },
+    { id: 'm4', sender: 'Maria Victoria', text: '', ts: now, from_me: false, kind: 'image', duration: null, audio: false },
+  ];
+  engine = { overview: async () => SAMPLE_OVERVIEW, chats: async () => SAMPLE_CHATS, messages: async () => SAMPLE_MESSAGES };
   state.engineUp = true;
   state.overview = SAMPLE_OVERVIEW;
   state.notices = [
@@ -628,6 +666,13 @@ async function runSnapshots() {
   sendPanelState();
   await shot('panel.png', panelWin);
 
+  const click = (sel) => panelWin.webContents.executeJavaScript(`document.querySelector(${JSON.stringify(sel)}).click()`);
+  await click('.more');
+  await shot('panel-chats.png', panelWin);
+  await click('#chats-body .row-btn');
+  await shot('panel-chat.png', panelWin);
+  await click('[data-back]');
+  await click('#chats-view [data-back]');
   await panelWin.webContents.executeJavaScript("document.getElementById('open-settings').click()");
   await shot('panel-settings.png', panelWin);
   await panelWin.webContents.executeJavaScript("document.getElementById('back').click()");
