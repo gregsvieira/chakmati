@@ -11,6 +11,8 @@ class Settings:
     gate_backend: str = "heuristic"  # "heuristic" | "laya"
     gate_min_confidence: float = 0.6
     db_path: str = "liteagent.db"
+    research_backend: str = "off"  # "off" | "ddg"
+    result_cutoff: float = 0.2
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "Settings":
@@ -25,4 +27,6 @@ class Settings:
                 env.get("LITEAGENT_GATE_MIN_CONFIDENCE", d.gate_min_confidence)
             ),
             db_path=env.get("LITEAGENT_DB_PATH", d.db_path),
+            research_backend=env.get("LITEAGENT_RESEARCH_BACKEND", d.research_backend),
+            result_cutoff=float(env.get("LITEAGENT_RESULT_CUTOFF", d.result_cutoff)),
         )

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from .gate.base import Gate, Route
 from .jobs import Job, JobStore
 from .llm import ChatClient
+from .research.tool import ResearchTool
 
 SYSTEM_PROMPTS: dict[Route, str] = {
     Route.CHAT: "You are a concise, friendly assistant. Answer in the user's language.",
@@ -34,10 +35,17 @@ def _messages(route: Route, text: str) -> list[dict[str, str]]:
 
 
 class Engine:
-    def __init__(self, gate: Gate, llm: ChatClient, store: JobStore):
+    def __init__(
+        self,
+        gate: Gate,
+        llm: ChatClient,
+        store: JobStore,
+        researcher: ResearchTool | None = None,
+    ):
         self._gate = gate
         self._llm = llm
         self._store = store
+        self._researcher = researcher
 
     async def handle(self, text: str) -> Reply:
         decision = await asyncio.to_thread(self._gate.classify, text)
@@ -48,4 +56,6 @@ class Engine:
         return Reply("job", decision.route, job_id=job_id)
 
     async def run_job(self, job: Job) -> str:
+        if self._researcher is not None and job.route == Route.RESEARCH.value:
+            return (await self._researcher.answer(job.prompt)).render()
         return await self._llm.chat(_messages(Route(job.route), job.prompt))

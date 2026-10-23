@@ -28,3 +28,10 @@ def test_from_env_overrides():
 
 def test_from_env_empty_uses_defaults():
     assert Settings.from_env({}) == Settings()
+
+
+def test_research_settings():
+    d = Settings()
+    assert (d.research_backend, d.result_cutoff) == ("off", 0.2)
+    s = Settings.from_env({"LITEAGENT_RESEARCH_BACKEND": "ddg", "LITEAGENT_RESULT_CUTOFF": "0.3"})
+    assert (s.research_backend, s.result_cutoff) == ("ddg", 0.3)

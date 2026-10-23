@@ -7,13 +7,26 @@ from .engine import Engine
 from .gate import build_gate
 from .jobs import JobStore, Worker
 from .llm import OllamaClient
+from .loop.twostage import LayaRelevanceScorer
+from .research.fetch import PageFetcher
+from .research.search import DuckDuckGoHtmlBackend
+from .research.tool import ResearchTool
 
 
 def build_app(settings: Settings | None = None) -> FastAPI:
     s = settings or Settings.from_env()
     store = JobStore(s.db_path)
     llm = OllamaClient(s.ollama_url, s.chat_model, think=s.think)
-    engine = Engine(build_gate(s), llm, store)
+    researcher = None
+    if s.research_backend == "ddg":
+        researcher = ResearchTool(
+            DuckDuckGoHtmlBackend(),
+            PageFetcher(),
+            llm,
+            LayaRelevanceScorer(),
+            result_cutoff=s.result_cutoff,
+        )
+    engine = Engine(build_gate(s), llm, store, researcher=researcher)
     return create_app(engine, store, Worker(store, engine.run_job))
 
 

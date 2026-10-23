@@ -1,0 +1,64 @@
+from liteagent.config import Settings
+from liteagent.engine import Engine
+from liteagent.gate.base import GateResult, Route
+from liteagent.jobs import JobStore
+from liteagent.main import build_app
+from liteagent.research.tool import ResearchAnswer
+
+
+class FakeGate:
+    def __init__(self, route):
+        self.route = route
+
+    def classify(self, text):
+        return GateResult(self.route, 1.0, "fake")
+
+
+class FakeLLM:
+    def __init__(self):
+        self.calls = []
+
+    async def chat(self, messages):
+        self.calls.append(messages)
+        return "plain llm answer"
+
+
+class FakeResearcher:
+    def __init__(self):
+        self.queries = []
+
+    async def answer(self, query):
+        self.queries.append(query)
+        return ResearchAnswer("web answer", ["https://a.test"])
+
+
+async def test_research_job_uses_researcher_and_renders_sources():
+    store, llm, researcher = JobStore(":memory:"), FakeLLM(), FakeResearcher()
+    engine = Engine(FakeGate(Route.RESEARCH), llm, store, researcher=researcher)
+    reply = await engine.handle("pesquise X")
+    assert await engine.run_job(store.get(reply.job_id)) == "web answer\n\nFontes:\n- https://a.test"
+    assert researcher.queries == ["pesquise X"]
+    assert llm.calls == []
+
+
+async def test_task_job_ignores_researcher():
+    store, llm, researcher = JobStore(":memory:"), FakeLLM(), FakeResearcher()
+    engine = Engine(FakeGate(Route.TASK), llm, store, researcher=researcher)
+    reply = await engine.handle("crie um script")
+    assert await engine.run_job(store.get(reply.job_id)) == "plain llm answer"
+    assert researcher.queries == []
+
+
+def test_build_app_wires_researcher_only_when_enabled(monkeypatch):
+    captured = {}
+    real_init = Engine.__init__
+
+    def spy(self, *args, **kwargs):
+        captured["researcher"] = kwargs.get("researcher")
+        real_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(Engine, "__init__", spy)
+    build_app(Settings(db_path=":memory:", research_backend="ddg"))
+    assert captured["researcher"] is not None
+    build_app(Settings(db_path=":memory:"))
+    assert captured["researcher"] is None
