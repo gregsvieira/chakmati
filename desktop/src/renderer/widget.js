@@ -35,6 +35,7 @@
   }
 
   api.onLayout((l) => { layout = l; placeBubble(); });
+  api.onStill((on) => document.body.toggleAttribute('data-still', !!on));
   api.onMood((m) => robot.setMood(m));
   api.onBackdrop((on) => document.body.classList.toggle('backdrop', !!on));
   api.onBubble((b) => {

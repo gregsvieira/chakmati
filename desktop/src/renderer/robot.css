@@ -6,17 +6,7 @@
 }
 .robot .head { fill: url(#g-head); stroke: var(--metal-edge); stroke-width: 1.2; }
 #g-head .hi { stop-color: var(--metal-hi); } #g-head .mid { stop-color: var(--metal); } #g-head .lo { stop-color: var(--metal-lo); }
-#g-wood .wood-hi { stop-color: #b66a3b; } #g-wood .wood-lo { stop-color: #5e2e14; }
-#g-door .door-hi { stop-color: #2f6b3d; } #g-door .door-lo { stop-color: #0f3a22; }
 #g-flap .flap-hi { stop-color: var(--green-hi); } #g-flap .flap-lo { stop-color: var(--green); }
-.robot .frame { fill: url(#g-wood); stroke: #3d1c0b; stroke-width: 0.8; }
-.robot .inside { fill: #16110f; }
-.robot .fold { fill: none; stroke: rgba(255, 255, 255, 0.07); stroke-width: 3; stroke-linecap: round; }
-.robot .door-edge { fill: #5e2e14; }
-.robot .door { fill: url(#g-door); stroke: #0a2515; stroke-width: 0.6; }
-.robot .rivet { fill: #c9a86a; }
-.robot .hinge { fill: #8a8f96; }
-.robot .sill { fill: #7a3f1d; stroke: #3d1c0b; stroke-width: 0.6; }
 .robot .spring { fill: #b8402a; }
 .robot .spring-line { fill: none; stroke: #6f2216; stroke-width: 1; }
 .robot .shine { fill: none; stroke: rgba(255, 255, 255, 0.6); stroke-width: 1.8; stroke-linecap: round; }
@@ -77,3 +67,7 @@
   .robot *, .robot[data-mood] * { animation: none !important; transition: none !important; }
   .robot[data-talking="true"] .flap { transform: translateY(2px); }
 }
+
+/* Ajustes > Desativar animações: Chakmati stays still (mouth half open while speaking) */
+body[data-still] .robot *, body[data-still] #bubble { animation: none !important; transition: none !important; }
+body[data-still] .robot[data-talking="true"] .flap { transform: translateY(2px); }

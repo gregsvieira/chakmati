@@ -42,6 +42,12 @@ test('the mood is auto unless one of the known moods is pinned', () => {
   assert.equal(normalize({ mood: 'angry' }).mood, 'auto');
 });
 
+test('animations are on by default and can be switched off', () => {
+  assert.equal(DEFAULTS.still, false);
+  assert.equal(normalize({ still: true }).still, true);
+  assert.equal(normalize({ still: 'yes' }).still, false);
+});
+
 test('integrations are off by default and map to the engine environment', () => {
   assert.deepEqual(engineEnv(DEFAULTS), { LITEAGENT_WHATSAPP_BACKEND: 'off', LITEAGENT_CALENDAR_BACKEND: 'off' });
   assert.deepEqual(engineEnv({ ...DEFAULTS, whatsapp: true, calendar: true }), { LITEAGENT_WHATSAPP_BACKEND: 'openwa', LITEAGENT_CALENDAR_BACKEND: 'auto' });

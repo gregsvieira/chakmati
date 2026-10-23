@@ -1,5 +1,5 @@
 // Chakmati: a tall, thin tin-can head with a yellow hat, big sleepy eyes under blue eyelids, a red nose and a green chin
-// flap for a mouth. In the widget it leans out of a wooden alcove with a green door swung open beside it.
+// flap for a mouth, on a long spring neck.
 // Built with DOM calls (no innerHTML). setMood(): idle, alert, thinking, happy, offline.
 (function () {
   const NS = 'http://www.w3.org/2000/svg';
@@ -43,17 +43,6 @@
     el('path', { class: 'lash', d: `M${5 * side} -5.6 q${2.6 * side} -.6 ${3.1 * side} -3.6` }, outer);
   }
 
-  // Props only: a small wooden window and a half-open door at his neck, as if he had climbed out of the computer screen.
-  function scene(svg) {
-    el('path', { class: 'frame', 'fill-rule': 'evenodd', d: 'M27 90 Q27 84 33 84 L63 84 Q69 84 69 90 L69 102 Q69 108 63 108 L33 108 Q27 108 27 102 Z M33 90 Q33 88.5 35 88.5 L61 88.5 Q63 88.5 63 90 L63 102 Q63 103.5 61 103.5 L35 103.5 Q33 103.5 33 102 Z' }, svg);
-    el('path', { class: 'inside', d: 'M33 90 Q33 88.5 35 88.5 L61 88.5 Q63 88.5 63 90 L63 102 Q63 103.5 61 103.5 L35 103.5 Q33 103.5 33 102 Z' }, svg);
-    // door swung open in perspective, same height as the window
-    el('path', { class: 'door-edge', d: 'M69 88 L79 91 L79 101.5 L69 104 Z' }, svg);
-    el('path', { class: 'door', d: 'M70 89.2 L77.8 91.8 L77.8 100.6 L70 102.6 Z' }, svg);
-    [93.5, 97.5].forEach((y) => el('circle', { class: 'rivet', cx: 76.4, cy: y, r: 0.7 }, svg));
-    el('rect', { class: 'hinge', x: 68, y: 88.5, width: 2.4, height: 15, rx: 0.8 }, svg);
-  }
-
   function character(svg, parent) {
     // spring neck and bow tie (the frame's sill hides the bottom of the spring)
     const neck = el('g', { class: 'neck' }, parent);
@@ -94,13 +83,11 @@
     el('ellipse', { class: 'crown-top', cx: 47, cy: 3.4, rx: 15.5, ry: 1.6 }, hat);
   }
 
-  function create(container, { scene: withScene = true } = {}) {
-    const svg = el('svg', { viewBox: withScene ? '6 0 80 110' : '27 0 40 100', class: 'robot', 'data-mood': 'idle', role: 'img', 'aria-label': 'Chakmati' }, container);
+  function create(container) {
+    const svg = el('svg', { viewBox: '24 0 46 100', class: 'robot', 'data-mood': 'idle', role: 'img', 'aria-label': 'Chakmati' }, container);
     defs(svg);
-    if (withScene) scene(svg);
     const group = el('g', {}, svg);
     character(svg, group);
-    if (withScene) el('path', { class: 'sill', d: 'M31 99.5 Q31 98 33 98 L63 98 Q65 98 65 99.5 L65 105 Q65 107 63 107 L33 107 Q31 107 31 105 Z' }, svg);
     return {
       svg,
       setTalking(on) { svg.setAttribute('data-talking', on ? 'true' : 'false'); },

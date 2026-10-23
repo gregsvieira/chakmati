@@ -1,7 +1,7 @@
 (function () {
   const api = window.assistant.panel;
   const $ = (id) => document.getElementById(id);
-  const robot = window.Robot.create($('head-robot'), { scene: false });
+  const robot = window.Robot.create($('head-robot'));
   const { relativeTime } = window.RelTime;
 
   let state = null;
@@ -61,12 +61,24 @@
     setTimeout(() => { decided.delete(id); if (state) renderDecisions(); }, 5000);
   }
 
+  let waNote = '';
+  async function connectWhatsApp() {
+    waNote = 'Abrindo o OpenWA…';
+    renderMessages();
+    const res = await api.openWa();
+    waNote = res && res.ok ? 'OpenWA aberto. Escaneie o QR na janela que apareceu e volte aqui.' : (res && res.error) || 'Não consegui abrir o OpenWA.';
+    renderMessages();
+  }
+
   function renderMessages() {
     const wa = (state.overview && state.overview.whatsapp) || { enabled: false };
     $('messages').hidden = !wa.enabled;
     if (!wa.enabled) return;
     if (wa.error || wa.connected === false) {
-      fill($('messages-body'), h('p', { class: 'warn' }, 'O WhatsApp está desconectado. Abra o OpenWA e escaneie o QR em Aparelhos conectados.'));
+      fill($('messages-body'),
+        h('p', { class: 'warn' }, 'O WhatsApp está desconectado. Abra o OpenWA e escaneie o QR em Aparelhos conectados.'),
+        state.canOpenWa ? h('button', { class: 'primary', type: 'button', id: 'wa-connect-inline', onclick: connectWhatsApp }, 'Conectar WhatsApp via OpenWa') : null,
+        h('p', { class: 'hint', id: 'wa-connect-note' }, waNote));
       return;
     }
     const unread = wa.unread || [];
@@ -112,6 +124,8 @@
     $('set-masked').checked = !!state.settings.masked;
     $('set-side').value = state.settings.bubbleSide;
     $('set-mood').value = state.settings.mood;
+    $('set-still').checked = !!state.settings.still;
+    document.body.toggleAttribute('data-still', !!state.settings.still);
     $('set-whatsapp').checked = !!state.settings.whatsapp;
     $('set-calendar').checked = !!state.settings.calendar;
     const wa = (state.overview && state.overview.whatsapp) || { enabled: false };
@@ -213,7 +227,8 @@
   $('set-masked').addEventListener('change', (e) => api.setSetting('masked', e.target.checked));
   $('set-whatsapp').addEventListener('change', (e) => api.setSetting('whatsapp', e.target.checked));
   $('set-calendar').addEventListener('change', (e) => api.setSetting('calendar', e.target.checked));
-  $('wa-connect').addEventListener('click', () => api.openWa());
+  $('wa-connect').addEventListener('click', connectWhatsApp);
+  $('set-still').addEventListener('change', (e) => api.setSetting('still', e.target.checked));
   $('set-mood').addEventListener('change', (e) => api.setSetting('mood', e.target.value));
   $('set-side').addEventListener('change', (e) => api.setSetting('bubbleSide', e.target.value));
 

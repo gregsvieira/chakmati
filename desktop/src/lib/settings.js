@@ -7,6 +7,7 @@ const SIDES = ['auto', 'top', 'bottom', 'left', 'right'];
 const MOODS = ['auto', 'idle', 'alert', 'thinking', 'happy'];
 const DEFAULTS = Object.freeze({
   protect: true,          // ask the OS to leave the windows out of screen sharing and recordings (best effort)
+  still: false,           // true = no animations: Chakmati stays still
   masked: false,          // discreet mode: bubbles never show names or titles
   bubbleSide: 'auto',
   mood: 'auto',           // 'auto' follows what is happening; the others pin Chakmati's face (offline still shows)
@@ -21,6 +22,7 @@ function normalize(raw) {
   const s = { ...DEFAULTS };
   if (typeof r.protect === 'boolean') s.protect = r.protect;
   if (typeof r.masked === 'boolean') s.masked = r.masked;
+  if (typeof r.still === 'boolean') s.still = r.still;
   if (typeof r.whatsapp === 'boolean') s.whatsapp = r.whatsapp;
   if (typeof r.calendar === 'boolean') s.calendar = r.calendar;
   if (SIDES.includes(r.bubbleSide)) s.bubbleSide = r.bubbleSide;

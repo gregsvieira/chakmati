@@ -189,7 +189,7 @@ function panelState() {
     busy: state.busy > 0,
     describe: { ...currentDescription(), mood: effectiveMood(currentDescription().mood) },
     notices: state.notices.slice(-20),
-    settings: { protect: settings.protect, masked: settings.masked, bubbleSide: settings.bubbleSide, mood: settings.mood, whatsapp: settings.whatsapp, calendar: settings.calendar },
+    settings: { protect: settings.protect, masked: settings.masked, still: settings.still, bubbleSide: settings.bubbleSide, mood: settings.mood, whatsapp: settings.whatsapp, calendar: settings.calendar },
     ownsEngine: !!engineProcess,
     canOpenWa: !!projectRoot(),
     hotkeys: { toggle: prettyHotkey(HOTKEYS.toggle), panic: prettyHotkey(HOTKEYS.panic) },
@@ -316,12 +316,28 @@ async function restartEngine() {
   return startEngine();
 }
 
-function openWaSetup() {
+// Starts OpenWA with its visible browser window (the QR code is scanned there). Reports what happened instead of failing silently.
+async function openWaSetup() {
   const root = projectRoot();
-  if (!root) return false;
-  // visible browser window: the QR code is scanned there on first use
-  spawn('bash', [path.join(root, 'scripts', 'openwa.sh'), 'start'], { cwd: root, stdio: 'ignore', detached: true }).unref();
-  return true;
+  if (!root) return { ok: false, error: 'Não encontrei a pasta do lite-agent.' };
+  const logFile = path.join(app.getPath('userData'), 'openwa.log');
+  const log = fs.openSync(logFile, 'a');
+  const env = { ...process.env, PATH: `${process.env.PATH || ''}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin` };
+  const child = spawn('bash', [path.join(root, 'scripts', 'openwa.sh'), 'start'], { cwd: root, stdio: ['ignore', log, log], env, detached: true });
+  fs.closeSync(log);
+  const early = await new Promise((resolve) => {
+    child.once('error', (e) => resolve({ code: -1, message: e.message }));
+    child.once('exit', (code) => resolve({ code }));
+    setTimeout(() => resolve(null), 2500);
+  });
+  child.unref();
+  if (early && early.code !== 0) {
+    let tail = '';
+    try { tail = fs.readFileSync(logFile, 'utf8').trim().split('\n').slice(-2).join(' '); } catch { /* no log */ }
+    if (/not installed|setup/.test(tail)) return { ok: false, error: 'O OpenWA não está instalado. Rode scripts/openwa.sh setup uma vez.' };
+    return { ok: false, error: early.message || tail || 'Não consegui abrir o OpenWA.' };
+  }
+  return { ok: true };
 }
 
 // ---------------------------------------------------------------------------------------------------- tray and shortcuts
@@ -357,6 +373,7 @@ function updateSetting(key, value) {
   if (key === 'protect' && typeof value === 'boolean') settings.protect = value;
   else if (key === 'masked' && typeof value === 'boolean') settings.masked = value;
   else if (key === 'bubbleSide' && settingsLib.SIDES.includes(value)) settings.bubbleSide = value;
+  else if (key === 'still' && typeof value === 'boolean') { settings.still = value; sendTo(widgetWin, 'widget:still', value); }
   else if (key === 'mood' && settingsLib.MOODS.includes(value)) settings.mood = value;
   else if ((key === 'whatsapp' || key === 'calendar') && typeof value === 'boolean') {
     settings[key] = value;
@@ -387,7 +404,7 @@ function friendlyError(e) {
 }
 
 function registerIpc() {
-  ipcMain.on('widget:ready', () => { applyLayout(); refreshMood(); });
+  ipcMain.on('widget:ready', () => { applyLayout(); refreshMood(); sendTo(widgetWin, 'widget:still', settings.still); });
   ipcMain.on('widget:hover', (_e, inside) => { if (!isLinux && alive(widgetWin)) widgetWin.setIgnoreMouseEvents(!inside, { forward: true }); });
   ipcMain.on('widget:drag-start', () => { dragStart = { ...icon }; });
   ipcMain.on('widget:drag-move', (_e, d) => {
@@ -409,7 +426,7 @@ function registerIpc() {
   ipcMain.on('panel:panic', () => setHidden(true));
   ipcMain.on('panel:cancel', (_e, id) => { const ac = streams.get(id); if (ac) ac.abort(); });
 
-  ipcMain.on('panel:openwa', openWaSetup);
+  ipcMain.handle('panel:openwa', () => openWaSetup());
   ipcMain.handle('panel:set-setting', (_e, payload) => (payload && updateSetting(payload.key, payload.value) ? { ok: true } : { ok: false }));
 
   ipcMain.handle('panel:send', async (_e, text) => {
@@ -568,6 +585,10 @@ async function runSnapshots() {
   sendPanelState();
   await shot('panel-masked.png', panelWin);
   settings.masked = false;
+
+  state.overview = { ...SAMPLE_OVERVIEW, pending: [], whatsapp: { enabled: true, connected: false, state: 'UNPAIRED', unread: [] } };
+  sendPanelState();
+  await shot('panel-wa-down.png', panelWin);
 
   state.engineUp = false;
   state.overview = null;
