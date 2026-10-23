@@ -1,0 +1,30 @@
+from liteagent.config import Settings
+
+
+def test_defaults():
+    s = Settings()
+    assert s.ollama_url == "http://127.0.0.1:11434"
+    assert s.think is False
+    assert s.gate_backend == "heuristic"
+    assert s.gate_min_confidence == 0.6
+
+
+def test_from_env_overrides():
+    s = Settings.from_env(
+        {
+            "LITEAGENT_CHAT_MODEL": "llama3.2:latest",
+            "LITEAGENT_THINK": "1",
+            "LITEAGENT_GATE_BACKEND": "laya",
+            "LITEAGENT_GATE_MIN_CONFIDENCE": "0.8",
+            "LITEAGENT_DB_PATH": "/tmp/x.db",
+        }
+    )
+    assert s.chat_model == "llama3.2:latest"
+    assert s.think is True
+    assert s.gate_backend == "laya"
+    assert s.gate_min_confidence == 0.8
+    assert s.db_path == "/tmp/x.db"
+
+
+def test_from_env_empty_uses_defaults():
+    assert Settings.from_env({}) == Settings()
