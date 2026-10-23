@@ -91,6 +91,11 @@ class Engine:
         """True after a wake phrase, while the assistant waits for the command."""
         return self._now() < self._awake_until
 
+    @property
+    def awake_for(self) -> float:
+        """Seconds left of the wait for a command (0 when asleep)."""
+        return max(0.0, self._awake_until - self._now())
+
     def _wake(self, text: str) -> str | None:
         greeting = wake_reply(text)
         self._awake_until = self._now() + AWAKE_SECONDS if greeting else 0.0  # any other message is the command: waiting ends

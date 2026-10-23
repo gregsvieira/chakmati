@@ -1,19 +1,15 @@
 'use strict';
-// What the always-on microphone does with something it heard. Ordinary talk in the room is ignored; it acts on a wake
-// phrase, while the assistant is waiting for a command, and for a while after an answer to something said aloud, so a
-// conversation can go back and forth without repeating the wake phrase every time.
+// What the always-on microphone does with something it heard, like a smart speaker: ordinary talk in the room is ignored;
+// it acts on a wake phrase, and on the one command that follows it while the assistant is waiting (a few seconds). After
+// the answer it goes back to waiting for the wake phrase.
 (function (root) {
-  const FOLLOW_UP_MS = 45000;
-
-  function shouldAct({ text, wake, awake, now, conversationUntil }) {
+  function shouldAct({ text, wake, awake }) {
     const t = String(text || '').trim();
     if (!t) return false;
-    if (/^(obrigad[oa]\.?|tchau\.?|legendas.*|\.+|…)$/i.test(t) && !wake) return false; // what a recogniser invents from noise
-    return !!wake || !!awake || now < (conversationUntil || 0);
+    if (/^(obrigad[oa]\.?|tchau\.?|legendas.*|thank you\.?|thanks\.?|you\.?|bye\.?|\.+|…)$/i.test(t) && !wake) return false; // what a recogniser invents from noise
+    return !!wake || !!awake;
   }
 
-  const followUpUntil = (now) => now + FOLLOW_UP_MS;
-
-  if (typeof module !== 'undefined' && module.exports) module.exports = { shouldAct, followUpUntil, FOLLOW_UP_MS };
-  else root.ListenPolicy = { shouldAct, followUpUntil, FOLLOW_UP_MS };
+  if (typeof module !== 'undefined' && module.exports) module.exports = { shouldAct };
+  else root.ListenPolicy = { shouldAct };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -6,7 +6,8 @@ from difflib import SequenceMatcher
 
 PERSONA = (
     "Você é um agente brasileiro chamado de Chakmati, que responde e recebe comandos em português brasileiro, "
-    "tem bom humor e ironia."
+    "tem bom humor e ironia, e responde de forma concisa e curta, em geral com cerca de 12 palavras, "
+    "e só se alonga quando o pedido exigir, como listas e pesquisas."
 )
 
 OPEN_DOOR = "Klift, kloft, still, a porta se abriu!"
@@ -14,7 +15,7 @@ PAIZAO = "Klift, still, kloft! fala fióti."
 AGENTE = "Klift, kloft, stão! fala paizão!"
 GREETINGS = {"name": OPEN_DOOR, "paizao": PAIZAO, "agente": AGENTE}
 
-AWAKE_SECONDS = 120.0  # how long it keeps waiting for the command after a wake phrase
+AWAKE_SECONDS = 20.0  # like a smart speaker: after the wake phrase it waits this long for ONE command, then goes back to sleep
 
 _NAME = "xacmati"
 

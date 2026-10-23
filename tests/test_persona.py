@@ -3,7 +3,7 @@ import pytest
 from liteagent.engine import SYSTEM_PROMPTS, Engine
 from liteagent.gate.base import GateResult, Route
 from liteagent.jobs import JobStore
-from liteagent.persona import GREETINGS, PERSONA, wake_reply
+from liteagent.persona import AWAKE_SECONDS, GREETINGS, PERSONA, wake_reply
 from liteagent.research.tool import COMPOSE_SYSTEM
 from liteagent.whatsapp.assistant import SUMMARY_SYSTEM
 
@@ -51,7 +51,8 @@ def test_the_three_greetings_are_exactly_the_requested_ones():
 def test_the_persona_is_the_requested_pre_prompt():
     assert PERSONA == (
         "Você é um agente brasileiro chamado de Chakmati, que responde e recebe comandos em português brasileiro, "
-        "tem bom humor e ironia."
+        "tem bom humor e ironia, e responde de forma concisa e curta, em geral com cerca de 12 palavras, "
+        "e só se alonga quando o pedido exigir, como listas e pesquisas."
     )
 
 
@@ -86,8 +87,8 @@ async def test_wake_phrase_answers_instantly_and_waits_for_a_command():
     assert engine.awake is False
     reply = await engine.handle("Ôh, paizão")
     assert reply.kind == "answer" and reply.text == PAIZAO and engine.awake is True
-    clock[0] += 121
-    assert engine.awake is False  # nobody spoke for two minutes: back to sleep
+    clock[0] += AWAKE_SECONDS + 1
+    assert engine.awake is False  # nobody asked anything: back to sleep
 
 
 async def test_the_next_message_is_the_command_and_ends_the_waiting():
@@ -103,3 +104,15 @@ async def test_the_stream_handles_wake_phrases_too():
     events = [e async for e in engine.handle_stream("Ôh, Xácmáti")]
     assert events[-1] == {"type": "done", "result": OPEN_DOOR}
     assert any(e["type"] == "delta" and e["text"] == OPEN_DOOR for e in events) and engine.awake is True
+
+
+async def test_the_wait_for_a_command_reports_the_seconds_left_and_one_command_ends_it():
+    clock = [1000.0]
+    engine = Engine(FakeGate(), FakeLLM(), JobStore(":memory:"), now=lambda: clock[0])
+    assert engine.awake_for == 0
+    await engine.handle("Ôh, paizão")
+    assert engine.awake_for == AWAKE_SECONDS
+    clock[0] += 5
+    assert engine.awake_for == AWAKE_SECONDS - 5
+    await engine.handle("que dia é hoje")
+    assert engine.awake_for == 0  # one command, then back to sleep

@@ -110,8 +110,19 @@ function applyLayout() {
 }
 
 // ---------------------------------------------------------------------------------------------------- mood and bubble
+// "Waiting for a command" is a few seconds long, so it is tracked here with the local clock instead of waiting for the
+// next refresh: it ends on time and the face and the hint go back to normal.
+let awakeTimer = null;
+function applyOverview(o) {
+  state.overview = o;
+  state.awakeUntil = o && o.awake_for > 0 ? Date.now() + o.awake_for * 1000 : 0;
+  clearTimeout(awakeTimer);
+  if (state.awakeUntil) awakeTimer = setTimeout(() => { sendPanelState(); }, state.awakeUntil - Date.now() + 300);
+}
+const overviewNow = () => (state.overview ? { ...state.overview, awake: Date.now() < (state.awakeUntil || 0) } : null);
+
 function currentDescription() {
-  return describe({ engineUp: state.engineUp, overview: state.overview, busy: state.busy > 0 });
+  return describe({ engineUp: state.engineUp, overview: overviewNow(), busy: state.busy > 0 });
 }
 
 // the face: what is happening, unless the person pinned a mood in Ajustes (an unreachable engine always shows as offline)
@@ -196,7 +207,7 @@ function prettyHotkey(accel) {
 function panelState() {
   return {
     engineUp: state.engineUp,
-    overview: state.overview,
+    overview: overviewNow(),
     busy: state.busy > 0,
     describe: { ...currentDescription(), mood: effectiveMood(currentDescription().mood) },
     notices: state.notices.slice(-20),
@@ -268,7 +279,7 @@ async function autoApproveNew() {
 
 async function refreshOverview() {
   try {
-    state.overview = await engine.overview();
+    applyOverview(await engine.overview());
     state.engineUp = true;
   } catch {
     state.engineUp = false;
@@ -302,7 +313,7 @@ async function noticeLoop() {
     if (!state.engineUp) { cursor = null; await sleep(2000); continue; }
     try {
       if (cursor === null) { // start from "now": old notices are not replayed when the app opens
-        state.overview = await engine.overview();
+        applyOverview(await engine.overview());
         cursor = state.overview.last_notice_id;
         sendPanelState();
       }

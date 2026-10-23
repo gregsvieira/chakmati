@@ -229,7 +229,6 @@
   // The answer is done. With the panel open it is spoken here; with the panel closed it appears as a bubble by the
   // character (the floating window speaks it if "Ouvir" is on), and nothing opens by itself.
   function deliver(turn) {
-    if (turn.voice) conversationUntil = window.ListenPolicy.followUpUntil(Date.now());
     if (!turn.text) return;
     if (state && !state.panelOpen) { if (!turn.actionId) api.reply(turn.text); return; }
     sayAloud(turn.text);
@@ -237,7 +236,7 @@
 
   function sayAloud(text) {
     if (!state || !state.settings.hear) return;
-    window.Voice.speak(text, { emojis: !!state.settings.speakEmojis, onStart: () => { speaking = true; speakingSince = Date.now(); syncTalking(); }, onEnd: () => { speaking = false; quietUntil = Date.now() + 700; if (conversationUntil) conversationUntil = window.ListenPolicy.followUpUntil(Date.now()); syncTalking(); updateHint(); } });
+    window.Voice.speak(text, { emojis: !!state.settings.speakEmojis, onStart: () => { speaking = true; speakingSince = Date.now(); syncTalking(); }, onEnd: () => { speaking = false; quietUntil = Date.now() + 700; syncTalking(); updateHint(); } });
   }
 
   // "Falar com o Chakmati": the microphone is always listening, with no button to press. It acts only on a wake phrase
@@ -250,7 +249,6 @@
   let speechInProgress = false;
   let ambientWarned = false;
   const diag = (window.__listening = { frames: 0, starts: 0, ends: 0, drops: 0, sent: 0, heard: [], peak: 0, floor: 0, muted: 0, restarts: 0 }); // for support: what the microphone loop saw
-  let conversationUntil = 0; // after an answer to something said aloud, follow-up commands need no wake phrase
   let speakingSince = 0;
   let queued = null;         // a command heard while an answer was still being produced
   let otherSpeaking = false; // the floating widget is reading a notice
@@ -264,8 +262,7 @@
     if (!state) return;
     const talk = state.settings.talk;
     const awake = !!(state.overview && state.overview.awake);
-    const following = Date.now() < conversationUntil;
-    input.placeholder = !talk ? 'Peça algo ao Chakmati…' : awake ? 'Aguardando seu comando… fale agora' : following ? 'Pode continuar falando…' : 'Escutando… diga “Ôh, Xácmáti”';
+    input.placeholder = !talk ? 'Peça algo ao Chakmati…' : awake ? 'Aguardando seu comando… fale agora' : 'Escutando… diga “Ôh, Xácmáti”';
     micButton.classList.toggle('on', talk);
     micButton.classList.toggle('recording', talk && speechInProgress);
     micButton.hidden = !talk;
@@ -287,7 +284,7 @@
         return;
       }
       const text = (res.text || '').trim();
-      if (!window.ListenPolicy.shouldAct({ text, wake: res.wake, awake: res.awake, now: Date.now(), conversationUntil })) return;
+      if (!window.ListenPolicy.shouldAct({ text, wake: res.wake, awake: res.awake })) return;
       if (state && state.busy) { queued = { text, at: Date.now() }; return; } // still answering the last one: do this next
       submit(text, { voice: true });
     } finally {

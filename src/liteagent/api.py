@@ -336,6 +336,7 @@ def create_app(
         result["pending"] = [_action_json(a) for a in sorted(pending, key=lambda a: a.expires_at)]
         result["last_notice_id"] = notices.last_id
         result["awake"] = engine.awake
+        result["awake_for"] = round(engine.awake_for, 1)
         return result
 
     return app
