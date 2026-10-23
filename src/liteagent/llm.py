@@ -21,6 +21,7 @@ class OllamaClient:
         self._http = httpx.AsyncClient(
             base_url=base_url, transport=transport, timeout=timeout
         )
+        self.last_usage: dict[str, int] = {}
 
     async def chat(self, messages: list[dict[str, str]]) -> str:
         response = await self._http.post(
@@ -33,7 +34,12 @@ class OllamaClient:
             },
         )
         response.raise_for_status()
-        return response.json()["message"]["content"]
+        data = response.json()
+        self.last_usage = {
+            "prompt_tokens": data.get("prompt_eval_count", 0),
+            "completion_tokens": data.get("eval_count", 0),
+        }
+        return data["message"]["content"]
 
     async def aclose(self) -> None:
         await self._http.aclose()

@@ -55,3 +55,21 @@ async def test_http_error_raises():
     with pytest.raises(httpx.HTTPStatusError):
         await client.chat([{"role": "user", "content": "hi"}])
     await client.aclose()
+
+
+async def test_last_usage_is_recorded():
+    def handler(request):
+        return httpx.Response(
+            200,
+            json={
+                "message": {"content": "x"},
+                "prompt_eval_count": 12,
+                "eval_count": 34,
+            },
+        )
+
+    client = make_client(handler)
+    assert client.last_usage == {}
+    await client.chat([{"role": "user", "content": "hi"}])
+    await client.aclose()
+    assert client.last_usage == {"prompt_tokens": 12, "completion_tokens": 34}
