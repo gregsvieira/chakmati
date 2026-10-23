@@ -4,6 +4,7 @@ A caller (the model included) can only PROPOSE an action. A proposal is stored a
 happens until `approve` is called, which the HTTP layer exposes only to the user's UI. One action inbox for all.
 """
 
+import asyncio
 import json
 import sqlite3
 import threading
@@ -132,20 +133,51 @@ class ApprovalService:
     def _execute(self, action: Action) -> str:
         raise NotImplementedError
 
-    def approve(self, action_id: str) -> Action:
+    # ---- the shared state machine; the sync and async variants differ only in how they run the work
+    def _check_open(self, action_id: str) -> Action:
         action = self._mine(action_id)
         if action.status == PENDING and self._now() > action.expires_at:
             self._actions.transition(action_id, PENDING, EXPIRED)
             raise ActionExpired(action_id)
-        if not self._actions.transition(action_id, PENDING, EXECUTING):  # claims it: no double execution
-            raise ActionNotPending(f"{action_id} is {action.status}")
-        try:
-            result = self._execute(action)
-        except Exception as exc:
-            self._actions.finish(action_id, FAILED, None, f"{type(exc).__name__}: {exc}")
+        return action
+
+    def _claim(self, action: Action) -> None:
+        if not self._actions.transition(action.id, PENDING, EXECUTING):  # claims it: no double execution
+            raise ActionNotPending(f"{action.id} is {action.status}")
+
+    def _record(self, action_id: str, result: str | None, error: Exception | None) -> Action:
+        if error is not None:
+            self._actions.finish(action_id, FAILED, None, f"{type(error).__name__}: {error}")
         else:
             self._actions.finish(action_id, EXECUTED, result, None)
         return self._actions.get(action_id)  # type: ignore[return-value]
+
+    def approve(self, action_id: str) -> Action:
+        action = self._check_open(action_id)
+        self._claim(action)
+        try:
+            result = self._execute(action)
+        except Exception as exc:
+            return self._record(action_id, None, exc)
+        return self._record(action_id, result, None)
+
+    async def _aprecheck(self, action: Action) -> None:
+        """Hook: raise to refuse BEFORE the action is claimed, so it stays pending (e.g. a rate limit)."""
+
+    async def _aexecute(self, action: Action) -> str:
+        return await asyncio.to_thread(self._execute, action)
+
+    async def aapprove(self, action_id: str) -> Action:
+        """Async twin of `approve`, for integrations whose work is async (WhatsApp over HTTP)."""
+        action = self._check_open(action_id)
+        if action.status == PENDING:
+            await self._aprecheck(action)
+        self._claim(action)
+        try:
+            result = await self._aexecute(action)
+        except Exception as exc:
+            return self._record(action_id, None, exc)
+        return self._record(action_id, result, None)
 
     def reject(self, action_id: str) -> Action:
         action = self._mine(action_id)
