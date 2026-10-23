@@ -15,6 +15,7 @@ const DEFAULTS = Object.freeze({
   engineUrl: 'http://127.0.0.1:8765',
   whatsapp: false,        // integrations the app switches on when it starts the engine itself
   calendar: false,
+  research: true,         // answer questions that need the web by searching it
 });
 
 function normalize(raw) {
@@ -25,6 +26,7 @@ function normalize(raw) {
   if (typeof r.still === 'boolean') s.still = r.still;
   if (typeof r.whatsapp === 'boolean') s.whatsapp = r.whatsapp;
   if (typeof r.calendar === 'boolean') s.calendar = r.calendar;
+  if (typeof r.research === 'boolean') s.research = r.research;
   if (SIDES.includes(r.bubbleSide)) s.bubbleSide = r.bubbleSide;
   if (MOODS.includes(r.mood)) s.mood = r.mood;
   if (r.icon && Number.isFinite(r.icon.x) && Number.isFinite(r.icon.y)) s.icon = { x: Math.round(r.icon.x), y: Math.round(r.icon.y) };
@@ -46,8 +48,9 @@ function save(file, settings) {
 }
 
 // Environment the engine is started with, so the person never has to type LITEAGENT_* variables.
-function engineEnv(settings) {
+function engineEnv(settings, { searxng = false } = {}) {
   return {
+    LITEAGENT_RESEARCH_BACKEND: !settings.research ? 'off' : searxng ? 'searxng' : 'ddg',
     LITEAGENT_WHATSAPP_BACKEND: settings.whatsapp ? 'openwa' : 'off',
     LITEAGENT_CALENDAR_BACKEND: settings.calendar ? 'auto' : 'off',
   };

@@ -128,6 +128,7 @@
     document.body.toggleAttribute('data-still', !!state.settings.still);
     $('set-whatsapp').checked = !!state.settings.whatsapp;
     $('set-calendar').checked = !!state.settings.calendar;
+    $('set-research').checked = !!state.settings.research;
     const wa = (state.overview && state.overview.whatsapp) || { enabled: false };
     $('wa-status').textContent = !wa.enabled ? 'Ler, resumir e enviar mensagens (sempre com a sua aprovação).'
       : wa.connected ? 'Conectado.' : 'Ligado, mas sem conexão. Conecte abaixo.';
@@ -226,6 +227,7 @@
   $('set-protect').addEventListener('change', (e) => api.setSetting('protect', e.target.checked));
   $('set-masked').addEventListener('change', (e) => api.setSetting('masked', e.target.checked));
   $('set-whatsapp').addEventListener('change', (e) => api.setSetting('whatsapp', e.target.checked));
+  $('set-research').addEventListener('change', (e) => api.setSetting('research', e.target.checked));
   $('set-calendar').addEventListener('change', (e) => api.setSetting('calendar', e.target.checked));
   $('wa-connect').addEventListener('click', connectWhatsApp);
   $('set-still').addEventListener('change', (e) => api.setSetting('still', e.target.checked));

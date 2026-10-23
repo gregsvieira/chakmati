@@ -189,7 +189,7 @@ function panelState() {
     busy: state.busy > 0,
     describe: { ...currentDescription(), mood: effectiveMood(currentDescription().mood) },
     notices: state.notices.slice(-20),
-    settings: { protect: settings.protect, masked: settings.masked, still: settings.still, bubbleSide: settings.bubbleSide, mood: settings.mood, whatsapp: settings.whatsapp, calendar: settings.calendar },
+    settings: { protect: settings.protect, masked: settings.masked, still: settings.still, bubbleSide: settings.bubbleSide, mood: settings.mood, whatsapp: settings.whatsapp, calendar: settings.calendar, research: settings.research },
     ownsEngine: !!engineProcess,
     canOpenWa: !!projectRoot(),
     hotkeys: { toggle: prettyHotkey(HOTKEYS.toggle), panic: prettyHotkey(HOTKEYS.panic) },
@@ -293,13 +293,19 @@ const projectRoot = () => {
 
 // The app starts the engine itself when none is running, with the integrations the person switched on in Ajustes.
 // An engine started by hand is left alone (and then the integrations are chosen by its own environment).
-function startEngine() {
+async function searxngUp() {
+  try { return (await fetch('http://localhost:8080/', { signal: AbortSignal.timeout(1500) })).ok; } catch { return false; }
+}
+
+async function startEngine() {
   const root = projectRoot();
   if (!root || engineProcess) return false;
+  const env = settingsLib.engineEnv(settings, { searxng: await searxngUp() });
+  if (engineProcess) return false;
   const logFile = path.join(app.getPath('userData'), 'engine.log');
   const log = fs.openSync(logFile, 'a');
   engineProcess = spawn('uv', ['run', 'python', '-m', 'liteagent.main'], {
-    cwd: root, stdio: ['ignore', log, log], env: { ...process.env, ...settingsLib.engineEnv(settings) },
+    cwd: root, stdio: ['ignore', log, log], env: { ...process.env, ...env },
   });
   fs.closeSync(log);
   engineProcess.on('error', () => { engineProcess = null; });
@@ -375,7 +381,7 @@ function updateSetting(key, value) {
   else if (key === 'bubbleSide' && settingsLib.SIDES.includes(value)) settings.bubbleSide = value;
   else if (key === 'still' && typeof value === 'boolean') { settings.still = value; sendTo(widgetWin, 'widget:still', value); }
   else if (key === 'mood' && settingsLib.MOODS.includes(value)) settings.mood = value;
-  else if ((key === 'whatsapp' || key === 'calendar') && typeof value === 'boolean') {
+  else if ((key === 'whatsapp' || key === 'calendar' || key === 'research') && typeof value === 'boolean') {
     settings[key] = value;
     if (engineProcess) restartEngine().then(refreshOverview);
   } else return false;
@@ -619,7 +625,7 @@ if (!app.requestSingleInstanceLock()) {
     widgetWin.showInactive();
     createTray();
     registerShortcuts();
-    if (!(await engine.health())) startEngine();
+    if (!(await engine.health())) await startEngine();
     healthLoop();
     noticeLoop();
     screen.on('display-metrics-changed', applyLayout);

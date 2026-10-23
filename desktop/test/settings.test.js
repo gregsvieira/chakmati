@@ -48,8 +48,10 @@ test('animations are on by default and can be switched off', () => {
   assert.equal(normalize({ still: 'yes' }).still, false);
 });
 
-test('integrations are off by default and map to the engine environment', () => {
-  assert.deepEqual(engineEnv(DEFAULTS), { LITEAGENT_WHATSAPP_BACKEND: 'off', LITEAGENT_CALENDAR_BACKEND: 'off' });
-  assert.deepEqual(engineEnv({ ...DEFAULTS, whatsapp: true, calendar: true }), { LITEAGENT_WHATSAPP_BACKEND: 'openwa', LITEAGENT_CALENDAR_BACKEND: 'auto' });
+test('integrations map to the engine environment: web search on by default, the rest off', () => {
+  assert.deepEqual(engineEnv(DEFAULTS), { LITEAGENT_RESEARCH_BACKEND: 'ddg', LITEAGENT_WHATSAPP_BACKEND: 'off', LITEAGENT_CALENDAR_BACKEND: 'off' });
+  assert.equal(engineEnv(DEFAULTS, { searxng: true }).LITEAGENT_RESEARCH_BACKEND, 'searxng');
+  assert.equal(engineEnv({ ...DEFAULTS, research: false }).LITEAGENT_RESEARCH_BACKEND, 'off');
+  assert.deepEqual(engineEnv({ ...DEFAULTS, whatsapp: true, calendar: true }), { LITEAGENT_RESEARCH_BACKEND: 'ddg', LITEAGENT_WHATSAPP_BACKEND: 'openwa', LITEAGENT_CALENDAR_BACKEND: 'auto' });
   assert.equal(normalize({ whatsapp: 'yes' }).whatsapp, false);
 });
