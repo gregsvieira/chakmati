@@ -332,6 +332,7 @@ def create_app(
             pending.extend(await asyncio.to_thread(service.pending))
         result["pending"] = [_action_json(a) for a in sorted(pending, key=lambda a: a.expires_at)]
         result["last_notice_id"] = notices.last_id
+        result["awake"] = engine.awake
         return result
 
     return app

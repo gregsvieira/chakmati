@@ -4,11 +4,12 @@ from dataclasses import dataclass
 
 from ..llm import ChatClient
 from ..loop.scorer import PartScorer
+from ..persona import PERSONA
 from .fetch import PageFetcher, chunk_text, extract_text
 from .filter import filter_results, rank_passages
 from .search import SearchBackend
 
-COMPOSE_SYSTEM = (
+COMPOSE_SYSTEM = PERSONA + " " + (
     "Answer the question in the user's language using ONLY the numbered passages below. "
     "Cite the passages you use as [n]. If the passages do not contain the answer, say so "
     "instead of guessing."

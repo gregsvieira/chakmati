@@ -1,14 +1,16 @@
 import asyncio
+import time
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 
 from .canned import canned_answer
+from .persona import AWAKE_SECONDS, PERSONA, wake_reply
 from .gate.base import Gate, Route
 from .jobs import Job, JobStore
 from .llm import ChatClient
 from .research.tool import ResearchTool
 
-SYSTEM_PROMPTS: dict[Route, str] = {
+_ROUTE_PROMPTS: dict[Route, str] = {
     Route.CHAT: "You are a concise, friendly assistant. Answer in the user's language.",
     Route.RESEARCH: (
         "You are a research assistant. Answer in the user's language. "
@@ -26,6 +28,9 @@ SYSTEM_PROMPTS: dict[Route, str] = {
         "language. You cannot run code or touch files yet: describe the steps."
     ),
 }
+
+# Every chat call starts with who the assistant is, so it never leaves the character (or the language).
+SYSTEM_PROMPTS: dict[Route, str] = {route: f"{PERSONA} {text}" for route, text in _ROUTE_PROMPTS.items()}
 
 
 CALENDAR_OFF = (
@@ -65,7 +70,10 @@ class Engine:
         on_job_created: Callable[[], object] | None = None,
         calendar_assistant=None,
         whatsapp_assistant=None,
+        now: Callable[[], float] = time.time,
     ):
+        self._now = now
+        self._awake_until = 0.0
         self._gate = gate
         self._llm = llm
         self._store = store
@@ -78,6 +86,16 @@ class Engine:
         if self._on_job_created is not None:
             self._on_job_created()
 
+    @property
+    def awake(self) -> bool:
+        """True after a wake phrase, while the assistant waits for the command."""
+        return self._now() < self._awake_until
+
+    def _wake(self, text: str) -> str | None:
+        greeting = wake_reply(text)
+        self._awake_until = self._now() + AWAKE_SECONDS if greeting else 0.0  # any other message is the command: waiting ends
+        return greeting
+
     def _awaiting_whatsapp_choice(self, text: str) -> bool:
         """The text answers "which Maria?", a question the WhatsApp assistant just asked: it must go back to it."""
         return self._whatsapp is not None and hasattr(self._whatsapp, "awaiting_choice") and self._whatsapp.awaiting_choice(text)
@@ -88,7 +106,7 @@ class Engine:
         return (await asyncio.to_thread(self._gate.classify, text)).route
 
     async def handle(self, text: str) -> Reply:
-        fixed = canned_answer(text)
+        fixed = self._wake(text) or canned_answer(text)
         if fixed is not None:
             return Reply("answer", Route.CHAT, text=fixed)
         route = await self._classify(text)
@@ -121,7 +139,7 @@ class Engine:
     async def handle_stream(self, text: str) -> AsyncIterator[dict]:
         """Like `handle`, as a sequence of events: route, then either the reply as delta events
         followed by done (chat), or a single job event for slow work (follow it via the job stream)."""
-        fixed = canned_answer(text)
+        fixed = self._wake(text) or canned_answer(text)
         if fixed is not None:
             yield {"type": "route", "route": Route.CHAT.value}
             yield {"type": "delta", "text": fixed}
