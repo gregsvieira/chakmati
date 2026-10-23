@@ -1,5 +1,5 @@
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 
@@ -64,3 +64,34 @@ def pairwise_accuracy(
                 elif good_score == bad_score:
                     wins[item.kind] += 0.5
     return {kind: wins[kind] / totals[kind] for kind in totals}
+
+
+Strategy = Callable[[Sequence[str], Sequence[float]], list[str]]
+
+
+def strategy_report(
+    items: Sequence[LabelledPart],
+    scores: Sequence[float],
+    strategies: dict[str, Strategy],
+) -> dict[str, dict[str, float]]:
+    """Apply each pruning strategy per question; report how many good parts survive
+    and how many irrelevant / wrong parts are dropped."""
+    by_question: dict[str, list[tuple[LabelledPart, float]]] = defaultdict(list)
+    for item, score in zip(items, scores, strict=True):
+        by_question[item.question].append((item, score))
+    report: dict[str, dict[str, float]] = {}
+    for name, strategy in strategies.items():
+        kept = {"good": 0, "irrelevant": 0, "wrong": 0}
+        total = {"good": 0, "irrelevant": 0, "wrong": 0}
+        for group in by_question.values():
+            parts = [it.part for it, _ in group]
+            survivors = set(strategy(parts, [s for _, s in group]))
+            for it, _ in group:
+                total[it.kind] += 1
+                kept[it.kind] += it.part in survivors
+        report[name] = {
+            "good_kept": kept["good"] / total["good"],
+            "irrelevant_dropped": 1 - kept["irrelevant"] / total["irrelevant"],
+            "wrong_dropped": 1 - kept["wrong"] / total["wrong"],
+        }
+    return report

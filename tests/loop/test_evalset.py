@@ -27,3 +27,26 @@ def test_wrong_ranked_above_good_scores_zero_for_wrong_only():
     result = pairwise_accuracy(ITEMS, scores)
     assert result["wrong"] == 0.0
     assert result["irrelevant"] == 1.0
+
+
+from liteagent.loop.evalset import strategy_report
+from liteagent.loop.prune import prune_by_rank
+
+
+def test_strategy_report_perfect_scores_top_half():
+    scores = [1.0 if i.label else 0.0 for i in ITEMS]
+    report = strategy_report(ITEMS, scores, {"top50": lambda p, s: prune_by_rank(p, s, 0.5)})
+    assert report["top50"] == {
+        "good_kept": 1.0,
+        "irrelevant_dropped": 1.0,
+        "wrong_dropped": 1.0,
+    }
+
+
+def test_strategy_report_keep_everything():
+    report = strategy_report(ITEMS, [0.5] * len(ITEMS), {"all": lambda p, s: list(p)})
+    assert report["all"] == {
+        "good_kept": 1.0,
+        "irrelevant_dropped": 0.0,
+        "wrong_dropped": 0.0,
+    }
