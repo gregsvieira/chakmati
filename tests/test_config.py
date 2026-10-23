@@ -69,3 +69,9 @@ def test_fetch_deadline_setting():
 def test_research_max_pages_setting():
     assert Settings().research_max_pages == 4
     assert Settings.from_env({"LITEAGENT_RESEARCH_MAX_PAGES": "2"}).research_max_pages == 2
+
+
+def test_contact_and_target_pages_settings():
+    assert Settings().contact == "" and Settings().research_target_pages == 0
+    s = Settings.from_env({"LITEAGENT_CONTACT": "https://example.org/me", "LITEAGENT_RESEARCH_TARGET_PAGES": "2"})
+    assert (s.contact, s.research_target_pages) == ("https://example.org/me", 2)

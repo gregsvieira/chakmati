@@ -42,6 +42,7 @@ class ResearchTool:
         result_cutoff: float = 0.2,
         concise: bool = False,
         fetch_deadline: float | None = None,
+        target_pages: int | None = None,
     ):
         self._search = search
         self._fetcher = fetcher
@@ -52,20 +53,39 @@ class ResearchTool:
         self._cutoff = result_cutoff
         self._system = COMPOSE_SYSTEM + CONCISE_SUFFIX if concise else COMPOSE_SYSTEM
         self._fetch_deadline = fetch_deadline
+        self._target_pages = target_pages
 
     async def _fetch_all(self, results) -> list[str | None]:
-        """Download the pages in parallel. With a deadline, pages that have not arrived in time are
-        cancelled and treated as failed, so one site that hangs cannot hold back the whole answer."""
+        """Download the pages in parallel.
+        * `fetch_deadline`: pages that have not arrived in time are cancelled and treated as failed,
+          so one site that hangs cannot hold back the whole answer.
+        * `target_pages`: stop waiting as soon as this many pages downloaded successfully (the rest
+          are cancelled); if fewer succeed, whatever arrived is used.
+        Without either, it waits for every download."""
         tasks = [asyncio.create_task(self._fetcher.fetch(r.url)) for r in results]
         if not tasks:
             return []
-        if self._fetch_deadline is None:
+        if self._fetch_deadline is None and self._target_pages is None:
             return list(await asyncio.gather(*tasks))
-        done, pending = await asyncio.wait(tasks, timeout=self._fetch_deadline)
+        loop = asyncio.get_running_loop()
+        limit = None if self._fetch_deadline is None else loop.time() + self._fetch_deadline
+        pending = set(tasks)
+        successes = 0
+        while pending:
+            timeout = None if limit is None else max(0.0, limit - loop.time())
+            done, pending = await asyncio.wait(pending, timeout=timeout, return_when=asyncio.FIRST_COMPLETED)
+            if not done:  # deadline reached
+                break
+            successes += sum(1 for t in done if t.exception() is None and t.result() is not None)
+            if self._target_pages is not None and successes >= self._target_pages:
+                break
         for task in pending:
             task.cancel()
         await asyncio.gather(*pending, return_exceptions=True)
-        return [task.result() if task in done and task.exception() is None else None for task in tasks]
+        return [
+            task.result() if task.done() and not task.cancelled() and task.exception() is None else None
+            for task in tasks
+        ]
 
     async def _prepare(self, query: str) -> tuple[list[dict[str, str]] | None, list[str]]:
         """Search, filter, fetch and rank. Returns (chat messages, source urls), or (None, [])

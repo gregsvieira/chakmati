@@ -46,12 +46,13 @@ class PageFetcher:
         transport: httpx.AsyncBaseTransport | None = None,
         timeout: float = 10.0,
         max_bytes: int = 2_000_000,
+        user_agent: str = USER_AGENT,
     ):
         self._max = max_bytes
         self._http = httpx.AsyncClient(
             transport=transport,
             timeout=timeout,
-            headers={"User-Agent": USER_AGENT},
+            headers={"User-Agent": user_agent},
             follow_redirects=True,
         )
 

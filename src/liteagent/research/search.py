@@ -8,6 +8,15 @@ from lxml import html as lxml_html
 USER_AGENT = "lite-agent/0.1 (+local research assistant; low volume)"
 
 
+def build_user_agent(contact: str | None) -> str:
+    """Some sites (Wikipedia) reject user agents that do not say who runs the bot. When the user
+    configures a contact (LITEAGENT_CONTACT: a URL or an e-mail) it is appended; otherwise the
+    plain agent is used. Nothing is invented or taken from the machine."""
+    if not contact:
+        return USER_AGENT
+    return f"lite-agent/0.1 (local research assistant; low volume; contact: {contact})"
+
+
 @dataclass(frozen=True)
 class SearchResult:
     title: str
@@ -56,11 +65,16 @@ def parse_ddg_html(html: str) -> list[SearchResult]:
 
 
 class DuckDuckGoHtmlBackend:
-    def __init__(self, transport: httpx.AsyncBaseTransport | None = None, timeout: float = 15.0):
+    def __init__(
+        self,
+        transport: httpx.AsyncBaseTransport | None = None,
+        timeout: float = 15.0,
+        user_agent: str = USER_AGENT,
+    ):
         self._http = httpx.AsyncClient(
             transport=transport,
             timeout=timeout,
-            headers={"User-Agent": USER_AGENT},
+            headers={"User-Agent": user_agent},
             follow_redirects=True,
         )
 

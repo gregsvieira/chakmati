@@ -21,6 +21,8 @@ class Settings:
     research_concise: bool = True
     fetch_deadline: float = 2.0  # seconds to wait for the page downloads; 0 = wait for all
     research_max_pages: int = 4
+    research_target_pages: int = 0  # stop waiting once this many pages succeeded; 0 = off
+    contact: str = ""  # URL or e-mail put in the User-Agent (Wikipedia rejects anonymous bots)
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "Settings":
@@ -45,4 +47,6 @@ class Settings:
             research_concise=env.get("LITEAGENT_RESEARCH_CONCISE", "1").lower() in {"1", "true", "yes"},
             fetch_deadline=float(env.get("LITEAGENT_FETCH_DEADLINE", d.fetch_deadline)),
             research_max_pages=int(env.get("LITEAGENT_RESEARCH_MAX_PAGES", d.research_max_pages)),
+            research_target_pages=int(env.get("LITEAGENT_RESEARCH_TARGET_PAGES", d.research_target_pages)),
+            contact=env.get("LITEAGENT_CONTACT", d.contact),
         )

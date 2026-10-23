@@ -10,7 +10,7 @@ from .llm import OllamaClient
 from .loop.scorer import KeepAllScorer
 from .loop.twostage import LayaRelevanceScorer
 from .research.fetch import PageFetcher
-from .research.search import DuckDuckGoHtmlBackend
+from .research.search import DuckDuckGoHtmlBackend, build_user_agent
 from .research.searxng import SearxngBackend
 from .research.tool import ResearchTool
 
@@ -25,7 +25,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         search = (
             SearxngBackend(s.searxng_url)
             if s.research_backend == "searxng"
-            else DuckDuckGoHtmlBackend()
+            else DuckDuckGoHtmlBackend(user_agent=build_user_agent(s.contact))
         )
         research_llm = OllamaClient(
             s.ollama_url,
@@ -36,13 +36,14 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         )
         researcher = ResearchTool(
             search,
-            PageFetcher(),
+            PageFetcher(user_agent=build_user_agent(s.contact)),
             research_llm,
             LayaRelevanceScorer() if s.research_scorer == "laya" else KeepAllScorer(),
             result_cutoff=s.result_cutoff,
             concise=s.research_concise,
             fetch_deadline=s.fetch_deadline or None,
             max_pages=s.research_max_pages,
+            target_pages=s.research_target_pages or None,
         )
     worker_ref: list[Worker] = []
     engine = Engine(

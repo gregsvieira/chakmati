@@ -63,3 +63,15 @@ async def test_fetch_returns_none_on_error_wrong_type_oversize_and_network_failu
         raise httpx.ConnectError("down")
 
     assert await make(boom).fetch("https://x.test") is None
+
+
+async def test_fetcher_uses_a_custom_user_agent():
+    seen = {}
+
+    def handler(request):
+        seen["ua"] = request.headers["user-agent"]
+        return httpx.Response(200, text="x", headers={"content-type": "text/plain"})
+
+    fetcher = PageFetcher(transport=httpx.MockTransport(handler), user_agent="my-agent/1 (contact: a@b.c)")
+    await fetcher.fetch("https://x.test")
+    assert seen["ua"] == "my-agent/1 (contact: a@b.c)"

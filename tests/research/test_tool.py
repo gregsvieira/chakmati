@@ -202,3 +202,51 @@ async def test_stream_answer_also_honours_the_fetch_deadline():
     out = [d async for d in tool.stream_answer("q")]
     assert _time.perf_counter() - started < 2.0 and out[0] == "ok"
     assert "slow.test" not in "".join(out)
+
+
+class TimedFetcher:
+    """Each url -> (delay, body or None). Records which downloads were cancelled."""
+
+    def __init__(self, table):
+        self.table, self.cancelled = table, []
+
+    async def fetch(self, url):
+        delay, body = self.table[url]
+        try:
+            await _asyncio.sleep(delay)
+        except _asyncio.CancelledError:
+            self.cancelled.append(url)
+            raise
+        return body
+
+
+def _four_sites():
+    results = [SearchResult(f"T{i}", f"https://s.test/{i}", "x") for i in range(4)]
+    good = lambda n: PAGE.format(text=f"Conteúdo útil número {n} da página, longo o bastante para extração.")  # noqa: E731
+    return results, good
+
+
+async def test_target_pages_stops_waiting_once_enough_pages_succeeded():
+    results, good = _four_sites()
+    table = {
+        "https://s.test/0": (0.4, None),          # fails (after a while)
+        "https://s.test/1": (0.05, good(1)),      # succeeds fast
+        "https://s.test/2": (0.1, good(2)),       # succeeds fast  -> target of 2 reached here
+        "https://s.test/3": (5.0, good(3)),       # slow: must be cancelled, not awaited
+    }
+    fetcher = TimedFetcher(table)
+    tool = ResearchTool(FakeSearch(results), fetcher, FakeLLM(), ByLength(), result_cutoff=0.0, target_pages=2)
+    started = _time.perf_counter()
+    out = await tool.answer("q")
+    assert _time.perf_counter() - started < 2.0
+    assert set(out.sources) == {"https://s.test/1", "https://s.test/2"}
+    assert "https://s.test/3" in fetcher.cancelled
+
+
+async def test_target_pages_falls_back_to_whatever_arrived_if_the_target_is_not_reached():
+    results, good = _four_sites()
+    table = {f"https://s.test/{i}": (0.0, None) for i in range(4)}
+    table["https://s.test/2"] = (0.0, good(2))
+    tool = ResearchTool(FakeSearch(results), TimedFetcher(table), FakeLLM(), ByLength(), result_cutoff=0.0, target_pages=2)
+    out = await tool.answer("q")
+    assert out.sources == ["https://s.test/2"]

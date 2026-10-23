@@ -75,3 +75,13 @@ async def test_backend_http_error_raises():
     backend = DuckDuckGoHtmlBackend(transport=httpx.MockTransport(lambda r: httpx.Response(429)))
     with pytest.raises(httpx.HTTPStatusError):
         await backend.search("q")
+
+
+from liteagent.research.search import build_user_agent
+
+
+def test_build_user_agent_adds_the_contact_only_when_given():
+    assert build_user_agent("") == USER_AGENT
+    assert build_user_agent(None) == USER_AGENT
+    ua = build_user_agent("https://example.org/me")
+    assert ua.startswith("lite-agent/0.1") and "contact: https://example.org/me" in ua
