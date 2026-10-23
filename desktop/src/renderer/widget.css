@@ -31,3 +31,6 @@ body.backdrop { background: #c4cad6; } /* only used for design snapshots; the re
 #bubble.side-right .tail { left: -7px; top: calc(50% - 6px); border-top: 0; border-right: 0; }
 
 @media (prefers-reduced-motion: reduce) { #bubble.enter { animation: none; } }
+
+/* what Chakmati answers is never more than two lines in the bubble */
+#bubble[data-kind="reply"] p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }

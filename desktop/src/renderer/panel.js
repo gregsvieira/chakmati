@@ -200,7 +200,7 @@
   }
 
   // ------------------------------------------------------------------ conversation
-  async function submit(text) {
+  async function submit(text, { voice = false } = {}) {
     const clean = text.trim();
     if (!clean || (state && state.busy)) return;
     thread.push({ role: 'user', text: clean, status: 'done' });
@@ -208,7 +208,7 @@
     if (!res || res.error) {
       thread.push({ role: 'assistant', text: (res && res.error) || 'Não consegui enviar o pedido.', status: 'error' });
     } else {
-      thread.push({ id: res.id, role: 'assistant', text: '', status: 'pending' });
+      thread.push({ id: res.id, role: 'assistant', text: '', status: 'pending', voice });
     }
     while (thread.length > 10) thread.shift();
     renderThread();
@@ -219,16 +219,25 @@
     if (!turn) return;
     if (event.type === 'job') turn.text = turn.text || 'Trabalhando nisso…';
     else if (event.type === 'delta') { if (turn.text === 'Trabalhando nisso…') turn.raw = ''; setTurnText(turn, (turn.raw || '') + event.text); }
-    else if (event.type === 'done') { setTurnText(turn, event.result || turn.text); turn.status = 'done'; sayAloud(turn.text); }
-    else if (event.type === 'error') { turn.text = event.error || 'Algo deu errado.'; turn.status = 'error'; sayAloud(turn.text); }
+    else if (event.type === 'done') { setTurnText(turn, event.result || turn.text); turn.status = 'done'; deliver(turn); }
+    else if (event.type === 'error') { turn.text = event.error || 'Algo deu errado.'; turn.status = 'error'; deliver(turn); }
     else if (event.type === 'end' && turn.status === 'pending') turn.status = 'done';
     renderThread();
   });
 
   // ------------------------------------------------------------------ hear and talk
+  // The answer is done. With the panel open it is spoken here; with the panel closed it appears as a bubble by the
+  // character (the floating window speaks it if "Ouvir" is on), and nothing opens by itself.
+  function deliver(turn) {
+    if (turn.voice) conversationUntil = window.ListenPolicy.followUpUntil(Date.now());
+    if (!turn.text) return;
+    if (state && !state.panelOpen) { if (!turn.actionId) api.reply(turn.text); return; }
+    sayAloud(turn.text);
+  }
+
   function sayAloud(text) {
     if (!state || !state.settings.hear) return;
-    window.Voice.speak(text, { emojis: !!state.settings.speakEmojis, onStart: () => { speaking = true; syncTalking(); }, onEnd: () => { speaking = false; quietUntil = Date.now() + 700; syncTalking(); updateHint(); } });
+    window.Voice.speak(text, { emojis: !!state.settings.speakEmojis, onStart: () => { speaking = true; speakingSince = Date.now(); syncTalking(); }, onEnd: () => { speaking = false; quietUntil = Date.now() + 700; if (conversationUntil) conversationUntil = window.ListenPolicy.followUpUntil(Date.now()); syncTalking(); updateHint(); } });
   }
 
   // "Falar com o Chakmati": the microphone is always listening, with no button to press. It acts only on a wake phrase
@@ -240,16 +249,23 @@
   let transcribing = false;
   let speechInProgress = false;
   let ambientWarned = false;
-  const diag = (window.__listening = { frames: 0, starts: 0, ends: 0, drops: 0, sent: 0, heard: [], peak: 0, floor: 0, muted: 0 }); // for support: what the microphone loop saw
+  const diag = (window.__listening = { frames: 0, starts: 0, ends: 0, drops: 0, sent: 0, heard: [], peak: 0, floor: 0, muted: 0, restarts: 0 }); // for support: what the microphone loop saw
+  let conversationUntil = 0; // after an answer to something said aloud, follow-up commands need no wake phrase
+  let speakingSince = 0;
+  let queued = null;         // a command heard while an answer was still being produced
   let otherSpeaking = false; // the floating widget is reading a notice
   let quietUntil = 0;        // a short tail after any speech, while the room still echoes
-  const isMuted = () => speaking || otherSpeaking || Date.now() < quietUntil || !!(state && state.busy); // not while Chakmati talks or works: it would hear itself
+  const isMuted = () => {
+    if (speaking && Date.now() - speakingSince > 90000) { speaking = false; window.Voice.stop(); } // a voice that never reports its end must not mute the microphone for good
+    return speaking || otherSpeaking || Date.now() < quietUntil; // not while Chakmati talks: it would hear itself
+  }; // not while Chakmati talks or works: it would hear itself
 
   function updateHint() {
     if (!state) return;
     const talk = state.settings.talk;
     const awake = !!(state.overview && state.overview.awake);
-    input.placeholder = !talk ? 'Peça algo ao Chakmati…' : awake ? 'Aguardando seu comando… fale agora' : 'Escutando… diga “Ôh, Xácmáti”';
+    const following = Date.now() < conversationUntil;
+    input.placeholder = !talk ? 'Peça algo ao Chakmati…' : awake ? 'Aguardando seu comando… fale agora' : following ? 'Pode continuar falando…' : 'Escutando… diga “Ôh, Xácmáti”';
     micButton.classList.toggle('on', talk);
     micButton.classList.toggle('recording', talk && speechInProgress);
     micButton.hidden = !talk;
@@ -263,19 +279,28 @@
     transcribing = true;
     try {
       diag.sent += 1;
-      const res = await api.transcribe(window.Wav.encodeWav(chunks, rate), 'audio/wav');
+      const wait = new Promise((resolve) => setTimeout(() => resolve({ error: 'O reconhecimento de voz demorou demais.' }), 70000));
+      const res = await Promise.race([api.transcribe(window.Wav.encodeWav(chunks, rate), 'audio/wav'), wait]);
       diag.heard.push(res && (res.text || res.error)); if (diag.heard.length > 8) diag.heard.shift();
       if (!res || res.error) {
         if (!ambientWarned) { ambientWarned = true; say((res && res.error) || 'Não consegui entender o áudio.'); }
         return;
       }
       const text = (res.text || '').trim();
-      if (!text || JUNK.test(text)) return;
-      if (res.wake) api.wake();
-      if (res.wake || res.awake) submit(text);
+      if (!window.ListenPolicy.shouldAct({ text, wake: res.wake, awake: res.awake, now: Date.now(), conversationUntil })) return;
+      if (state && state.busy) { queued = { text, at: Date.now() }; return; } // still answering the last one: do this next
+      submit(text, { voice: true });
     } finally {
       transcribing = false;
     }
+  }
+
+  // A command heard while the answer to the previous one was still being produced runs as soon as that one ends.
+  function runQueued() {
+    if (!queued || (state && state.busy)) return;
+    const item = queued;
+    queued = null;
+    if (Date.now() - item.at < 30000) submit(item.text, { voice: true });
   }
 
   // The computer's own microphone (the built-in one), not whatever virtual or Bluetooth device the system made the default.
@@ -322,6 +347,7 @@
     const preRoll = [];
     let utterance = null;
     node.onaudioprocess = (e) => {
+      if (ambient) ambient.lastFrame = Date.now();
       const data = new Float32Array(e.inputBuffer.getChannelData(0));
       let sum = 0;
       for (const v of data) sum += v * v;
@@ -345,7 +371,9 @@
         if (event === 'end' && chunks) handleUtterance(chunks, ctx.sampleRate);
       }
     };
-    ambient = { stop() { node.onaudioprocess = null; stream.getTracks().forEach((t) => t.stop()); ctx.close().catch(() => {}); } };
+    ambient = { ctx, lastFrame: Date.now(), stop() { node.onaudioprocess = null; stream.getTracks().forEach((t) => { t.onended = null; t.stop(); }); ctx.close().catch(() => {}); } };
+    // the microphone was taken away (unplugged, another app, the Mac went to sleep): start listening again
+    stream.getAudioTracks().forEach((track) => { track.onended = () => { diag.restarts += 1; stopAmbient(); setTimeout(syncAmbient, 800); }; });
   }
 
   function stopAmbient() {
@@ -357,6 +385,14 @@
   }
 
   let ambientSource = null;
+  // Watchdog: if the audio stops flowing (suspended after sleep, device gone) the loop is rebuilt, never left deaf.
+  setInterval(() => {
+    updateHint();
+    if (!ambient || !state || !state.settings.talk) return;
+    if (ambient.ctx.state !== 'running') ambient.ctx.resume().catch(() => {});
+    if (Date.now() - ambient.lastFrame > 5000) { diag.restarts += 1; stopAmbient(); startAmbient(); }
+  }, 4000);
+
   const syncAmbient = () => {
     if (ambient && state && ambientSource !== state.settings.micSource) stopAmbient(); // the person chose another microphone
     if (state && state.settings.talk) startAmbient(); else stopAmbient();
@@ -495,6 +531,6 @@
   $('set-side').addEventListener('change', (e) => api.setSetting('bubbleSide', e.target.value));
 
   api.onOtherSpeaking((on) => { otherSpeaking = on; if (!on) quietUntil = Date.now() + 700; });
-  api.onState((s) => { state = s; stateVersion += 1; render(); if (thread.length) renderThread(false); });
+  api.onState((s) => { state = s; stateVersion += 1; render(); if (thread.length) renderThread(false); runQueued(); });
   api.ready();
 })();

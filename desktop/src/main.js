@@ -11,6 +11,7 @@ const settingsLib = require('./lib/settings');
 const { chooseSide, layoutWidget, clampIcon, panelBounds } = require('./lib/placement');
 const { NoticeQueue, present, bubbleDuration } = require('./lib/notice-queue');
 const { describe } = require('./lib/describe');
+const { brief } = require('./lib/brief');
 const { robotPng } = require('./lib/trayicon');
 
 const ICON = 124;
@@ -202,6 +203,7 @@ function panelState() {
     settings: { protect: settings.protect, masked: settings.masked, autoSend: settings.autoSend, hear: settings.hear, talk: settings.talk, speakEmojis: settings.speakEmojis, micSource: settings.micSource, still: settings.still, bubbleSide: settings.bubbleSide, mood: settings.mood, whatsapp: settings.whatsapp, calendar: settings.calendar, research: settings.research },
     ownsEngine: !!engineProcess,
     canOpenWa: !!projectRoot(),
+    panelOpen: state.panelOpen,
     hotkeys: { toggle: prettyHotkey(HOTKEYS.toggle), panic: prettyHotkey(HOTKEYS.panic) },
   };
 }
@@ -227,6 +229,7 @@ function closePanel() {
   state.panelOpen = false;
   clearInterval(panelTimer);
   if (alive(panelWin)) panelWin.hide();
+  sendPanelState(); // the panel window keeps running (and listening): it must know it is closed
   rebuildMenu();
 }
 
@@ -568,7 +571,13 @@ function registerIpc() {
 
   ipcMain.on('panel:ready', sendPanelState);
   ipcMain.on('panel:close', closePanel);
-  ipcMain.on('panel:wake', () => { if (!state.panelOpen) openPanel(); }); // someone said the wake phrase: show the panel
+  // With the panel closed, what Chakmati answers appears the way notices do: a bubble by the character (and spoken, if on).
+  ipcMain.on('panel:reply', (_e, p) => {
+    if (state.panelOpen || state.hidden || !p || typeof p.text !== 'string' || !p.text.trim()) return;
+    const text = brief(p.text); // at most two lines
+    if (!text) return;
+    pushNotice({ id: -Date.now(), kind: 'reply', text, masked: 'O Chakmati respondeu.', ts: Date.now() / 1000, key: `reply:${Date.now()}` });
+  });
   ipcMain.on('panel:refresh', refreshOverview);
   ipcMain.on('panel:panic', () => setHidden(true));
   ipcMain.on('panel:restart', restartApp);
@@ -598,7 +607,11 @@ function registerIpc() {
     if (!settings.talk) return { error: 'Ative "Falar com o Chakmati" em Ajustes.' };
     if (!state.engineUp) return { error: 'O motor não está rodando.' };
     if (!(bytes instanceof Uint8Array) || typeof mime !== 'string') return { error: 'Gravação inválida.' };
-    try { return await engine.transcribe(bytes, mime); } catch (e) {
+    try {
+      const timeout = new Promise((_resolve, reject) => setTimeout(() => reject(new Error('timeout')), 90000));
+      return await Promise.race([engine.transcribe(bytes, mime), timeout]);
+    } catch (e) {
+      if (e && e.message === 'timeout') return { error: 'O reconhecimento de voz demorou demais.' };
       return { error: e instanceof EngineError && e.status === 503 ? 'O reconhecimento de voz está desligado no motor.' : friendlyError(e) };
     }
   });
@@ -611,6 +624,8 @@ function registerIpc() {
     const id = crypto.randomUUID();
     const ac = new AbortController();
     streams.set(id, ac);
+    let timedOut = false;
+    const timeout = setTimeout(() => { timedOut = true; ac.abort(); }, 4 * 60 * 1000); // an answer that never ends must not block everything else
     state.busy += 1;
     sendPanelState();
     (async () => {
@@ -619,11 +634,12 @@ function registerIpc() {
         for await (const event of engine.streamMessage(text, ac.signal)) sendTo(panelWin, 'panel:message', { id, event });
       } catch (e) {
         failed = true;
-        sendTo(panelWin, 'panel:message', { id, event: { type: 'error', error: friendlyError(e) } });
+        sendTo(panelWin, 'panel:message', { id, event: { type: 'error', error: timedOut ? 'Demorei demais e parei de esperar. Pode pedir de novo.' : friendlyError(e) } });
       } finally {
         sendTo(panelWin, 'panel:message', { id, event: { type: 'end' } });
+        clearTimeout(timeout);
         streams.delete(id);
-        state.busy -= 1;
+        state.busy = Math.max(0, state.busy - 1);
         if (!failed) happyUntil = Date.now() + 3000;
         clearTimeout(moodTimer);
         moodTimer = setTimeout(refreshMood, 3100);
@@ -744,6 +760,9 @@ async function runSnapshots() {
   applyLayout();
   showBubble(state.notices[1]);
   await shot('widget-left.png', widgetWin);
+
+  showBubble({ id: 9, kind: 'reply', text: brief('Oé! Se eu somasse 5 e dissesse oé, você ia rir ou me chamar de mentiroso? Mas a resposta correta é 4. Sem truques, só matemática pura. Tamo aqui pra te ajudar com mais esse desafio.'), masked: 'O Chakmati respondeu.', ts: Date.now() / 1000, key: 'r' });
+  await shot('widget-reply.png', widgetWin);
 
   state.engineUp = false;
   refreshMood();
