@@ -53,6 +53,7 @@ function layoutWidget({ icon, size, side, bubble, workArea }) {
     alignRight,
     size,
     bubble,
+    gap: GAP,
     iconOffset,
     bounds: { x: icon.x - iconOffset.x, y: icon.y - iconOffset.y, width, height },
   };

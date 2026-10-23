@@ -78,3 +78,7 @@ test('on a screen smaller than the panel it is clamped instead of overflowing', 
   const b = panelBounds({ icon: { x: 10, y: 10 }, size: SIZE, workArea: { x: 0, y: 0, width: 380, height: 500 }, panel: { w: 400, h: 640 } });
   assert.ok(b.x >= 0 && b.y >= 0);
 });
+
+test('the layout carries the gap so the renderer can place the bubble without knowing the constants', () => {
+  assert.equal(layoutWidget({ icon: { x: 100, y: 100 }, size: SIZE, side: 'top', bubble: BUBBLE, workArea: WA }).gap, GAP);
+});

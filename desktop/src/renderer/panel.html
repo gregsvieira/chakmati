@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'self'; script-src 'self'">
+  <title>Robô assistente</title>
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="robot.css">
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <div id="panel">
+    <header id="head">
+      <div id="head-robot"></div>
+      <div class="head-text">
+        <h1 id="title">Conectando…</h1>
+        <p id="detail"></p>
+      </div>
+      <button id="close" type="button" aria-label="Fechar painel"><span></span></button>
+    </header>
+
+    <main id="content">
+      <section id="decisions" hidden>
+        <h2>Para você decidir</h2>
+        <div id="decision-list"></div>
+      </section>
+      <section id="messages" hidden>
+        <h2>Mensagens</h2>
+        <div id="messages-body"></div>
+      </section>
+      <section id="agenda" hidden>
+        <h2>Hoje na agenda</h2>
+        <div id="agenda-body"></div>
+      </section>
+      <section id="recent">
+        <h2>Avisos recentes</h2>
+        <div id="recent-body"></div>
+      </section>
+      <section id="thread-section" hidden>
+        <h2>Conversa</h2>
+        <div id="thread" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <footer id="foot">
+      <div id="chips" role="group" aria-label="Atalhos"></div>
+      <form id="composer" autocomplete="off">
+        <textarea id="input" rows="1" maxlength="2000" placeholder="Peça algo ao robô…" aria-label="Pedido ao robô"></textarea>
+        <button id="send" type="submit" aria-label="Enviar"><span></span></button>
+      </form>
+      <details id="settings">
+        <summary>Ajustes</summary>
+        <div class="settings-body">
+          <label class="switch"><input type="checkbox" id="set-protect"><span class="track"></span>
+            <span class="switch-text">Esconder do compartilhamento de tela
+              <small>Pede ao sistema para deixar o robô fora de gravações e compartilhamentos. Funciona no Windows e em parte do macOS: teste antes de compartilhar.</small></span></label>
+          <label class="switch"><input type="checkbox" id="set-masked"><span class="track"></span>
+            <span class="switch-text">Modo discreto
+              <small>Avisos e listas sem nomes nem títulos. Os pedidos de aprovação sempre mostram o texto completo.</small></span></label>
+          <label class="field">Onde aparece o balão
+            <select id="set-side">
+              <option value="auto">Automático</option><option value="top">Em cima</option><option value="bottom">Embaixo</option>
+              <option value="left">À esquerda</option><option value="right">À direita</option>
+            </select></label>
+          <button type="button" id="panic" class="ghost">Ocultar tudo agora</button>
+          <p class="hint" id="hotkeys"></p>
+        </div>
+      </details>
+    </footer>
+  </div>
+  <script src="../lib/reltime.js"></script>
+  <script src="robot.js"></script>
+  <script src="panel.js"></script>
+</body>
+</html>
