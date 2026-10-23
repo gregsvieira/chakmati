@@ -3,9 +3,9 @@ import json
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager, suppress
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -14,6 +14,7 @@ from .agenda.service import Action, ActionExpired, ActionNotPending, CalendarSer
 from .approvals import ApprovalService
 from .engine import Engine
 from .jobs import DONE, FAILED, JobStore, Worker
+from .notices import NoticeBoard, Notifier
 from .whatsapp.openwa import WhatsAppError
 from .whatsapp.service import RateLimited, WhatsAppService
 
@@ -52,11 +53,15 @@ def create_app(
     on_startup: Callable[[], Awaitable[object]] | None = None,
     calendar: CalendarService | None = None,
     whatsapp: WhatsAppService | None = None,
+    board: NoticeBoard | None = None,
+    notifier: Notifier | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         task = None
         startup_task = None
+        if notifier is not None:
+            notifier.start()
         if worker is not None:
             store.requeue_running()
             task = asyncio.create_task(worker.run_forever())
@@ -65,6 +70,8 @@ def create_app(
         try:
             yield
         finally:
+            if notifier is not None:
+                await notifier.stop()
             for t in (task, startup_task):
                 if t is not None:
                     t.cancel()
@@ -72,6 +79,8 @@ def create_app(
                         await t
 
     app = FastAPI(lifespan=lifespan)
+    app.state.notifier = notifier
+    notices = board or NoticeBoard()
 
     async def job_events(job_id: str) -> AsyncIterator[dict]:
         """Follow a job: status changes, the text as it grows (delta), then done or error.
@@ -240,5 +249,45 @@ def create_app(
     @app.post("/actions/{action_id}/reject", dependencies=[Depends(ui_only)])
     async def reject_action(action_id: str):
         return await decide(action_id, False)
+
+    # ---- proactive notices and the overview the desktop panel shows
+    @app.get("/notices")
+    async def get_notices(after: int = 0, wait: float = Query(default=0.0, ge=0.0, le=60.0)):
+        if after > notices.last_id:  # the client remembers ids from before an engine restart: start over
+            after = 0
+        found = await notices.wait_for(after, wait) if wait > 0 else notices.since(after)
+        return {
+            "notices": [{"id": n.id, "kind": n.kind, "text": n.text, "masked": n.masked, "ts": n.ts, "key": n.key} for n in found],
+            "last_id": found[-1].id if found else notices.last_id,
+        }
+
+    @app.get("/overview")
+    async def overview():
+        result: dict = {"whatsapp": {"enabled": whatsapp is not None}, "calendar": {"enabled": calendar is not None}}
+        if whatsapp is not None:
+            try:
+                status = await whatsapp.status()
+                section = {"enabled": True, "connected": status.connected, "state": status.state, "unread": []}
+                if status.connected:
+                    unread = await whatsapp.chats(unread_only=True, limit=20)
+                    section["unread"] = [
+                        {"id": c.id, "name": c.name, "unread": c.unread, "is_group": c.is_group} for c in unread
+                    ]
+                result["whatsapp"] = section
+            except WhatsAppError as exc:
+                result["whatsapp"] = {"enabled": True, "error": str(exc)}
+        if calendar is not None:
+            try:
+                start = datetime.now().astimezone().replace(hour=0, minute=0, second=0, microsecond=0)
+                events = await asyncio.to_thread(calendar.events, start, start + timedelta(days=1))
+                result["calendar"] = {"enabled": True, "today": [_event_json(e) for e in events]}
+            except Exception as exc:  # a calendar problem must not hide the other sections
+                result["calendar"] = {"enabled": True, "error": f"{type(exc).__name__}: {exc}"}
+        pending = []
+        for service in [x for x in (calendar, whatsapp) if x is not None]:
+            pending.extend(await asyncio.to_thread(service.pending))
+        result["pending"] = [_action_json(a) for a in sorted(pending, key=lambda a: a.expires_at)]
+        result["last_notice_id"] = notices.last_id
+        return result
 
     return app

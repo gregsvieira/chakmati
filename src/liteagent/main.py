@@ -5,6 +5,7 @@ from .agenda.assistant import CalendarAssistant
 from .agenda.factory import build_calendar
 from .api import create_app
 from .approvals import ActionStore
+from .notices import ApprovalWatcher, CalendarWatcher, NoticeBoard, Notifier, WhatsAppWatcher
 from .config import Settings
 from .engine import Engine
 from .gate import build_gate
@@ -65,10 +66,22 @@ def build_app(settings: Settings | None = None) -> FastAPI:
     )
     worker = Worker(store, engine.run_job, stream_handler=engine.run_job_stream)
     worker_ref.append(worker)
+    board = NoticeBoard()
+    watchers = []
+    if whatsapp is not None:
+        watchers.append(WhatsAppWatcher(whatsapp, board, s.whatsapp_poll_seconds))
+    if calendar is not None:
+        watchers.append(CalendarWatcher(calendar, board, s.calendar_poll_seconds, s.calendar_lead_minutes))
+    services = [x for x in (calendar, whatsapp) if x is not None]
+    if services:
+        watchers.append(ApprovalWatcher(services, board))
+    notifier = Notifier(watchers) if watchers and s.notices_enabled else None
     return create_app(
         engine,
         store,
         worker,
+        board=board,
+        notifier=notifier,
         on_startup=llm.preload if s.preload_model else None,
         calendar=calendar,
         whatsapp=whatsapp,

@@ -32,6 +32,10 @@ class Settings:
     openwa_api_key: str = ""
     openwa_api_key_file: str = os.path.expanduser("~/.lite-agent/openwa/api_key.txt")
     whatsapp_max_sends_per_hour: int = 20
+    notices_enabled: bool = True
+    whatsapp_poll_seconds: float = 10.0
+    calendar_poll_seconds: float = 60.0
+    calendar_lead_minutes: int = 10
     contact: str = "https://github.com/gregsvieira"
 
     @classmethod
@@ -66,5 +70,9 @@ class Settings:
             openwa_api_key=env.get("LITEAGENT_OPENWA_API_KEY", d.openwa_api_key),
             openwa_api_key_file=env.get("LITEAGENT_OPENWA_API_KEY_FILE", d.openwa_api_key_file),
             whatsapp_max_sends_per_hour=int(env.get("LITEAGENT_WHATSAPP_MAX_SENDS_PER_HOUR", d.whatsapp_max_sends_per_hour)),
+            notices_enabled=env.get("LITEAGENT_NOTICES", "1").lower() in {"1", "true", "yes"},
+            whatsapp_poll_seconds=float(env.get("LITEAGENT_WHATSAPP_POLL_SECONDS", d.whatsapp_poll_seconds)),
+            calendar_poll_seconds=float(env.get("LITEAGENT_CALENDAR_POLL_SECONDS", d.calendar_poll_seconds)),
+            calendar_lead_minutes=int(env.get("LITEAGENT_CALENDAR_LEAD_MINUTES", d.calendar_lead_minutes)),
             contact=env.get("LITEAGENT_CONTACT", d.contact),
         )

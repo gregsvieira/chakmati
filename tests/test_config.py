@@ -94,3 +94,11 @@ def test_whatsapp_settings_are_off_by_default():
     s = Settings.from_env({"LITEAGENT_WHATSAPP_BACKEND": "openwa", "LITEAGENT_OPENWA_URL": "http://h:1",
                            "LITEAGENT_OPENWA_API_KEY": "k", "LITEAGENT_WHATSAPP_MAX_SENDS_PER_HOUR": "5"})
     assert (s.whatsapp_backend, s.openwa_url, s.openwa_api_key, s.whatsapp_max_sends_per_hour) == ("openwa", "http://h:1", "k", 5)
+
+
+def test_notice_settings():
+    d = Settings()
+    assert (d.notices_enabled, d.whatsapp_poll_seconds, d.calendar_poll_seconds, d.calendar_lead_minutes) == (True, 10.0, 60.0, 10)
+    s = Settings.from_env({"LITEAGENT_NOTICES": "0", "LITEAGENT_WHATSAPP_POLL_SECONDS": "5",
+                           "LITEAGENT_CALENDAR_POLL_SECONDS": "30", "LITEAGENT_CALENDAR_LEAD_MINUTES": "15"})
+    assert (s.notices_enabled, s.whatsapp_poll_seconds, s.calendar_poll_seconds, s.calendar_lead_minutes) == (False, 5.0, 30.0, 15)
