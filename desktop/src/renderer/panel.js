@@ -5,6 +5,7 @@
   const { relativeTime } = window.RelTime;
 
   let state = null;
+  let stateVersion = 0; // counts the states received; a card only says "Concluído." after a state newer than its answer
   let speaking = false;
   const syncTalking = () => robot.setTalking(speaking || thread.some((t) => t.status === 'pending')); // the mouth moves while answering and while speaking
   const thread = []; // {id, role, text, status: 'pending'|'done'|'error'}
@@ -118,10 +119,42 @@
       h('span', {}, state.settings.masked && n.masked ? n.masked : n.text), h('span', { class: 'when' }, relativeTime(n.ts, now)))));
   }
 
-  function renderThread() {
+  // The engine marks a proposal with [[action:<id>]]; the person sees one short sentence and the approval buttons instead.
+  function setTurnText(turn, text) {
+    const m = /\[\[action:([0-9a-f]{32})\]\]/.exec(text || '');
+    turn.actionId = m ? m[1] : null;
+    turn.sinceState = stateVersion;
+    turn.raw = text || ''; // the marker can arrive split across chunks, so the raw text is kept and the shown text derived from it
+    turn.text = (text || '').replace(/\s*\[\[action:[0-9a-f]{32}\]\]\s*/g, '').replace(/\s*\[\[[^\]]*$/, '').trim();
+  }
+
+  async function decideTurn(turn, mode) {
+    turn.decision = { text: mode === 'reject' ? 'Recusando…' : 'Enviando…' };
+    renderThread();
+    if (mode === 'always') await api.setSetting('autoSend', true);
+    const res = await (mode === 'reject' ? api.reject(turn.actionId) : api.approve(turn.actionId));
+    turn.decision = res && res.ok ? { text: res.text } : { text: (res && res.error) || 'Não foi possível concluir.', error: true };
+    renderThread();
+  }
+
+  function approvalNode(turn) {
+    if (!turn.actionId) return null;
+    const item = ((state && state.overview && state.overview.pending) || []).find((p) => p.id === turn.actionId);
+    const pending = !!item;
+    if (turn.decision) return h('p', { class: `decision-result${turn.decision.error ? ' error' : ''}` }, turn.decision.text);
+    if (!pending) return stateVersion > turn.sinceState ? h('p', { class: 'decision-result' }, 'Concluído.') : null;
+    if (state.settings.autoSend) return h('p', { class: 'decision-result' }, 'Envio automático ligado: enviando…');
+    return h('div', { class: 'decision-actions turn-actions' },
+      h('button', { class: 'ghost', type: 'button', onclick: () => decideTurn(turn, 'reject') }, 'Recusar'),
+      item.kind === 'whatsapp.send' ? h('button', { class: 'ghost', type: 'button', onclick: () => decideTurn(turn, 'always') }, 'Aprovar para as próximas') : null,
+      h('button', { class: 'primary', type: 'button', onclick: () => decideTurn(turn, 'approve') }, 'Aprovar'));
+  }
+
+  function renderThread(scroll = true) {
     $('thread-section').hidden = thread.length === 0;
-    fill($('thread'), thread.map((t) => h('div', { class: `turn ${t.role}${t.status === 'pending' ? ' pending' : ''}${t.status === 'error' ? ' error' : ''}` }, t.text || '…')));
+    fill($('thread'), thread.map((t) => h('div', { class: `turn ${t.role}${t.status === 'pending' ? ' pending' : ''}${t.status === 'error' ? ' error' : ''}` }, t.text || '…', approvalNode(t))));
     syncTalking();
+    if (!scroll) return;
     const content = $('content');
     content.scrollTop = content.scrollHeight;
   }
@@ -133,6 +166,7 @@
     $('set-mood').value = state.settings.mood;
     $('set-still').checked = !!state.settings.still;
     $('set-voice').checked = !!state.settings.voice;
+    $('set-autosend').checked = !!state.settings.autoSend;
     $('mic').hidden = !state.settings.voice;
     if (!state.settings.voice) { window.Voice.stop(); speaking = false; }
     document.body.toggleAttribute('data-still', !!state.settings.still);
@@ -179,8 +213,8 @@
     const turn = thread.find((t) => t.id === id);
     if (!turn) return;
     if (event.type === 'job') turn.text = turn.text || 'Trabalhando nisso…';
-    else if (event.type === 'delta') { if (turn.text === 'Trabalhando nisso…') turn.text = ''; turn.text += event.text; }
-    else if (event.type === 'done') { turn.text = event.result || turn.text; turn.status = 'done'; sayAloud(turn.text); }
+    else if (event.type === 'delta') { if (turn.text === 'Trabalhando nisso…') turn.raw = ''; setTurnText(turn, (turn.raw || '') + event.text); }
+    else if (event.type === 'done') { setTurnText(turn, event.result || turn.text); turn.status = 'done'; sayAloud(turn.text); }
     else if (event.type === 'error') { turn.text = event.error || 'Algo deu errado.'; turn.status = 'error'; sayAloud(turn.text); }
     else if (event.type === 'end' && turn.status === 'pending') turn.status = 'done';
     renderThread();
@@ -346,11 +380,12 @@
   $('set-research').addEventListener('change', (e) => api.setSetting('research', e.target.checked));
   $('set-calendar').addEventListener('change', (e) => api.setSetting('calendar', e.target.checked));
   $('wa-connect').addEventListener('click', connectWhatsApp);
+  $('set-autosend').addEventListener('change', (e) => api.setSetting('autoSend', e.target.checked));
   $('set-voice').addEventListener('change', (e) => api.setSetting('voice', e.target.checked));
   $('set-still').addEventListener('change', (e) => api.setSetting('still', e.target.checked));
   $('set-mood').addEventListener('change', (e) => api.setSetting('mood', e.target.value));
   $('set-side').addEventListener('change', (e) => api.setSetting('bubbleSide', e.target.value));
 
-  api.onState((s) => { state = s; render(); });
+  api.onState((s) => { state = s; stateVersion += 1; render(); if (thread.length) renderThread(false); });
   api.ready();
 })();

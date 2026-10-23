@@ -61,3 +61,9 @@ test('voice (listen and speak) is off by default and only a boolean turns it on'
   assert.equal(normalize({ voice: true }).voice, true);
   assert.equal(normalize({ voice: 'yes' }).voice, false);
 });
+
+test('automatic approval of WhatsApp sends is off by default and only a boolean turns it on', () => {
+  assert.equal(DEFAULTS.autoSend, false);
+  assert.equal(normalize({ autoSend: true }).autoSend, true);
+  assert.equal(normalize({ autoSend: 'sim' }).autoSend, false);
+});

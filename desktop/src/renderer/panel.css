@@ -128,3 +128,9 @@ button.more { margin: 4px 0 8px; padding: 0; border: 0; background: none; color:
 @keyframes rec { to { box-shadow: 0 0 0 6px rgba(181, 35, 60, 0.25); } }
 body[data-still] #mic.recording { animation: none; }
 @media (prefers-reduced-motion: reduce) { #mic.recording { animation: none; } }
+
+/* approval buttons under an answer that only proposed something */
+.turn.assistant .turn-actions { margin-top: 8px; flex-wrap: wrap; justify-content: flex-start; }
+.turn.assistant .turn-actions button { height: 30px; padding: 0 12px; font-size: 13px; }
+.turn.assistant .decision-result { margin: 6px 0 0; }
+.audio audio { color-scheme: light dark; }

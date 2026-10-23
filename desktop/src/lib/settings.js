@@ -9,6 +9,7 @@ const DEFAULTS = Object.freeze({
   protect: true,          // ask the OS to leave the windows out of screen sharing and recordings (best effort)
   still: false,           // true = no animations: Chakmati stays still
   voice: false,           // "listen and speak": microphone input and spoken answers/notices
+  autoSend: false,        // approve WhatsApp sends automatically (the person's standing permission; the engine still rate-limits)
   masked: false,          // discreet mode: bubbles never show names or titles
   bubbleSide: 'auto',
   mood: 'auto',           // 'auto' follows what is happening; the others pin Chakmati's face (offline still shows)
@@ -24,6 +25,7 @@ function normalize(raw) {
   const s = { ...DEFAULTS };
   if (typeof r.protect === 'boolean') s.protect = r.protect;
   if (typeof r.masked === 'boolean') s.masked = r.masked;
+  if (typeof r.autoSend === 'boolean') s.autoSend = r.autoSend;
   if (typeof r.voice === 'boolean') s.voice = r.voice;
   if (typeof r.still === 'boolean') s.still = r.still;
   if (typeof r.whatsapp === 'boolean') s.whatsapp = r.whatsapp;

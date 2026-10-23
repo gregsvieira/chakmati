@@ -6,6 +6,7 @@
   function speakable(text) {
     let t = String(text || '');
     t = t.replace(/\n+\s*(Fontes?|Sources?)\s*:[\s\S]*$/i, ''); // the list of links that follows an answer
+    t = t.replace(/\[\[[^\]]*\]\]/g, ''); // markers for the interface, not for the ears
     t = t.replace(/https?:\/\/\S+/g, '');
     t = t.replace(/[*_`#>]+/g, '');
     t = t.replace(/^\s*[-•]\s+/gm, '');

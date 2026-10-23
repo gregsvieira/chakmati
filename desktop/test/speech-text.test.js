@@ -19,3 +19,7 @@ test('long answers are cut at a sentence end, short ones are kept', () => {
   assert.equal(speakable('Olá!'), 'Olá!');
   assert.equal(speakable(null), '');
 });
+
+test('interface markers are never spoken', () => {
+  assert.equal(speakable('Aguardando sua aprovação - nada foi enviado ainda.\n[[action:abc123]]'), 'Aguardando sua aprovação - nada foi enviado ainda.');
+});

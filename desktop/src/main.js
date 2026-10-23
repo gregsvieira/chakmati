@@ -198,7 +198,7 @@ function panelState() {
     busy: state.busy > 0,
     describe: { ...currentDescription(), mood: effectiveMood(currentDescription().mood) },
     notices: state.notices.slice(-20),
-    settings: { protect: settings.protect, masked: settings.masked, voice: settings.voice, still: settings.still, bubbleSide: settings.bubbleSide, mood: settings.mood, whatsapp: settings.whatsapp, calendar: settings.calendar, research: settings.research },
+    settings: { protect: settings.protect, masked: settings.masked, autoSend: settings.autoSend, voice: settings.voice, still: settings.still, bubbleSide: settings.bubbleSide, mood: settings.mood, whatsapp: settings.whatsapp, calendar: settings.calendar, research: settings.research },
     ownsEngine: !!engineProcess,
     canOpenWa: !!projectRoot(),
     hotkeys: { toggle: prettyHotkey(HOTKEYS.toggle), panic: prettyHotkey(HOTKEYS.panic) },
@@ -244,6 +244,24 @@ function setHidden(hidden) {
 }
 
 // ---------------------------------------------------------------------------------------------------- engine
+// With the person's standing permission ("Ajustes > Enviar mensagens do WhatsApp sem pedir aprovação"), WhatsApp sends the
+// person asked for are approved here. Only sends: calendar changes still wait. The engine keeps its hourly limit and gap.
+const autoTried = new Set();
+async function autoApproveNew() {
+  if (!settings || !settings.autoSend || !state.overview) return;
+  for (const item of state.overview.pending || []) {
+    if (item.kind !== 'whatsapp.send' || autoTried.has(item.id)) continue;
+    autoTried.add(item.id);
+    try {
+      await engine.approve(item.id);
+      localNotice('Mensagem enviada.');
+    } catch (e) {
+      localNotice(`Não consegui enviar a mensagem: ${friendlyError(e)}`);
+    }
+    refreshOverview();
+  }
+}
+
 async function refreshOverview() {
   try {
     state.overview = await engine.overview();
@@ -252,6 +270,7 @@ async function refreshOverview() {
     state.engineUp = false;
   }
   sendPanelState();
+  autoApproveNew();
 }
 
 async function healthLoop() {
@@ -487,6 +506,7 @@ function updateSetting(key, value) {
     sendTo(widgetWin, 'widget:voice', value);
     if (value && process.platform === 'darwin') systemPreferences.askForMediaAccess('microphone').catch(() => {});
   }
+  else if (key === 'autoSend' && typeof value === 'boolean') { settings.autoSend = value; autoApproveNew(); }
   else if (key === 'still' && typeof value === 'boolean') { settings.still = value; sendTo(widgetWin, 'widget:still', value); }
   else if (key === 'mood' && settingsLib.MOODS.includes(value)) settings.mood = value;
   else if ((key === 'whatsapp' || key === 'calendar' || key === 'research') && typeof value === 'boolean') {
