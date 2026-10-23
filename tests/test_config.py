@@ -72,6 +72,7 @@ def test_research_max_pages_setting():
 
 
 def test_contact_and_target_pages_settings():
-    assert Settings().contact == "" and Settings().research_target_pages == 0
+    assert Settings().contact == "https://github.com/gregsvieira"
+    assert Settings().research_target_pages == 2
     s = Settings.from_env({"LITEAGENT_CONTACT": "https://example.org/me", "LITEAGENT_RESEARCH_TARGET_PAGES": "2"})
     assert (s.contact, s.research_target_pages) == ("https://example.org/me", 2)

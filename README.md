@@ -44,7 +44,9 @@ Chat replies stream directly; research/task replies stream as the worker produce
 | `LITEAGENT_RESEARCH_MAX_TOKENS` | `200` (`0` = no cap) |
 | `LITEAGENT_RESEARCH_CONCISE` | `1` (answers in at most 3 short sentences) |
 | `LITEAGENT_FETCH_DEADLINE` | `2.0` seconds to wait for page downloads (`0` = wait for all); a site that hangs is dropped |
-| `LITEAGENT_RESEARCH_MAX_PAGES` | `4` pages fetched per question |
+| `LITEAGENT_RESEARCH_MAX_PAGES` | `4` candidate pages downloaded per question |
+| `LITEAGENT_RESEARCH_TARGET_PAGES` | `2`: stop waiting as soon as 2 pages downloaded successfully (`0` = wait for all) |
+| `LITEAGENT_CONTACT` | `https://github.com/gregsvieira`: added to the User-Agent (Wikipedia rejects anonymous bots); empty = none |
 
 ## Test
 
