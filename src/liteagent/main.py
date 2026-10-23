@@ -41,6 +41,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
             LayaRelevanceScorer() if s.research_scorer == "laya" else KeepAllScorer(),
             result_cutoff=s.result_cutoff,
             concise=s.research_concise,
+            fetch_deadline=s.fetch_deadline or None,
         )
     worker_ref: list[Worker] = []
     engine = Engine(

@@ -59,3 +59,8 @@ def test_speed_settings():
         }
     )
     assert (s.keep_alive, s.preload_model, s.research_max_tokens, s.research_concise) == ("30m", True, 120, False)
+
+
+def test_fetch_deadline_setting():
+    assert Settings().fetch_deadline == 3.0
+    assert Settings.from_env({"LITEAGENT_FETCH_DEADLINE": "0"}).fetch_deadline == 0.0

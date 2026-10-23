@@ -41,6 +41,7 @@ class ResearchTool:
         passages: int = 4,
         result_cutoff: float = 0.2,
         concise: bool = False,
+        fetch_deadline: float | None = None,
     ):
         self._search = search
         self._fetcher = fetcher
@@ -50,6 +51,21 @@ class ResearchTool:
         self._passages = passages
         self._cutoff = result_cutoff
         self._system = COMPOSE_SYSTEM + CONCISE_SUFFIX if concise else COMPOSE_SYSTEM
+        self._fetch_deadline = fetch_deadline
+
+    async def _fetch_all(self, results) -> list[str | None]:
+        """Download the pages in parallel. With a deadline, pages that have not arrived in time are
+        cancelled and treated as failed, so one site that hangs cannot hold back the whole answer."""
+        tasks = [asyncio.create_task(self._fetcher.fetch(r.url)) for r in results]
+        if not tasks:
+            return []
+        if self._fetch_deadline is None:
+            return list(await asyncio.gather(*tasks))
+        done, pending = await asyncio.wait(tasks, timeout=self._fetch_deadline)
+        for task in pending:
+            task.cancel()
+        await asyncio.gather(*pending, return_exceptions=True)
+        return [task.result() if task in done and task.exception() is None else None for task in tasks]
 
     async def _prepare(self, query: str) -> tuple[list[dict[str, str]] | None, list[str]]:
         """Search, filter, fetch and rank. Returns (chat messages, source urls), or (None, [])
@@ -59,7 +75,7 @@ class ResearchTool:
             filter_results, query, results, self._scorer, self._cutoff
         )
         chosen = results[: self._max_pages]
-        bodies = await asyncio.gather(*(self._fetcher.fetch(r.url) for r in chosen))
+        bodies = await self._fetch_all(chosen)
 
         pairs: list[tuple[str, str]] = []  # (passage, url)
         for result, body in zip(chosen, bodies, strict=True):

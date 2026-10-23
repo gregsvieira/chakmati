@@ -140,3 +140,65 @@ async def test_stream_answer_without_usable_pages_yields_the_notice_and_skips_th
     out = [d async for d in ResearchTool(FakeSearch([]), pages({}), llm, ByLength()).stream_answer("q")]
     assert out == ["Não encontrei informações utilizáveis na web para esta pergunta."]
     assert llm.calls == []
+
+
+import asyncio as _asyncio
+import time as _time
+
+
+class DelayedFetcher:
+    """Serves bodies after a per-url delay, so one slow site can be simulated."""
+
+    def __init__(self, table):
+        self.table, self.cancelled = table, []
+
+    async def fetch(self, url):
+        delay, body = self.table[url]
+        try:
+            await _asyncio.sleep(delay)
+        except _asyncio.CancelledError:
+            self.cancelled.append(url)
+            raise
+        return body
+
+
+def _slow_site_setup():
+    results = [
+        SearchResult("Fast", "https://fast.test/1", "s"),
+        SearchResult("Slow", "https://slow.test/2", "s"),
+    ]
+    table = {
+        "https://fast.test/1": (0.0, PAGE.format(text="Informação relevante da página rápida, bem longa o bastante.")),
+        "https://slow.test/2": (5.0, PAGE.format(text="Informação da página lenta que nunca deveria ser esperada.")),
+    }
+    return results, table
+
+
+async def test_fetch_deadline_drops_a_page_that_hangs_and_does_not_wait_for_it():
+    results, table = _slow_site_setup()
+    fetcher = DelayedFetcher(table)
+    llm = FakeLLM()
+    tool = ResearchTool(FakeSearch(results), fetcher, llm, ByLength(), result_cutoff=0.0, fetch_deadline=0.3)
+    started = _time.perf_counter()
+    out = await tool.answer("q")
+    assert _time.perf_counter() - started < 2.0  # did not wait the 5 s
+    assert out.sources == ["https://fast.test/1"]
+    assert fetcher.cancelled == ["https://slow.test/2"]  # the hanging download was cancelled
+
+
+async def test_without_a_deadline_all_pages_are_awaited():
+    results, table = _slow_site_setup()
+    table["https://slow.test/2"] = (0.2, table["https://slow.test/2"][1])
+    tool = ResearchTool(FakeSearch(results), DelayedFetcher(table), FakeLLM(), ByLength(), result_cutoff=0.0)
+    out = await tool.answer("q")
+    assert set(out.sources) == {"https://fast.test/1", "https://slow.test/2"}
+
+
+async def test_stream_answer_also_honours_the_fetch_deadline():
+    results, table = _slow_site_setup()
+    llm = StreamLLM(["ok"])
+    tool = ResearchTool(FakeSearch(results), DelayedFetcher(table), llm, ByLength(), result_cutoff=0.0, fetch_deadline=0.3)
+    started = _time.perf_counter()
+    out = [d async for d in tool.stream_answer("q")]
+    assert _time.perf_counter() - started < 2.0 and out[0] == "ok"
+    assert "slow.test" not in "".join(out)

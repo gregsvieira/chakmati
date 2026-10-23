@@ -118,3 +118,19 @@ def test_build_app_applies_speed_settings_to_the_research_client(monkeypatch):
                        keep_alive="20m", research_concise=True))
     assert captured["llm"]._num_predict == 150 and captured["llm"]._keep_alive == "20m"
     assert captured["kwargs"]["concise"] is True
+
+
+def test_build_app_passes_the_fetch_deadline_and_zero_means_none(monkeypatch):
+    from liteagent.research import tool as tool_module
+
+    seen = []
+    real_init = tool_module.ResearchTool.__init__
+
+    def spy(self, search, fetcher, llm, scorer, **kwargs):
+        seen.append(kwargs.get("fetch_deadline"))
+        real_init(self, search, fetcher, llm, scorer, **kwargs)
+
+    monkeypatch.setattr(tool_module.ResearchTool, "__init__", spy)
+    build_app(Settings(db_path=":memory:", research_backend="ddg", fetch_deadline=2.5))
+    build_app(Settings(db_path=":memory:", research_backend="ddg", fetch_deadline=0.0))
+    assert seen == [2.5, None]
