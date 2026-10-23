@@ -4,6 +4,11 @@ from typing import Protocol
 
 MAX_TITLE = 200
 MAX_DURATION = timedelta(days=366)
+_WEEKDAYS_PT = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"]
+
+
+def _day(dt: datetime) -> str:
+    return f"{_WEEKDAYS_PT[dt.weekday()]} {dt:%Y-%m-%d}"
 
 
 @dataclass(frozen=True)
@@ -20,11 +25,11 @@ class CalendarEvent:
     def summary(self) -> str:
         """One human-readable line, used in answers and in approval prompts."""
         if self.all_day:
-            when = f"{self.start:%Y-%m-%d} (dia inteiro)"
+            when = f"{_day(self.start)} (dia inteiro)"
         elif self.start.date() == self.end.date():
-            when = f"{self.start:%Y-%m-%d %H:%M}–{self.end:%H:%M}"
+            when = f"{_day(self.start)} {self.start:%H:%M}–{self.end:%H:%M}"
         else:
-            when = f"{self.start:%Y-%m-%d %H:%M} → {self.end:%Y-%m-%d %H:%M}"
+            when = f"{_day(self.start)} {self.start:%H:%M} → {_day(self.end)} {self.end:%H:%M}"
         parts = [f"{self.title} — {when}"]
         if self.location:
             parts.append(f"local: {self.location}")

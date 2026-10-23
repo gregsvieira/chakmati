@@ -162,3 +162,69 @@ async def test_the_prompt_carries_the_current_date_and_timezone():
     await a.handle("hoje")
     system = llm.calls[0][0]["content"]
     assert "2026-10-23T18:30" in system and "-03:00" in system and "Friday" in system
+
+
+# ----------------------------------------------------------------------------- "dia N" is resolved in code
+from dataclasses import replace as _replace  # noqa: E402
+
+from liteagent.agenda.assistant import Intent, resolve_bare_day  # noqa: E402
+
+
+def intent_at(month, day, hour=9, minute=0, duration_min=None):
+    start = datetime(2026, month, day, hour, minute, tzinfo=BRT)
+    end = start + timedelta(minutes=duration_min) if duration_min else None
+    return Intent(action="create", title="X", start=start, end=end)
+
+
+@pytest.mark.parametrize(
+    "text,model_says,expected",
+    [
+        ("marque dentista dia 30 às 9h", (11, 30), (10, 30)),   # the model picked the wrong month
+        ("marque dentista dia 5 às 9h", (11, 5), (11, 5)),      # 5th already passed -> next month (correct already)
+        ("marque dentista dia 5 às 9h", (10, 5), (11, 5)),      # model put it in the past
+        ("marque dentista dia 31 às 9h", (12, 31), (10, 31)),
+        ("marque x dia 23 às 20h", (11, 23), (10, 23)),         # today, time still ahead
+        ("marque x dia 23 às 9h", (10, 23), (11, 23)),          # today, time already passed -> next month
+    ],
+)
+def test_bare_day_of_month_resolves_to_the_next_occurrence(text, model_says, expected):
+    hour = 20 if "20h" in text else 9
+    fixed = resolve_bare_day(text, intent_at(*model_says, hour=hour), NOW)
+    assert (fixed.start.month, fixed.start.day, fixed.start.hour) == (*expected, hour)
+
+
+def test_bare_day_keeps_the_duration():
+    fixed = resolve_bare_day("consulta dia 30 às 9h por 45 minutos", intent_at(11, 30, duration_min=45), NOW)
+    assert fixed.start == datetime(2026, 10, 30, 9, 0, tzinfo=BRT) and fixed.end == fixed.start + timedelta(minutes=45)
+
+
+def test_bare_day_skips_months_without_that_day():
+    nov = datetime(2026, 11, 15, 10, 0, tzinfo=BRT)  # November has 30 days
+    fixed = resolve_bare_day("marque x dia 31 às 9h", intent_at(11, 30), nov)
+    assert (fixed.start.month, fixed.start.day) == (12, 31)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "marque feriado dia 12 de novembro",      # month named
+        "marque x dia 12/11 às 9h",                # numeric date
+        "marque x amanhã às 9h",                   # no 'dia N'
+        "marque x na sexta dia 30 de dezembro",
+    ],
+)
+def test_bare_day_leaves_explicit_dates_alone(text):
+    original = intent_at(11, 12)
+    assert resolve_bare_day(text, original, NOW) == original
+
+
+def test_bare_day_without_a_model_start_is_a_noop():
+    original = Intent(action="create", title="X")
+    assert resolve_bare_day("marque x dia 30", original, NOW) == original
+
+
+async def test_the_assistant_applies_the_correction_before_proposing():
+    a, _, service = assistant('{"action":"create","title":"Dentista","start":"2026-11-30T09:00:00"}')
+    out = await a.handle("marque dentista dia 30 às 9h")
+    assert service.proposed[0][1].start == datetime(2026, 10, 30, 9, 0, tzinfo=BRT)
+    assert "2026-10-30" in out

@@ -46,3 +46,12 @@ def test_calendar_event_summary_is_human_readable():
     assert "Reunião" in s and "15:00" in s and "16:00" in s and "Sala 2" in s and "Trabalho" in s
     allday = CalendarEvent("id2", "Feriado", T0.replace(hour=0), T0.replace(hour=0) + timedelta(days=1), all_day=True)
     assert "dia inteiro" in allday.summary()
+
+
+def test_summary_shows_the_weekday_so_a_wrong_date_is_easy_to_spot():
+    # 2026-10-24 is a Saturday
+    assert "sáb 2026-10-24" in CalendarEvent("i", "x", T0, T0 + timedelta(hours=1)).summary()
+    allday = CalendarEvent("j", "y", T0.replace(hour=0), T0.replace(hour=0) + timedelta(days=1), all_day=True)
+    assert "sáb 2026-10-24" in allday.summary()
+    multi = CalendarEvent("k", "z", T0, T0 + timedelta(days=2)).summary()
+    assert "sáb 2026-10-24" in multi and "seg 2026-10-26" in multi

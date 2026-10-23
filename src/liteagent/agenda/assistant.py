@@ -8,6 +8,7 @@ never `approve`, so nothing is written without the user's explicit approval.
 
 import asyncio
 import json
+import re
 import unicodedata
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, tzinfo
@@ -25,12 +26,17 @@ Current date and time: {now} ({weekday}); the user's timezone offset is already 
 Keys:
   "action": "list" (see events), "create" (add one), "delete" (remove one) or "other" (not about the calendar)
   "start", "end": local ISO 8601 like 2026-10-24T15:00:00, or null
-  "title": the event title, or null; "location": or null; "notes": or null
+  "title": what the event is, in the user's own words, capitalised (for "marque reunião de planejamento amanhã às 15h"
+           the title is "Reunião de planejamento"); null ONLY when the user never said what the event is
+  "location": or null; "notes": or null
   "all_day": true or false
   "match": for "delete", words from the title of the event to remove, or null
 Resolve relative dates ("tomorrow", "next Friday") from the current date and time above.
+If the user gives only a day of the month ("dia 30"), use the NEXT occurrence of that day: this month if it has not passed yet,
+otherwise next month. Never choose a month that is more than one month away unless the user names it.
+A bare statement without a verb ("feriado dia 12") is not a request to list events.
 For "list" without a period use today (00:00 to 24:00). For "create" give "end" only if the user gave a duration or end.
-Never invent a title, date or time the user did not say; use null instead."""
+Never invent a date or time the user did not say; use null instead. Do not put the date, time or place in the title."""
 
 HELP = (
     "Não entendi o pedido de agenda. Exemplos: \"o que tenho amanhã?\", \"marque dentista dia 30 às 9h\", "
@@ -102,6 +108,43 @@ def _norm(text: str) -> str:
     return "".join(c for c in decomposed if not unicodedata.combining(c))
 
 
+_BARE_DAY = re.compile(r"\bdia\s+(\d{1,2})\b(?!\s*(?:de\b|/|-|\.))", re.IGNORECASE)
+_MONTH_WORDS = re.compile(
+    r"\b(?:janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|mes)\b"
+)
+
+
+def resolve_bare_day(text: str, intent: Intent, now: datetime) -> Intent:
+    """"dia 30" with no month means the NEXT occurrence of the 30th. The model gets this wrong (it put "dia 30"
+    in the following month three times out of three), and a wrong month would be a silent mistake, so the date is
+    computed here. Explicit dates ("dia 12 de novembro", "12/11", "mês que vem") are left alone."""
+    match = _BARE_DAY.search(text)
+    if intent.start is None or match is None or _MONTH_WORDS.search(_norm(text)):
+        return intent
+    day = int(match.group(1))
+    if not 1 <= day <= 31:
+        return intent
+    year, month = now.year, now.month
+    for _ in range(14):
+        try:
+            candidate = intent.start.replace(year=year, month=month, day=day)
+        except ValueError:  # that month has no such day (e.g. the 31st of November)
+            candidate = None
+        if candidate is not None:
+            upcoming = candidate.date() >= now.date() if intent.all_day else candidate >= now
+            if upcoming:
+                break
+        month += 1
+        if month > 12:
+            year, month = year + 1, 1
+    else:
+        return intent
+    if candidate == intent.start:
+        return intent
+    shift = candidate - intent.start
+    return replace(intent, start=candidate, end=intent.end + shift if intent.end else None)
+
+
 def _local(event: CalendarEvent, tz: tzinfo | None) -> CalendarEvent:
     if event.all_day or tz is None:
         return event
@@ -122,7 +165,7 @@ class CalendarAssistant:
         now = self._now()
         system = SYSTEM.format(now=now.isoformat(timespec="seconds"), weekday=_WEEKDAYS[now.weekday()])
         reply = await self._llm.chat([{"role": "system", "content": system}, {"role": "user", "content": text}])
-        intent = parse_intent(reply, now)
+        intent = resolve_bare_day(text, parse_intent(reply, now), now)
         if intent.action == "list":
             return await self._list(intent, now)
         if intent.action == "create":
