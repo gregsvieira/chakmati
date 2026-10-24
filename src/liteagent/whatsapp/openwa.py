@@ -9,7 +9,8 @@ Authentication is the X-API-Key header. Query parameters are validated with stri
 be sent as query strings: only `chatId` is passed and the server defaults are used (own messages included).
 """
 
-import base64
+import asyncio
+import secrets
 import time
 from datetime import datetime
 from typing import Any
@@ -181,10 +182,34 @@ class OpenWAClient:
         return str(data.get("data"))
 
     async def send_voice(self, chat_id: str, audio: bytes, mime: str) -> str:
-        """A voice note (push-to-talk): the audio goes as a data URL, as OpenWA's /api/messages/sendPtt expects."""
+        """The audio as a file message. This OpenWA build has no sendPtt/sendAudio/sendFile, only sendFileFromUrl, so the
+        recording is served once from a loopback port that only OpenWA is told about, and closed right after."""
         out = Outgoing(chat_id, "x")  # validates the recipient
-        file = f"data:{mime};base64,{base64.b64encode(audio).decode()}"
-        data = await self._request("POST", "/api/messages/sendPtt", body={"to": out.to, "file": file})
+        token = secrets.token_urlsafe(16)
+
+        async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+            try:
+                head = await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), 5)
+                line = head.split(b"\r\n", 1)[0].decode("latin-1")
+                if f"/{token}/" in line:
+                    header = f"HTTP/1.1 200 OK\r\nContent-Type: {mime}\r\nContent-Length: {len(audio)}\r\nConnection: close\r\n\r\n"
+                    writer.write(header.encode() + (b"" if line.startswith("HEAD") else audio))
+                else:
+                    writer.write(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+                await writer.drain()
+            except (asyncio.TimeoutError, asyncio.IncompleteReadError, asyncio.LimitOverrunError, ConnectionError):
+                pass
+            finally:
+                writer.close()
+
+        server = await asyncio.start_server(handle, "127.0.0.1", 0)
+        try:
+            port = server.sockets[0].getsockname()[1]
+            data = await self._request("POST", "/api/messages/sendFileFromUrl",
+                                       body={"to": out.to, "url": f"http://127.0.0.1:{port}/{token}/voice.ogg", "filename": "voice.ogg"})
+        finally:
+            server.close()
+            await server.wait_closed()
         return str(data.get("data"))
 
     async def aclose(self) -> None:

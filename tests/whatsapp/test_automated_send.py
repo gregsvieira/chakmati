@@ -75,20 +75,31 @@ async def test_bad_recipients_text_or_audio_are_refused_before_anything_is_sent(
 
 
 # ----------------------------------------------------------------------------- OpenWA's voice-note call
-async def test_send_voice_posts_a_data_url_to_send_ptt():
+async def test_send_voice_serves_the_recording_once_and_asks_openwa_to_fetch_it():
     seen = {}
 
-    def server(request: httpx.Request) -> httpx.Response:
+    async def server(request: httpx.Request) -> httpx.Response:
         seen["url"], seen["body"], seen["key"] = str(request.url), request.read(), request.headers.get("x-api-key")
+        import json as _json
+
+        file_url = _json.loads(seen["body"])["url"]
+        async with httpx.AsyncClient() as http:  # what OpenWA does: download the file from the URL it was given
+            got = await http.get(file_url)
+            seen["fetched"], seen["type"] = got.content, got.headers["content-type"]
+            seen["wrong"] = (await http.get(file_url.replace("/voice.ogg", "/x").rsplit("/", 2)[0] + "/guess/voice.ogg")).status_code
         return httpx.Response(200, json={"success": True, "data": "true_111@lid_VOICE"})
 
     client = OpenWAClient("http://127.0.0.1:8081", "secret", transport=httpx.MockTransport(server))
     assert await client.send_voice("111@lid", b"OggS-bytes", "audio/ogg") == "true_111@lid_VOICE"
-    import base64, json
+    import json
 
     body = json.loads(seen["body"])
-    assert seen["url"].endswith("/api/messages/sendPtt") and seen["key"] == "secret"
-    assert body["to"] == "111@lid" and body["file"] == "data:audio/ogg;base64," + base64.b64encode(b"OggS-bytes").decode()
+    assert seen["url"].endswith("/api/messages/sendFileFromUrl") and seen["key"] == "secret"
+    assert body["to"] == "111@lid" and body["url"].startswith("http://127.0.0.1:") and body["filename"] == "voice.ogg"
+    assert seen["fetched"] == b"OggS-bytes" and seen["type"] == "audio/ogg" and seen["wrong"] == 404
+    with pytest.raises(Exception):  # the port is closed again afterwards
+        async with httpx.AsyncClient() as http:
+            await http.get(body["url"])
 
 
 async def test_send_voice_validates_the_recipient():
