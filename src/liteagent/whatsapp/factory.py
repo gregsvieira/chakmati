@@ -7,6 +7,7 @@ from ..config import Settings
 from ..notices import NoticeBoard
 from .events import WhatsAppEvents
 from .openwa import OpenWAClient
+from .webvoice import WebVoiceSender
 from .service import WhatsAppService
 
 
@@ -26,7 +27,7 @@ def build_whatsapp(settings: Settings, actions: ActionStore | None = None) -> Wh
         return None
     if backend != "openwa":
         raise ValueError(f"unknown whatsapp_backend {backend!r} (use off or openwa)")
-    client = OpenWAClient(settings.openwa_url, _api_key(settings))
+    client = OpenWAClient(settings.openwa_url, _api_key(settings), voice=WebVoiceSender(settings.openwa_home))
     return WhatsAppService(
         client, actions or ActionStore(settings.db_path), max_sends_per_hour=settings.whatsapp_max_sends_per_hour
     )

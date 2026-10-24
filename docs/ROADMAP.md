@@ -23,18 +23,12 @@ comando", e a resposta passa por um filtro (inclusive em streaming). Se o texto 
 avisa e registra no log (`guard:`). As automações nunca usam o conteúdo da mensagem que as disparou. E-mail: quando existir,
 deve usar `guard.fence`/`neutralize` do mesmo jeito.
 
-## Achado: envio de áudio no OpenWA
-O OpenWA instalado (5.1.0, e também a 5.6.7 mais recente) não tem `sendPtt`, `sendAudio` nem `sendFile` (falta
-`WAPI.sendFile` no navegador embutido). Logo o Chakmati não consegue enviar áudio/nota de voz por ele. O motor detecta isso
-(`OpenWAClient.supports_media`) e só oferece automação por texto. Para áudio seria preciso outro provedor (ex.: API oficial
-do WhatsApp Business) ou uma versão do OpenWA com envio de mídia.
-
-## Ajustes por conversa (item 1): como ficou
-`desktop/src/lib/settings-intent.js`: regras sobre as palavras da própria pessoa (sem modelo de IA, nada de fora chega ali),
-aplicadas no painel antes de enviar ao motor. Cobre ligar/desligar as chaves de Ajustes e as escolhas (balão, humor,
-velocidade da voz, microfone). Modo discreto, envio sem aprovação e proteção de tela pedem "sim/não" antes (por voz também,
-com o microfone aberto por 30 s). Perguntas ("como ligo...?") não mudam nada. Falta: consultar o estado ("a voz melhorada
-está ligada?").
+## Envio de áudio (resolvido por outro caminho)
+O OpenWA instalado (5.1.0, e também a 5.6.7) não tem `sendPtt`, `sendAudio` nem `sendFile`. Solução: o Chakmati anexa-se ao
+mesmo Chromium (sem janela) que o OpenWA já mantém aberto no WhatsApp Web e usa o próprio pipeline de anexos da página,
+marcando o áudio como nota de voz (`src/liteagent/whatsapp/wa_voice.js` + `webvoice.py`). Testado ao vivo: chega como nota de
+voz (tipo `ptt`). Depende de internals do WhatsApp Web (`Store`, `WAPI.procFiles`): se uma atualização quebrar, o motor detecta
+(`supports_media`) e volta a oferecer só texto.
 
 ## Casa / Alexa (item 3): como ficou, e o que a Alexa permite de verdade
 A "Alexa Smart Home Skill API" serve para um fabricante expor dispositivos *para* a Alexa (a Alexa chama a sua skill). Ela não

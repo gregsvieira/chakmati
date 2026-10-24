@@ -138,7 +138,9 @@ class OpenWAClient:
         api_key: str,
         transport: httpx.AsyncBaseTransport | None = None,
         timeout: float = 60.0,
+        voice=None,  # a WebVoiceSender: voice notes through the open WhatsApp Web page
     ):
+        self._voice = voice
         self._base = base_url.rstrip("/")
         self._key = api_key
         self._http = httpx.AsyncClient(transport=transport, timeout=timeout)
@@ -191,6 +193,8 @@ class OpenWAClient:
         return str(data.get("data"))
 
     async def supports_media(self) -> bool | None:
+        if self._voice is not None:  # voice notes go through the WhatsApp Web page instead of OpenWA's own (missing) file sending
+            return await self._voice.available()
         """Can this OpenWA send files? Asked with a request that cannot reach anyone (an impossible recipient and an unreachable
         URL): the capability check comes first, so "unsupported" is answered before anything is attempted. None = could not tell."""
         try:
@@ -208,6 +212,8 @@ class OpenWAClient:
         """The audio as a file message. This OpenWA build has no sendPtt/sendAudio/sendFile, only sendFileFromUrl, so the
         recording is served once from a loopback port that only OpenWA is told about, and closed right after."""
         out = Outgoing(chat_id, "x")  # validates the recipient
+        if self._voice is not None:
+            return await self._voice.send(out.to, audio, mime)
         token = secrets.token_urlsafe(16)
 
         async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:

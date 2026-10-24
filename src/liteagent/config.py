@@ -29,6 +29,7 @@ class Settings:
     calendar_name: str = ""  # calendar that new events go to (empty = the system default)
     whatsapp_backend: str = "off"  # "off" | "openwa"
     openwa_url: str = "http://127.0.0.1:8081"
+    openwa_home: str = os.path.expanduser("~/.lite-agent/openwa")  # where OpenWA is installed (its browser is used for voice notes)
     home_backend: str = "off"  # "off" | "homeassistant" (also the way to reach Alexa-compatible devices)
     home_url: str = "http://homeassistant.local:8123"
     home_token_file: str = os.path.expanduser("~/.lite-agent/home_token.txt")
@@ -73,6 +74,7 @@ class Settings:
             calendar_name=env.get("LITEAGENT_CALENDAR_NAME", d.calendar_name),
             whatsapp_backend=env.get("LITEAGENT_WHATSAPP_BACKEND", d.whatsapp_backend),
             openwa_url=env.get("LITEAGENT_OPENWA_URL", d.openwa_url),
+            openwa_home=os.path.expanduser(env.get("LITEAGENT_OPENWA_HOME", d.openwa_home)),
             home_backend=env.get("LITEAGENT_HOME_BACKEND", d.home_backend),
             home_url=env.get("LITEAGENT_HOME_URL", d.home_url),
             home_token_file=os.path.expanduser(env.get("LITEAGENT_HOME_TOKEN_FILE", d.home_token_file)),
