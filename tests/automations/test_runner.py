@@ -109,7 +109,8 @@ async def test_a_voice_reply_sends_the_stored_recording(tmp_path):
     auto = store.create(spec, clock())
     (tmp_path / f"{auto.id}.ogg").write_bytes(b"OggS-recording")
     await runner.on_whatsapp_messages([(MARIA, 1)])
-    assert wa.sent[0]["audio"] == b"OggS-recording" and wa.sent[0]["mime"] == "audio/ogg" and wa.sent[0]["text"] is None
+    assert [s["text"] for s in wa.sent] == [PREFIX + "Áudio", None]  # the label, then the voice note
+    assert wa.sent[1]["audio"] == b"OggS-recording" and wa.sent[1]["mime"] == "audio/ogg" and wa.sent[0]["audio"] is None
 
 
 async def test_a_voice_reply_without_its_recording_fails_cleanly(tmp_path):

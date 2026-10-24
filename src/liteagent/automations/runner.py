@@ -46,7 +46,10 @@ class AutomationRunner:
                 path = self.recording_path(auto.id)
                 if not path.is_file():
                     raise FileNotFoundError("a gravação desta automação não foi encontrada")
-                await self._whatsapp.send_automated(chat_id, chat_name, audio=path.read_bytes(), mime="audio/ogg", source=source)
+                audio = path.read_bytes()
+                # the label first, so the voice note is never mistaken for the person themself
+                await self._whatsapp.send_automated(chat_id, chat_name, text=PREFIX + "Áudio", source=source)
+                await self._whatsapp.send_automated(chat_id, chat_name, audio=audio, mime="audio/ogg", source=source)
             else:
                 await self._whatsapp.send_automated(chat_id, chat_name, text=PREFIX + action["text"], source=source)
         except Exception as exc:  # one broken automation must never stop the others
