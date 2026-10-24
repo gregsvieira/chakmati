@@ -113,7 +113,8 @@
   }
 
   function renderRecent() {
-    const notices = (state.notices || []).slice(-6).reverse();
+    // messages live under "Mensagens", and what Chakmati itself said is not a notice: here only agenda, approvals and system
+    const notices = (state.notices || []).filter((n) => n.kind !== 'whatsapp' && n.kind !== 'reply').slice(-6).reverse();
     if (!notices.length) { fill($('recent-body'), h('p', { class: 'empty' }, 'Quando algo acontecer, eu aviso aqui.')); return; }
     const now = Date.now() / 1000;
     fill($('recent-body'), notices.map((n) => h('div', { class: 'row' },

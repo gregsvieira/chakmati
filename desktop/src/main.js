@@ -375,6 +375,9 @@ const projectRoot = () => {
   return fs.existsSync(path.join(root, 'pyproject.toml')) ? root : null;
 };
 
+// An app opened from the Finder or with `open` gets a minimal PATH, without the folders where uv and Homebrew live.
+const toolPath = () => [process.env.PATH || '', path.join(app.getPath('home'), '.local', 'bin'), '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin'].filter(Boolean).join(':');
+
 // The app starts the engine itself when none is running, with the integrations the person switched on in Ajustes.
 // An engine started by hand is left alone (and then the integrations are chosen by its own environment).
 async function searxngUp() {
@@ -389,7 +392,7 @@ async function startEngine() {
   const logFile = path.join(app.getPath('userData'), 'engine.log');
   const log = fs.openSync(logFile, 'a');
   engineProcess = spawn('uv', ['run', 'python', '-m', 'liteagent.main'], {
-    cwd: root, stdio: ['ignore', log, log], env: { ...process.env, ...env },
+    cwd: root, stdio: ['ignore', log, log], env: { ...process.env, PATH: toolPath(), ...env },
   });
   fs.closeSync(log);
   engineProcess.on('error', () => { engineProcess = null; });

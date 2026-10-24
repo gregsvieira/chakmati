@@ -109,6 +109,11 @@ Para funcionar é preciso: o **Ollama** aberto, com o modelo `qwen3.5:latest` (`
 cd desktop && npm install && npm start   # abre o Chakmati; ele inicia o motor sozinho se nenhum estiver rodando
 ```
 
+**macOS e permissões (Agenda, Microfone):** o macOS entrega a permissão ao programa que abriu o processo. Abrindo com
+`npm run abrir` (em vez de `npm start`), o Electron é esse programa e o macOS mostra o pedido com o texto do Chakmati; com
+`npm start` o pedido vai para o Terminal. Antes de abrir, o app declara os motivos no `Info.plist` do Electron
+(`desktop/scripts/prepare-electron.js`, executado sozinho pelo `npm start` e pelo `npm install`).
+
 O motor também pode rodar sozinho, sem o app: `uv run python -m liteagent.main` (escuta em 127.0.0.1:8765). As integrações
 (WhatsApp, agenda, pesquisa na internet) são ligadas em **Ajustes**; o WhatsApp precisa do OpenWA (`scripts/openwa.sh`).
 O SearXNG local é opcional: sem ele a pesquisa usa o DuckDuckGo.
