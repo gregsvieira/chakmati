@@ -77,38 +77,51 @@
     renderMessages();
   }
 
-  function renderMessages() {
+  // A titled sub-block; sub-blocks sit one under the other.
+  const subgroup = (title, ...kids) => h('div', { class: 'subgroup' }, h('h3', {}, title), kids);
+
+  function whatsappNodes() {
     const wa = (state.overview && state.overview.whatsapp) || { enabled: false };
-    $('messages').hidden = !wa.enabled;
-    if (!wa.enabled) return;
+    if (!wa.enabled) return [h('p', { class: 'empty' }, 'WhatsApp desativado em Ajustes.')];
     if (wa.error || wa.connected === false) {
-      fill($('messages-body'),
+      return [
         h('p', { class: 'warn' }, 'O WhatsApp está desconectado. Abra o OpenWA e escaneie o QR em Aparelhos conectados.'),
         state.canOpenWa ? h('button', { class: 'primary', type: 'button', id: 'wa-connect-inline', onclick: connectWhatsApp }, 'Conectar WhatsApp via OpenWa') : null,
-        h('p', { class: 'hint', id: 'wa-connect-note' }, waNote));
-      return;
+        h('p', { class: 'hint', id: 'wa-connect-note' }, waNote)];
     }
     const unread = wa.unread || [];
-    if (!unread.length) { fill($('messages-body'), h('p', { class: 'empty' }, 'Nenhuma mensagem nova.')); return; }
+    if (!unread.length) return [h('p', { class: 'empty' }, 'Nenhuma mensagem nova.')];
     const masked = state.settings.masked;
-    const shown = unread.slice(0, 2);
     const rowFor = (c) => {
       const label = [h('span', { class: 'name' }, masked ? 'Uma conversa' : c.name, c.is_group && !masked ? h('span', { class: 'tag' }, ' (grupo)') : null),
         h('span', { class: 'badge', 'aria-label': plural(c.unread, 'mensagem nova', 'mensagens novas') }, String(c.unread))];
       return masked ? h('div', { class: 'row' }, label) : h('button', { class: 'row row-btn', type: 'button', onclick: () => openChat(c, 'main') }, label);
     };
-    fill($('messages-body'), shown.map(rowFor),
-      unread.length > 2 && !masked ? h('button', { class: 'more', type: 'button', onclick: openChats }, `Ver mais (${unread.length - 2})`) : null);
+    return [unread.slice(0, 2).map(rowFor),
+      unread.length > 2 && !masked ? h('button', { class: 'more', type: 'button', onclick: openChats }, `Ver mais (${unread.length - 2})`) : null];
+  }
+
+  function renderMessages() {
+    $('messages').hidden = false;
+    fill($('messages-body'),
+      subgroup('WhatsApp', whatsappNodes()),
+      subgroup('Email', h('p', { class: 'empty' }, 'Email ainda não está conectado.')));
   }
 
   function renderAutomations() {
     const list = (state.overview && state.overview.automations) || [];
     $('automations-empty').hidden = list.length > 0;
-    fill($('automation-list'), list.map((a) => h('div', { class: 'row automation' },
+    const card = (a) => h('div', { class: 'row automation' },
       h('div', { class: 'grow' }, h('p', { class: 'decision-title' }, a.name), h('p', { class: 'decision-body' }, a.description + (a.runs ? ` (${plural(a.runs, 'vez', 'vezes')})` : ''))),
       h('div', { class: 'decision-actions' },
         h('button', { class: 'ghost small', type: 'button', onclick: () => api.automation(a.id, a.enabled ? 'disable' : 'enable') }, a.enabled ? 'Pausar' : 'Ativar'),
-        h('button', { class: 'ghost small', type: 'button', onclick: () => api.automation(a.id, 'delete') }, 'Apagar')))));
+        h('button', { class: 'ghost small', type: 'button', onclick: () => api.automation(a.id, 'delete') }, 'Apagar')));
+    // One sub-block per channel that has automations; none for the channels without any.
+    const channels = [['whatsapp', 'WhatsApp'], ['email', 'Email'], ['home', 'Casa']];
+    fill($('automation-list'), channels
+      .map(([key, title]) => [title, list.filter((a) => (a.channel || 'whatsapp') === key)])
+      .filter(([, items]) => items.length)
+      .map(([title, items]) => subgroup(title, items.map(card))));
   }
 
   async function previewVoice(id, button) {

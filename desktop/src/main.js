@@ -815,6 +815,7 @@ const SAMPLE_OVERVIEW = {
     { id: '2@g.us', name: 'Família', unread: 5, is_group: true },
     { id: '3@lid', name: 'João Pereira', unread: 1, is_group: false },
   ] },
+  automations: [{ id: 'b'.repeat(32), name: 'Resposta automática', enabled: true, runs: 2, description: 'Quando alguém te escrever no WhatsApp, responder: «Estou ocupado».' }],
   calendar: { enabled: true, today: [
     { id: 'e1', title: 'Reunião de planejamento', start: new Date(new Date().setHours(15, 0, 0, 0)).toISOString(), all_day: false },
     { id: 'e2', title: 'Dentista', start: new Date(new Date().setHours(17, 30, 0, 0)).toISOString(), all_day: false },
