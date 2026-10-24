@@ -7,6 +7,7 @@ from datetime import datetime
 from ..llm import ChatClient
 from ..loop.scorer import PartScorer
 from ..persona import PERSONA
+from ..guard import NOTE, UNTRUSTED_RULE, StreamScrubber, neutralize, strip_markers, suspicious
 from ..timeguard import is_recency_question, order_by_date, recency_fallback_query, today_line
 from .fetch import PageFetcher, chunk_text, extract_text
 from .filter import filter_results, rank_passages
@@ -67,6 +68,7 @@ class ResearchTool:
         self._passages = passages
         self._cutoff = result_cutoff
         self._system = COMPOSE_SYSTEM + CONCISE_SUFFIX if concise else COMPOSE_SYSTEM
+        self._flagged = False  # the passages of the last question addressed the assistant (the worker runs one job at a time)
         self._fetch_deadline = fetch_deadline
         self._target_pages = target_pages
 
@@ -155,13 +157,14 @@ class ResearchTool:
         if recency:
             ordered = order_by_date(best, now)[: self._passages + 2]
             best = [p for p, _ in ordered]
-            numbered = "\n".join(f"[{i}] {f'(data: {d:%d/%m/%Y}) ' if d else ''}{p}" for i, (p, d) in enumerate(ordered, 1))
+            numbered = "\n".join(f"[{i}] {f'(data: {d:%d/%m/%Y}) ' if d else ''}{neutralize(p)}" for i, (p, d) in enumerate(ordered, 1))
         else:
-            numbered = "\n".join(f"[{i}] {p}" for i, p in enumerate(best, 1))
-        system = self._system + (RECENCY_SUFFIX if recency else "")
+            numbered = "\n".join(f"[{i}] {neutralize(p)}" for i, p in enumerate(best, 1))
+        self._flagged = suspicious(list(best), "web")
+        system = self._system + UNTRUSTED_RULE + (RECENCY_SUFFIX if recency else "")
         messages = [
             {"role": "system", "content": system + (f" {today} Today's date matters for words like 'latest' or 'recent'." if today else "")},
-            {"role": "user", "content": f"Question: {query}\n\nPassages:\n{numbered}"},
+            {"role": "user", "content": f"Question: {query}\n\nPassages:\n<untrusted source=\"web\">\n{numbered}\n</untrusted>"},
         ]
         sources: list[str] = []
         for passage in best:
@@ -175,7 +178,7 @@ class ResearchTool:
         if messages is None:
             return ResearchAnswer(NOTHING_FOUND, [])
         reply = await self._llm.chat(messages)
-        return ResearchAnswer(reply.strip(), sources)
+        return ResearchAnswer(strip_markers(reply).strip() + (NOTE if self._flagged else ""), sources)
 
     async def stream_answer(self, query: str, today: str | None = None, now: datetime | None = None) -> AsyncIterator[str]:
         """Same retrieval as `answer`, but the reply is yielded piece by piece as the model writes it;
@@ -185,7 +188,14 @@ class ResearchTool:
         if messages is None:
             yield NOTHING_FOUND
             return
+        scrub = StreamScrubber()
         async for delta in self._llm.stream_chat(messages):  # type: ignore[attr-defined]
-            yield delta
+            safe = scrub.feed(delta)
+            if safe:
+                yield safe
+        if rest := scrub.flush():
+            yield rest
+        if self._flagged:
+            yield NOTE
         if sources:
             yield "\n\nFontes:\n" + "\n".join(f"- {u}" for u in sources)

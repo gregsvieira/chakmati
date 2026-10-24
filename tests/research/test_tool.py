@@ -2,6 +2,7 @@ import httpx
 
 from liteagent.research.fetch import PageFetcher
 from liteagent.research.search import SearchResult
+from liteagent.guard import UNTRUSTED_RULE
 from liteagent.research.tool import COMPOSE_SYSTEM, ResearchAnswer, ResearchTool
 
 PAGE = """<html><body><article><p>{text}</p><p>Mais detalhes importantes sobre o assunto aparecem
@@ -59,7 +60,7 @@ async def test_answer_uses_fetched_passages_and_lists_sources():
     assert out.answer == "Resposta [1]."
     assert set(out.sources) == {"https://a.test/1", "https://b.test/2"}
     system, user = llm.calls[0]
-    assert system["content"] == COMPOSE_SYSTEM
+    assert system["content"] == COMPOSE_SYSTEM + UNTRUSTED_RULE
     assert "[1]" in user["content"] and "versão atual do python" in user["content"]
     assert "3.13" in user["content"]
 
@@ -105,10 +106,10 @@ async def test_concise_flag_appends_the_brevity_instruction_only_when_enabled():
     mapping = {"https://a.test/1": PAGE.format(text="Texto suficiente para ser extraído da página de teste.")}
     llm = FakeLLM()
     await ResearchTool(FakeSearch(results), pages(mapping), llm, ByLength(), result_cutoff=0.0, concise=True).answer("q")
-    assert llm.calls[0][0]["content"] == COMPOSE_SYSTEM + CONCISE_SUFFIX
+    assert llm.calls[0][0]["content"] == COMPOSE_SYSTEM + CONCISE_SUFFIX + UNTRUSTED_RULE
     llm2 = FakeLLM()
     await ResearchTool(FakeSearch(results), pages(mapping), llm2, ByLength(), result_cutoff=0.0).answer("q")
-    assert llm2.calls[0][0]["content"] == COMPOSE_SYSTEM
+    assert llm2.calls[0][0]["content"] == COMPOSE_SYSTEM + UNTRUSTED_RULE
 
 
 class StreamLLM:
@@ -132,7 +133,7 @@ async def test_stream_answer_yields_deltas_then_sources():
     out = [d async for d in tool.stream_answer("versão do python")]
     assert out[:2] == ["Python ", "3.13 [1]."]
     assert "".join(out[2:]) == "\n\nFontes:\n- https://a.test/1"
-    assert llm.calls[0][0]["content"] == COMPOSE_SYSTEM
+    assert llm.calls[0][0]["content"] == COMPOSE_SYSTEM + UNTRUSTED_RULE
 
 
 async def test_stream_answer_without_usable_pages_yields_the_notice_and_skips_the_llm():
