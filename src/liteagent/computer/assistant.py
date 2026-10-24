@@ -70,6 +70,9 @@ class ComputerAssistant:
     async def handle(self, text: str) -> str:
         reply = await self._llm.chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": text}])
         intent = parse_intent(reply)
+        if intent["action"] == "other" or (intent["action"] == "steps" and not intent.get("steps")):  # a small model sometimes slips: ask once more
+            reply = await self._llm.chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": text + "\n\nReply with the JSON object only."}])
+            intent = parse_intent(reply)
         try:
             return await self._act(intent, text)
         except ComputerError as exc:
