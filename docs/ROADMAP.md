@@ -2,7 +2,7 @@
 
 Itens combinados. O status de cada um está no próprio item.
 
-1. **Tudo que está em Ajustes também por conversa.** Todas as configurações do Chakmati devem poder ser feitas falando
+1. **(FEITO) Tudo que está em Ajustes também por conversa.** Todas as configurações do Chakmati devem poder ser feitas falando
    com ele, por voz ou por texto ("liga a voz melhorada", "desliga o modo discreto", "mostra o balão embaixo").
    Cada mudança confirma o que mudou. As que afetam privacidade ou envio (modo discreto, envio sem aprovação,
    esconder da tela) pedem confirmação antes.
@@ -28,3 +28,10 @@ O OpenWA instalado (5.1.0, e também a 5.6.7 mais recente) não tem `sendPtt`, `
 `WAPI.sendFile` no navegador embutido). Logo o Chakmati não consegue enviar áudio/nota de voz por ele. O motor detecta isso
 (`OpenWAClient.supports_media`) e só oferece automação por texto. Para áudio seria preciso outro provedor (ex.: API oficial
 do WhatsApp Business) ou uma versão do OpenWA com envio de mídia.
+
+## Ajustes por conversa (item 1): como ficou
+`desktop/src/lib/settings-intent.js`: regras sobre as palavras da própria pessoa (sem modelo de IA, nada de fora chega ali),
+aplicadas no painel antes de enviar ao motor. Cobre ligar/desligar as chaves de Ajustes e as escolhas (balão, humor,
+velocidade da voz, microfone). Modo discreto, envio sem aprovação e proteção de tela pedem "sim/não" antes (por voz também,
+com o microfone aberto por 30 s). Perguntas ("como ligo...?") não mudam nada. Falta: consultar o estado ("a voz melhorada
+está ligada?").

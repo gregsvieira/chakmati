@@ -261,9 +261,37 @@
   }
 
   // ------------------------------------------------------------------ conversation
+  // Settings by conversation: "liga a voz melhorada". Rules on the person's own words, so it never reaches the engine.
+  let pendingSetting = null; // a sensitive change waiting for the person's yes / no
+  const awaitingSetting = () => !!(pendingSetting && Date.now() < pendingSetting.until);
+  function trySettings(clean) {
+    const SI = window.SettingsIntent;
+    let result = null;
+    if (awaitingSetting()) {
+      const answer = SI.verdict(clean);
+      if (answer) { result = { answer, change: pendingSetting }; pendingSetting = null; }
+      else pendingSetting = null; // anything else cancels the question
+    }
+    if (result) {
+      thread.push({ role: 'user', text: clean, status: 'done' });
+      if (result.answer === 'yes') applyIntent(result.change); else tell('Certo, não mudei nada.');
+      return true;
+    }
+    const intent = SI.parse(clean);
+    if (!intent) return false;
+    thread.push({ role: 'user', text: clean, status: 'done' });
+    if (intent.sensitive) { pendingSetting = { ...intent, until: Date.now() + 30000 }; tell(intent.ask); } else applyIntent(intent);
+    return true;
+  }
+  async function applyIntent(intent) {
+    const res = await api.setSetting(intent.key, intent.value);
+    tell(res && res.ok ? intent.done : 'Não consegui mudar essa configuração.');
+  }
+
   async function submit(text, { voice = false } = {}) {
     const clean = text.trim();
     if (!clean || (state && state.busy)) return;
+    if (trySettings(clean)) return;
     const waiting = thread.slice().reverse().find((t) => t.own && !t.decision);
     if (waiting && /regrav|grav\w* (de novo|novamente)/i.test(clean)) { redoOwnVoice(waiting); return; }
     thread.push({ role: 'user', text: clean, status: 'done' });
@@ -360,7 +388,7 @@
 
   // Only when the speech that just ended leaves the assistant waiting for a command (not after an ordinary answer).
   function chimeIfWaiting() {
-    if (state && state.settings.talk && state.overview && state.overview.awake) chime();
+    if (state && state.settings.talk && ((state.overview && state.overview.awake) || awaitingSetting())) chime();
   }
 
   function say(text) { thread.push({ role: 'assistant', text, status: 'error' }); renderThread(); }
@@ -378,7 +406,7 @@
         return;
       }
       const text = (res.text || '').trim();
-      if (!window.ListenPolicy.shouldAct({ text, wake: res.wake, awake: res.awake })) return;
+      if (!window.ListenPolicy.shouldAct({ text, wake: res.wake, awake: res.awake || awaitingSetting() })) return;
       if (state && state.busy) { queued = { text, at: Date.now() }; return; } // still answering the last one: do this next
       submit(text, { voice: true });
     } finally {
