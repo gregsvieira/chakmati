@@ -5,6 +5,8 @@
   const bubble = document.getElementById('bubble');
   const bubbleText = document.getElementById('bubble-text');
   const robot = window.Robot.create(robotButton);
+  const badge = document.getElementById('mic-badge');
+  api.onListening((on) => badge.classList.toggle('hidden', !on));
   let layout = null;
 
   function placeBubble() {
@@ -12,6 +14,8 @@
     const { side, alignRight, size, iconOffset: o, gap } = layout;
     const W = window.innerWidth;
     const H = window.innerHeight;
+    badge.style.left = `${o.x + size / 2 - 58}px`; // beside the head, which is narrow and centred in its box
+    badge.style.top = `${o.y + 6}px`;
     robotButton.style.left = `${o.x}px`;
     robotButton.style.top = `${o.y}px`;
     robotButton.style.width = robotButton.style.height = `${size}px`;

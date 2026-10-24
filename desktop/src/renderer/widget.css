@@ -34,3 +34,12 @@ body.backdrop { background: #c4cad6; } /* only used for design snapshots; the re
 
 /* what Chakmati answers is never more than two lines in the bubble */
 #bubble[data-kind="reply"] p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+
+/* the microphone is open and waiting for a command: a red microphone that blinks; it disappears when listening stops */
+#mic-badge { position: absolute; width: 30px; height: 30px; border-radius: 50%; background: var(--wine); box-shadow: 0 2px 8px rgba(20, 33, 61, 0.4); pointer-events: none; z-index: 3; animation: mic-blink 0.9s ease-in-out infinite; }
+#mic-badge.hidden { display: none; }
+#mic-badge span { position: absolute; left: 11px; top: 6px; width: 8px; height: 13px; border-radius: 5px; background: #fff; }
+#mic-badge span::after { content: ""; position: absolute; left: -4px; top: 7px; width: 14px; height: 9px; border: 2px solid #fff; border-top: 0; border-radius: 0 0 9px 9px; box-sizing: border-box; }
+@keyframes mic-blink { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(0.92); } }
+body[data-still] #mic-badge { animation: none; }
+@media (prefers-reduced-motion: reduce) { #mic-badge { animation: none; } }

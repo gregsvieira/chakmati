@@ -12,6 +12,7 @@ const { chooseSide, layoutWidget, clampIcon, panelBounds } = require('./lib/plac
 const { NoticeQueue, present, bubbleDuration } = require('./lib/notice-queue');
 const { describe } = require('./lib/describe');
 const { brief } = require('./lib/brief');
+const { pickGreeting } = require('./lib/greetings');
 const { robotPng } = require('./lib/trayicon');
 
 const ICON = 124;
@@ -117,8 +118,18 @@ function applyOverview(o) {
   state.overview = o;
   state.awakeUntil = o && o.awake_for > 0 ? Date.now() + o.awake_for * 1000 : 0;
   clearTimeout(awakeTimer);
-  if (state.awakeUntil) awakeTimer = setTimeout(() => { sendPanelState(); }, state.awakeUntil - Date.now() + 300);
+  if (state.awakeUntil) awakeTimer = setTimeout(() => { sendPanelState(); syncListening(); }, state.awakeUntil - Date.now() + 300);
+  syncListening();
 }
+// The blinking microphone beside the character: shown while the microphone waits for a command, gone as soon as it stops.
+let listeningShown = null;
+function syncListening() {
+  const on = settings.talk === true && Date.now() < (state.awakeUntil || 0);
+  if (on === listeningShown) return;
+  listeningShown = on;
+  sendTo(widgetWin, 'widget:listening', on);
+}
+
 const overviewNow = () => (state.overview ? { ...state.overview, awake: Date.now() < (state.awakeUntil || 0) } : null);
 
 function currentDescription() {
@@ -521,6 +532,7 @@ function updateSetting(key, value) {
   else if (key === 'hear' && typeof value === 'boolean') { settings.hear = value; sendVoice(); }
   else if (key === 'talk' && typeof value === 'boolean') {
     settings.talk = value;
+    syncListening();
     if (value) { // talking to Chakmati also means hearing it
       settings.hear = true;
       sendVoice();
@@ -564,7 +576,7 @@ function friendlyError(e) {
 function registerIpc() {
   // The floating widget reads notices aloud; tell the panel's microphone so it does not hear (and transcribe) them.
   ipcMain.on('widget:speaking', (_e, on) => sendTo(panelWin, 'panel:other-speaking', on === true));
-  ipcMain.on('widget:ready', () => { applyLayout(); refreshMood(); sendTo(widgetWin, 'widget:still', settings.still); sendVoice(); });
+  ipcMain.on('widget:ready', () => { applyLayout(); refreshMood(); sendTo(widgetWin, 'widget:still', settings.still); sendVoice(); listeningShown = null; syncListening(); });
   ipcMain.on('widget:hover', (_e, inside) => { if (!isLinux && alive(widgetWin)) widgetWin.setIgnoreMouseEvents(!inside, { forward: true }); });
   ipcMain.on('widget:drag-start', () => { dragStart = { ...icon }; });
   ipcMain.on('widget:drag-move', (_e, d) => {
@@ -632,6 +644,9 @@ function registerIpc() {
   ipcMain.handle('panel:send', async (_e, text) => {
     if (typeof text !== 'string' || !text.trim() || text.length > MAX_TEXT) return { error: 'Pedido inválido.' };
     if (!state.engineUp) return { error: 'O motor não está rodando. Inicie o lite-agent.' };
+    // a command arrived: the microphone stops waiting for one (the wake phrase itself starts the wait again once answered)
+    state.awakeUntil = 0;
+    syncListening();
     const id = crypto.randomUUID();
     const ac = new AbortController();
     streams.set(id, ac);
@@ -773,7 +788,9 @@ async function runSnapshots() {
   await shot('widget-left.png', widgetWin);
 
   showBubble({ id: 9, kind: 'reply', text: brief('Oé! Se eu somasse 5 e dissesse oé, você ia rir ou me chamar de mentiroso? Mas a resposta correta é 4. Sem truques, só matemática pura. Tamo aqui pra te ajudar com mais esse desafio.'), masked: 'O Chakmati respondeu.', ts: Date.now() / 1000, key: 'r' });
+  sendTo(widgetWin, 'widget:listening', true);
   await shot('widget-reply.png', widgetWin);
+  sendTo(widgetWin, 'widget:listening', false);
 
   state.engineUp = false;
   refreshMood();
@@ -847,6 +864,8 @@ if (!app.requestSingleInstanceLock()) {
     await new Promise((resolve) => ipcMain.once('widget:ready', resolve));
     widgetWin.showInactive();
     if (settings.talk) createPanel(); // keep the microphone listening even with the panel closed
+    // the character says hello once, when it starts
+    setTimeout(() => { if (!state.hidden) { const hello = pickGreeting(); pushNotice({ id: -Date.now(), kind: 'reply', text: hello, masked: hello, ts: Date.now() / 1000, key: 'startup' }); } }, 2500);
     createTray();
     registerShortcuts();
     if (!(await engine.health())) await startEngine();
