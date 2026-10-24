@@ -26,7 +26,8 @@ _HOME_VERB = re.compile(r"\b(lig\w+|deslig\w+|apag\w+|acend\w+|abr\w+|fech\w+|tr
 _HOME_PHRASE = re.compile(r"\b(?:ativ\w+|coloc\w+)\s+(?:a\s+)?cena\b|\bporta\b.{0,25}\b(?:trancad\w+|aberta|fechada|destranc\w+)\b|\b(?:tranc\w+|destranc\w+)\s+a\s+porta\b", re.IGNORECASE)
 
 # The computer itself: making a file, opening a program / site / folder (an imperative at the start: "abre o Spotify").
-_COMPUTER_FILE = re.compile(r"\b(?:cri\w+|fa[çc]\w*|salv\w+|grav\w+|escrev\w+|ger[ae]\w*|mont\w+)\b[^.?!]{0,40}\b(?:arquivo|documento|txt|csv|planilha|anota[çc][ãa]o|nota)\b", re.IGNORECASE)
+_COMPUTER_FILE = re.compile(r"\b(?:cri\w+|fa[çc]\w*|salv\w+|grav\w+|escrev\w+|ger[ae]\w*|mont\w+)\b[^.?!]{0,40}\b(?:arquivo|documento|txt|csv|planilha|anota[çc][ãa]o|nota|pasta|diret[óo]rio)\b"
+                           r"|\b(?:mov\w+|mand\w+|copi\w+|renome\w+|edit\w+|apag\w+|delet\w+|exclu\w+|remov\w+|baix\w+|rod[ae]\w*|execut\w+|revert\w+|list\w+|mostr\w+)\b[^?!]{0,40}\b(?:arquivo|pasta|diret[óo]rio|script|lixeira|backup)\b", re.IGNORECASE)
 _COMPUTER_OPEN = re.compile(r"^\W*(?:por favor,?\s*|pode\s+)?(?:abr\w+|inici\w+|lan[çc]\w+)\s+(?:o\s+|a\s+|os\s+|as\s+|um\s+|uma\s+)?\w", re.IGNORECASE)
 
 # Explicit "go and look it up" verbs win over calendar words ("pesquise a agenda política").

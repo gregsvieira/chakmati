@@ -111,3 +111,12 @@ def test_computer_requests_go_to_the_computer_route(text):
 ])
 def test_other_requests_keep_their_routes(text, route):
     assert HeuristicGate().classify(text).route is route
+
+
+@_pytest.mark.parametrize("text", [
+    "crie a pasta teste-agente e dentro dela uma pasta docs", "cria uma pasta projetos", "mova o arquivo lista.txt para a pasta docs",
+    "copie o relatório para a pasta backup", "edite o arquivo lista.txt trocando leite por café", "manda o rascunho.txt pra lixeira",
+    "rode o script ola.py", "execute o script teste.py", "baixe o arquivo https://x.com/a.pdf", "reverta o arquivo lista.txt", "liste os arquivos da pasta",
+])
+def test_computer_phrases_never_fall_to_plain_chat(text):
+    assert HeuristicGate().classify(text).route is Route.COMPUTER
