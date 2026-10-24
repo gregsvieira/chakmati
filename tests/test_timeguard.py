@@ -78,7 +78,7 @@ class FakeResearcher:
         def render(self):
             return "pesquisado"
 
-    async def answer(self, query, today=None):
+    async def answer(self, query, today=None, now=None):
         self.calls.append((query, today))
         return self._Answer()
 

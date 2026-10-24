@@ -162,9 +162,10 @@ class Engine:
             return await self._calendar_job(job)
         if job.route == Route.WHATSAPP.value:
             return await self._whatsapp_job(job)
-        today = today_line(self._clock())  # research answers are about "now": they always know what day it is
+        now = self._clock()
+        today = today_line(now)  # research answers are about "now": they always know what day it is
         if self._researcher is not None and job.route == Route.RESEARCH.value:
-            return (await self._researcher.answer(job.prompt, today=today)).render()
+            return (await self._researcher.answer(job.prompt, today=today, now=now)).render()
         offline = job.route == Route.RESEARCH.value  # a research job with search switched off
         return await self._llm.chat(_messages(Route(job.route), job.prompt, today if offline else None, offline))
 
@@ -198,9 +199,10 @@ class Engine:
         if job.route == Route.WHATSAPP.value:
             yield await self._whatsapp_job(job)
             return
-        today = today_line(self._clock())
+        now = self._clock()
+        today = today_line(now)
         if self._researcher is not None and job.route == Route.RESEARCH.value:
-            async for delta in self._researcher.stream_answer(job.prompt, today=today):
+            async for delta in self._researcher.stream_answer(job.prompt, today=today, now=now):
                 yield delta
             return
         offline = job.route == Route.RESEARCH.value

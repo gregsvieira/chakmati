@@ -1,18 +1,32 @@
 import asyncio
+import re
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
+from datetime import datetime
 
 from ..llm import ChatClient
 from ..loop.scorer import PartScorer
 from ..persona import PERSONA
+from ..timeguard import is_recency_question, order_by_date, recency_fallback_query, today_line
 from .fetch import PageFetcher, chunk_text, extract_text
 from .filter import filter_results, rank_passages
 from .search import SearchBackend
 
 COMPOSE_SYSTEM = PERSONA + " " + (
     "Answer the question in the user's language using ONLY the numbered passages below. "
-    "Cite the passages you use as [n]. If the passages do not contain the answer, say so "
-    "instead of guessing."
+    "Cite the passages you use as [n]. If the passages do not contain the exact answer, give the closest "
+    "relevant information they do contain and say what is missing; say you found nothing only if they are "
+    "unrelated to the question. Never invent."
+)
+RECENCY_SUFFIX = (
+    " The user wants the most recent item. The passages are ordered from the most recent date to the oldest and "
+    "show their date. Answer with the most recent item dated no later than today and give its date. If it may not "
+    "be the very latest, say so, but still answer."
+)
+REWRITE_SYSTEM = (
+    "Escreva UMA consulta curta de busca na web, em português, com até 8 palavras, no plural quando fizer sentido, "
+    "sem ponto de interrogação, que ache o que há de mais recente para a pergunta. Inclua o mês e o ano de hoje. "
+    "Responda só com a consulta."
 )
 CONCISE_SUFFIX = (
     " Be concise: answer in at most 3 short sentences unless the question explicitly asks for detail."
@@ -88,10 +102,30 @@ class ResearchTool:
             for task in tasks
         ]
 
-    async def _prepare(self, query: str, today: str | None = None) -> tuple[list[dict[str, str]] | None, list[str]]:
+    async def _recency_query(self, query: str, now: datetime) -> str:
+        """A search query with the month and year ("filmes lançados em outubro de 2026"); the rule-based one if the model's is unusable."""
+        fallback = recency_fallback_query(query, now)
+        try:
+            reply = (await self._llm.chat([
+                {"role": "system", "content": REWRITE_SYSTEM},
+                {"role": "user", "content": f"{today_line(now)}\nPergunta: {query}"},
+            ])).strip().strip('"')
+        except Exception:
+            return fallback
+        usable = reply and "\n" not in reply and len(reply) <= 100 and not re.search(r"[\[\]{}<>]", reply) and str(now.year) in reply
+        return reply if usable else fallback
+
+    async def _prepare(self, query: str, today: str | None = None, now: datetime | None = None) -> tuple[list[dict[str, str]] | None, list[str]]:
         """Search, filter, fetch and rank. Returns (chat messages, source urls), or (None, [])
-        when no usable page was found."""
+        when no usable page was found. For "the latest"-style questions (`now` given) it also searches with the month and
+        year, and the passages are put in order of date, newest first."""
+        recency = now is not None and is_recency_question(query)
         results = await self._search.search(query, limit=10)
+        if recency:
+            extra = await self._recency_query(query, now)
+            if extra and extra != query:
+                known = {r.url for r in results}
+                results = [*(r for r in await self._search.search(extra, limit=10) if r.url not in known), *results]
         results = await asyncio.to_thread(
             filter_results, query, results, self._scorer, self._cutoff
         )
@@ -107,15 +141,22 @@ class ResearchTool:
         if not pairs:
             return None, []
 
+        keep = self._passages * 2 if recency else self._passages
         best = await asyncio.to_thread(
-            rank_passages, query, [p for p, _ in pairs], self._scorer, self._passages
+            rank_passages, query, [p for p, _ in pairs], self._scorer, keep
         )
         url_of: dict[str, str] = {}
         for passage, url in pairs:
             url_of.setdefault(passage, url)
-        numbered = "\n".join(f"[{i}] {p}" for i, p in enumerate(best, 1))
+        if recency:
+            ordered = order_by_date(best, now)[: self._passages + 2]
+            best = [p for p, _ in ordered]
+            numbered = "\n".join(f"[{i}] {f'(data: {d:%d/%m/%Y}) ' if d else ''}{p}" for i, (p, d) in enumerate(ordered, 1))
+        else:
+            numbered = "\n".join(f"[{i}] {p}" for i, p in enumerate(best, 1))
+        system = self._system + (RECENCY_SUFFIX if recency else "")
         messages = [
-            {"role": "system", "content": self._system + (f" {today} Today's date matters for words like 'latest' or 'recent'." if today else "")},
+            {"role": "system", "content": system + (f" {today} Today's date matters for words like 'latest' or 'recent'." if today else "")},
             {"role": "user", "content": f"Question: {query}\n\nPassages:\n{numbered}"},
         ]
         sources: list[str] = []
@@ -125,18 +166,18 @@ class ResearchTool:
                 sources.append(url)
         return messages, sources
 
-    async def answer(self, query: str, today: str | None = None) -> ResearchAnswer:
-        messages, sources = await self._prepare(query, today)
+    async def answer(self, query: str, today: str | None = None, now: datetime | None = None) -> ResearchAnswer:
+        messages, sources = await self._prepare(query, today, now)
         if messages is None:
             return ResearchAnswer(NOTHING_FOUND, [])
         reply = await self._llm.chat(messages)
         return ResearchAnswer(reply.strip(), sources)
 
-    async def stream_answer(self, query: str, today: str | None = None) -> AsyncIterator[str]:
+    async def stream_answer(self, query: str, today: str | None = None, now: datetime | None = None) -> AsyncIterator[str]:
         """Same retrieval as `answer`, but the reply is yielded piece by piece as the model writes it;
         the sources list is appended at the end, so the joined text equals `answer(...).render()`
         (up to surrounding whitespace)."""
-        messages, sources = await self._prepare(query, today)
+        messages, sources = await self._prepare(query, today, now)
         if messages is None:
             yield NOTHING_FOUND
             return

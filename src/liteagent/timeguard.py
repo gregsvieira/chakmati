@@ -143,3 +143,82 @@ def calendar_facts(text: str, now: datetime) -> list[str]:
         if name in _MONTH_NUMBER and (target := _next(_MONTH_NUMBER[name], int(d_), today)):
             facts.append(_count(target, today, f"{int(d_)} de {_MONTHS[_MONTH_NUMBER[name] - 1]}"))
     return facts
+
+
+# ----------------------------------------------------------------------------- "the latest": dates in pages, ordering, queries
+_MONTH_ABBREVIATION = {name[:3]: number for name, number in _MONTH_NUMBER.items()}
+_MONTH_WORDS = "|".join(sorted(set(_MONTH_NUMBER) | set(_MONTH_ABBREVIATION), key=len, reverse=True))
+_NUMERIC_DATE = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b")
+_ISO_DATE = re.compile(r"\b(20\d\d)-(\d{2})-(\d{2})\b")
+_WRITTEN_DATE = re.compile(rf"\b(\d{{1,2}})\s*(?:de\s+)?({_MONTH_WORDS})\.?(?:\s*(?:de\s+)?(20\d\d))?\b")
+_MONTH_YEAR = re.compile(rf"\b({_MONTH_WORDS})\.?\s*(?:de\s+)?(20\d\d)\b")
+
+
+def _month_number(word: str) -> int | None:
+    return _MONTH_NUMBER.get(word) or _MONTH_ABBREVIATION.get(word)
+
+
+def extract_dates(text: str, now: datetime) -> list[date]:
+    """The dates a page writes, in the order they appear: 22/10/2026, 2026-10-22, "22 de outubro (de 2026)", "22 out 2026"
+    and "outubro de 2026" (taken as the 1st). A date without a year is read as this year."""
+    t = _plain(text)
+    found: list[tuple[int, date]] = []
+
+    def add(position: int, year: int, month: int, day: int) -> None:
+        try:
+            found.append((position, date(year, month, day)))
+        except ValueError:
+            pass
+
+    spans: list[tuple[int, int]] = []
+    for m in _NUMERIC_DATE.finditer(t):
+        add(m.start(), int(m.group(3)), int(m.group(2)), int(m.group(1))); spans.append(m.span())
+    for m in _ISO_DATE.finditer(t):
+        add(m.start(), int(m.group(1)), int(m.group(2)), int(m.group(3))); spans.append(m.span())
+    for m in _WRITTEN_DATE.finditer(t):
+        if any(s <= m.start() < e for s, e in spans):
+            continue
+        month = _month_number(m.group(2))
+        if month:
+            add(m.start(), int(m.group(3)) if m.group(3) else now.year, month, int(m.group(1))); spans.append(m.span())
+    for m in _MONTH_YEAR.finditer(t):
+        if any(s <= m.start() < e for s, e in spans):
+            continue
+        month = _month_number(m.group(1))
+        if month:
+            add(m.start(), int(m.group(2)), month, 1)
+    return [d for _, d in sorted(found, key=lambda pair: pair[0])]
+
+
+def passage_date(text: str, now: datetime) -> date | None:
+    """The most recent date in the passage that is not in the future (a release date, not an announcement)."""
+    past = [d for d in extract_dates(text, now) if d <= now.date()]
+    return max(past) if past else None
+
+
+def order_by_date(passages: list[str], now: datetime) -> list[tuple[str, date | None]]:
+    """Most recent dated passage first; the undated ones keep their order after the dated ones."""
+    dated = [(p, passage_date(p, now)) for p in passages]
+    with_date = sorted((x for x in dated if x[1] is not None), key=lambda x: x[1], reverse=True)
+    without = [x for x in dated if x[1] is None]
+    return with_date + without
+
+
+_RECENCY = re.compile(
+    r"\b(ultim[oa]s?|mais (recente|novo|nova|novos|novas)|recentes?|acabou de (sair|estrear|ser lancad[oa])|acabaram de (sair|estrear)|"
+    r"novidades?|estreias?|estreou|lancamentos?|em cartaz|saiu agora)\b"
+)
+
+
+def is_recency_question(text: str) -> bool:
+    return bool(_RECENCY.search(_plain(text)))
+
+
+_LEADING = re.compile(r"^(me (diga|fale|conte|mostre)|diga|qual|quais|que|quem|o que|como)\b( (e|eh|foi|sao|foram|ha|tem|existe|existem))?( (o|a|os|as|um|uma|uns|umas))?\s*")
+
+
+def recency_fallback_query(text: str, now: datetime) -> str:
+    """A search query that names the month and year: "último filme lançado no cinema outubro de 2026"."""
+    core = re.sub(r"[?!.]+", " ", text.strip())
+    core = re.sub(r"\s+", " ", _LEADING.sub("", core.lower())).strip() or text.strip()
+    return f"{core} {_MONTHS[now.month - 1]} de {now.year}"

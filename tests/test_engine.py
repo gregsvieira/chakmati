@@ -109,7 +109,7 @@ async def test_run_job_stream_uses_llm_stream_or_researcher_stream(store):
     assert await collect(engine.run_job_stream(store.get(job_id))) == ["a", "b"]
 
     class R:
-        async def stream_answer(self, query, today=None):
+        async def stream_answer(self, query, today=None, now=None):
             yield f"web:{query}"
 
     engine2 = Engine(FakeGate(Route.RESEARCH), llm, store, researcher=R())
