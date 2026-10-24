@@ -29,6 +29,9 @@ class Settings:
     calendar_name: str = ""  # calendar that new events go to (empty = the system default)
     whatsapp_backend: str = "off"  # "off" | "openwa"
     openwa_url: str = "http://127.0.0.1:8081"
+    home_backend: str = "off"  # "off" | "homeassistant" (also the way to reach Alexa-compatible devices)
+    home_url: str = "http://homeassistant.local:8123"
+    home_token_file: str = os.path.expanduser("~/.lite-agent/home_token.txt")
     openwa_api_key: str = ""
     openwa_api_key_file: str = os.path.expanduser("~/.lite-agent/openwa/api_key.txt")
     whatsapp_max_sends_per_hour: int = 20
@@ -70,6 +73,9 @@ class Settings:
             calendar_name=env.get("LITEAGENT_CALENDAR_NAME", d.calendar_name),
             whatsapp_backend=env.get("LITEAGENT_WHATSAPP_BACKEND", d.whatsapp_backend),
             openwa_url=env.get("LITEAGENT_OPENWA_URL", d.openwa_url),
+            home_backend=env.get("LITEAGENT_HOME_BACKEND", d.home_backend),
+            home_url=env.get("LITEAGENT_HOME_URL", d.home_url),
+            home_token_file=os.path.expanduser(env.get("LITEAGENT_HOME_TOKEN_FILE", d.home_token_file)),
             openwa_api_key=env.get("LITEAGENT_OPENWA_API_KEY", d.openwa_api_key),
             openwa_api_key_file=env.get("LITEAGENT_OPENWA_API_KEY_FILE", d.openwa_api_key_file),
             whatsapp_max_sends_per_hour=int(env.get("LITEAGENT_WHATSAPP_MAX_SENDS_PER_HOUR", d.whatsapp_max_sends_per_hour)),

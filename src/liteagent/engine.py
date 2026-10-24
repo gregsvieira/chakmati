@@ -26,6 +26,7 @@ _ROUTE_PROMPTS: dict[Route, str] = {
     Route.WHATSAPP: (
         "You are a WhatsApp assistant, but WhatsApp is not connected. Say so briefly in the user's language."
     ),
+    Route.HOME: "You control a smart home, but it is not connected. Say so briefly in the user's language.",
     Route.AUTOMATION: "You help create automations, but they are not available. Say so briefly in the user's language.",
     Route.TASK: (
         "You are a careful assistant for multi-step tasks. Answer in the user's "
@@ -38,6 +39,7 @@ SYSTEM_PROMPTS: dict[Route, str] = {route: f"{PERSONA} {text}" for route, text i
 
 
 CONFIRM_SECONDS = 30.0
+HOME_OFF = "A casa inteligente está desativada. Configure o Home Assistant (LITEAGENT_HOME_BACKEND=homeassistant, URL e token)."
 AUTOMATION_OFF = "As automações estão desativadas neste motor."
 
 CALENDAR_OFF = (
@@ -88,6 +90,8 @@ class Engine:
         whatsapp_assistant=None,
         automation_assistant=None,
         automation_service=None,
+        home_assistant=None,
+        home_service=None,
         now: Callable[[], float] = time.time,
         clock: Callable[[], datetime] = lambda: datetime.now().astimezone(),
     ):
@@ -103,6 +107,8 @@ class Engine:
         self._whatsapp = whatsapp_assistant
         self._automation = automation_assistant
         self._automation_service = automation_service
+        self._home = home_assistant
+        self._home_service = home_service
 
     def _notify_job(self) -> None:
         if self._on_job_created is not None:
@@ -134,18 +140,27 @@ class Engine:
     def _awaiting_automation_choice(self, text: str) -> bool:
         return self._automation is not None and hasattr(self._automation, "awaiting_choice") and self._automation.awaiting_choice(text)
 
-    def _confirmation(self, text: str) -> str | None:
-        """A short yes/no while an automation waits for confirmation: creates it (or drops it) and says so."""
-        service = self._automation_service
-        pending = service.pending_confirmation() if service is not None else None
-        answer = verdict(text) if pending is not None else None
-        if answer is None:
-            return None
-        if answer == "yes":
-            done = service.approve(pending.id)
-            return done.result or "Automação criada."
-        service.reject(pending.id)
-        return "Certo, não criei a automação."
+    async def _confirmation(self, text: str) -> str | None:
+        """A short yes/no while something waits for confirmation (a new automation, opening the house): does or drops it."""
+        for service in (self._automation_service, self._home_service):
+            pending = service.pending_confirmation() if service is not None else None
+            answer = verdict(text) if pending is not None else None
+            if answer is None:
+                continue
+            if answer == "yes":
+                done = await service.aapprove(pending.id)
+                return done.result or done.error or "Feito."
+            service.reject(pending.id)
+            return getattr(service, "cancel_text", "Certo, não criei a automação.")
+        return None
+
+    async def _home_job(self, job: Job) -> str:
+        if self._home is None:
+            return HOME_OFF
+        result = await self._home.handle(job.prompt)
+        if "Confirma?" in result:
+            self._awake_until = self._now() + CONFIRM_SECONDS
+        return result
 
     async def _automation_job(self, job: Job) -> str:
         if self._automation is None:
@@ -175,7 +190,7 @@ class Engine:
         return route, today, offline
 
     async def handle(self, text: str) -> Reply:
-        fixed = self._wake(text) or self._confirmation(text) or canned_answer(text)
+        fixed = self._wake(text) or await self._confirmation(text) or canned_answer(text)
         if fixed is not None:
             return Reply("answer", Route.CHAT, text=fixed)
         route, today, offline = await self._plan(text)
@@ -203,6 +218,8 @@ class Engine:
             return await self._whatsapp_job(job)
         if job.route == Route.AUTOMATION.value:
             return await self._automation_job(job)
+        if job.route == Route.HOME.value:
+            return await self._home_job(job)
         now = self._clock()
         today = today_line(now)  # research answers are about "now": they always know what day it is
         if self._researcher is not None and job.route == Route.RESEARCH.value:
@@ -213,7 +230,7 @@ class Engine:
     async def handle_stream(self, text: str) -> AsyncIterator[dict]:
         """Like `handle`, as a sequence of events: route, then either the reply as delta events
         followed by done (chat), or a single job event for slow work (follow it via the job stream)."""
-        fixed = self._wake(text) or self._confirmation(text) or canned_answer(text)
+        fixed = self._wake(text) or await self._confirmation(text) or canned_answer(text)
         if fixed is not None:
             yield {"type": "route", "route": Route.CHAT.value}
             yield {"type": "delta", "text": fixed}
@@ -242,6 +259,9 @@ class Engine:
             return
         if job.route == Route.AUTOMATION.value:
             yield await self._automation_job(job)
+            return
+        if job.route == Route.HOME.value:
+            yield await self._home_job(job)
             return
         now = self._clock()
         today = today_line(now)

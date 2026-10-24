@@ -75,6 +75,7 @@ def create_app(
     stt: SpeechToText | None = None,
     tts: VoiceSynth | None = None,
     automations: AutomationService | None = None,
+    home: ApprovalService | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -205,7 +206,7 @@ def create_app(
 
     # ---- one approval inbox for every integration
     def approval_services() -> list[ApprovalService]:
-        services: list[ApprovalService] = [x for x in (calendar, whatsapp, automations) if x is not None]
+        services: list[ApprovalService] = [x for x in (calendar, whatsapp, automations, home) if x is not None]
         if not services:
             raise HTTPException(status_code=503, detail="no integration is enabled (calendar or WhatsApp backend)")
         return services
@@ -455,11 +456,12 @@ def create_app(
             except Exception as exc:  # a calendar problem must not hide the other sections
                 result["calendar"] = {"enabled": True, "error": f"{type(exc).__name__}: {exc}"}
         pending = []
-        for service in [x for x in (calendar, whatsapp, automations) if x is not None]:
+        for service in [x for x in (calendar, whatsapp, automations, home) if x is not None]:
             pending.extend(await asyncio.to_thread(service.pending))
         result["pending"] = [_action_json(a) for a in sorted(pending, key=lambda a: a.expires_at)]
         if automations is not None:
             result["automations"] = [_automation_json(a) for a in await asyncio.to_thread(automations.store.list)]
+        result["home"] = {"enabled": home is not None}
         result["last_notice_id"] = notices.last_id
         result["awake"] = engine.awake
         result["awake_for"] = round(engine.awake_for, 1)

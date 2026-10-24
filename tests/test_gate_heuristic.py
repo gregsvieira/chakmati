@@ -77,3 +77,21 @@ def test_automation_requests_go_to_the_automation_route(text):
 ])
 def test_ordinary_requests_are_not_taken_for_automations(text, route):
     assert HeuristicGate().classify(text).route is route
+
+
+@_pytest.mark.parametrize("text", [
+    "liga a luz da sala", "apaga a luz do quarto", "desliga o ar condicionado", "coloca o ar condicionado em 23 graus",
+    "a porta da frente está trancada?", "destranca a porta", "abre o portão da garagem", "ativa a cena cinema", "fecha as persianas",
+    "pede pra alexa ligar a tomada",
+])
+def test_house_requests_go_to_the_home_route(text):
+    assert HeuristicGate().classify(text).route is Route.HOME
+
+
+@_pytest.mark.parametrize("text, route", [
+    ("liga pra Maria", Route.CHAT), ("manda no whatsapp pra Maria: apaga a luz", Route.WHATSAPP),
+    ("a luz do sol demora 8 minutos para chegar à Terra", Route.CHAT), ("o que tenho na agenda hoje?", Route.CALENDAR),
+    ("bati a porta do carro", Route.CHAT),
+])
+def test_other_talk_is_not_taken_for_the_house(text, route):
+    assert HeuristicGate().classify(text).route is route

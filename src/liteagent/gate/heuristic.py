@@ -20,6 +20,11 @@ _AUTOMATION_WORD = re.compile(r"\bautoma\w+", re.IGNORECASE)
 _AUTOMATION_TRIGGER = re.compile(r"\b(?:toda\s+vez\s+que|sempre\s+que|a\s+cada\s+vez\s+que|todo\s+dia|todos\s+os\s+dias|todo\s+santo\s+dia)\b", re.IGNORECASE)
 _AUTOMATION_VERB = re.compile(r"\b(?:respond\w*|envi\w*|mand\w*|avis\w*|lembr\w*)\b", re.IGNORECASE)
 
+# The house: a device word AND something said about it ("liga a luz da sala", "a porta está trancada?").
+_HOME_NOUN = re.compile(r"\b(luz(?:es)?|l[âa]mpadas?|tomadas?|ventilador|ar[- ]condicionado|termostato|persianas?|cortinas?|port[ãa]o|garagem|fechadura|alexa|home assistant)\b", re.IGNORECASE)
+_HOME_VERB = re.compile(r"\b(lig\w+|deslig\w+|apag\w+|acend\w+|abr\w+|fech\w+|tranc\w+|destranc\w+|ajust\w+|coloc\w+|ativ\w+|diminu\w+|aument\w+|est[áa]|esta)\b", re.IGNORECASE)
+_HOME_PHRASE = re.compile(r"\b(?:ativ\w+|coloc\w+)\s+(?:a\s+)?cena\b|\bporta\b.{0,25}\b(?:trancad\w+|aberta|fechada|destranc\w+)\b|\b(?:tranc\w+|destranc\w+)\s+a\s+porta\b", re.IGNORECASE)
+
 # Explicit "go and look it up" verbs win over calendar words ("pesquise a agenda política").
 _EXPLICIT_SEARCH = re.compile(
     r"\b(?:pesquis\w*|busc\w*|busq\w*|procur\w*|search|google|look up|find out)\b", re.IGNORECASE
@@ -49,6 +54,8 @@ class HeuristicGate:
     source = "heuristic"
 
     def classify(self, text: str) -> GateResult:
+        if (_HOME_NOUN.search(text) and _HOME_VERB.search(text) and not _WHATSAPP.search(text)) or _HOME_PHRASE.search(text):
+            return GateResult(Route.HOME, 0.9, self.source)
         if _AUTOMATION_WORD.search(text) or (_AUTOMATION_TRIGGER.search(text) and _AUTOMATION_VERB.search(text)):
             return GateResult(Route.AUTOMATION, 0.9, self.source)
         if _WHATSAPP.search(text) and not _EXPLICIT_SEARCH.search(text):

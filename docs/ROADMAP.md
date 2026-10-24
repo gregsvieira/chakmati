@@ -11,7 +11,7 @@ Itens combinados. O status de cada um está no próprio item.
    resumido ou lido em voz alta, nunca vira comando. Só o que você diz ou digita no Chakmati é um pedido. Hoje isso já vale
    para WhatsApp e agenda (o texto de terceiros nunca chega à etapa que decide ações); falta cobrir e-mail e pesquisa de
    forma explícita, com testes, e registrar tentativas.
-3. **Alexa / casa inteligente.** Integração com a "Amazon Alexa Smart Home Skill" para controlar a Alexa e a casa pela API
+3. **(FEITO em parte) Alexa / casa inteligente.** Integração com a "Amazon Alexa Smart Home Skill" para controlar a Alexa e a casa pela API
    (ligar luzes, cenas, tomadas, termostato). Pensar em: autorização OAuth da conta Amazon, mapeamento de dispositivos,
    confirmação para ações sensíveis (portas, alarme) e o uso por voz do próprio Chakmati.
 
@@ -35,3 +35,15 @@ aplicadas no painel antes de enviar ao motor. Cobre ligar/desligar as chaves de 
 velocidade da voz, microfone). Modo discreto, envio sem aprovação e proteção de tela pedem "sim/não" antes (por voz também,
 com o microfone aberto por 30 s). Perguntas ("como ligo...?") não mudam nada. Falta: consultar o estado ("a voz melhorada
 está ligada?").
+
+## Casa / Alexa (item 3): como ficou, e o que a Alexa permite de verdade
+A "Alexa Smart Home Skill API" serve para um fabricante expor dispositivos *para* a Alexa (a Alexa chama a sua skill). Ela não
+dá uma API pública para um programa externo comandar a Alexa ou os dispositivos dela. Por isso o Chakmati fala com a casa pelo
+**Home Assistant** (API REST oficial e estável), que controla luzes, tomadas, cenas, ar-condicionado, persianas e fechaduras e
+que também pode expor/importar dispositivos da Alexa. Código em `src/liteagent/home/`; rota `home` no gate.
+- Ligar: `LITEAGENT_HOME_BACKEND=homeassistant`, `LITEAGENT_HOME_URL=http://<ip>:8123` e um token de longa duração do Home
+  Assistant em `~/.lite-agent/home_token.txt` (nunca no repositório).
+- Comuns (luz, tomada, cena, ar, fechar persiana) acontecem na hora. O que abre a casa (destrancar, abrir portão/garagem/porta)
+  só é proposto e espera "sim" ou o botão Aprovar. Tabela fixa de serviços, só domínios permitidos, limite de 30 comandos/min.
+- NÃO testado contra um Home Assistant real (não há um configurado); testado com servidor simulado.
+- Falta: ligar um Home Assistant real, e decidir se a Alexa entra por ele (integração Alexa do HA) ou por rotinas da Alexa.

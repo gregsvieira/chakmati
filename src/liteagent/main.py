@@ -21,6 +21,9 @@ from .research.fetch import PageFetcher
 from .research.search import DuckDuckGoHtmlBackend, build_user_agent
 from .research.searxng import SearxngBackend
 from .research.tool import ResearchTool
+from .home.assistant import HomeAssistantBot
+from .home.client import HomeAssistantClient
+from .home.service import HomeService
 from .whatsapp.assistant import WhatsAppAssistant
 from .stt import SpeechToText
 from .tts import VoiceStore, VoiceSynth
@@ -67,6 +70,15 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         automation_service = AutomationService(automation_store, actions, voice, s.automations_dir, media_check=whatsapp.media_supported)
         automation_runner = AutomationRunner(automation_store, whatsapp, calendar=calendar, voice_dir=s.automations_dir)
         automation_assistant = AutomationAssistant(llm, automation_service, whatsapp)
+    home_service = home_bot = None
+    if s.home_backend == "homeassistant":
+        try:
+            token = open(s.home_token_file, encoding="utf-8").read().strip()
+        except OSError:
+            token = ""
+        if token:
+            home_service = HomeService(HomeAssistantClient(s.home_url, token), actions)
+            home_bot = HomeAssistantBot(llm, home_service)
     worker_ref: list[Worker] = []
     engine = Engine(
         build_gate(s),
@@ -78,6 +90,8 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         whatsapp_assistant=WhatsAppAssistant(llm, whatsapp) if whatsapp is not None else None,
         automation_assistant=automation_assistant,
         automation_service=automation_service,
+        home_assistant=home_bot,
+        home_service=home_service,
     )
     worker = Worker(store, engine.run_job, stream_handler=engine.run_job_stream)
     worker_ref.append(worker)
@@ -91,7 +105,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
             watchers.append(AutomationTicker(automation_runner))
     if calendar is not None:
         watchers.append(CalendarWatcher(calendar, board, s.calendar_poll_seconds, s.calendar_lead_minutes))
-    services = [x for x in (calendar, whatsapp, automation_service) if x is not None]
+    services = [x for x in (calendar, whatsapp, automation_service, home_service) if x is not None]
     if services:
         watchers.append(ApprovalWatcher(services, board))
     notifier = Notifier(watchers, background=[events.run] if events else []) if watchers and s.notices_enabled else None
@@ -104,6 +118,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         stt=SpeechToText(s.stt_model) if s.stt_model != "off" else None,
         tts=voice,
         automations=automation_service,
+        home=home_service,
         on_startup=llm.preload if s.preload_model else None,
         calendar=calendar,
         whatsapp=whatsapp,
