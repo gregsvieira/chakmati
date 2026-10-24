@@ -6,6 +6,8 @@
   let voice = null;
   let token = 0;       // a newer sentence replaces an older one, even if the older audio arrives late
   let playing = null;  // the <audio> element of the enhanced voice, if one is playing
+  let ownSystemSpeech = false; // this window started speech with the system voice. The speech queue is shared by every window of
+                               // the app, so a window must never cancel speech that another window started.
 
   function pick() {
     const voices = speechSynthesis.getVoices();
@@ -22,7 +24,8 @@
     u.lang = 'pt-BR';
     if (voice) u.voice = voice;
     u.onstart = () => onStart && onStart();
-    u.onend = u.onerror = () => onEnd && onEnd();
+    u.onend = u.onerror = () => { if (my === token) ownSystemSpeech = false; onEnd && onEnd(); };
+    ownSystemSpeech = true;
     speechSynthesis.speak(u);
   }
 
@@ -53,7 +56,7 @@
   function stop() {
     token += 1;
     if (playing) { playing.pause(); playing = null; }
-    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    if (ownSystemSpeech && 'speechSynthesis' in window) { speechSynthesis.cancel(); ownSystemSpeech = false; }
   }
 
   window.Voice = { speak, stop };

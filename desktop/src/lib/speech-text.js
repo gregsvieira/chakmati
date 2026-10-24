@@ -10,12 +10,13 @@
   function speakable(text, { emojis = false } = {}) {
     let t = String(text || '');
     if (!emojis) t = t.replace(EMOJI, ' ');
-    t = t.replace(/\n+\s*(Fontes?|Sources?)\s*:[\s\S]*$/i, ''); // the list of links that follows an answer
+    t = t.replace(/(^|\n+)\s*(Fontes?|Sources?)\s*:[\s\S]*$/i, '$1'); // the list of links that follows an answer
+    t = t.replace(/\[\s*\d+(?:\s*[-–—,;]\s*\d+)*\s*\]/g, ' '); // citation marks such as [2], [1-4] or [1, 3]: they are for reading, not for hearing
     t = t.replace(/\[\[[^\]]*\]\]/g, ''); // markers for the interface, not for the ears
     t = t.replace(/https?:\/\/\S+/g, '');
     t = t.replace(/[*_`#>]+/g, '');
     t = t.replace(/^\s*[-•]\s+/gm, '');
-    t = t.replace(/\s+/g, ' ').trim();
+    t = t.replace(/\s+/g, ' ').replace(/\s+([.,;:!?])/g, '$1').trim(); // closing the gap a removed mark leaves before punctuation
     if (!/[\p{L}\p{N}]/u.test(t)) return ''; // "(...)" and the like are shown, not spoken
     if (t.length > MAX) {
       const cut = t.slice(0, MAX);

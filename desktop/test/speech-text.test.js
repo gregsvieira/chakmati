@@ -43,3 +43,14 @@ test('text with no letters or digits, like the start-up "(...)", is never spoken
   assert.equal(speakable('😊'), '');
   assert.ok(speakable('(ok)').includes('ok'));
 });
+
+test('citation marks like [2], [1-4] and [1, 3] are not spoken', () => {
+  assert.equal(speakable('Não há informação nesses textos [1-4]. Os documentos citam títulos [2][3].'), 'Não há informação nesses textos. Os documentos citam títulos.');
+  assert.equal(speakable('Resposta [1, 3] e mais [4–6] fim.'), 'Resposta e mais fim.');
+  assert.equal(speakable('lista [a] e [10] ok'), 'lista [a] e ok'); // only numbers in brackets are citations
+});
+
+test('a sources block is dropped even when it comes first or after a single line break', () => {
+  assert.equal(speakable('Fontes:\n- https://exemplo.com'), '');
+  assert.equal(speakable('Resposta curta.\nFontes:\n- https://a.com\n- https://b.com'), 'Resposta curta.');
+});
