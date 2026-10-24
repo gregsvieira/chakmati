@@ -112,14 +112,16 @@ class ComputerService(ApprovalService):
         return self._propose("computer.cmd", self._risk_text(checked), payload), None
 
     def _run_checked(self, checked: Checked) -> str:
+        self.workspace.mkdir(parents=True, exist_ok=True)  # the working folder is made on first use
         code, out = self._runner(checked.argv, str(self.workspace), checked.timeout)
         text = redact(out.decode("utf-8", "replace")).strip()
         if len(text) > MAX_OUTPUT:
             text = text[:MAX_OUTPUT] + "\n… (saída cortada)"
-        status = "" if code == 0 else f"\n(terminou com código {code})"
-        if code != 0 and checked.cls != SAFE:
-            raise ComputerError((text or "o comando falhou") + status)
-        return (text or "(sem saída)") + status
+        if code == 1 and checked.argv[0] == "grep":  # grep exits 1 when nothing matched: that is an answer, not an error
+            return "(nenhuma ocorrência)"
+        if code != 0:  # a command that failed is reported as failed, never as done
+            raise ComputerError((text or "o comando falhou") + f"\n(terminou com código {code})")
+        return text or "(sem saída)"
 
     # ------------------------------------------------------------------------------------------ files
     def propose_create_file(self, relative: str, content: str, overwrite: bool = False, plan: dict | None = None) -> tuple[Action | None, str | None]:

@@ -96,7 +96,8 @@ def test_output_is_redacted_truncated_and_a_failing_run_is_reported(tmp_path):
     (tmp_path / "x").mkdir()
     failing, _ = make(tmp_path / "x", Runner(1, b"boom"))[:2]
     action, _ = failing.propose_command("pwd")
-    assert "código 1" in failing.approve(action.id).result  # a safe command that fails still reports
+    done = failing.approve(action.id)
+    assert done.status == "failed" and "boom" in done.error and "código 1" in done.error  # a failing command is never shown as done
 
 
 def test_scripts_downloads_apps_edits_and_trash_always_ask_even_when_kept_approved(tmp_path):
@@ -427,3 +428,16 @@ def test_a_reply_with_steps_but_no_action_word_still_counts_as_steps():
     intent = parse_intent('{"steps":[{"type":"command","command":"mkdir a"},{"type":"command","command":"mkdir a/b"}]}')
     assert intent["action"] == "steps" and len(intent["steps"]) == 2
     assert parse_intent('{"steps": "x"}') == {"action": "other"} and parse_intent('{"nada": 1}') == {"action": "other"}
+
+
+def test_the_workspace_is_created_on_first_use_and_grep_without_matches_is_not_an_error(tmp_path):
+    runner = Runner(0, b"")
+    work = tmp_path / "ainda-nao-existe"
+    service = ComputerService(str(work), ActionStore(":memory:"), runner=runner, home=str(tmp_path))
+    action, _ = service.propose_command("mkdir -p a/b")
+    assert service.approve(action.id).status == "executed" and work.is_dir()
+    (work / "a.txt").write_text("x")
+    service._runner = Runner(1, b"")
+    action, _ = service.propose_command("grep -n zzz a.txt")
+    done = service.approve(action.id)
+    assert done.status == "executed" and "nenhuma ocorrência" in done.result
