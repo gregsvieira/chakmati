@@ -156,11 +156,12 @@
 
   function renderThread(scroll = true) {
     $('thread-section').hidden = thread.length === 0;
-    fill($('thread'), thread.map((t) => h('div', { class: `turn ${t.role}${t.status === 'pending' ? ' pending' : ''}${t.status === 'error' ? ' error' : ''}` }, t.text || '…', approvalNode(t))));
+    const box = $('thread');
+    const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40; // do not yank the reader away from older messages
+    fill(box, thread.map((t) => h('div', { class: `turn ${t.role}${t.status === 'pending' ? ' pending' : ''}${t.status === 'error' ? ' error' : ''}` }, t.text || '…', approvalNode(t))));
     syncTalking();
-    if (!scroll) return;
-    const content = $('content');
-    content.scrollTop = content.scrollHeight;
+    if (scroll || atBottom) box.scrollTop = box.scrollHeight;  // the conversation has its own scroll: it follows the newest message
+    if (scroll) $('thread-section').scrollIntoView({ block: 'end' }); // and a new message brings the conversation into view on the page
   }
 
   function renderSettings() {

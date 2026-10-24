@@ -170,5 +170,6 @@ body[data-still] #mic.recording { transform: none; }
 .cat h3 { margin: 0; font-family: var(--font-rounded); font-size: 13px; font-weight: 700; color: var(--petrol); letter-spacing: 0.01em; }
 @media (prefers-color-scheme: dark) { .cat h3 { color: #7cc0e8; } }
 button.small { height: 30px; padding: 0 14px; font-size: 13px; }
+#thread { max-height: 300px; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
 #automations-body { display: grid; gap: 8px; justify-items: start; }
 #automations-body .empty { margin: 0; }

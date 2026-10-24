@@ -331,7 +331,12 @@ async function healthLoop() {
   while (!quitting) {
     const up = await engine.health();
     state.engineUp = up;
-    if (up && wasUp !== true) await refreshOverview();
+    if (up && wasUp !== true) {
+      await refreshOverview();
+      await refreshVoiceStatus(); // the engine was not up yet when the app started: ask now whether the enhanced voice is installed
+      warmVoice();
+    }
+    if (!up) voiceWarmed = false; // a restarted engine has not loaded the voice
     if (!up && wasUp === null) pushNotice({ id: -Date.now(), kind: 'reply', text: '(...)', masked: '(...)', ts: Date.now() / 1000, key: 'booting' }); // starting up
     if (up) sayHello();
     // a real problem, not the normal start-up: it was running and stopped, or it never came up
@@ -560,6 +565,15 @@ function registerShortcuts() {
 const enhancedReady = () => settings.enhancedVoice === true && !!(state.voice && state.voice.installed);
 const sendVoice = () => sendTo(widgetWin, 'widget:voice', { hear: settings.hear, emojis: settings.speakEmojis, enhanced: enhancedReady(), speed: settings.voiceSpeed });
 
+// The first sentence with the enhanced voice loads its model (about a second): do it once, silently, when the engine is up,
+// so the first thing Chakmati says is not late.
+let voiceWarmed = false;
+async function warmVoice() {
+  if (voiceWarmed || !enhancedReady()) return;
+  voiceWarmed = true;
+  try { await engine.speak('ok', settings.voiceSpeed); } catch { voiceWarmed = false; }
+}
+
 async function refreshVoiceStatus() {
   try { state.voice = await engine.voiceStatus(); } catch { state.voice = null; }
   sendPanelState();
@@ -613,6 +627,7 @@ function updateSetting(key, value) {
   else if (key === 'enhancedVoice' && typeof value === 'boolean') {
     settings.enhancedVoice = value;
     if (value && !(state.voice && state.voice.installed)) downloadVoice();
+    else if (value) warmVoice();
     sendVoice();
   }
   else if (key === 'voiceSpeed' && (value === 'normal' || value === 'fast')) { settings.voiceSpeed = value; sendVoice(); }
