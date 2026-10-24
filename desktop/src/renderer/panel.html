@@ -73,6 +73,15 @@
           <label class="switch"><input type="checkbox" id="set-hear"><span class="track"></span>
             <span class="switch-text">Ouvir o Chakmati
               <small>As respostas e os avisos são lidos em voz alta, com a voz em português do sistema.</small></span></label>
+          <div class="group">
+            <label class="switch"><input type="checkbox" id="set-enhanced"><span class="track"></span>
+              <span class="switch-text">Voz melhorada
+                <small id="enhanced-status">Usa a voz do sistema.</small></span></label>
+            <progress id="voice-progress" max="100" value="0" hidden></progress>
+            <label class="field">Velocidade da voz melhorada
+              <select id="set-voicespeed"><option value="normal">Normal</option><option value="fast">Mais rápida</option></select></label>
+            <button type="button" id="remove-voice" class="ghost" hidden>Apagar a voz baixada</button>
+          </div>
           <label class="switch"><input type="checkbox" id="set-emojis"><span class="track"></span>
             <span class="switch-text">Descrever os emojis ao falar
               <small>Desligado, o Chakmati pula os emojis quando fala. Ligado, ele diz o que eles são (por exemplo, “rosto sorrindo”).</small></span></label>

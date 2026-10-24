@@ -42,7 +42,7 @@ let quitting = false;
 let happyUntil = 0;
 const queue = new NoticeQueue();
 const streams = new Map();
-const state = { engineUp: false, overview: null, notices: [], busy: 0, hidden: false, panelOpen: false, bubbleVisible: false, warnedDown: false };
+const state = { voice: null, engineUp: false, overview: null, notices: [], busy: 0, hidden: false, panelOpen: false, bubbleVisible: false, warnedDown: false };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const alive = (w) => w && !w.isDestroyed();
@@ -222,7 +222,8 @@ function panelState() {
     busy: state.busy > 0,
     describe: { ...currentDescription(), mood: effectiveMood(currentDescription().mood) },
     notices: state.notices.slice(-20),
-    settings: { protect: settings.protect, masked: settings.masked, autoSend: settings.autoSend, hear: settings.hear, talk: settings.talk, speakEmojis: settings.speakEmojis, micSource: settings.micSource, still: settings.still, bubbleSide: settings.bubbleSide, mood: settings.mood, whatsapp: settings.whatsapp, calendar: settings.calendar, research: settings.research },
+    settings: { protect: settings.protect, masked: settings.masked, autoSend: settings.autoSend, hear: settings.hear, talk: settings.talk, enhancedVoice: settings.enhancedVoice, voiceSpeed: settings.voiceSpeed, speakEmojis: settings.speakEmojis, micSource: settings.micSource, still: settings.still, bubbleSide: settings.bubbleSide, mood: settings.mood, whatsapp: settings.whatsapp, calendar: settings.calendar, research: settings.research },
+    voice: state.voice,
     ownsEngine: !!engineProcess,
     canOpenWa: !!projectRoot(),
     panelOpen: state.panelOpen,
@@ -523,7 +524,43 @@ function registerShortcuts() {
 }
 
 // ---------------------------------------------------------------------------------------------------- settings
-const sendVoice = () => sendTo(widgetWin, 'widget:voice', { hear: settings.hear, emojis: settings.speakEmojis });
+// The enhanced voice is used only once it is installed; until then (and if anything fails) the system voice speaks.
+const enhancedReady = () => settings.enhancedVoice === true && !!(state.voice && state.voice.installed);
+const sendVoice = () => sendTo(widgetWin, 'widget:voice', { hear: settings.hear, emojis: settings.speakEmojis, enhanced: enhancedReady(), speed: settings.voiceSpeed });
+
+async function refreshVoiceStatus() {
+  try { state.voice = await engine.voiceStatus(); } catch { state.voice = null; }
+  sendPanelState();
+  sendVoice();
+}
+
+// Turning the enhanced voice on downloads it the first time (about 63 MB); the panel shows the progress. If the download
+// fails the switch goes back off and the system voice keeps speaking.
+let voiceDownloading = false;
+async function downloadVoice() {
+  if (voiceDownloading) return;
+  voiceDownloading = true;
+  try {
+    state.voice = await engine.voiceDownload();
+    sendPanelState();
+    while (!quitting && state.voice && state.voice.downloading) {
+      await sleep(600);
+      state.voice = await engine.voiceStatus();
+      sendPanelState();
+    }
+    if (!state.voice || !state.voice.installed) throw new Error((state.voice && state.voice.error) || 'não consegui baixar');
+    localNotice('Voz melhorada pronta.');
+  } catch (e) {
+    settings.enhancedVoice = false;
+    persistSettings();
+    localNotice(`Não consegui baixar a voz melhorada: ${e instanceof EngineError ? friendlyError(e) : (e && e.message) || 'erro'}`);
+  } finally {
+    voiceDownloading = false;
+    sendVoice();
+    sendPanelState();
+    rebuildMenu();
+  }
+}
 
 function updateSetting(key, value) {
   if (key === 'protect' && typeof value === 'boolean') settings.protect = value;
@@ -540,6 +577,12 @@ function updateSetting(key, value) {
       if (!alive(panelWin)) createPanel(); // the always-on microphone lives in the panel window, which can stay hidden
     }
   }
+  else if (key === 'enhancedVoice' && typeof value === 'boolean') {
+    settings.enhancedVoice = value;
+    if (value && !(state.voice && state.voice.installed)) downloadVoice();
+    sendVoice();
+  }
+  else if (key === 'voiceSpeed' && (value === 'normal' || value === 'fast')) { settings.voiceSpeed = value; sendVoice(); }
   else if (key === 'speakEmojis' && typeof value === 'boolean') { settings.speakEmojis = value; sendVoice(); }
   else if (key === 'micSource' && (value === 'computer' || value === 'system')) settings.micSource = value;
   else if (key === 'autoSend' && typeof value === 'boolean') { settings.autoSend = value; autoApproveNew(); }
@@ -637,6 +680,24 @@ function registerIpc() {
       if (e && e.message === 'timeout') return { error: 'O reconhecimento de voz demorou demais.' };
       return { error: e instanceof EngineError && e.status === 503 ? 'O reconhecimento de voz está desligado no motor.' : friendlyError(e) };
     }
+  });
+  // Speaking with the enhanced voice: the engine synthesizes the text on this computer and sends the audio back.
+  ipcMain.handle('voice:synthesize', async (_e, text, speed) => {
+    if (!enhancedReady() || typeof text !== 'string' || !text.trim() || text.length > 600) return { error: 'unavailable' };
+    try {
+      const a = await engine.speak(text, speed === 'fast' ? 'fast' : 'normal');
+      return { dataUrl: `data:${a.mime};base64,${a.base64}` };
+    } catch (e) { return { error: friendlyError(e) }; } // the renderer falls back to the system voice
+  });
+  ipcMain.handle('panel:voice-remove', async () => {
+    try {
+      state.voice = await engine.voiceRemove();
+      settings.enhancedVoice = false;
+      persistSettings();
+      sendVoice();
+      sendPanelState();
+      return { ok: true };
+    } catch (e) { return { ok: false, error: friendlyError(e) }; }
   });
   ipcMain.handle('panel:openwa', () => openWaSetup());
   ipcMain.handle('panel:set-setting', (_e, payload) => (payload && updateSetting(payload.key, payload.value) ? { ok: true } : { ok: false }));
@@ -869,6 +930,7 @@ if (!app.requestSingleInstanceLock()) {
     createTray();
     registerShortcuts();
     if (!(await engine.health())) await startEngine();
+    refreshVoiceStatus();
     healthLoop();
     noticeLoop();
     screen.on('display-metrics-changed', applyLayout);

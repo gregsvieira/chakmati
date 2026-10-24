@@ -9,6 +9,8 @@ const DEFAULTS = Object.freeze({
   protect: true,          // ask the OS to leave the windows out of screen sharing and recordings (best effort)
   still: false,           // true = no animations: Chakmati stays still
   hear: false,            // "Ouvir o Chakmati": answers and notices are spoken aloud
+  enhancedVoice: false,   // false = the voice of the operating system; true = the small neural voice (downloaded when turned on)
+  voiceSpeed: 'normal',   // 'normal' | 'fast' (enhanced voice only)
   speakEmojis: false,     // read emojis aloud ("rosto sorrindo"); off: they are skipped when speaking
   micSource: 'computer',  // 'computer' = the computer's own microphone, 'system' = whatever the system default is
   talk: false,            // "Falar com o Chakmati": the microphone is always listening for the wake phrases and commands
@@ -32,6 +34,8 @@ function normalize(raw) {
   if (typeof r.hear === 'boolean') s.hear = r.hear;
   if (typeof r.talk === 'boolean') s.talk = r.talk;
   if (typeof r.speakEmojis === 'boolean') s.speakEmojis = r.speakEmojis;
+  if (typeof r.enhancedVoice === 'boolean') s.enhancedVoice = r.enhancedVoice;
+  if (r.voiceSpeed === 'normal' || r.voiceSpeed === 'fast') s.voiceSpeed = r.voiceSpeed;
   if (r.micSource === 'computer' || r.micSource === 'system') s.micSource = r.micSource;
   if (typeof r.still === 'boolean') s.still = r.still;
   if (typeof r.whatsapp === 'boolean') s.whatsapp = r.whatsapp;

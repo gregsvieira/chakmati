@@ -136,3 +136,27 @@ test('transcribe refuses empty, non-audio and oversized recordings without calli
   await assert.rejects(() => c.transcribe(new Uint8Array([1]), 'text/plain'), /not audio/);
   await assert.rejects(() => c.transcribe(new Uint8Array(21 * 1024 * 1024), 'audio/webm'), /too large/);
 });
+
+test('speak posts the text with its speed and returns the audio as base64', async () => {
+  let seen;
+  const c = new EngineClient({ fetchImpl: async (url, init) => { seen = { url, init }; return new Response(Buffer.from('RIFFxxxx'), { status: 200, headers: { 'content-type': 'audio/wav' } }); } });
+  const out = await c.speak('  Fala paizão!  ', 'fast');
+  assert.equal(seen.url, 'http://127.0.0.1:8765/speak');
+  assert.deepEqual(JSON.parse(seen.init.body), { text: 'Fala paizão!', speed: 'fast' });
+  assert.equal(seen.init.headers['X-LiteAgent-UI'], '1');
+  assert.equal(Buffer.from(out.base64, 'base64').toString(), 'RIFFxxxx');
+});
+
+test('speak refuses empty, long or oddly-paced text before calling the network', async () => {
+  const c = new EngineClient({ fetchImpl: async () => { throw new Error('should not be called'); } });
+  await assert.rejects(() => c.speak('  '), /empty/);
+  await assert.rejects(() => c.speak('a'.repeat(601)), /too long/);
+  await assert.rejects(() => c.speak('oi', 'warp'), /speed/);
+});
+
+test('voice status, download and remove use the right verbs and the UI header', async () => {
+  const calls = [];
+  const c = new EngineClient({ fetchImpl: async (url, init = {}) => { calls.push([init.method || 'GET', url.replace('http://127.0.0.1:8765', ''), init.headers && init.headers['X-LiteAgent-UI']]); return new Response('{"installed":false}', { status: 200 }); } });
+  await c.voiceStatus(); await c.voiceDownload(); await c.voiceRemove();
+  assert.deepEqual(calls, [['GET', '/voice/status', undefined], ['POST', '/voice/download', '1'], ['DELETE', '/voice', '1']]);
+});

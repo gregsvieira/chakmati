@@ -79,3 +79,12 @@ test('emojis are not described by default, and the microphone defaults to the co
   assert.equal(normalize({ micSource: 'system' }).micSource, 'system');
   assert.equal(normalize({ micSource: 'usb' }).micSource, 'computer');
 });
+
+test('the system voice is the default; the enhanced voice is an explicit choice, normal pace', () => {
+  assert.equal(DEFAULTS.enhancedVoice, false);
+  assert.equal(DEFAULTS.voiceSpeed, 'normal');
+  assert.equal(normalize({ enhancedVoice: true }).enhancedVoice, true);
+  assert.equal(normalize({ enhancedVoice: 'sim' }).enhancedVoice, false);
+  assert.equal(normalize({ voiceSpeed: 'fast' }).voiceSpeed, 'fast');
+  assert.equal(normalize({ voiceSpeed: 'warp' }).voiceSpeed, 'normal');
+});

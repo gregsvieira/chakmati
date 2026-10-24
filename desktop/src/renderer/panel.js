@@ -169,6 +169,7 @@
     $('set-hear').checked = !!state.settings.hear;
     $('set-talk').checked = !!state.settings.talk;
     $('set-emojis').checked = !!state.settings.speakEmojis;
+    renderVoiceSettings();
     $('set-mic').value = state.settings.micSource;
     $('set-autosend').checked = !!state.settings.autoSend;
     if (!state.settings.hear) { window.Voice.stop(); speaking = false; }
@@ -186,6 +187,24 @@
     hint.hidden = state.ownsEngine || !state.engineUp;
     hint.textContent = 'O motor foi iniciado por fora do Chakmati: reinicie-o para aplicar estas opções.';
     $('hotkeys').textContent = `Atalhos: abrir ou fechar ${state.hotkeys.toggle}; ocultar tudo ${state.hotkeys.panic}.`;
+  }
+
+  // Ajustes > Voz melhorada: off by default (the voice of the system); turning it on downloads the voice the first time.
+  function renderVoiceSettings() {
+    const v = state.voice;
+    const on = !!state.settings.enhancedVoice;
+    $('set-enhanced').checked = on;
+    $('set-voicespeed').value = state.settings.voiceSpeed;
+    const downloading = !!(v && v.downloading);
+    let text = `Usa a voz do sistema. Ligando, o Chakmati baixa uma voz neural em português do Brasil (cerca de ${v ? Math.round(v.size_mb) : 63} MB, uma única vez) e fala com ela, no seu computador.`;
+    if (downloading) text = `Baixando a voz melhorada… ${Math.round((v.progress || 0) * 100)}%`;
+    else if (on && v && v.installed) text = 'Voz melhorada ligada. Funciona sem internet.';
+    else if (v && v.error) text = `Não consegui baixar: ${v.error}`;
+    $('enhanced-status').textContent = text;
+    $('voice-progress').hidden = !downloading;
+    $('voice-progress').value = downloading ? Math.round((v.progress || 0) * 100) : 0;
+    $('remove-voice').hidden = !(v && v.installed) || downloading;
+    $('set-voicespeed').closest('.field').hidden = !on;
   }
 
   function render() {
@@ -236,7 +255,7 @@
 
   function sayAloud(text) {
     if (!state || !state.settings.hear) return;
-    window.Voice.speak(text, { emojis: !!state.settings.speakEmojis, onStart: () => { speaking = true; speakingSince = Date.now(); syncTalking(); }, onEnd: () => { speaking = false; quietUntil = Date.now() + 700; syncTalking(); updateHint(); chimeIfWaiting(); } });
+    window.Voice.speak(text, { emojis: !!state.settings.speakEmojis, enhanced: !!(state.settings.enhancedVoice && state.voice && state.voice.installed), speed: state.settings.voiceSpeed, onStart: () => { speaking = true; speakingSince = Date.now(); syncTalking(); }, onEnd: () => { speaking = false; quietUntil = Date.now() + 700; syncTalking(); updateHint(); chimeIfWaiting(); } });
   }
 
   // "Falar com o Chakmati": the microphone is always listening, with no button to press. It acts only on a wake phrase
@@ -549,6 +568,9 @@
   $('set-calendar').addEventListener('change', (e) => api.setSetting('calendar', e.target.checked));
   $('wa-connect').addEventListener('click', connectWhatsApp);
   $('set-autosend').addEventListener('change', (e) => api.setSetting('autoSend', e.target.checked));
+  $('set-enhanced').addEventListener('change', (e) => api.setSetting('enhancedVoice', e.target.checked));
+  $('set-voicespeed').addEventListener('change', (e) => api.setSetting('voiceSpeed', e.target.value));
+  $('remove-voice').addEventListener('click', async () => { await api.removeVoice(); });
   $('set-emojis').addEventListener('change', (e) => api.setSetting('speakEmojis', e.target.checked));
   $('set-mic').addEventListener('change', (e) => api.setSetting('micSource', e.target.value));
   $('set-hear').addEventListener('change', (e) => api.setSetting('hear', e.target.checked));

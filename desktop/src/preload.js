@@ -11,6 +11,7 @@ const listen = (channel, cb) => {
 const send = (channel, payload) => ipcRenderer.send(channel, payload);
 
 contextBridge.exposeInMainWorld('assistant', {
+  voice: { synthesize: (text, speed) => ipcRenderer.invoke('voice:synthesize', text, speed) },
   widget: {
     onLayout: (cb) => listen('widget:layout', cb),
     onBubble: (cb) => listen('widget:bubble', cb),
@@ -35,6 +36,7 @@ contextBridge.exposeInMainWorld('assistant', {
     onMessage: (cb) => listen('panel:message', cb),
     ready: () => send('panel:ready'),
     close: () => send('panel:close'),
+    removeVoice: () => ipcRenderer.invoke('panel:voice-remove'),
     reply: (text) => send('panel:reply', { text }),
     refresh: () => send('panel:refresh'),
     panic: () => send('panel:panic'),

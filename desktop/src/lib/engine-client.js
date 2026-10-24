@@ -108,6 +108,21 @@ class EngineClient {
     return { mime, base64: Buffer.from(await res.arrayBuffer()).toString('base64') };
   }
 
+  // The optional enhanced voice (a small neural voice that is downloaded the first time it is turned on).
+  async voiceStatus() { return (await this._request('/voice/status')).json(); }
+  async voiceDownload() { return (await this._request('/voice/download', { method: 'POST', headers: UI })).json(); }
+  async voiceRemove() { return (await this._request('/voice', { method: 'DELETE', headers: UI })).json(); }
+
+  async speak(text, speed = 'normal') {
+    const clean = String(text ?? '').trim();
+    if (!clean) throw new Error('empty text');
+    if (clean.length > 600) throw new Error('text too long');
+    if (speed !== 'normal' && speed !== 'fast') throw new Error('invalid speed');
+    const res = await this._request('/speak', { method: 'POST', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify({ text: clean, speed }) });
+    if (!(res.headers.get('content-type') || '').startsWith('audio/')) throw new Error('not audio');
+    return { mime: 'audio/wav', base64: Buffer.from(await res.arrayBuffer()).toString('base64') };
+  }
+
   // Speech to text: the recording goes to the local engine (faster-whisper); nothing leaves the computer.
   async transcribe(bytes, mime) {
     const type = String(mime || '').split(';')[0].trim().toLowerCase();

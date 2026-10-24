@@ -147,3 +147,7 @@ body[data-still] #mic.recording { transform: none; }
 
 #mic.on { border-color: var(--leaf); box-shadow: 0 0 0 2px rgba(47, 125, 91, 0.35); }
 #mic.recording.on { border-color: var(--wine); }
+
+#voice-progress { width: 100%; height: 8px; accent-color: var(--petrol); }
+#voice-progress[hidden], #remove-voice[hidden], .field[hidden] { display: none; }
+#remove-voice { justify-self: start; }
