@@ -138,6 +138,20 @@ class EngineClient {
     return (await this._request(`/actions/${id}/${verb}`, { method: 'POST', headers: { 'X-LiteAgent-UI': '1' } })).json();
   }
 
+  async setAutomation(id, op) {
+    if (!ACTION_ID.test(id)) throw new Error('invalid automation id');
+    if (op === 'delete') return (await this._request(`/automations/${id}`, { method: 'DELETE', headers: UI })).json();
+    if (op !== 'enable' && op !== 'disable') throw new Error('invalid operation');
+    return (await this._request(`/automations/${id}/${op}`, { method: 'POST', headers: UI })).json();
+  }
+
+  // The recording of a voice automation waiting for confirmation, so the person can listen before saying yes.
+  async preview(id) {
+    if (!ACTION_ID.test(id)) throw new Error('invalid action id');
+    const res = await this._request(`/actions/${id}/preview`, { headers: UI });
+    return { mime: 'audio/ogg', base64: Buffer.from(await res.arrayBuffer()).toString('base64') };
+  }
+
   approve(id) { return this._decide(id, 'approve'); }
   reject(id) { return this._decide(id, 'reject'); }
 

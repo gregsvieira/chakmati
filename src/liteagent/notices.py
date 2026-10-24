@@ -82,8 +82,9 @@ class WhatsAppWatcher:
     """Announces new unread messages. The first poll is only a baseline (plus one summary), so starting the app
     does not replay every old unread chat. Muted and archived chats stay silent, as they do on the phone."""
 
-    def __init__(self, service, board: NoticeBoard, interval: float = 10.0, announce_connection: bool = True):
+    def __init__(self, service, board: NoticeBoard, interval: float = 10.0, announce_connection: bool = True, on_fresh=None):
         self._service = service
+        self._on_fresh = on_fresh  # async callable(list[(chat, delta)]): lets automations react to new messages
         self._board = board
         self.interval = interval
         self._announce_connection = announce_connection  # False when the live event stream already says it
@@ -122,6 +123,11 @@ class WhatsAppWatcher:
                 fresh.append((c, delta))
         if not fresh:
             return
+        if self._on_fresh is not None:
+            try:
+                await self._on_fresh(fresh)
+            except Exception:  # an automation must never break the notices
+                log.warning("automation hook failed", exc_info=True)
         if len(fresh) > 3:
             names = ", ".join(c.name for c, _ in fresh[:3])
             total = sum(d for _, d in fresh)
@@ -191,6 +197,18 @@ class ApprovalWatcher:
 
 
 # ----------------------------------------------------------------------------- runner
+class AutomationTicker:
+    """Lets time-based automations (schedule, calendar event) look at the clock every few seconds."""
+
+    def __init__(self, runner, interval: float = 20.0, clock=lambda: datetime.now().astimezone()):
+        self._runner = runner
+        self.interval = interval
+        self._clock = clock
+
+    async def poll_once(self) -> None:
+        await self._runner.tick(self._clock())
+
+
 class Notifier:
     def __init__(self, watchers: Sequence[Watcher], background: Sequence[Callable[[], Awaitable[None]]] = ()):
         self._watchers = list(watchers)

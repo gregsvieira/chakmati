@@ -47,6 +47,7 @@
       if (p.gone) return h('div', { class: 'decision' }, h('p', { class: `decision-result${result.error ? ' error' : ''}` }, result.text));
       const [first, ...rest] = (p.summary || '').split('\n');
       const buttons = [
+        p.voice ? h('button', { class: 'ghost', type: 'button', onclick: (e) => previewVoice(p.id, e.currentTarget) }, 'Ouvir') : null,
         h('button', { class: 'ghost', type: 'button', disabled: !!result, onclick: () => decide(p.id, false) }, 'Recusar'),
         h('button', { class: 'primary', type: 'button', disabled: !!result, onclick: () => decide(p.id, true) }, 'Aprovar'),
       ];
@@ -98,6 +99,22 @@
     };
     fill($('messages-body'), shown.map(rowFor),
       unread.length > 2 && !masked ? h('button', { class: 'more', type: 'button', onclick: openChats }, `Ver mais (${unread.length - 2})`) : null);
+  }
+
+  function renderAutomations() {
+    const list = (state.overview && state.overview.automations) || [];
+    $('automations-empty').hidden = list.length > 0;
+    fill($('automation-list'), list.map((a) => h('div', { class: 'row automation' },
+      h('div', { class: 'grow' }, h('p', { class: 'decision-title' }, a.name), h('p', { class: 'decision-body' }, a.description + (a.runs ? ` (${plural(a.runs, 'vez', 'vezes')})` : ''))),
+      h('div', { class: 'decision-actions' },
+        h('button', { class: 'ghost small', type: 'button', onclick: () => api.automation(a.id, a.enabled ? 'disable' : 'enable') }, a.enabled ? 'Pausar' : 'Ativar'),
+        h('button', { class: 'ghost small', type: 'button', onclick: () => api.automation(a.id, 'delete') }, 'Apagar')))));
+  }
+
+  async function previewVoice(id, button) {
+    const res = await api.preview(id);
+    if (res && res.dataUrl) { button.replaceWith(h('audio', { controls: true, autoplay: true, src: res.dataUrl, 'aria-label': 'Prévia da resposta em áudio' })); }
+    else button.textContent = (res && res.error) || 'Sem prévia';
   }
 
   function renderAgenda() {
@@ -218,6 +235,7 @@
     renderMessages();
     renderAgenda();
     renderRecent();
+    renderAutomations();
     renderSettings();
     $('send').disabled = !!state.busy;
   }
@@ -563,7 +581,7 @@
   }
 
   // Automações: nothing to show yet; the button only says what is coming
-  $('create-automation').addEventListener('click', () => { $('automation-note').hidden = false; });
+  $('create-automation').addEventListener('click', () => { $('automation-note').hidden = false; $('input').value = 'Crie uma automação: '; $('input').focus(); });
 
   $('close').addEventListener('click', () => { showView('main'); api.close(); });
   document.addEventListener('keydown', (e) => {

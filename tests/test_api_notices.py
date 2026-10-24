@@ -135,12 +135,12 @@ def test_the_notifier_runs_with_the_app_and_stops_with_it(tmp_path):
 
 
 def test_build_app_starts_the_watchers_that_match_the_enabled_integrations(tmp_path):
-    from liteagent.notices import ApprovalWatcher, CalendarWatcher, WhatsAppWatcher
+    from liteagent.notices import ApprovalWatcher, AutomationTicker, CalendarWatcher, WhatsAppWatcher
 
     app = build_app(Settings(db_path=":memory:", calendar_backend="ics", calendar_ics_path=str(tmp_path / "a.ics"),
                              whatsapp_backend="openwa", openwa_url="http://127.0.0.1:1"))
     kinds = {type(w) for w in app.state.notifier._watchers}
-    assert kinds == {WhatsAppWatcher, CalendarWatcher, ApprovalWatcher}
+    assert kinds == {WhatsAppWatcher, CalendarWatcher, ApprovalWatcher, AutomationTicker}
     off = build_app(Settings(db_path=":memory:"))
     assert off.state.notifier is None
     disabled = build_app(Settings(db_path=":memory:", calendar_backend="ics", calendar_ics_path=str(tmp_path / "b.ics"), notices_enabled=False))

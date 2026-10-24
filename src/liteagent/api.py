@@ -12,6 +12,8 @@ from pydantic import BaseModel, Field
 from .agenda.models import CalendarEvent
 from .agenda.service import Action, ActionExpired, ActionNotPending, CalendarService
 from .approvals import ApprovalService
+from .automations.models import describe
+from .automations.service import AutomationService
 from .engine import Engine
 from .jobs import DONE, FAILED, JobStore, Worker
 from .notices import NoticeBoard, Notifier
@@ -48,6 +50,7 @@ def _action_json(a: Action) -> dict:
     return {
         "id": a.id, "kind": a.kind, "summary": a.summary, "status": a.status,
         "result": a.result, "error": a.error, "expires_at": a.expires_at,
+        "voice": bool((a.payload or {}).get("voice")),  # an automation with a recording to listen to first
     }
 
 
@@ -70,6 +73,7 @@ def create_app(
     notifier: Notifier | None = None,
     stt: SpeechToText | None = None,
     tts: VoiceSynth | None = None,
+    automations: AutomationService | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -200,7 +204,7 @@ def create_app(
 
     # ---- one approval inbox for every integration
     def approval_services() -> list[ApprovalService]:
-        services: list[ApprovalService] = [x for x in (calendar, whatsapp) if x is not None]
+        services: list[ApprovalService] = [x for x in (calendar, whatsapp, automations) if x is not None]
         if not services:
             raise HTTPException(status_code=503, detail="no integration is enabled (calendar or WhatsApp backend)")
         return services
@@ -333,6 +337,47 @@ def create_app(
             raise HTTPException(status_code=422, detail=str(exc)) from None
         return Response(audio, media_type="audio/wav", headers={"Cache-Control": "no-store"})
 
+    # ---- automations (creating one goes through /actions like everything else)
+    def need_automations() -> AutomationService:
+        if automations is None:
+            raise HTTPException(status_code=503, detail="automations are disabled")
+        return automations
+
+    def _automation_json(a) -> dict:
+        return {"id": a.id, "name": a.name, "enabled": a.enabled, "description": describe(a.spec), "trigger": a.spec.trigger["type"],
+                "voice": a.spec.action["type"] == "whatsapp_voice", "runs": a.runs, "last_run_at": a.last_run_at}
+
+    @app.get("/automations")
+    async def list_automations():
+        return [_automation_json(a) for a in await asyncio.to_thread(need_automations().store.list)]
+
+    @app.post("/automations/{auto_id}/enable", dependencies=[Depends(ui_only)])
+    async def enable_automation(auto_id: str):
+        if not need_automations().store.set_enabled(auto_id, True):
+            raise HTTPException(status_code=404, detail="automation not found")
+        return {"ok": True}
+
+    @app.post("/automations/{auto_id}/disable", dependencies=[Depends(ui_only)])
+    async def disable_automation(auto_id: str):
+        if not need_automations().store.set_enabled(auto_id, False):
+            raise HTTPException(status_code=404, detail="automation not found")
+        return {"ok": True}
+
+    @app.delete("/automations/{auto_id}", dependencies=[Depends(ui_only)])
+    async def delete_automation(auto_id: str):
+        service = need_automations()
+        if not service.store.delete(auto_id):
+            raise HTTPException(status_code=404, detail="automation not found")
+        service.recording_path(auto_id).unlink(missing_ok=True)
+        return {"ok": True}
+
+    @app.get("/actions/{action_id}/preview", dependencies=[Depends(ui_only)])
+    async def preview_action(action_id: str):
+        audio = need_automations().preview(action_id)
+        if audio is None:
+            raise HTTPException(status_code=404, detail="no recording for this action")
+        return Response(audio, media_type="audio/ogg", headers={"Cache-Control": "no-store"})
+
     @app.post("/actions/{action_id}/approve", dependencies=[Depends(ui_only)])
     async def approve_action(action_id: str):
         return await decide(action_id, True)
@@ -375,9 +420,11 @@ def create_app(
             except Exception as exc:  # a calendar problem must not hide the other sections
                 result["calendar"] = {"enabled": True, "error": f"{type(exc).__name__}: {exc}"}
         pending = []
-        for service in [x for x in (calendar, whatsapp) if x is not None]:
+        for service in [x for x in (calendar, whatsapp, automations) if x is not None]:
             pending.extend(await asyncio.to_thread(service.pending))
         result["pending"] = [_action_json(a) for a in sorted(pending, key=lambda a: a.expires_at)]
+        if automations is not None:
+            result["automations"] = [_automation_json(a) for a in await asyncio.to_thread(automations.store.list)]
         result["last_notice_id"] = notices.last_id
         result["awake"] = engine.awake
         result["awake_for"] = round(engine.awake_for, 1)

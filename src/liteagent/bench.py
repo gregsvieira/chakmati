@@ -7,6 +7,8 @@ from .gate.laya_gate import LayaGate
 
 CASES: list[tuple[str, Route]] = [
     ("olá", Route.CHAT),
+    ("crie uma automação para responder mensagens do whatsapp", Route.AUTOMATION),
+    ("todo dia às 9h mande bom dia para o João", Route.AUTOMATION),
     ("oi, tudo bem?", Route.CHAT),
     ("what is the capital of France?", Route.CHAT),
     ("me explica o que é uma API", Route.CHAT),

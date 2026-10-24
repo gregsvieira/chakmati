@@ -51,3 +51,29 @@ def test_is_slow():
     assert Route.CHAT.is_slow is False
     assert Route.RESEARCH.is_slow is True
     assert Route.TASK.is_slow is True
+
+
+import pytest as _pytest  # noqa: E402
+
+
+@_pytest.mark.parametrize("text", [
+    "crie uma automação para responder mensagens do whatsapp",
+    "automatize a resposta quando alguém me escrever",
+    "sempre que eu receber mensagem no whatsapp responda: estou ocupado",
+    "toda vez que alguém me mandar mensagem envie um áudio",
+    "todo dia às 9h mande bom dia para o João",
+    "responda automaticamente quem me escrever",
+])
+def test_automation_requests_go_to_the_automation_route(text):
+    assert HeuristicGate().classify(text).route is Route.AUTOMATION
+
+
+@_pytest.mark.parametrize("text, route", [
+    ("manda no whatsapp pra Maria: oi", Route.WHATSAPP),
+    ("tenho mensagens novas no whatsapp?", Route.WHATSAPP),
+    ("o que eu faço todo dia de manhã?", Route.CHAT),
+    ("o carro é automático?", Route.CHAT),
+    ("marque dentista amanhã às 10h", Route.CALENDAR),
+])
+def test_ordinary_requests_are_not_taken_for_automations(text, route):
+    assert HeuristicGate().classify(text).route is route

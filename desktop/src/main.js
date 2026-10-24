@@ -796,6 +796,14 @@ function registerIpc() {
       return { ok: false, error: friendlyError(e) };
     }
   };
+  ipcMain.handle('panel:automation', async (_e, id, op) => {
+    if (!isId(id) || !['enable', 'disable', 'delete'].includes(op)) return { ok: false, error: 'Pedido inválido.' };
+    try { await engine.setAutomation(id, op); refreshOverview(); return { ok: true }; } catch (e) { return { ok: false, error: friendlyError(e) }; }
+  });
+  ipcMain.handle('panel:preview', async (_e, id) => {
+    if (!isId(id)) return { error: 'Pedido inválido.' };
+    try { const a = await engine.preview(id); return { dataUrl: `data:${a.mime};base64,${a.base64}` }; } catch (e) { return { error: friendlyError(e) }; }
+  });
   ipcMain.handle('panel:approve', decide('approve'));
   ipcMain.handle('panel:reject', decide('reject'));
 }

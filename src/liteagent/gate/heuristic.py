@@ -15,6 +15,11 @@ _TASK = re.compile(
 )
 
 
+# Creating a rule that runs by itself: "automatize...", "toda vez que ... responda", "todo dia às 9h mande...".
+_AUTOMATION_WORD = re.compile(r"\bautoma\w+", re.IGNORECASE)
+_AUTOMATION_TRIGGER = re.compile(r"\b(?:toda\s+vez\s+que|sempre\s+que|a\s+cada\s+vez\s+que|todo\s+dia|todos\s+os\s+dias|todo\s+santo\s+dia)\b", re.IGNORECASE)
+_AUTOMATION_VERB = re.compile(r"\b(?:respond\w*|envi\w*|mand\w*|avis\w*|lembr\w*)\b", re.IGNORECASE)
+
 # Explicit "go and look it up" verbs win over calendar words ("pesquise a agenda política").
 _EXPLICIT_SEARCH = re.compile(
     r"\b(?:pesquis\w*|busc\w*|busq\w*|procur\w*|search|google|look up|find out)\b", re.IGNORECASE
@@ -44,6 +49,8 @@ class HeuristicGate:
     source = "heuristic"
 
     def classify(self, text: str) -> GateResult:
+        if _AUTOMATION_WORD.search(text) or (_AUTOMATION_TRIGGER.search(text) and _AUTOMATION_VERB.search(text)):
+            return GateResult(Route.AUTOMATION, 0.9, self.source)
         if _WHATSAPP.search(text) and not _EXPLICIT_SEARCH.search(text):
             return GateResult(Route.WHATSAPP, 0.9, self.source)
         is_calendar = _CALENDAR.search(text) or (_SCHEDULE_VERB.search(text) and _WHEN.search(text))

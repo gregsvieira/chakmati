@@ -48,6 +48,8 @@ contextBridge.exposeInMainWorld('assistant', {
     transcribe: (bytes, mime) => ipcRenderer.invoke('panel:transcribe', bytes, mime),
     send: (text) => ipcRenderer.invoke('panel:send', text),
     cancel: (id) => send('panel:cancel', id),
+    automation: (id, op) => ipcRenderer.invoke('panel:automation', id, op),
+    preview: (id) => ipcRenderer.invoke('panel:preview', id),
     approve: (id) => ipcRenderer.invoke('panel:approve', id),
     reject: (id) => ipcRenderer.invoke('panel:reject', id),
     setSetting: (key, value) => ipcRenderer.invoke('panel:set-setting', { key, value }),

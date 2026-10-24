@@ -9,6 +9,7 @@ Authentication is the X-API-Key header. Query parameters are validated with stri
 be sent as query strings: only `chatId` is passed and the server defaults are used (own messages included).
 """
 
+import base64
 import time
 from datetime import datetime
 from typing import Any
@@ -177,6 +178,13 @@ class OpenWAClient:
         out = Outgoing(chat_id, text)  # validates the recipient and the text
         data = await self._request("POST", "/api/messages/sendText",
                                    body={"to": out.to, "content": out.text, "options": {}})
+        return str(data.get("data"))
+
+    async def send_voice(self, chat_id: str, audio: bytes, mime: str) -> str:
+        """A voice note (push-to-talk): the audio goes as a data URL, as OpenWA's /api/messages/sendPtt expects."""
+        out = Outgoing(chat_id, "x")  # validates the recipient
+        file = f"data:{mime};base64,{base64.b64encode(audio).decode()}"
+        data = await self._request("POST", "/api/messages/sendPtt", body={"to": out.to, "file": file})
         return str(data.get("data"))
 
     async def aclose(self) -> None:

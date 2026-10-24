@@ -5,7 +5,11 @@ from .agenda.assistant import CalendarAssistant
 from .agenda.factory import build_calendar
 from .api import create_app
 from .approvals import ActionStore
-from .notices import ApprovalWatcher, CalendarWatcher, NoticeBoard, Notifier, WhatsAppWatcher
+from .automations.assistant import AutomationAssistant
+from .automations.runner import AutomationRunner
+from .automations.service import AutomationService
+from .automations.store import AutomationStore
+from .notices import AutomationTicker, ApprovalWatcher, CalendarWatcher, NoticeBoard, Notifier, WhatsAppWatcher
 from .config import Settings
 from .engine import Engine
 from .gate import build_gate
@@ -56,6 +60,13 @@ def build_app(settings: Settings | None = None) -> FastAPI:
     actions = ActionStore(s.db_path)  # one approval inbox shared by every integration
     calendar = build_calendar(s, actions)
     whatsapp = build_whatsapp(s, actions)
+    voice = VoiceSynth(VoiceStore(s.voices_dir))
+    automation_service = automation_runner = automation_assistant = None
+    if whatsapp is not None:
+        automation_store = AutomationStore(s.db_path)
+        automation_service = AutomationService(automation_store, actions, voice, s.automations_dir)
+        automation_runner = AutomationRunner(automation_store, whatsapp, calendar=calendar, voice_dir=s.automations_dir)
+        automation_assistant = AutomationAssistant(llm, automation_service, whatsapp)
     worker_ref: list[Worker] = []
     engine = Engine(
         build_gate(s),
@@ -65,6 +76,8 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         on_job_created=lambda: worker_ref[0].wake() if worker_ref else None,
         calendar_assistant=CalendarAssistant(llm, calendar) if calendar is not None else None,
         whatsapp_assistant=WhatsAppAssistant(llm, whatsapp) if whatsapp is not None else None,
+        automation_assistant=automation_assistant,
+        automation_service=automation_service,
     )
     worker = Worker(store, engine.run_job, stream_handler=engine.run_job_stream)
     worker_ref.append(worker)
@@ -72,10 +85,13 @@ def build_app(settings: Settings | None = None) -> FastAPI:
     events = build_whatsapp_events(s, board)
     watchers = []
     if whatsapp is not None:
-        watchers.append(WhatsAppWatcher(whatsapp, board, s.whatsapp_poll_seconds, announce_connection=events is None))
+        watchers.append(WhatsAppWatcher(whatsapp, board, s.whatsapp_poll_seconds, announce_connection=events is None,
+                                      on_fresh=automation_runner.on_whatsapp_messages if automation_runner else None))
+        if automation_runner is not None:
+            watchers.append(AutomationTicker(automation_runner))
     if calendar is not None:
         watchers.append(CalendarWatcher(calendar, board, s.calendar_poll_seconds, s.calendar_lead_minutes))
-    services = [x for x in (calendar, whatsapp) if x is not None]
+    services = [x for x in (calendar, whatsapp, automation_service) if x is not None]
     if services:
         watchers.append(ApprovalWatcher(services, board))
     notifier = Notifier(watchers, background=[events.run] if events else []) if watchers and s.notices_enabled else None
@@ -86,7 +102,8 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         board=board,
         notifier=notifier,
         stt=SpeechToText(s.stt_model) if s.stt_model != "off" else None,
-        tts=VoiceSynth(VoiceStore(s.voices_dir)),
+        tts=voice,
+        automations=automation_service,
         on_startup=llm.preload if s.preload_model else None,
         calendar=calendar,
         whatsapp=whatsapp,

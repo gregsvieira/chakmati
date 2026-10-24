@@ -4,6 +4,7 @@ from datetime import datetime
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 
+from .automations.confirm import verdict
 from .canned import canned_answer
 from .persona import AWAKE_SECONDS, PERSONA, wake_reply
 from .timeguard import calendar_facts, needs_today, needs_web, today_line
@@ -25,6 +26,7 @@ _ROUTE_PROMPTS: dict[Route, str] = {
     Route.WHATSAPP: (
         "You are a WhatsApp assistant, but WhatsApp is not connected. Say so briefly in the user's language."
     ),
+    Route.AUTOMATION: "You help create automations, but they are not available. Say so briefly in the user's language.",
     Route.TASK: (
         "You are a careful assistant for multi-step tasks. Answer in the user's "
         "language. You cannot run code or touch files yet: describe the steps."
@@ -34,6 +36,9 @@ _ROUTE_PROMPTS: dict[Route, str] = {
 # Every chat call starts with who the assistant is, so it never leaves the character (or the language).
 SYSTEM_PROMPTS: dict[Route, str] = {route: f"{PERSONA} {text}" for route, text in _ROUTE_PROMPTS.items()}
 
+
+CONFIRM_SECONDS = 30.0
+AUTOMATION_OFF = "As automações estão desativadas neste motor."
 
 CALENDAR_OFF = (
     "A integração com a agenda está desativada. No robô, ligue em Ajustes > Integrações; "
@@ -81,6 +86,8 @@ class Engine:
         on_job_created: Callable[[], object] | None = None,
         calendar_assistant=None,
         whatsapp_assistant=None,
+        automation_assistant=None,
+        automation_service=None,
         now: Callable[[], float] = time.time,
         clock: Callable[[], datetime] = lambda: datetime.now().astimezone(),
     ):
@@ -94,6 +101,8 @@ class Engine:
         self._on_job_created = on_job_created
         self._calendar = calendar_assistant
         self._whatsapp = whatsapp_assistant
+        self._automation = automation_assistant
+        self._automation_service = automation_service
 
     def _notify_job(self) -> None:
         if self._on_job_created is not None:
@@ -118,10 +127,36 @@ class Engine:
         """The text answers "which Maria?", a question the WhatsApp assistant just asked: it must go back to it."""
         return self._whatsapp is not None and hasattr(self._whatsapp, "awaiting_choice") and self._whatsapp.awaiting_choice(text)
 
+    def _awaiting_automation_choice(self, text: str) -> bool:
+        return self._automation is not None and hasattr(self._automation, "awaiting_choice") and self._automation.awaiting_choice(text)
+
+    def _confirmation(self, text: str) -> str | None:
+        """A short yes/no while an automation waits for confirmation: creates it (or drops it) and says so."""
+        service = self._automation_service
+        pending = service.pending_confirmation() if service is not None else None
+        answer = verdict(text) if pending is not None else None
+        if answer is None:
+            return None
+        if answer == "yes":
+            done = service.approve(pending.id)
+            return done.result or "Automação criada."
+        service.reject(pending.id)
+        return "Certo, não criei a automação."
+
+    async def _automation_job(self, job: Job) -> str:
+        if self._automation is None:
+            return AUTOMATION_OFF
+        result = await self._automation.handle(job.prompt)
+        if "Confirma?" in result or "Qual destes" in result or "?" in result[-3:]:
+            self._awake_until = self._now() + CONFIRM_SECONDS  # an answer is expected: listen without a wake phrase
+        return result
+
     async def _plan(self, text: str) -> tuple[Route, str | None, bool]:
         """The route, plus today's date when the question needs it, plus whether the model must admit it cannot search."""
         if self._awaiting_whatsapp_choice(text):
             return Route.WHATSAPP, None, False
+        if self._awaiting_automation_choice(text):
+            return Route.AUTOMATION, None, False
         route = (await asyncio.to_thread(self._gate.classify, text)).route
         now = self._clock()
         today, offline = None, False
@@ -136,7 +171,7 @@ class Engine:
         return route, today, offline
 
     async def handle(self, text: str) -> Reply:
-        fixed = self._wake(text) or canned_answer(text)
+        fixed = self._wake(text) or self._confirmation(text) or canned_answer(text)
         if fixed is not None:
             return Reply("answer", Route.CHAT, text=fixed)
         route, today, offline = await self._plan(text)
@@ -162,6 +197,8 @@ class Engine:
             return await self._calendar_job(job)
         if job.route == Route.WHATSAPP.value:
             return await self._whatsapp_job(job)
+        if job.route == Route.AUTOMATION.value:
+            return await self._automation_job(job)
         now = self._clock()
         today = today_line(now)  # research answers are about "now": they always know what day it is
         if self._researcher is not None and job.route == Route.RESEARCH.value:
@@ -172,7 +209,7 @@ class Engine:
     async def handle_stream(self, text: str) -> AsyncIterator[dict]:
         """Like `handle`, as a sequence of events: route, then either the reply as delta events
         followed by done (chat), or a single job event for slow work (follow it via the job stream)."""
-        fixed = self._wake(text) or canned_answer(text)
+        fixed = self._wake(text) or self._confirmation(text) or canned_answer(text)
         if fixed is not None:
             yield {"type": "route", "route": Route.CHAT.value}
             yield {"type": "delta", "text": fixed}
@@ -198,6 +235,9 @@ class Engine:
             return
         if job.route == Route.WHATSAPP.value:
             yield await self._whatsapp_job(job)
+            return
+        if job.route == Route.AUTOMATION.value:
+            yield await self._automation_job(job)
             return
         now = self._clock()
         today = today_line(now)

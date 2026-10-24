@@ -61,6 +61,39 @@ class WhatsAppService(ApprovalService):
         async with self._audio_client_factory() as client:  # a plain client: the OpenWA key must not reach WhatsApp's CDN
             return await fetch_audio(found.media, client)
 
+    # ---- sending without a per-message approval: only for automations the person confirmed when creating them
+    MAX_AUDIO_BYTES = 5 * 1024 * 1024
+
+    async def send_automated(self, chat_id: str, chat_name: str, text: str | None = None, audio: bytes | None = None,
+                             mime: str | None = None, source: str = "") -> str:
+        """Send what an automation was created to send. Same hourly limit and gap as approved sends, and every send
+        leaves a row in the action log (kind whatsapp.auto, already executed) so there is always a trail."""
+        if audio is None and text is None:
+            raise ValueError("nothing to send: give a text or an audio")
+        if audio is not None:
+            Outgoing(chat_id, "x")  # recipient check
+            if len(audio) > self.MAX_AUDIO_BYTES or not (mime or "").startswith("audio/"):
+                raise ValueError("the audio is too large or is not audio")
+            what = "áudio"
+        else:
+            out = Outgoing(chat_id, text)  # raises ValueError for a bad recipient, empty/oversized text, control characters
+            chat_id, text, what = out.to, out.text, "mensagem"
+        if self._recent_sends() >= self._max:
+            raise RateLimited(f"limite de {self._max} envios por hora atingido")
+        if self._sent_at:
+            wait = self._min_interval - (self._now() - self._sent_at[-1])
+            if wait > 0:
+                await self._sleep(wait)
+        self._sent_at.append(self._now())
+        record = self._propose("whatsapp.auto", f"Envio automático ({what}) para {chat_name}", {"chat_id": chat_id, "chat_name": chat_name, "source": source, "kind": what})
+        try:
+            message_id = await (self._provider.send_voice(chat_id, audio, mime or "audio/ogg") if audio is not None else self._provider.send_text(chat_id, text))  # type: ignore[arg-type]
+        except Exception as exc:
+            self._record(record.id, None, exc)
+            raise
+        self._record(record.id, f"enviado (id {message_id})", None)
+        return message_id
+
     # ---- proposing
     def propose_send(self, chat: Chat, text: str) -> Action:
         out = Outgoing(chat.id, text)  # raises ValueError for a bad recipient, empty/oversized text, control chars
