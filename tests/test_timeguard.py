@@ -128,3 +128,49 @@ async def test_a_research_route_always_carries_todays_date():
     reply = await engine.handle("pesquise sobre café")
     await engine.run_job(engine._store.get(reply.job_id))
     assert "24 de outubro de 2026" in researcher.calls[0][1]
+
+
+# ----------------------------------------------------------------------------- calendar arithmetic is done in code
+from liteagent.timeguard import calendar_facts  # noqa: E402
+
+
+def facts(text, now=NOW):
+    return " ".join(calendar_facts(text, now))
+
+
+def test_days_until_christmas_are_counted_by_code_not_guessed():
+    out = facts("quantos dias faltam para o natal?")
+    assert "62 dias" in out and "25/12/2026" in out and "sexta-feira" in out
+
+
+def test_relative_days_come_with_their_weekday_and_date():
+    assert "domingo, 25 de outubro de 2026" in facts("que dia é amanhã?")
+    assert "sexta-feira, 23 de outubro de 2026" in facts("que dia da semana foi ontem")
+    assert "segunda-feira, 26 de outubro de 2026" in facts("e depois de amanhã?")
+    assert "quinta-feira, 22 de outubro de 2026" in facts("anteontem foi que dia")
+
+
+def test_in_and_ago_expressions():
+    assert "terça-feira, 3 de novembro de 2026" in facts("daqui a 10 dias cai em que dia?")
+    assert "24 de julho de 2026" in facts("há 3 meses foi que dia")
+    assert "31 de outubro de 2026" in facts("daqui a 1 semana") or "31 de outubro" in facts("daqui a 1 semana")
+
+
+def test_explicit_dates_give_the_weekday_and_the_countdown():
+    out = facts("quantos dias faltam para 31/12?")
+    assert "68 dias" in out and "quinta-feira" in out
+    assert "domingo" in facts("que dia da semana é 25/10/2026") 
+    past = facts("quantos dias faltam para dia 15 de março")
+    assert "15/03/2027" in past  # a date already gone this year means next year
+
+
+def test_ordinary_text_has_no_calendar_facts():
+    assert calendar_facts("quanto é dois mais dois", NOW) == []
+    assert calendar_facts("olá", NOW) == []
+
+
+async def test_the_engine_hands_the_computed_facts_to_the_model():
+    engine, llm = make()
+    await engine.handle("quantos dias faltam para o natal?")
+    system = llm.calls[0][0]["content"]
+    assert "62 dias" in system and "24 de outubro de 2026" in system

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from .canned import canned_answer
 from .persona import AWAKE_SECONDS, PERSONA, wake_reply
-from .timeguard import needs_today, needs_web, today_line
+from .timeguard import calendar_facts, needs_today, needs_web, today_line
 from .gate.base import Gate, Route
 from .jobs import Job, JobStore
 from .llm import ChatClient
@@ -65,7 +65,7 @@ def _messages(route: Route, text: str, today: str | None = None, offline: bool =
     """`today` is the line with today's date, added when the question depends on it; `offline` says the model cannot search."""
     system = SYSTEM_PROMPTS[route]
     if today:
-        system += f" {today} Use esta data para responder; não invente datas."
+        system += f" {today} Use estas informações de data, já calculadas, sem recalcular nem inventar datas."
     if offline:
         system += f" {OFFLINE_NOTE}"
     return [{"role": "system", "content": system}, {"role": "user", "content": text}]
@@ -131,8 +131,8 @@ class Engine:
                     route = Route.RESEARCH
                 else:
                     today, offline = today_line(now), True
-            elif route is Route.CHAT and needs_today(text):  # the model can solve it once it knows the date
-                today = today_line(now)
+            elif route is Route.CHAT and needs_today(text):  # the model can solve it once it knows the date, and the sums are done here
+                today = " ".join([today_line(now), *calendar_facts(text, now)])
         return route, today, offline
 
     async def handle(self, text: str) -> Reply:

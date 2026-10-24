@@ -316,20 +316,33 @@ async function refreshOverview() {
   autoApproveNew();
 }
 
+// The character says hello once, when it is ready (not "the engine is not running": while it boots it only shows "(...)").
+let greeted = false;
+function sayHello() {
+  if (greeted || state.hidden) return;
+  greeted = true;
+  const hello = pickGreeting();
+  pushNotice({ id: -Date.now(), kind: 'reply', text: hello, masked: hello, ts: Date.now() / 1000, key: 'startup' });
+}
+
 async function healthLoop() {
   let wasUp = null;
+  const startedAt = Date.now();
   while (!quitting) {
     const up = await engine.health();
     state.engineUp = up;
     if (up && wasUp !== true) await refreshOverview();
-    if (!up && wasUp !== false && !state.warnedDown) {
-      localNotice(wasUp === null ? 'O motor do lite-agent não está rodando. Inicie-o e eu volto sozinho.' : 'Perdi a conexão com o motor do lite-agent.');
+    if (!up && wasUp === null) pushNotice({ id: -Date.now(), kind: 'reply', text: '(...)', masked: '(...)', ts: Date.now() / 1000, key: 'booting' }); // starting up
+    if (up) sayHello();
+    // a real problem, not the normal start-up: it was running and stopped, or it never came up
+    if (!up && !state.warnedDown && ((wasUp === true) || (wasUp === false && Date.now() - startedAt > 90000))) {
+      localNotice(wasUp === true ? 'Perdi a conexão com o motor do lite-agent.' : 'O motor do lite-agent não iniciou. Veja o engine.log.');
       state.warnedDown = true;
     }
     if (up) state.warnedDown = false;
     if (wasUp !== up) { refreshMood(); sendPanelState(); }
     wasUp = up;
-    await sleep(5000);
+    await sleep(up ? 5000 : 1000);
   }
 }
 
@@ -942,8 +955,6 @@ if (!app.requestSingleInstanceLock()) {
     await new Promise((resolve) => ipcMain.once('widget:ready', resolve));
     widgetWin.showInactive();
     if (settings.talk) createPanel(); // keep the microphone listening even with the panel closed
-    // the character says hello once, when it starts
-    setTimeout(() => { if (!state.hidden) { const hello = pickGreeting(); pushNotice({ id: -Date.now(), kind: 'reply', text: hello, masked: hello, ts: Date.now() / 1000, key: 'startup' }); } }, 2500);
     createTray();
     registerShortcuts();
     if (!(await engine.health())) await startEngine();

@@ -16,6 +16,7 @@
     t = t.replace(/[*_`#>]+/g, '');
     t = t.replace(/^\s*[-•]\s+/gm, '');
     t = t.replace(/\s+/g, ' ').trim();
+    if (!/[\p{L}\p{N}]/u.test(t)) return ''; // "(...)" and the like are shown, not spoken
     if (t.length > MAX) {
       const cut = t.slice(0, MAX);
       const stop = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));

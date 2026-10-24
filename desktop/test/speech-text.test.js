@@ -36,3 +36,10 @@ test('the three wake greetings are spoken exactly as written', () => {
     assert.equal(speakable(g), g);
   }
 });
+
+test('text with no letters or digits, like the start-up "(...)", is never spoken', () => {
+  assert.equal(speakable('(...)'), '');
+  assert.equal(speakable('…'), '');
+  assert.equal(speakable('😊'), '');
+  assert.ok(speakable('(ok)').includes('ok'));
+});
