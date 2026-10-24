@@ -488,19 +488,29 @@
     { label: 'Enviar mensagem', fill: 'manda no whatsapp pra ' },
     { label: 'Marcar compromisso', fill: 'marque ' },
   ];
-  fill($('chips'), CHIPS.map((c) => h('button', {
-    class: 'chip', type: 'button',
+  const AUTOMATION_CHIPS = [
+    { label: 'WhatsApp', fill: 'Crie uma automação: sempre que alguém me escrever no WhatsApp, responda: ' },
+    { label: 'Email (em breve)', soon: true },
+    { label: 'Alexa (em breve)', soon: true },
+  ];
+  const renderChips = (list) => fill($('chips'), list.map((c) => h('button', {
+    class: 'chip', type: 'button', disabled: !!c.soon,
     onclick: () => {
       showSuggestions(false);
       if (c.run) submit(c.run);
-      else { $('input').value = c.fill; $('input').focus(); }
+      else { $('input').value = c.fill; $('input').focus(); grow(); }
     },
   }, c.label)));
+  renderChips(CHIPS);
 
   // The shortcuts are suggestions: they rise above the command line when the person clicks it, and go away again.
-  const showSuggestions = (on) => $('chips').classList.toggle('open', on);
+  const showSuggestions = (on) => {
+    $('chips').classList.toggle('open', on);
+    if (!on) renderChips(CHIPS); // the automation choices last only until the field loses focus
+  };
   $('chips').addEventListener('mousedown', (e) => e.preventDefault()); // clicking a suggestion must not take the focus from the field
 
+  const showSuggestions2 = () => $('chips').classList.add('open'); // open without resetting the chips
   const input = $('input');
   const grow = () => { input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 110)}px`; };
   input.addEventListener('input', grow);
@@ -594,7 +604,7 @@
   }
 
   // Automações: nothing to show yet; the button only says what is coming
-  $('create-automation').addEventListener('click', () => { $('automation-note').hidden = false; $('input').value = 'Crie uma automação: '; $('input').focus(); });
+  $('create-automation').addEventListener('click', () => { $('automation-note').hidden = false; $('input').value = ''; renderChips(AUTOMATION_CHIPS); $('input').focus(); showSuggestions2(); });
 
   $('close').addEventListener('click', () => { showView('main'); api.close(); });
   document.addEventListener('keydown', (e) => {

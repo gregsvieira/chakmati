@@ -177,3 +177,4 @@ button.small { height: 30px; padding: 0 14px; font-size: 13px; }
 .subgroup { margin: 0 0 12px; }
 .subgroup:last-child { margin-bottom: 0; }
 .subgroup h3 { margin: 0 0 6px; font-family: var(--font-rounded); font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.chip:disabled { color: var(--muted); cursor: default; background: none; }
