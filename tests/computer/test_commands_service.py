@@ -419,3 +419,11 @@ def test_pending_computer_actions_say_whether_they_can_be_kept_approved(tmp_path
     service.propose_command("python3 ola.py")
     by_risk = {a["risk"]: a for a in client.get("/actions").json()}
     assert by_risk["safe"]["auto_ok"] is True and by_risk["run"]["auto_ok"] is False
+
+
+def test_a_reply_with_steps_but_no_action_word_still_counts_as_steps():
+    from liteagent.computer.assistant import parse_intent
+
+    intent = parse_intent('{"steps":[{"type":"command","command":"mkdir a"},{"type":"command","command":"mkdir a/b"}]}')
+    assert intent["action"] == "steps" and len(intent["steps"]) == 2
+    assert parse_intent('{"steps": "x"}') == {"action": "other"} and parse_intent('{"nada": 1}') == {"action": "other"}

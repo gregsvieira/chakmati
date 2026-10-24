@@ -45,9 +45,14 @@ def parse_intent(reply: str) -> dict:
         data = json.loads(reply[first : last + 1])
     except json.JSONDecodeError:
         return {"action": "other"}
-    if not isinstance(data, dict) or data.get("action") not in {"steps", "open_app", "open_url", "open_path", "edit", "revert", "trash"}:
+    if not isinstance(data, dict):
         return {"action": "other"}
-    out: dict = {"action": data["action"]}
+    action = data.get("action")
+    if action is None and isinstance(data.get("steps"), list):  # small models often leave "action" out when there are steps
+        action = "steps"
+    if action not in {"steps", "open_app", "open_url", "open_path", "edit", "revert", "trash"}:
+        return {"action": "other"}
+    out: dict = {"action": action}
     for key in ("app", "url", "path", "instruction", "goal"):
         if isinstance(data.get(key), str):
             out[key] = data[key].strip()
