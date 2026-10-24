@@ -76,8 +76,8 @@ are the only place where other people's text reaches the local model; it is quot
 | `LITEAGENT_SEARXNG_URL` | `http://localhost:8080` |
 | `LITEAGENT_RESEARCH_SCORER` | `keepall` (`laya` is opt-in) |
 | `LITEAGENT_RESULT_CUTOFF` | `0.2` |
-| `LITEAGENT_KEEP_ALIVE` | empty = Ollama default (5 min); e.g. `30m` keeps the model in RAM longer |
-| `LITEAGENT_PRELOAD_MODEL` | `0`; `1` loads the model at startup (first request ~4 s faster, ~6 GB RAM resident) |
+| `LITEAGENT_KEEP_ALIVE` | `30m` (empty = Ollama default, which unloads the model after 5 min idle) |
+| `LITEAGENT_PRELOAD_MODEL` | `1`; loads the model at startup (first request ~4 s faster, ~6 GB RAM resident with the default model). `0` turns it off |
 | `LITEAGENT_RESEARCH_MAX_TOKENS` | `200` (`0` = no cap) |
 | `LITEAGENT_RESEARCH_CONCISE` | `1` (answers in at most 3 short sentences) |
 | `LITEAGENT_FETCH_DEADLINE` | `2.0` seconds to wait for page downloads (`0` = wait for all); a site that hangs is dropped |

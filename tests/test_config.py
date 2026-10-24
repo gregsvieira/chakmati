@@ -49,7 +49,7 @@ def test_searxng_url_setting():
 
 def test_speed_settings():
     d = Settings()
-    assert (d.keep_alive, d.preload_model, d.research_max_tokens, d.research_concise) == ("", False, 200, True)
+    assert (d.keep_alive, d.preload_model, d.research_max_tokens, d.research_concise) == ("30m", True, 200, True)
     s = Settings.from_env(
         {
             "LITEAGENT_KEEP_ALIVE": "30m",
@@ -59,6 +59,11 @@ def test_speed_settings():
         }
     )
     assert (s.keep_alive, s.preload_model, s.research_max_tokens, s.research_concise) == ("30m", True, 120, False)
+
+
+def test_preload_and_keep_alive_can_be_turned_off():
+    s = Settings.from_env({"LITEAGENT_KEEP_ALIVE": "", "LITEAGENT_PRELOAD_MODEL": "0"})
+    assert (s.keep_alive, s.preload_model) == ("", False)
 
 
 def test_fetch_deadline_setting():
