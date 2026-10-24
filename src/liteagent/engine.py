@@ -1,10 +1,12 @@
 import asyncio
 import time
+from datetime import datetime
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 
 from .canned import canned_answer
 from .persona import AWAKE_SECONDS, PERSONA, wake_reply
+from .timeguard import needs_today, needs_web, today_line
 from .gate.base import Gate, Route
 from .jobs import Job, JobStore
 from .llm import ChatClient
@@ -53,11 +55,20 @@ class Reply:
     job_id: str | None = None
 
 
-def _messages(route: Route, text: str) -> list[dict[str, str]]:
-    return [
-        {"role": "system", "content": SYSTEM_PROMPTS[route]},
-        {"role": "user", "content": text},
-    ]
+OFFLINE_NOTE = (
+    "Você não tem acesso à internet agora e não conhece fatos recentes: se a resposta depender deles, diga que não sabe, "
+    "sem inventar."
+)
+
+
+def _messages(route: Route, text: str, today: str | None = None, offline: bool = False) -> list[dict[str, str]]:
+    """`today` is the line with today's date, added when the question depends on it; `offline` says the model cannot search."""
+    system = SYSTEM_PROMPTS[route]
+    if today:
+        system += f" {today} Use esta data para responder; não invente datas."
+    if offline:
+        system += f" {OFFLINE_NOTE}"
+    return [{"role": "system", "content": system}, {"role": "user", "content": text}]
 
 
 class Engine:
@@ -71,8 +82,10 @@ class Engine:
         calendar_assistant=None,
         whatsapp_assistant=None,
         now: Callable[[], float] = time.time,
+        clock: Callable[[], datetime] = lambda: datetime.now().astimezone(),
     ):
         self._now = now
+        self._clock = clock
         self._awake_until = 0.0
         self._gate = gate
         self._llm = llm
@@ -105,18 +118,30 @@ class Engine:
         """The text answers "which Maria?", a question the WhatsApp assistant just asked: it must go back to it."""
         return self._whatsapp is not None and hasattr(self._whatsapp, "awaiting_choice") and self._whatsapp.awaiting_choice(text)
 
-    async def _classify(self, text: str) -> Route:
+    async def _plan(self, text: str) -> tuple[Route, str | None, bool]:
+        """The route, plus today's date when the question needs it, plus whether the model must admit it cannot search."""
         if self._awaiting_whatsapp_choice(text):
-            return Route.WHATSAPP
-        return (await asyncio.to_thread(self._gate.classify, text)).route
+            return Route.WHATSAPP, None, False
+        route = (await asyncio.to_thread(self._gate.classify, text)).route
+        now = self._clock()
+        today, offline = None, False
+        if route in (Route.CHAT, Route.RESEARCH):
+            if needs_web(text, now):  # events and recent facts: look them up, never let the model guess
+                if self._researcher is not None:
+                    route = Route.RESEARCH
+                else:
+                    today, offline = today_line(now), True
+            elif route is Route.CHAT and needs_today(text):  # the model can solve it once it knows the date
+                today = today_line(now)
+        return route, today, offline
 
     async def handle(self, text: str) -> Reply:
         fixed = self._wake(text) or canned_answer(text)
         if fixed is not None:
             return Reply("answer", Route.CHAT, text=fixed)
-        route = await self._classify(text)
+        route, today, offline = await self._plan(text)
         if not route.is_slow:
-            answer = await self._llm.chat(_messages(route, text))
+            answer = await self._llm.chat(_messages(route, text, today, offline))
             return Reply("answer", route, text=answer)
         job_id = self._store.create(route.value, text)
         self._notify_job()
@@ -137,9 +162,11 @@ class Engine:
             return await self._calendar_job(job)
         if job.route == Route.WHATSAPP.value:
             return await self._whatsapp_job(job)
+        today = today_line(self._clock())  # research answers are about "now": they always know what day it is
         if self._researcher is not None and job.route == Route.RESEARCH.value:
-            return (await self._researcher.answer(job.prompt)).render()
-        return await self._llm.chat(_messages(Route(job.route), job.prompt))
+            return (await self._researcher.answer(job.prompt, today=today)).render()
+        offline = job.route == Route.RESEARCH.value  # a research job with search switched off
+        return await self._llm.chat(_messages(Route(job.route), job.prompt, today if offline else None, offline))
 
     async def handle_stream(self, text: str) -> AsyncIterator[dict]:
         """Like `handle`, as a sequence of events: route, then either the reply as delta events
@@ -150,7 +177,7 @@ class Engine:
             yield {"type": "delta", "text": fixed}
             yield {"type": "done", "result": fixed}
             return
-        route = await self._classify(text)
+        route, today, offline = await self._plan(text)
         yield {"type": "route", "route": route.value}
         if route.is_slow:
             job_id = self._store.create(route.value, text)
@@ -158,7 +185,7 @@ class Engine:
             yield {"type": "job", "job_id": job_id, "route": route.value}
             return
         parts: list[str] = []
-        async for delta in self._llm.stream_chat(_messages(route, text)):  # type: ignore[attr-defined]
+        async for delta in self._llm.stream_chat(_messages(route, text, today, offline)):  # type: ignore[attr-defined]
             parts.append(delta)
             yield {"type": "delta", "text": delta}
         yield {"type": "done", "result": "".join(parts)}
@@ -171,9 +198,11 @@ class Engine:
         if job.route == Route.WHATSAPP.value:
             yield await self._whatsapp_job(job)
             return
+        today = today_line(self._clock())
         if self._researcher is not None and job.route == Route.RESEARCH.value:
-            async for delta in self._researcher.stream_answer(job.prompt):
+            async for delta in self._researcher.stream_answer(job.prompt, today=today):
                 yield delta
             return
-        async for delta in self._llm.stream_chat(_messages(Route(job.route), job.prompt)):  # type: ignore[attr-defined]
+        offline = job.route == Route.RESEARCH.value
+        async for delta in self._llm.stream_chat(_messages(Route(job.route), job.prompt, today if offline else None, offline)):  # type: ignore[attr-defined]
             yield delta

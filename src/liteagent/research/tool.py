@@ -88,7 +88,7 @@ class ResearchTool:
             for task in tasks
         ]
 
-    async def _prepare(self, query: str) -> tuple[list[dict[str, str]] | None, list[str]]:
+    async def _prepare(self, query: str, today: str | None = None) -> tuple[list[dict[str, str]] | None, list[str]]:
         """Search, filter, fetch and rank. Returns (chat messages, source urls), or (None, [])
         when no usable page was found."""
         results = await self._search.search(query, limit=10)
@@ -115,7 +115,7 @@ class ResearchTool:
             url_of.setdefault(passage, url)
         numbered = "\n".join(f"[{i}] {p}" for i, p in enumerate(best, 1))
         messages = [
-            {"role": "system", "content": self._system},
+            {"role": "system", "content": self._system + (f" {today} Today's date matters for words like 'latest' or 'recent'." if today else "")},
             {"role": "user", "content": f"Question: {query}\n\nPassages:\n{numbered}"},
         ]
         sources: list[str] = []
@@ -125,18 +125,18 @@ class ResearchTool:
                 sources.append(url)
         return messages, sources
 
-    async def answer(self, query: str) -> ResearchAnswer:
-        messages, sources = await self._prepare(query)
+    async def answer(self, query: str, today: str | None = None) -> ResearchAnswer:
+        messages, sources = await self._prepare(query, today)
         if messages is None:
             return ResearchAnswer(NOTHING_FOUND, [])
         reply = await self._llm.chat(messages)
         return ResearchAnswer(reply.strip(), sources)
 
-    async def stream_answer(self, query: str) -> AsyncIterator[str]:
+    async def stream_answer(self, query: str, today: str | None = None) -> AsyncIterator[str]:
         """Same retrieval as `answer`, but the reply is yielded piece by piece as the model writes it;
         the sources list is appended at the end, so the joined text equals `answer(...).render()`
         (up to surrounding whitespace)."""
-        messages, sources = await self._prepare(query)
+        messages, sources = await self._prepare(query, today)
         if messages is None:
             yield NOTHING_FOUND
             return

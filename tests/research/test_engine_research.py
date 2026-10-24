@@ -27,7 +27,7 @@ class FakeResearcher:
     def __init__(self):
         self.queries = []
 
-    async def answer(self, query):
+    async def answer(self, query, today=None):
         self.queries.append(query)
         return ResearchAnswer("web answer", ["https://a.test"])
 

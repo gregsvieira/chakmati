@@ -62,10 +62,9 @@ async def test_run_job_uses_route_specific_system_prompt(store):
     reply = await engine.handle("find x")
     job = store.get(reply.job_id)
     assert await engine.run_job(job) == "llm says hi"
-    assert llm.calls[0][0] == {
-        "role": "system",
-        "content": SYSTEM_PROMPTS[Route.RESEARCH],
-    }
+    system = llm.calls[0][0]
+    assert system["role"] == "system" and system["content"].startswith(SYSTEM_PROMPTS[Route.RESEARCH])
+    assert "Hoje é" in system["content"] and "internet" in system["content"]  # a research job knows the date, and admits it cannot search
     assert llm.calls[0][1] == {"role": "user", "content": "find x"}
 
 
@@ -110,7 +109,7 @@ async def test_run_job_stream_uses_llm_stream_or_researcher_stream(store):
     assert await collect(engine.run_job_stream(store.get(job_id))) == ["a", "b"]
 
     class R:
-        async def stream_answer(self, query):
+        async def stream_answer(self, query, today=None):
             yield f"web:{query}"
 
     engine2 = Engine(FakeGate(Route.RESEARCH), llm, store, researcher=R())

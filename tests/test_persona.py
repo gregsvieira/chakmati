@@ -40,7 +40,7 @@ def test_everything_else_is_not_a_wake_phrase(text):
 def test_the_persona_is_the_requested_pre_prompt():
     assert PERSONA == (
         "Você é um agente brasileiro chamado de Chakmati, que responde e recebe comandos em português brasileiro, "
-        "tem bom humor e ironia, e responde de forma concisa e curta, em geral com cerca de 12 palavras, "
+        "e responde de forma direta, concisa e curta, em geral com cerca de 12 palavras, "
         "e só se alonga quando o pedido exigir, como listas e pesquisas."
     )
 
