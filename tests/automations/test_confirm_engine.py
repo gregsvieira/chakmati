@@ -158,3 +158,54 @@ def test_api_approves_a_pending_creation_and_serves_the_preview_of_a_voice_one(t
     assert got.status_code == 200 and got.headers["content-type"] == "audio/ogg" and got.content[:4] == b"OggS"
     assert client.post(f"/actions/{action.id}/approve", headers=UI).status_code == 200
     assert len(store.list()) == 1
+
+
+# ----------------------------------------------------------------------------- the person's own recorded voice
+class FakeStt:
+    def transcribe(self, audio):
+        return "Estou ocupado, já te respondo", "pt"
+
+
+def recorded_client(tmp_path, stt=None):
+    from fastapi.testclient import TestClient
+
+    from liteagent.api import create_app
+    from liteagent.notices import NoticeBoard
+
+    engine, service, store, clock = make(tmp_path)
+    app = create_app(engine, engine._store, board=NoticeBoard(), automations=service, stt=stt)
+    return TestClient(app), engine, service, store
+
+
+def test_a_recorded_reply_becomes_a_proposal_with_the_persons_own_voice(tmp_path):
+    from .test_audio_service import sine_wav
+
+    client, engine, service, store = recorded_client(tmp_path, FakeStt())
+    assert client.post("/automations/recorded", content=sine_wav(2.0), headers={"content-type": "audio/wav"}).status_code == 403
+    res = client.post("/automations/recorded", content=sine_wav(2.0), headers={**UI, "content-type": "audio/wav"})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["voice"] is True and body["own"] is True and "sua voz gravada" in body["summary"] and body["transcript"].startswith("Estou ocupado")
+    assert store.list() == [] and engine.awake is True  # nothing exists yet; yes / no / redo are heard without a wake phrase
+    assert client.get(f"/actions/{body['id']}/preview", headers=UI).content[:4] == b"OggS"
+    assert client.post(f"/actions/{body['id']}/approve", headers=UI).status_code == 200
+    assert store.list()[0].spec.action["own_voice"] is True
+
+
+def test_a_recording_over_ten_seconds_or_not_audio_is_refused(tmp_path):
+    from .test_audio_service import sine_wav
+
+    client, _, service, _ = recorded_client(tmp_path)
+    assert client.post("/automations/recorded", content=sine_wav(14.0), headers={**UI, "content-type": "audio/wav"}).status_code == 422
+    assert client.post("/automations/recorded", content=b"junk", headers={**UI, "content-type": "audio/wav"}).status_code == 422
+    assert client.post("/automations/recorded", content=b"x", headers={**UI, "content-type": "text/plain"}).status_code == 415
+    assert client.post("/automations/recorded", content=b"", headers={**UI, "content-type": "audio/wav"}).status_code == 413
+    assert service.pending_confirmation() is None
+
+
+def test_without_speech_recognition_the_list_still_describes_it(tmp_path):
+    from .test_audio_service import sine_wav
+
+    client, _, _, _ = recorded_client(tmp_path)
+    body = client.post("/automations/recorded", content=sine_wav(1.0), headers={**UI, "content-type": "audio/wav"}).json()
+    assert "voz gravada" in body["summary"]

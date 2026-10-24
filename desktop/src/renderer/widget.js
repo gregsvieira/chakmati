@@ -50,7 +50,7 @@
   api.onBubble((b) => {
     robot.setTalking(!!b);
     if (!b) { bubble.classList.add('hidden'); window.Voice.stop(); return; }
-    if (voiceOn) window.Voice.speak(b.text, { emojis: voiceEmojis, enhanced: voiceEnhanced, speed: voiceSpeed, onStart: () => api.speaking(true), onEnd: () => api.speaking(false) });
+    if (voiceOn && !b.silent) window.Voice.speak(b.text, { emojis: voiceEmojis, enhanced: voiceEnhanced, speed: voiceSpeed, onStart: () => api.speaking(true), onEnd: () => api.speaking(false) });
     bubbleText.textContent = b.text;
     bubble.dataset.kind = b.kind || 'system';
     bubble.classList.remove('hidden', 'enter');

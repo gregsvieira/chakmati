@@ -804,6 +804,20 @@ function registerIpc() {
     if (!isId(id)) return { error: 'Pedido inválido.' };
     try { const a = await engine.preview(id); return { dataUrl: `data:${a.mime};base64,${a.base64}` }; } catch (e) { return { error: friendlyError(e) }; }
   });
+  ipcMain.handle('panel:propose-recorded', async (_e, bytes) => {
+    if (!(bytes instanceof Uint8Array) || !bytes.length) return { error: 'Gravação inválida.' };
+    try { const action = await engine.proposeRecorded(bytes); refreshOverview(); return { action }; } catch (e) { return { error: friendlyError(e) }; }
+  });
+  // A line that changes every second (the countdown) shown by the character with the panel closed. Never spoken, never queued.
+  ipcMain.on('panel:live', (_e, text) => {
+    if (state.panelOpen || state.hidden) return;
+    clearTimeout(bubbleTimer);
+    if (typeof text !== 'string' || !text.trim()) { nextBubble(); return; }
+    state.bubbleVisible = true;
+    sendTo(widgetWin, 'widget:bubble', { text: text.slice(0, 140), kind: 'system', id: -1, silent: true });
+    refreshMood();
+    bubbleTimer = setTimeout(nextBubble, 3000);
+  });
   ipcMain.handle('panel:approve', decide('approve'));
   ipcMain.handle('panel:reject', decide('reject'));
 }

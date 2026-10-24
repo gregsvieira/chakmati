@@ -152,6 +152,13 @@ class EngineClient {
     return { mime: 'audio/ogg', base64: Buffer.from(await res.arrayBuffer()).toString('base64') };
   }
 
+  // The person's own recorded reply (a 16 kHz WAV of at most ~10 s) becomes a proposal that still has to be confirmed.
+  async proposeRecorded(bytes) {
+    if (!bytes || !bytes.length) throw new Error('empty recording');
+    if (bytes.length > 1.5 * 1024 * 1024) throw new Error('recording too large');
+    return (await this._request('/automations/recorded', { method: 'POST', headers: { ...UI, 'content-type': 'audio/wav' }, body: bytes })).json();
+  }
+
   approve(id) { return this._decide(id, 'approve'); }
   reject(id) { return this._decide(id, 'reject'); }
 

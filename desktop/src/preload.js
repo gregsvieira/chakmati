@@ -50,6 +50,8 @@ contextBridge.exposeInMainWorld('assistant', {
     cancel: (id) => send('panel:cancel', id),
     automation: (id, op) => ipcRenderer.invoke('panel:automation', id, op),
     preview: (id) => ipcRenderer.invoke('panel:preview', id),
+    proposeRecorded: (bytes) => ipcRenderer.invoke('panel:propose-recorded', bytes),
+    live: (text) => send('panel:live', text),
     approve: (id) => ipcRenderer.invoke('panel:approve', id),
     reject: (id) => ipcRenderer.invoke('panel:reject', id),
     setSetting: (key, value) => ipcRenderer.invoke('panel:set-setting', { key, value }),

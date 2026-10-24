@@ -177,8 +177,15 @@
     const pending = !!item;
     if (turn.decision) return h('p', { class: `decision-result${turn.decision.error ? ' error' : ''}` }, turn.decision.text);
     if (!pending) return stateVersion > turn.sinceState ? h('p', { class: 'decision-result' }, 'Concluído.') : null;
-    if (state.settings.autoSend) return h('p', { class: 'decision-result' }, 'Envio automático ligado: enviando…');
+    if (state.settings.autoSend && item.kind === 'whatsapp.send') return h('p', { class: 'decision-result' }, 'Envio automático ligado: enviando…');
+    if (turn.own) {
+      return h('div', { class: 'decision-actions turn-actions' },
+        h('button', { class: 'ghost', type: 'button', onclick: () => decideTurn(turn, 'reject') }, 'Cancelar'),
+        h('button', { class: 'ghost', type: 'button', onclick: () => redoOwnVoice(turn) }, 'Regravar'),
+        h('button', { class: 'primary', type: 'button', onclick: () => decideTurn(turn, 'approve') }, 'Confirmar'));
+    }
     return h('div', { class: 'decision-actions turn-actions' },
+      item.voice ? h('button', { class: 'ghost', type: 'button', onclick: (e) => previewVoice(item.id, e.currentTarget) }, 'Ouvir') : null,
       h('button', { class: 'ghost', type: 'button', onclick: () => decideTurn(turn, 'reject') }, 'Recusar'),
       item.kind === 'whatsapp.send' ? h('button', { class: 'ghost', type: 'button', onclick: () => decideTurn(turn, 'always') }, 'Aprovar para as próximas') : null,
       h('button', { class: 'primary', type: 'button', onclick: () => decideTurn(turn, 'approve') }, 'Aprovar'));
@@ -257,6 +264,8 @@
   async function submit(text, { voice = false } = {}) {
     const clean = text.trim();
     if (!clean || (state && state.busy)) return;
+    const waiting = thread.slice().reverse().find((t) => t.own && !t.decision);
+    if (waiting && /regrav|grav\w* (de novo|novamente)/i.test(clean)) { redoOwnVoice(waiting); return; }
     thread.push({ role: 'user', text: clean, status: 'done' });
     const res = await api.send(clean);
     if (!res || res.error) {
@@ -466,6 +475,121 @@
     micButton.style.setProperty('--level', '0');
   }
 
+  // ------------------------------------------------------------------ "Minha fala": the reply recorded in the person's own voice
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  let recordingOwn = false;
+
+  // Chakmati says something: in the thread when the panel is open (and spoken), as a bubble by the character when it is closed.
+  function tell(text, extra = {}) {
+    const turn = { role: 'assistant', text, status: 'done', ...extra };
+    thread.push(turn);
+    while (thread.length > 10) thread.shift();
+    renderThread();
+    if (state && state.panelOpen) sayAloud(text); else api.reply(text);
+    return turn;
+  }
+
+  async function waitQuiet(maxMs) {
+    const end = Date.now() + maxMs;
+    await sleep(500); // the speech has not started yet at this point
+    while (Date.now() < end && (speaking || otherSpeaking)) await sleep(120);
+    await sleep(250);
+  }
+
+  // The countdown is silent: one line that changes every second, in the panel or in a bubble.
+  let countdownTurn = null;
+  function showCount(text) {
+    if (state && state.panelOpen) {
+      if (!countdownTurn || !thread.includes(countdownTurn)) { countdownTurn = { role: 'assistant', text, status: 'done' }; thread.push(countdownTurn); }
+      countdownTurn.text = text;
+      renderThread(false);
+    } else api.live(text);
+  }
+  function endCount() {
+    if (countdownTurn) { const i = thread.indexOf(countdownTurn); if (i >= 0) thread.splice(i, 1); countdownTurn = null; renderThread(false); }
+    api.live(null);
+  }
+
+  async function recordOwnVoice() {
+    if (recordingOwn) return;
+    recordingOwn = true;
+    stopAmbient(); // the recorder takes the microphone
+    let stream;
+    try { stream = await openMicrophone(); } catch {
+      recordingOwn = false; syncAmbient();
+      say('Não consegui usar o microfone. Libere em Ajustes do Sistema > Privacidade > Microfone.');
+      return;
+    }
+    const ctx = new AudioContext();
+    try {
+      tell('Fale por no máximo 10 segundos depois que ouvir o som plim no 3... 2... 1...');
+      await waitQuiet(9000);
+      const chunks = [];
+      let peak = 0, spoke = false, quietSince = 0, floor = 0, frames = 0;
+      const source = ctx.createMediaStreamSource(stream);
+      const node = ctx.createScriptProcessor(4096, 1, 1);
+      const mute = ctx.createGain(); mute.gain.value = 0;
+      source.connect(node); node.connect(mute); mute.connect(ctx.destination);
+      let capturing = false;
+      node.onaudioprocess = (e) => {
+        if (!capturing) return;
+        const data = new Float32Array(e.inputBuffer.getChannelData(0));
+        let sum = 0; for (const v of data) sum += v * v;
+        const rms = Math.sqrt(sum / data.length);
+        frames += 1; peak = Math.max(peak, rms);
+        if (frames <= 3) floor = Math.max(floor, rms);  // the room before the person speaks
+        else if (rms > Math.max(0.02, floor * 3)) { spoke = true; quietSince = 0; }
+        else if (spoke && !quietSince) quietSince = Date.now();
+        chunks.push(data);
+      };
+      chime();
+      await sleep(450); // do not record the chime itself
+      capturing = true;
+      const started = Date.now();
+      for (let left = 10; left >= 0; left--) {
+        showCount(`${left}...`);
+        const until = started + (10 - left + 1) * 1000;
+        while (Date.now() < until) {
+          await sleep(100);
+          if (spoke && quietSince && Date.now() - quietSince > 1600) { left = -1; break; } // finished speaking: do not wait for the rest
+        }
+      }
+      capturing = false;
+      node.onaudioprocess = null;
+      endCount();
+      if (!spoke) { tell('Não ouvi nada. Clique em “Minha fala” para tentar de novo.'); return; }
+      const wav = window.Wav.encodeWav(chunks, ctx.sampleRate);
+      const res = await api.proposeRecorded(wav);
+      if (!res || res.error) { tell((res && res.error) || 'Não consegui guardar a gravação.'); return; }
+      const id = res.action.id;
+      const audio = await api.preview(id);
+      if (audio && audio.dataUrl) {
+        await new Promise((resolve) => {
+          const player = new Audio(audio.dataUrl);
+          player.onended = player.onerror = resolve;
+          player.play().catch(resolve);
+        });
+        quietUntil = Date.now() + 700;
+      }
+      tell('Ouviu como ficou? Diga sim para confirmar, regravar ou cancelar.', { actionId: id, own: true, sinceState: stateVersion });
+    } finally {
+      endCount();
+      releaseMic(stream, ctx);
+      recordingOwn = false;
+      syncAmbient();
+    }
+  }
+  function releaseMic(stream, ctx) { stream.getTracks().forEach((t) => t.stop()); ctx.close().catch(() => {}); }
+
+  async function redoOwnVoice(turn) {
+    turn.decision = { text: 'Regravando…' };
+    renderThread();
+    await api.reject(turn.actionId);
+    turn.decision = { text: 'Gravação descartada.' };
+    renderThread();
+    recordOwnVoice();
+  }
+
   let ambientSource = null;
   // Watchdog: if the audio stops flowing (suspended after sleep, device gone) the loop is rebuilt, never left deaf.
   setInterval(() => {
@@ -488,17 +612,27 @@
     { label: 'Enviar mensagem', fill: 'manda no whatsapp pra ' },
     { label: 'Marcar compromisso', fill: 'marque ' },
   ];
+  const WHATSAPP_PROMPT = 'Crie uma automação: sempre que alguém me escrever no WhatsApp, responda';
+  // Stage 2: how the reply is made. Text and audio are written by the person (the audio is recorded by Chakmati in the
+  // voice in use); "Minha fala" is recorded by the person.
+  const MODE_CHIPS = [
+    { label: 'Áudio', fill: `${WHATSAPP_PROMPT} em áudio: ` },
+    { label: 'Texto', fill: `${WHATSAPP_PROMPT}: ` },
+    { label: 'Minha fala', own: true },
+  ];
+  // Stage 1: the channel.
   const AUTOMATION_CHIPS = [
-    { label: 'WhatsApp', fill: 'Crie uma automação: sempre que alguém me escrever no WhatsApp, responda: ' },
+    { label: 'WhatsApp', fill: `${WHATSAPP_PROMPT}: `, next: MODE_CHIPS },
     { label: 'Email (em breve)', soon: true },
     { label: 'Alexa (em breve)', soon: true },
   ];
   const renderChips = (list) => fill($('chips'), list.map((c) => h('button', {
     class: 'chip', type: 'button', disabled: !!c.soon,
     onclick: () => {
-      showSuggestions(false);
-      if (c.run) submit(c.run);
-      else { $('input').value = c.fill; $('input').focus(); grow(); }
+      if (c.own) { showSuggestions(false); $('input').value = ''; recordOwnVoice(); return; }
+      if (c.run) { showSuggestions(false); submit(c.run); return; }
+      $('input').value = c.fill; $('input').focus(); grow();
+      if (c.next) renderChips(c.next); else showSuggestions(false); // the next choice stays on screen
     },
   }, c.label)));
   renderChips(CHIPS);

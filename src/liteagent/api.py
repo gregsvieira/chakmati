@@ -12,8 +12,9 @@ from pydantic import BaseModel, Field
 from .agenda.models import CalendarEvent
 from .agenda.service import Action, ActionExpired, ActionNotPending, CalendarService
 from .approvals import ApprovalService
-from .automations.models import describe
-from .automations.service import AutomationService
+from .automations.audio import wav_to_ogg_opus_timed
+from .automations.models import describe, parse_spec
+from .automations.service import AutomationError, AutomationService
 from .engine import Engine
 from .jobs import DONE, FAILED, JobStore, Worker
 from .notices import NoticeBoard, Notifier
@@ -50,7 +51,7 @@ def _action_json(a: Action) -> dict:
     return {
         "id": a.id, "kind": a.kind, "summary": a.summary, "status": a.status,
         "result": a.result, "error": a.error, "expires_at": a.expires_at,
-        "voice": bool((a.payload or {}).get("voice")),  # an automation with a recording to listen to first
+        "voice": bool((a.payload or {}).get("voice")), "own": bool((a.payload or {}).get("own")),  # an automation with a recording to listen to first
     }
 
 
@@ -370,6 +371,38 @@ def create_app(
             raise HTTPException(status_code=404, detail="automation not found")
         service.recording_path(auto_id).unlink(missing_ok=True)
         return {"ok": True}
+
+    MAX_RECORDING = 2 * 1024 * 1024
+    MAX_RECORDING_SECONDS = 12
+
+    @app.post("/automations/recorded", dependencies=[Depends(ui_only)])
+    async def propose_recorded(request: Request):
+        """A reply recorded by the person: becomes a PROPOSAL (nothing exists until they confirm) for "answer anyone who writes"."""
+        service = need_automations()
+        if not (request.headers.get("content-type") or "").lower().startswith("audio/"):
+            raise HTTPException(status_code=415, detail="send the recording with an audio/* content type")
+        audio = await request.body()
+        if not audio or len(audio) > MAX_RECORDING:
+            raise HTTPException(status_code=413, detail="the recording is empty or too large")
+        try:
+            ogg, seconds = await asyncio.to_thread(wav_to_ogg_opus_timed, audio)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        if seconds > MAX_RECORDING_SECONDS:
+            raise HTTPException(status_code=422, detail="the recording is longer than 10 seconds")
+        text = ""
+        if stt is not None:  # the words only describe the automation in the list; what is sent is the recording itself
+            with suppress(Exception):
+                text, _ = await asyncio.to_thread(stt.transcribe, audio)
+        text = text.strip()[:300] or "mensagem de voz gravada por você"
+        spec = parse_spec({"name": "Resposta em áudio", "trigger": {"type": "whatsapp_message"},
+                           "action": {"type": "whatsapp_voice", "to": "sender", "text": text, "own_voice": True}})
+        try:
+            action = await asyncio.to_thread(service.propose_create, spec, ogg)
+        except AutomationError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from None
+        engine.expect_answer(60.0)
+        return {**_action_json(action), "transcript": text}
 
     @app.get("/actions/{action_id}/preview", dependencies=[Depends(ui_only)])
     async def preview_action(action_id: str):

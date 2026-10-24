@@ -81,7 +81,10 @@ def _action(raw, trigger_type: str) -> dict:
         target = {"chat_id": to["chat_id"], "name": name.strip()[:80] if isinstance(name, str) and name.strip() else to["chat_id"]}
     else:
         raise SpecError("the recipient must be the sender or a conversation with a valid id")
-    return {"type": raw["type"], "to": target, "text": text.strip()}
+    result = {"type": raw["type"], "to": target, "text": text.strip()}
+    if raw.get("own_voice") is True and raw["type"] == "whatsapp_voice":  # the recording is the person's own voice
+        result["own_voice"] = True
+    return result
 
 
 def parse_spec(data) -> Spec:
@@ -112,7 +115,7 @@ def _cooldown_words(minutes: int) -> str:
 def describe(spec: Spec) -> str:
     """One plain sentence saying what will happen: this is what the person confirms."""
     trigger, action = spec.trigger, spec.action
-    mode = "em áudio, com a minha voz" if action["type"] == "whatsapp_voice" else "por mensagem"
+    mode = ("em áudio, com a sua voz gravada" if action.get("own_voice") else "em áudio, com a minha voz") if action["type"] == "whatsapp_voice" else "por mensagem"
     who = "essa pessoa" if action["to"] == "sender" else action["to"]["name"]
     reply = f"responder {mode} para {who}" if action["to"] == "sender" else f"enviar {mode} para {who}"
     quoted = f"«{action['text']}»"

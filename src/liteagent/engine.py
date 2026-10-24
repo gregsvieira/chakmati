@@ -127,6 +127,10 @@ class Engine:
         """The text answers "which Maria?", a question the WhatsApp assistant just asked: it must go back to it."""
         return self._whatsapp is not None and hasattr(self._whatsapp, "awaiting_choice") and self._whatsapp.awaiting_choice(text)
 
+    def expect_answer(self, seconds: float = CONFIRM_SECONDS) -> None:
+        """A yes/no/redo is expected: the microphone listens without a wake phrase for a while."""
+        self._awake_until = self._now() + seconds
+
     def _awaiting_automation_choice(self, text: str) -> bool:
         return self._automation is not None and hasattr(self._automation, "awaiting_choice") and self._automation.awaiting_choice(text)
 

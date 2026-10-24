@@ -42,17 +42,17 @@ class AutomationService(ApprovalService):
         return path.read_bytes() if path.is_file() else None
 
     # ---- proposing
-    def propose_create(self, spec: Spec) -> Action:
+    def propose_create(self, spec: Spec, recording: bytes | None = None) -> Action:
+        """`recording` is a ready Ogg/Opus voice note (the person's own voice); without it a voice reply is synthesized."""
         if len(self._store.list()) >= self.MAX_AUTOMATIONS:
             raise AutomationError(f"limite de {self.MAX_AUTOMATIONS} automações atingido; apague alguma antes de criar outra")
         voice = spec.action["type"] == "whatsapp_voice"
-        recording = None
-        if voice:
+        if voice and recording is None:
             if self._voice is None or not self._voice.store.installed():
                 raise AutomationError("Para responder em áudio é preciso ligar e baixar a Voz melhorada em Ajustes.")
             recording = wav_to_ogg_opus(self._voice.synthesize(spec.action["text"], "normal"))
         body = {"name": spec.name, "trigger": spec.trigger, "action": spec.action}
-        action = self._propose("automation.create", describe(spec), {"spec": body, "voice": voice})
+        action = self._propose("automation.create", describe(spec), {"spec": body, "voice": voice, "own": bool(spec.action.get("own_voice"))})
         if recording is not None:
             path = self._proposal_file(action.id)
             path.parent.mkdir(parents=True, exist_ok=True)
