@@ -103,10 +103,15 @@ O Chakmati, um robozinho de lata com chapéu amarelo, fica sempre por cima das j
 o resumo, as ações para você aprovar ou recusar, mensagens não lidas, agenda de hoje, avisos recentes, atalhos e uma
 caixa para dar ordens ao agente. Arraste o Chakmati para mudar de lugar.
 
+Para funcionar é preciso: o **Ollama** aberto, com o modelo `qwen3.5:latest` (`ollama pull qwen3.5`). Depois:
+
 ```bash
-uv run python -m liteagent.main          # motor em 127.0.0.1:8765
-cd desktop && npm install && npm start   # Chakmati (LITEAGENT_DESKTOP_SPAWN=1 inicia o motor junto)
+cd desktop && npm install && npm start   # abre o Chakmati; ele inicia o motor sozinho se nenhum estiver rodando
 ```
+
+O motor também pode rodar sozinho, sem o app: `uv run python -m liteagent.main` (escuta em 127.0.0.1:8765). As integrações
+(WhatsApp, agenda, pesquisa na internet) são ligadas em **Ajustes**; o WhatsApp precisa do OpenWA (`scripts/openwa.sh`).
+O SearXNG local é opcional: sem ele a pesquisa usa o DuckDuckGo.
 
 Atalhos: `Ctrl/⌘+Shift+Espaço` abre/fecha o painel; `Ctrl/⌘+Shift+H` oculta tudo na hora.
 
