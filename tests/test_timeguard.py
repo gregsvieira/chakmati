@@ -27,6 +27,8 @@ def test_questions_the_model_can_answer_if_it_knows_todays_date(text):
     "quais os últimos filmes lançados em 2026?", "quem ganhou o jogo ontem?", "quais as notícias de hoje", "qual a cotação do dólar",
     "previsão do tempo para amanhã", "quais os lançamentos recentes de jogos", "o que aconteceu esta semana na política",
     "resultado da rodada de ontem", "qual o placar do flamengo",
+    "Que filmes foram lançados em 2026.", "quem ganhou a copa de 2026", "quais as melhores séries de 2026",
+    "o que vai acontecer em 2027", "me fale sobre os jogos de 2026", "quem venceu o oscar em 2025",
 ])
 def test_questions_about_events_and_recent_facts_need_the_web(text):
     assert needs_web(text, NOW) is True
@@ -38,6 +40,11 @@ def test_questions_about_events_and_recent_facts_need_the_web(text):
 ])
 def test_everything_else_is_left_alone(text):
     assert needs_today(text) is False and needs_web(text, NOW) is False
+
+
+def test_calendar_questions_with_a_recent_year_are_still_just_dates():
+    for text in ("que dia da semana é 25/12/2026", "quantos dias faltam para 2027", "2026 é bissexto?"):
+        assert needs_web(text, NOW) is False, text
 
 
 def test_an_old_year_alone_is_not_news():

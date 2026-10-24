@@ -55,9 +55,17 @@ def needs_web(text: str, now: datetime) -> bool:
     if _EVENT.search(t) and (_TIMELY.search(t) or _RECENT.search(t) or re.search(r"\b(ontem|hoje|amanha)\b", t) or _event_without_time(t)):
         return True
     years = [int(y) for y in _YEAR.findall(t)]
-    if _RECENT.search(t) and (any(y >= now.year - 1 for y in years) or _TIMELY.search(t)):
+    recent_year = any(y >= now.year - 1 for y in years)  # this year, last year or the future: the model cannot know what happened
+    if recent_year and not _bissexto(t):
+        return True
+    if _RECENT.search(t) and (recent_year or _TIMELY.search(t)):
         return True
     return False
+
+
+def _bissexto(t: str) -> bool:
+    """Questions about the calendar itself ("2026 é bissexto?") are solved without the web."""
+    return bool(re.search(r"\bbissext", t))
 
 
 def _event_without_time(t: str) -> bool:
