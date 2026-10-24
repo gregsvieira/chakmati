@@ -42,9 +42,24 @@ que também pode expor/importar dispositivos da Alexa. Código em `src/liteagent
 - NÃO testado contra um Home Assistant real (não há um configurado); testado com servidor simulado.
 - Falta: ligar um Home Assistant real, e decidir se a Alexa entra por ele (integração Alexa do HA) ou por rotinas da Alexa.
 
-## Ações no computador (pedido depois do roadmap)
-`src/liteagent/computer/`. Criar arquivos de texto (só dentro de `~/Documents/Chakmati`, só extensões de texto, nunca ocultos,
-nunca sobrescreve sem avisar, nada executável, escrita atômica) exige aprovação com o caminho e uma prévia. Abrir aplicativos
-(só os instalados, achados no disco; macOS), sites (só http/https) e itens (pasta de trabalho, Documentos, Mesa, Downloads)
-acontece na hora. Sem linha de comando. Falta, por decisão de segurança: rodar comandos/scripts, ler/editar arquivos
-arbitrários. Se quiser isso, o caminho é o mesmo (proposta + aprovação com o comando exato), mas é um passo grande.
+## Ações no computador (comandos, arquivos, planos)
+`src/liteagent/computer/` (`policy.py` decide, `service.py` executa, `secrets.py` filtra). Regras, todas em código:
+- **Cada comando pede aprovação** (mostra o comando exato e as verificações). "Manter aprovado" (Ajustes ou botão no cartão) vale
+  só para comandos *seguros* (leitura, mkdir, touch, cp/mv novos dentro da pasta de trabalho) e arquivos novos. Rodar script,
+  baixar, abrir programa/arquivo, editar, lixeira e reverter **sempre** perguntam.
+- **Sem shell**: o comando é dividido em palavras, checado numa tabela fixa e iniciado direto (sem pipe, redirecionamento,
+  curinga, `$`, `~`, `sudo`). Checado ao propor **e de novo** logo antes de rodar. Ambiente limpo (sem chaves/tokens).
+- **Nunca** apagar (nada de rm/rmdir/unlink; o código nem tem essas chamadas — há teste), mudar permissões, instalar,
+  compactar/converter formato (extensão não muda em cp/mv), editar no lugar, mexer em sistema (/System, /etc, /Library…),
+  em itens ocultos ou com nome de segredo (.env, senhas, chaves, .ssh, carteira, cpf…), nem em executáveis (.exe .bat .cmd
+  .msi .app .command .dmg .jar …).
+- **Scripts** (python/node/bash): só o arquivo que a pessoa nomeou, mostrado antes; recusa se contém apagar, rede, sistema ou
+  executar outros programas (varredura por padrões: ajuda, não é à prova de tudo — por isso a aprovação é sempre humana).
+- **Download**: só `curl`/`wget` https para a pasta de trabalho, nunca programa/script, máx. 50 MB, sempre pergunta.
+- **Edição**: o original vira `backup_<nome>` ao lado e a versão nova ocupa o nome; "reverter" manda a cópia editada para a
+  lixeira e tira o `backup_` do original. Recusa arquivos com senhas/dados pessoais. Remover = só mover para a lixeira (Finder).
+- **Segredos/dados pessoais**: saída de comando e texto mostrado passam por filtro (chaves, tokens, senhas, cartões, CPF/CNPJ);
+  a saída nunca volta para o modelo (não dá para um texto impresso comandar o agente) e só a versão filtrada é guardada.
+- **Planos**: pedido com várias etapas vira lista numerada para aprovar (ou pedir mudanças); depois cada passo ainda pede o seu OK.
+Limites honestos: instalar programas, git e ferramentas de rede não existem; abrir/rodar aplicativos só no macOS; a lixeira
+usa o Finder (o macOS pede permissão de Automação na primeira vez).

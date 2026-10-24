@@ -14,6 +14,7 @@
     { key: 'enhancedVoice', re: /\bvoz (melhorada|neural|natural)\b/, name: 'a voz melhorada' },
     { key: 'speakEmojis', re: /\bemojis?\b/, name: 'a leitura dos emojis' },
     { key: 'autoSend', re: /\b(envio automatico|envio sem (pedir )?aprovacao|enviar sem (pedir )?aprovacao|enviar sem aprovar|aprovar (automaticamente|sempre|as proximas)|aprovacao automatica)\b/, name: 'o envio sem pedir aprovação', sensitive: true },
+    { key: 'autoRunSafe', re: /\b(manter (os )?comandos (seguros )?aprovados|aprovar (os )?comandos (seguros )?(automaticamente|sempre)|comandos seguros)\b/, name: 'a aprovação automática dos comandos seguros', sensitive: true },
     { key: 'masked', re: /\b(modo discreto|discreto|esconder (os )?nomes|ocultar (os )?nomes)\b/, name: 'o modo discreto', sensitive: true },
     { key: 'protect', re: /\b(protecao de tela|proteger a tela|esconder (da|na|das|nas) (tela|gravac\w+|compartilh\w+)|ficar invisivel)\b/, name: 'a proteção contra gravação de tela', sensitive: true },
     { key: 'still', re: /\b(animacoes?|animado|ficar parado|estatico)\b/, name: 'as animações', invert: true },

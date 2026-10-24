@@ -46,3 +46,11 @@ test('ordinary requests and questions are not settings', () => {
 test('answers', () => {
   for (const [t, v] of [['sim', 'yes'], ['Pode sim', 'yes'], ['não', 'no'], ['não, cancela', 'no'], ['cancela', 'no'], ['talvez', null], ['liga a voz', null]]) assert.equal(verdict(t), v, t);
 });
+
+test('keeping safe commands approved is a sensitive setting', () => {
+  const r = parse('liga manter comandos seguros aprovados');
+  assert.equal(r.key, 'autoRunSafe');
+  assert.equal(r.value, true);
+  assert.equal(r.sensitive, true);
+  assert.equal(parse('desliga os comandos seguros').value, false);
+});

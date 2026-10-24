@@ -160,3 +160,15 @@ test('voice status, download and remove use the right verbs and the UI header', 
   await c.voiceStatus(); await c.voiceDownload(); await c.voiceRemove();
   assert.deepEqual(calls, [['GET', '/voice/status', undefined], ['POST', '/voice/download', '1'], ['DELETE', '/voice', '1']]);
 });
+
+test('"manter aprovado" is sent as a strict boolean with the UI header', async () => {
+  const { fetchImpl, calls } = recorder(() => json({ standing: true }));
+  const client = new EngineClient({ baseUrl: 'http://127.0.0.1:8765', fetchImpl });
+  assert.deepEqual(await client.setStanding(true), { standing: true });
+  assert.equal(calls[0].url, 'http://127.0.0.1:8765/computer/standing');
+  assert.equal(calls[0].init.method, 'POST');
+  assert.equal(calls[0].init.headers['X-LiteAgent-UI'], '1');
+  assert.deepEqual(JSON.parse(calls[0].init.body), { on: true });
+  await client.setStanding('yes');
+  assert.deepEqual(JSON.parse(calls[1].init.body), { on: false });
+});

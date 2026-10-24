@@ -479,6 +479,7 @@ def create_app(
         if automations is not None:
             result["automations"] = [_automation_json(a) for a in await asyncio.to_thread(automations.store.list)]
         result["home"] = {"enabled": home is not None}
+        result["computer_standing"] = bool(getattr(computer, "standing", False))
         result["last_notice_id"] = notices.last_id
         result["awake"] = engine.awake
         result["awake_for"] = round(engine.awake_for, 1)

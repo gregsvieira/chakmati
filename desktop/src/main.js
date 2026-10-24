@@ -248,7 +248,7 @@ function panelState() {
     busy: state.busy > 0,
     describe: { ...currentDescription(), mood: effectiveMood(currentDescription().mood) },
     notices: state.notices.slice(-20),
-    settings: { protect: settings.protect, masked: settings.masked, autoSend: settings.autoSend, hear: settings.hear, talk: settings.talk, enhancedVoice: settings.enhancedVoice, voiceSpeed: settings.voiceSpeed, speakEmojis: settings.speakEmojis, micSource: settings.micSource, still: settings.still, bubbleSide: settings.bubbleSide, mood: settings.mood, whatsapp: settings.whatsapp, calendar: settings.calendar, research: settings.research },
+    settings: { protect: settings.protect, masked: settings.masked, autoSend: settings.autoSend, autoRunSafe: settings.autoRunSafe, hear: settings.hear, talk: settings.talk, enhancedVoice: settings.enhancedVoice, voiceSpeed: settings.voiceSpeed, speakEmojis: settings.speakEmojis, micSource: settings.micSource, still: settings.still, bubbleSide: settings.bubbleSide, mood: settings.mood, whatsapp: settings.whatsapp, calendar: settings.calendar, research: settings.research },
     voice: state.voice,
     ownsEngine: !!engineProcess,
     canOpenWa: !!projectRoot(),
@@ -315,10 +315,19 @@ async function autoApproveNew() {
   }
 }
 
+// The engine forgets "manter aprovado" when it restarts, so it is told again whenever it disagrees with the setting.
+async function syncStanding() {
+  if (!state.overview || state.overview.computer_standing === undefined) return;
+  const want = settings.autoRunSafe === true;
+  if (state.overview.computer_standing === want) return;
+  try { await engine.setStanding(want); state.overview.computer_standing = want; } catch { /* the next refresh tries again */ }
+}
+
 async function refreshOverview() {
   try {
     applyOverview(await engine.overview());
     state.engineUp = true;
+    syncStanding();
   } catch {
     state.engineUp = false;
   }
@@ -643,6 +652,7 @@ function updateSetting(key, value) {
   else if (key === 'voiceSpeed' && (value === 'normal' || value === 'fast')) { settings.voiceSpeed = value; sendVoice(); }
   else if (key === 'speakEmojis' && typeof value === 'boolean') { settings.speakEmojis = value; sendVoice(); }
   else if (key === 'micSource' && (value === 'computer' || value === 'system')) settings.micSource = value;
+  else if (key === 'autoRunSafe' && typeof value === 'boolean') { settings.autoRunSafe = value; syncStanding(); }
   else if (key === 'autoSend' && typeof value === 'boolean') { settings.autoSend = value; autoApproveNew(); }
   else if (key === 'still' && typeof value === 'boolean') { settings.still = value; sendTo(widgetWin, 'widget:still', value); }
   else if (key === 'mood' && settingsLib.MOODS.includes(value)) settings.mood = value;

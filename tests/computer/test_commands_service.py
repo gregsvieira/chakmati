@@ -372,3 +372,50 @@ async def test_trash_and_revert_requests_go_through_approval(tmp_path):
     assert "lixeira" in out and "Confirma?" in out and not trasher.moved
     out = await ComputerAssistant(LLM({"action": "revert", "path": "x.txt"}), service).handle("reverta")
     assert out.startswith("Não consegui")
+
+
+# ----------------------------------------------------------------------------- the API
+def _client(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from liteagent.api import create_app
+    from liteagent.engine import Engine
+    from liteagent.gate.base import GateResult, Route
+    from liteagent.jobs import JobStore
+    from liteagent.notices import NoticeBoard
+
+    class Gate:
+        def classify(self, text):
+            return GateResult(Route.CHAT, 1.0, "x")
+
+    class L:
+        async def chat(self, m):
+            return "x"
+
+    service, runner, _, work = make(tmp_path)
+    engine = Engine(Gate(), L(), JobStore(":memory:"), computer_service=service)
+    return TestClient(create_app(engine, engine._store, board=NoticeBoard(), computer=service)), service, runner
+
+
+def test_keeping_approved_is_a_ui_only_switch_and_shows_in_the_overview(tmp_path):
+    client, service, runner = _client(tmp_path)
+    UI = {"X-LiteAgent-UI": "1"}
+    assert client.post("/computer/standing", json={"on": True}).status_code == 403
+    assert client.post("/computer/standing", json={"on": True}, headers=UI).json() == {"standing": True} and service.standing is True
+    assert client.get("/overview").json()["computer_standing"] is True
+    action, ran = service.propose_command("mkdir a")
+    assert action is None and runner.calls  # safe: ran
+    for command in ("python3 nada.py",):
+        with pytest.raises(ComputerError):
+            service.propose_command(command)
+    assert client.post("/computer/standing", json={"on": False}, headers=UI).json() == {"standing": False}
+
+
+def test_pending_computer_actions_say_whether_they_can_be_kept_approved(tmp_path):
+    client, service, _ = _client(tmp_path)
+    (tmp_path / "work").mkdir(exist_ok=True)
+    (tmp_path / "work" / "ola.py").write_text("print(1)")
+    service.propose_command("mkdir a")
+    service.propose_command("python3 ola.py")
+    by_risk = {a["risk"]: a for a in client.get("/actions").json()}
+    assert by_risk["safe"]["auto_ok"] is True and by_risk["run"]["auto_ok"] is False

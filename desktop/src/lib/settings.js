@@ -14,6 +14,7 @@ const DEFAULTS = Object.freeze({
   speakEmojis: false,     // read emojis aloud ("rosto sorrindo"); off: they are skipped when speaking
   micSource: 'computer',  // 'computer' = the computer's own microphone, 'system' = whatever the system default is
   talk: false,            // "Falar com o Chakmati": the microphone is always listening for the wake phrases and commands
+  autoRunSafe: false,     // keep SAFE computer commands approved (never scripts, downloads, edits, the trash or opening programs)
   autoSend: false,        // approve WhatsApp sends automatically (the person's standing permission; the engine still rate-limits)
   masked: false,          // discreet mode: bubbles never show names or titles
   bubbleSide: 'auto',
@@ -31,6 +32,7 @@ function normalize(raw) {
   if (typeof r.protect === 'boolean') s.protect = r.protect;
   if (typeof r.masked === 'boolean') s.masked = r.masked;
   if (typeof r.autoSend === 'boolean') s.autoSend = r.autoSend;
+  if (typeof r.autoRunSafe === 'boolean') s.autoRunSafe = r.autoRunSafe;
   if (typeof r.hear === 'boolean') s.hear = r.hear;
   if (typeof r.talk === 'boolean') s.talk = r.talk;
   if (typeof r.speakEmojis === 'boolean') s.speakEmojis = r.speakEmojis;

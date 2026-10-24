@@ -50,6 +50,7 @@
       const buttons = [
         p.voice ? h('button', { class: 'ghost', type: 'button', onclick: (e) => previewVoice(p.id, e.currentTarget) }, 'Ouvir') : null,
         h('button', { class: 'ghost', type: 'button', disabled: !!result, onclick: () => decide(p.id, false) }, 'Recusar'),
+        p.auto_ok ? h('button', { class: 'ghost', type: 'button', disabled: !!result, onclick: () => decide(p.id, true, true) }, 'Aprovar e manter aprovado') : null,
         h('button', { class: 'primary', type: 'button', disabled: !!result, onclick: () => decide(p.id, true) }, 'Aprovar'),
       ];
       return h('div', { class: 'decision' },
@@ -59,9 +60,10 @@
     }));
   }
 
-  async function decide(id, approve) {
-    decided.set(id, { text: approve ? 'Enviando…' : 'Recusando…' });
+  async function decide(id, approve, keep = false) {
+    decided.set(id, { text: approve ? 'Executando…' : 'Recusando…' });
     renderDecisions();
+    if (keep) await api.setSetting('autoRunSafe', true);
     const res = await (approve ? api.approve(id) : api.reject(id));
     if (res && res.ok) decided.set(id, { text: res.text });
     else decided.set(id, { text: (res && res.error) || 'Não foi possível concluir.', error: true });
@@ -173,9 +175,10 @@
   }
 
   async function decideTurn(turn, mode) {
-    turn.decision = { text: mode === 'reject' ? 'Recusando…' : 'Enviando…' };
+    turn.decision = { text: mode === 'reject' ? 'Recusando…' : 'Executando…' };
     renderThread();
     if (mode === 'always') await api.setSetting('autoSend', true);
+    if (mode === 'keep') await api.setSetting('autoRunSafe', true);
     const res = await (mode === 'reject' ? api.reject(turn.actionId) : api.approve(turn.actionId));
     turn.decision = res && res.ok ? { text: res.text } : { text: (res && res.error) || 'Não foi possível concluir.', error: true };
     renderThread();
@@ -198,6 +201,7 @@
       item.voice ? h('button', { class: 'ghost', type: 'button', onclick: (e) => previewVoice(item.id, e.currentTarget) }, 'Ouvir') : null,
       h('button', { class: 'ghost', type: 'button', onclick: () => decideTurn(turn, 'reject') }, 'Recusar'),
       item.kind === 'whatsapp.send' ? h('button', { class: 'ghost', type: 'button', onclick: () => decideTurn(turn, 'always') }, 'Aprovar para as próximas') : null,
+      item.auto_ok ? h('button', { class: 'ghost', type: 'button', onclick: () => decideTurn(turn, 'keep') }, 'Aprovar e manter aprovado') : null,
       h('button', { class: 'primary', type: 'button', onclick: () => decideTurn(turn, 'approve') }, 'Aprovar'));
   }
 
@@ -223,6 +227,7 @@
     renderVoiceSettings();
     $('set-mic').value = state.settings.micSource;
     $('set-autosend').checked = !!state.settings.autoSend;
+    $('set-autorun').checked = !!state.settings.autoRunSafe;
     if (!state.settings.hear) { window.Voice.stop(); speaking = false; }
     syncAmbient();
     updateHint();
@@ -796,6 +801,7 @@
   $('set-calendar').addEventListener('change', (e) => api.setSetting('calendar', e.target.checked));
   $('wa-connect').addEventListener('click', connectWhatsApp);
   $('set-autosend').addEventListener('change', (e) => api.setSetting('autoSend', e.target.checked));
+  $('set-autorun').addEventListener('change', (e) => api.setSetting('autoRunSafe', e.target.checked));
   $('set-enhanced').addEventListener('change', (e) => api.setSetting('enhancedVoice', e.target.checked));
   $('set-voicespeed').addEventListener('change', (e) => api.setSetting('voiceSpeed', e.target.value));
   $('remove-voice').addEventListener('click', async () => { await api.removeVoice(); });

@@ -159,6 +159,11 @@ class EngineClient {
     return (await this._request('/automations/recorded', { method: 'POST', headers: { ...UI, 'content-type': 'audio/wav' }, body: bytes })).json();
   }
 
+  // "Manter aprovado" for safe computer commands: the engine itself enforces that only safe ones skip the question.
+  async setStanding(on) {
+    return (await this._request('/computer/standing', { method: 'POST', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify({ on: on === true }) })).json();
+  }
+
   approve(id) { return this._decide(id, 'approve'); }
   reject(id) { return this._decide(id, 'reject'); }
 
