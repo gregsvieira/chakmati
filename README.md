@@ -62,6 +62,16 @@ are the only place where other people's text reaches the local model; it is quot
     curl localhost:8765/whatsapp/status
     curl 'localhost:8765/whatsapp/chats?unread=true'
 
+## Install wizard (desktop)
+
+    cd desktop && npm run setup        # or: electron . --setup
+
+Reads the computer (RAM, free disk, cores, system), says whether it meets the minimum, picks the chat model that fits
+(`qwen3.5:0.8b` under ~8 GB, `qwen3.5:4b` up to ~16 GB, `qwen3.5:latest` above) and offers the optional pieces (better voice,
+microphone, WhatsApp, animations, hiding from screen sharing). Nothing optional is ticked. Every download shows its source and
+size and asks first; "Pular" (skip) is the default button. Needs Ollama running. WhatsApp is only recorded here: connect it later in
+Settings > Integrations. The native installers (`.exe`, `.pkg`, `.deb`) will start this wizard with `--setup`.
+
 ## Settings (env)
 
 | Variable | Default |
