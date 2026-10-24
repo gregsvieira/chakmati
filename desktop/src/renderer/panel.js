@@ -108,6 +108,15 @@
       subgroup('Email', h('p', { class: 'empty' }, 'Email ainda não está conectado.')));
   }
 
+  function renderPendingMark() {
+    const n = ((state && state.overview && state.overview.pending) || []).length;
+    const mark = $('head-approval');
+    mark.classList.toggle('pending', n > 0);
+    const label = n > 0 ? `${plural(n, 'aprovação pendente', 'aprovações pendentes')}` : 'Nenhuma aprovação pendente';
+    mark.setAttribute('aria-label', label);
+    mark.title = label;
+  }
+
   function renderAutomations() {
     const list = (state.overview && state.overview.automations) || [];
     $('automations-empty').hidden = list.length > 0;
@@ -150,7 +159,7 @@
     if (!notices.length) { fill($('recent-body'), h('p', { class: 'empty' }, 'Quando algo acontecer, eu aviso aqui.')); return; }
     const now = Date.now() / 1000;
     fill($('recent-body'), notices.map((n) => h('div', { class: 'row' },
-      h('span', {}, state.settings.masked && n.masked ? n.masked : n.text), h('span', { class: 'when' }, relativeTime(n.ts, now)))));
+      h('span', { title: n.text.split('\n')[0] }, state.settings.masked && n.masked ? n.masked : window.NoticeTitle.noticeTitle(n)), h('span', { class: 'when' }, relativeTime(n.ts, now)))));
   }
 
   // The engine marks a proposal with [[action:<id>]]; the person sees one short sentence and the approval buttons instead.
@@ -256,6 +265,7 @@
     renderAgenda();
     renderRecent();
     renderAutomations();
+    renderPendingMark();
     renderSettings();
     $('send').disabled = !!state.busy;
   }

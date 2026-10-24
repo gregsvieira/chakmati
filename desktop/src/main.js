@@ -131,10 +131,19 @@ function applyLayout() {
 let awakeTimer = null;
 function applyOverview(o) {
   state.overview = o;
+  syncPending();
   state.awakeUntil = o && o.awake_for > 0 ? Date.now() + o.awake_for * 1000 : 0;
   clearTimeout(awakeTimer);
   if (state.awakeUntil) awakeTimer = setTimeout(() => { sendPanelState(); syncListening(); }, state.awakeUntil - Date.now() + 300);
   syncListening();
+}
+// The approval icon on the character: filled orange while something waits for the person, an outline otherwise.
+let pendingShown = null;
+function syncPending() {
+  const n = (state.overview && Array.isArray(state.overview.pending)) ? state.overview.pending.length : 0;
+  if (n === pendingShown) return;
+  pendingShown = n;
+  sendTo(widgetWin, 'widget:pending', n);
 }
 // The blinking microphone beside the character: shown while the microphone waits for a command, gone as soon as it stops.
 let listeningShown = null;
@@ -667,7 +676,7 @@ function friendlyError(e) {
 function registerIpc() {
   // The floating widget reads notices aloud; tell the panel's microphone so it does not hear (and transcribe) them.
   ipcMain.on('widget:speaking', (_e, on) => sendTo(panelWin, 'panel:other-speaking', on === true));
-  ipcMain.on('widget:ready', () => { applyLayout(); refreshMood(); sendTo(widgetWin, 'widget:still', settings.still); sendVoice(); listeningShown = null; syncListening(); });
+  ipcMain.on('widget:ready', () => { applyLayout(); refreshMood(); sendTo(widgetWin, 'widget:still', settings.still); sendVoice(); listeningShown = null; syncListening(); pendingShown = null; syncPending(); });
   ipcMain.on('widget:hover', (_e, inside) => { if (!isLinux && alive(widgetWin)) widgetWin.setIgnoreMouseEvents(!inside, { forward: true }); });
   ipcMain.on('widget:drag-start', () => { dragStart = { ...icon }; });
   ipcMain.on('widget:drag-move', (_e, d) => {

@@ -7,6 +7,11 @@
   const robot = window.Robot.create(robotButton);
   const badge = document.getElementById('mic-badge');
   api.onListening((on) => badge.classList.toggle('hidden', !on));
+  const approval = document.getElementById('approval-badge');
+  api.onPending((n) => {
+    approval.classList.toggle('pending', n > 0);
+    approval.setAttribute('aria-label', n > 0 ? `${n} aprovação(ões) pendente(s)` : 'Nenhuma aprovação pendente');
+  });
   let layout = null;
 
   function placeBubble() {
@@ -14,7 +19,9 @@
     const { side, alignRight, size, iconOffset: o, gap } = layout;
     const W = window.innerWidth;
     const H = window.innerHeight;
-    badge.style.left = `${o.x + size / 2 - 58}px`; // beside the head, which is narrow and centred in its box
+    approval.style.left = `${o.x + size / 2 - 58}px`; // on the left of the head, which is narrow and centred in its box
+    approval.style.top = `${o.y + 6}px`;
+    badge.style.left = `${o.x + size / 2 + 28}px`; // the microphone blinks on the right
     badge.style.top = `${o.y + 6}px`;
     robotButton.style.left = `${o.x}px`;
     robotButton.style.top = `${o.y}px`;

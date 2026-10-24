@@ -145,7 +145,12 @@ body[data-still] #mic.recording { transform: none; }
 #bar .head-text { flex: 1; min-width: 0; }
 #title { margin: 0; font-family: var(--font-rounded); font-size: 18px; font-weight: 700; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #detail { margin: 3px 0 0; color: var(--muted); font-size: 13.5px; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-#head-robot { flex: none; width: 46px; height: 50px; }
+#head-robot { flex: none; width: 46px; height: 50px; position: relative; }
+/* pending approvals, on the upper left of the character: outline when none, filled orange when something waits */
+#head-approval { position: absolute; left: -6px; top: -4px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); z-index: 2; }
+#head-approval svg { width: 15px; height: 15px; }
+#head-approval.pending { background: #f28c28; color: #fff; box-shadow: 0 1px 5px rgba(20, 33, 61, 0.35); }
+#recent-body .row > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .icon-btn { flex: none; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); display: grid; place-items: center; cursor: pointer; }
 .icon-btn:hover { background: var(--surface-2); color: var(--text); }
 #back { color: var(--text); }
