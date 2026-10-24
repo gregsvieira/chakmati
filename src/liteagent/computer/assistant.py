@@ -50,7 +50,8 @@ class ComputerAssistant:
                     if intent.get("content") is None:
                         return "O que devo escrever no arquivo?"
                     action = self._service.propose_create_file(intent["path"], intent["content"])
-                    return f"Vou criar o arquivo na pasta {self._service.workspace}. Confirma? Diga sim ou não.\n[[action:{action.id}]]"
+                    name = action.payload["path"].rsplit("/", 1)[-1]
+                    return f"Vou criar o arquivo {name} na pasta {self._service.workspace}. Confirma? Diga sim ou não.\n[[action:{action.id}]]"
                 case "open_app":
                     return self._service.open_app(intent.get("app") or "")
                 case "open_url":

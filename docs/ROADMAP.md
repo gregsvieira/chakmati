@@ -41,3 +41,10 @@ que também pode expor/importar dispositivos da Alexa. Código em `src/liteagent
   só é proposto e espera "sim" ou o botão Aprovar. Tabela fixa de serviços, só domínios permitidos, limite de 30 comandos/min.
 - NÃO testado contra um Home Assistant real (não há um configurado); testado com servidor simulado.
 - Falta: ligar um Home Assistant real, e decidir se a Alexa entra por ele (integração Alexa do HA) ou por rotinas da Alexa.
+
+## Ações no computador (pedido depois do roadmap)
+`src/liteagent/computer/`. Criar arquivos de texto (só dentro de `~/Documents/Chakmati`, só extensões de texto, nunca ocultos,
+nunca sobrescreve sem avisar, nada executável, escrita atômica) exige aprovação com o caminho e uma prévia. Abrir aplicativos
+(só os instalados, achados no disco; macOS), sites (só http/https) e itens (pasta de trabalho, Documentos, Mesa, Downloads)
+acontece na hora. Sem linha de comando. Falta, por decisão de segurança: rodar comandos/scripts, ler/editar arquivos
+arbitrários. Se quiser isso, o caminho é o mesmo (proposta + aprovação com o comando exato), mas é um passo grande.
