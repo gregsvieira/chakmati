@@ -3,36 +3,28 @@ import pytest
 from liteagent.engine import SYSTEM_PROMPTS, Engine
 from liteagent.gate.base import GateResult, Route
 from liteagent.jobs import JobStore
-from liteagent.persona import AWAKE_SECONDS, GREETINGS, PERSONA, wake_reply
+from liteagent.persona import AWAKE_SECONDS, LISTENING_PROMPTS, PERSONA, wake_reply
 from liteagent.research.tool import COMPOSE_SYSTEM
 from liteagent.whatsapp.assistant import SUMMARY_SYSTEM
 
-OPEN_DOOR = "Klift, kloft, still, a porta se abriu!"
-PAIZAO = "Klift, still, kloft! fala fióti."
-AGENTE = "Klift, kloft, stão! fala paizão!"
-
-
-@pytest.mark.parametrize("text, expected", [
-    ("Ôh, Xácmáti", OPEN_DOOR),
-    ("oh xacmati", OPEN_DOOR),
-    ("  OH,   CHAKMATI!! ", OPEN_DOOR),
-    ("Chakmati", OPEN_DOOR),            # his name alone
-    ("ô chakmati", OPEN_DOOR),
-    ("Ôh, paizão", PAIZAO),
-    ("oh paizao", PAIZAO),
-    ("Ôh paizão.", PAIZAO),
-    ("Agente Xácmáti", AGENTE),
-    ("agente chakmati", AGENTE),
-    ("Agente Chacmati", AGENTE),
-    ("agente shakmati", AGENTE),        # how a speech recogniser may write it
-    ("chá comatii", OPEN_DOOR),         # ... or split it
-    ("Oh, Chacmate", OPEN_DOOR),
-    ("ô pai zão", PAIZAO),
-    ("Oh, paizão.", PAIZAO),
-    ("agente cha comati", AGENTE),
+@pytest.mark.parametrize("text", [
+    "Ôh, Xácmáti", "oh xacmati", "  OH,   CHAKMATI!! ", "Chakmati", "ô chakmati",
+    "Ôh, paizão", "oh paizao", "Ôh paizão.", "Oh, paizão.", "ô pai zão",
+    "Agente Xácmáti", "agente chakmati", "Agente Chacmati", "agente shakmati", "agente cha comati",
+    "chá comatii", "Oh, Chacmate",
 ])
-def test_wake_phrases_get_the_fixed_greeting(text, expected):
-    assert wake_reply(text) == expected
+def test_wake_phrases_get_one_of_the_short_listening_prompts(text):
+    assert wake_reply(text) in LISTENING_PROMPTS
+
+
+def test_the_listening_prompts_are_exactly_the_requested_ones():
+    assert set(LISTENING_PROMPTS) == {"Fala paizão!", "Fala que te escuto!", "Fala aê!", "Chora!"}
+
+
+def test_the_prompt_is_chosen_by_the_given_chooser_and_varies_by_default():
+    assert wake_reply("Ôh, paizão", choose=lambda options: options[2]) == "Fala aê!"
+    seen = {wake_reply("Ôh, paizão") for _ in range(200)}
+    assert len(seen) > 1 and seen <= set(LISTENING_PROMPTS)
 
 
 @pytest.mark.parametrize("text", [
@@ -43,9 +35,6 @@ def test_wake_phrases_get_the_fixed_greeting(text, expected):
 def test_everything_else_is_not_a_wake_phrase(text):
     assert wake_reply(text) is None
 
-
-def test_the_three_greetings_are_exactly_the_requested_ones():
-    assert set(GREETINGS.values()) == {OPEN_DOOR, PAIZAO, AGENTE}
 
 
 def test_the_persona_is_the_requested_pre_prompt():
@@ -86,7 +75,7 @@ async def test_wake_phrase_answers_instantly_and_waits_for_a_command():
     engine = Engine(ExplodingGate(), ExplodingLLM(), JobStore(":memory:"), now=lambda: clock[0])
     assert engine.awake is False
     reply = await engine.handle("Ôh, paizão")
-    assert reply.kind == "answer" and reply.text == PAIZAO and engine.awake is True
+    assert reply.kind == "answer" and reply.text in LISTENING_PROMPTS and engine.awake is True
     clock[0] += AWAKE_SECONDS + 1
     assert engine.awake is False  # nobody asked anything: back to sleep
 
@@ -102,8 +91,8 @@ async def test_the_next_message_is_the_command_and_ends_the_waiting():
 async def test_the_stream_handles_wake_phrases_too():
     engine = Engine(ExplodingGate(), ExplodingLLM(), JobStore(":memory:"))
     events = [e async for e in engine.handle_stream("Ôh, Xácmáti")]
-    assert events[-1] == {"type": "done", "result": OPEN_DOOR}
-    assert any(e["type"] == "delta" and e["text"] == OPEN_DOOR for e in events) and engine.awake is True
+    assert events[-1]["type"] == "done" and events[-1]["result"] in LISTENING_PROMPTS
+    assert any(e["type"] == "delta" and e["text"] in LISTENING_PROMPTS for e in events) and engine.awake is True
 
 
 async def test_the_wait_for_a_command_reports_the_seconds_left_and_one_command_ends_it():

@@ -1,7 +1,9 @@
 """Who the assistant is: its name, the pre-prompt every chat model call starts with, and the three phrases that wake it."""
 
+import random
 import re
 import unicodedata
+from collections.abc import Callable, Sequence
 from difflib import SequenceMatcher
 
 PERSONA = (
@@ -10,10 +12,9 @@ PERSONA = (
     "e só se alonga quando o pedido exigir, como listas e pesquisas."
 )
 
-OPEN_DOOR = "Klift, kloft, still, a porta se abriu!"
-PAIZAO = "Klift, still, kloft! fala fióti."
-AGENTE = "Klift, kloft, stão! fala paizão!"
-GREETINGS = {"name": OPEN_DOOR, "paizao": PAIZAO, "agente": AGENTE}
+# What it says when called: the microphone is open and it waits for the command. (The long "Klift, kloft..." greetings
+# are for start-up only and live in the desktop app.)
+LISTENING_PROMPTS = ("Fala paizão!", "Fala que te escuto!", "Fala aê!", "Chora!")
 
 AWAKE_SECONDS = 20.0  # like a smart speaker: after the wake phrase it waits this long for ONE command, then goes back to sleep
 
@@ -37,21 +38,22 @@ def _similar(a: str, b: str) -> float:
     return SequenceMatcher(None, a, b).ratio()
 
 
-def wake_reply(text: str) -> str | None:
-    """The fixed greeting when `text` is exactly one of the wake phrases, otherwise None. Only the whole message counts:
-    "quem é o chakmati?" is a question, not a call. A speech recogniser may split or bend the words ("pai zão",
-    "chá comatii", "Chacmate"), so the words are joined and compared by sound, not letter by letter."""
+def is_wake(text: str) -> bool:
+    """True when `text` is exactly one of the wake phrases ("Ôh, Xácmáti", "Ôh, paizão", "Agente Xácmáti") or his name
+    alone. Only the whole message counts: "quem é o chakmati?" is a question, not a call. A speech recogniser may split or
+    bend the words ("pai zão", "chá comatii", "Chacmate"), so the words are joined and compared by sound."""
     words = _plain(text).split()
     if words and words[0] in {"oh", "o", "ei", "oi", "e"}:
         words = words[1:]
     if not words or len(words) > 3:
-        return None
+        return False
     if words[0] == "agente" or (len(words) > 1 and _similar(words[0], "agente") >= 0.8):
         rest = "".join(words[1:])
-        return AGENTE if len(rest) >= 5 and _is_name(rest) else None
+        return len(rest) >= 5 and _is_name(rest)
     joined = "".join(words)
-    if len(joined) >= 5 and _similar(joined, "paizao") >= 0.85:
-        return PAIZAO
-    if len(joined) >= 5 and _is_name(joined):
-        return OPEN_DOOR
-    return None
+    return len(joined) >= 5 and (_similar(joined, "paizao") >= 0.85 or _is_name(joined))
+
+
+def wake_reply(text: str, choose: Callable[[Sequence[str]], str] = random.choice) -> str | None:
+    """One of the short "I am listening" phrases when `text` is a wake phrase, otherwise None."""
+    return choose(LISTENING_PROMPTS) if is_wake(text) else None
