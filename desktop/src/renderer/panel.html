@@ -9,92 +9,98 @@
   <link rel="stylesheet" href="panel.css">
 </head>
 <body>
-  <div id="panel">
-    <header id="head">
+  <div id="panel" data-screen="main">
+    <!-- fixed header: back arrow + the title of the page you are on -->
+    <header id="bar">
+      <button id="back" class="icon-btn" type="button" aria-label="Voltar">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
       <div id="head-robot"></div>
       <div class="head-text">
         <h1 id="title">Conectando…</h1>
         <p id="detail"></p>
       </div>
-      <button id="close" type="button" aria-label="Fechar painel"><span></span></button>
+      <button id="open-settings" class="icon-btn" type="button" aria-label="Ajustes" title="Ajustes">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8zm8.2 4.4v-2l-2.1-.7a6.7 6.7 0 00-.6-1.4l1-2-1.4-1.4-2 1a6.7 6.7 0 00-1.4-.6L13 3.8h-2l-.7 2.1a6.7 6.7 0 00-1.4.6l-2-1-1.4 1.4 1 2c-.2.4-.4.9-.6 1.4L3.8 11v2l2.1.7c.1.5.3 1 .6 1.4l-1 2 1.4 1.4 2-1c.4.3.9.5 1.4.6l.7 2.1h2l.7-2.1c.5-.1 1-.3 1.4-.6l2 1 1.4-1.4-1-2c.3-.4.5-.9.6-1.4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      </button>
+      <button id="close" class="icon-btn" type="button" aria-label="Fechar painel" title="Fechar">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+      </button>
     </header>
 
-    <main id="content">
-      <section id="decisions" hidden>
-        <h2>Para você decidir</h2>
-        <div id="decision-list"></div>
-      </section>
-      <section id="messages" hidden>
-        <h2>Mensagens</h2>
-        <div id="messages-body"></div>
-      </section>
-      <section id="agenda" hidden>
-        <h2>Hoje na agenda</h2>
-        <div id="agenda-body"></div>
-      </section>
-      <section id="recent">
-        <h2>Avisos recentes</h2>
-        <div id="recent-body"></div>
-      </section>
-      <section id="thread-section" hidden>
-        <h2>Conversa</h2>
-        <div id="thread" aria-live="polite"></div>
-      </section>
-    </main>
-
-    <section id="settings-view" hidden>
-      <div class="settings-head">
-        <button type="button" id="back" class="ghost">Voltar</button>
-        <h2>Ajustes</h2>
+    <!-- the only part that scrolls -->
+    <main id="page">
+      <div id="content" class="page">
+        <section id="decisions" hidden>
+          <h2>Para você decidir</h2>
+          <div id="decision-list"></div>
+        </section>
+        <section id="messages" hidden>
+          <h2>Mensagens</h2>
+          <div id="messages-body"></div>
+        </section>
+        <section id="agenda" hidden>
+          <h2>Hoje na agenda</h2>
+          <div id="agenda-body"></div>
+        </section>
+        <section id="automations">
+          <h2>Automações</h2>
+          <div id="automations-body">
+            <p class="empty">Nenhuma automação ainda.</p>
+            <button type="button" id="create-automation" class="primary small">Criar</button>
+            <p class="hint" id="automation-note" hidden>Em breve: aqui você vai criar rotinas, como avisos e respostas automáticas.</p>
+          </div>
+        </section>
+        <section id="recent">
+          <h2>Avisos recentes</h2>
+          <div id="recent-body"></div>
+        </section>
+        <section id="thread-section" hidden>
+          <h2>Conversa</h2>
+          <div id="thread" aria-live="polite"></div>
+        </section>
       </div>
-      <div class="settings-body">
-          <div class="group">
-            <label class="switch"><input type="checkbox" id="set-whatsapp"><span class="track"></span>
+
+      <div id="settings-view" class="page" hidden>
+        <section class="cat">
+          <h3>Integrações</h3>
+          <label class="switch"><input type="checkbox" id="set-whatsapp"><span class="track"></span>
               <span class="switch-text">WhatsApp
                 <small id="wa-status">Ler, resumir e enviar mensagens (sempre com a sua aprovação).</small></span></label>
-            <button type="button" id="wa-connect" class="ghost" hidden>Conectar WhatsApp via OpenWa</button>
-            <label class="switch"><input type="checkbox" id="set-research"><span class="track"></span>
-              <span class="switch-text">Pesquisar na internet
-                <small>Perguntas que precisam de dados atuais, como lançamentos e notícias, são pesquisadas na web.</small></span></label>
-            <label class="switch"><input type="checkbox" id="set-calendar"><span class="track"></span>
+          <button type="button" id="wa-connect" class="ghost" hidden>Conectar WhatsApp via OpenWa</button>
+          <label class="switch"><input type="checkbox" id="set-calendar"><span class="track"></span>
               <span class="switch-text">Agenda
                 <small>Ver e marcar compromissos no calendário do computador.</small></span></label>
-            <p class="hint" id="engine-hint" hidden></p>
-          </div>
-          <label class="switch"><input type="checkbox" id="set-protect"><span class="track"></span>
-            <span class="switch-text">Esconder do compartilhamento de tela
-              <small>Pede ao sistema para deixar o Chakmati fora de gravações e compartilhamentos. Funciona no Windows e em parte do macOS: teste antes de compartilhar.</small></span></label>
-          <label class="switch"><input type="checkbox" id="set-masked"><span class="track"></span>
-            <span class="switch-text">Modo discreto
-              <small>Avisos e listas sem nomes nem títulos. Os pedidos de aprovação sempre mostram o texto completo.</small></span></label>
-          <label class="switch"><input type="checkbox" id="set-autosend"><span class="track"></span>
-            <span class="switch-text">Enviar mensagens do WhatsApp sem pedir aprovação
-              <small>As mensagens que você pedir ao Chakmati para enviar saem na hora, sem o botão Aprovar. Agenda continua pedindo. Desligue se quiser conferir cada envio.</small></span></label>
+          <label class="switch"><input type="checkbox" id="set-research"><span class="track"></span>
+              <span class="switch-text">Pesquisar na internet
+                <small>Perguntas que precisam de dados atuais, como lançamentos e notícias, são pesquisadas na web.</small></span></label>
+          <p class="hint" id="engine-hint" hidden></p>
+        </section>
+        <section class="cat">
+          <h3>Voz</h3>
           <label class="switch"><input type="checkbox" id="set-hear"><span class="track"></span>
             <span class="switch-text">Ouvir o Chakmati
               <small>As respostas e os avisos são lidos em voz alta, com a voz em português do sistema.</small></span></label>
-          <div class="group">
-            <label class="switch"><input type="checkbox" id="set-enhanced"><span class="track"></span>
-              <span class="switch-text">Voz melhorada
-                <small id="enhanced-status">Usa a voz do sistema.</small></span></label>
-            <progress id="voice-progress" max="100" value="0" hidden></progress>
-            <label class="field">Velocidade da voz melhorada
-              <select id="set-voicespeed"><option value="normal">Normal</option><option value="fast">Mais rápida</option></select></label>
-            <button type="button" id="remove-voice" class="ghost" hidden>Apagar a voz baixada</button>
-          </div>
-          <label class="switch"><input type="checkbox" id="set-emojis"><span class="track"></span>
-            <span class="switch-text">Descrever os emojis ao falar
-              <small>Desligado, o Chakmati pula os emojis quando fala. Ligado, ele diz o que eles são (por exemplo, “rosto sorrindo”).</small></span></label>
+          <label class="switch"><input type="checkbox" id="set-talk"><span class="track"></span>
+            <span class="switch-text">Falar com o Chakmati
+              <small>O microfone fica sempre escutando, sem botão: diga “Ôh, Xácmáti”, “Ôh, paizão” ou “Agente Xácmáti” e depois o comando. Ligar isto liga o Ouvir também. O reconhecimento roda no seu computador; na primeira vez baixa um modelo de cerca de 140 MB.</small></span></label>
           <label class="field">Microfone
             <select id="set-mic">
               <option value="computer">O do próprio computador</option><option value="system">O padrão do sistema</option>
             </select></label>
-          <label class="switch"><input type="checkbox" id="set-talk"><span class="track"></span>
-            <span class="switch-text">Falar com o Chakmati
-              <small>O microfone fica sempre escutando, sem botão: diga “Ôh, Xácmáti”, “Ôh, paizão” ou “Agente Xácmáti” e depois o comando. Ligar isto liga o Ouvir também. O reconhecimento roda no seu computador; na primeira vez baixa um modelo de cerca de 140 MB.</small></span></label>
-          <label class="switch"><input type="checkbox" id="set-still"><span class="track"></span>
-            <span class="switch-text">Desativar animações
-              <small>O Chakmati fica parado: sem piscar, sem pulinho e sem a boca mexendo.</small></span></label>
+          <label class="switch"><input type="checkbox" id="set-enhanced"><span class="track"></span>
+              <span class="switch-text">Voz melhorada
+                <small id="enhanced-status">Usa a voz do sistema.</small></span></label>
+          <progress id="voice-progress" max="100" value="0" hidden></progress>
+          <label class="field">Velocidade da voz melhorada
+              <select id="set-voicespeed"><option value="normal">Normal</option><option value="fast">Mais rápida</option></select></label>
+          <button type="button" id="remove-voice" class="ghost" hidden>Apagar a voz baixada</button>
+          <label class="switch"><input type="checkbox" id="set-emojis"><span class="track"></span>
+            <span class="switch-text">Descrever os emojis ao falar
+              <small>Desligado, o Chakmati pula os emojis quando fala. Ligado, ele diz o que eles são (por exemplo, “rosto sorrindo”).</small></span></label>
+        </section>
+        <section class="cat">
+          <h3>Aparência</h3>
           <label class="field">Humor do Chakmati
             <select id="set-mood">
               <option value="auto">Automático</option><option value="idle">Calmo</option><option value="alert">Alerta</option>
@@ -105,22 +111,38 @@
               <option value="auto">Automático</option><option value="top">Em cima</option><option value="bottom">Embaixo</option>
               <option value="left">À esquerda</option><option value="right">À direita</option>
             </select></label>
-          <button type="button" id="panic" class="ghost">Ocultar tudo agora</button>
-          <button type="button" id="restart" class="ghost">Reiniciar o Chakmati</button>
+          <label class="switch"><input type="checkbox" id="set-still"><span class="track"></span>
+            <span class="switch-text">Desativar animações
+              <small>O Chakmati fica parado: sem piscar, sem pulinho e sem a boca mexendo.</small></span></label>
+        </section>
+        <section class="cat">
+          <h3>Privacidade e envio</h3>
+          <label class="switch"><input type="checkbox" id="set-protect"><span class="track"></span>
+            <span class="switch-text">Esconder do compartilhamento de tela
+              <small>Pede ao sistema para deixar o Chakmati fora de gravações e compartilhamentos. Funciona no Windows e em parte do macOS: teste antes de compartilhar.</small></span></label>
+          <label class="switch"><input type="checkbox" id="set-masked"><span class="track"></span>
+            <span class="switch-text">Modo discreto
+              <small>Avisos e listas sem nomes nem títulos. Os pedidos de aprovação sempre mostram o texto completo.</small></span></label>
+          <label class="switch"><input type="checkbox" id="set-autosend"><span class="track"></span>
+            <span class="switch-text">Enviar mensagens do WhatsApp sem pedir aprovação
+              <small>As mensagens que você pedir ao Chakmati para enviar saem na hora, sem o botão Aprovar. Agenda continua pedindo. Desligue se quiser conferir cada envio.</small></span></label>
+        </section>
+        <section class="cat">
+          <h3>Atalhos</h3>
           <p class="hint" id="hotkeys"></p>
-        </div>
-    </section>
+        </section>
+      </div>
 
-    <section id="chats-view" class="screen" hidden>
-      <div class="settings-head"><button type="button" class="ghost back" data-back>Voltar</button><h2>Conversas</h2></div>
-      <div id="chats-body"></div>
-    </section>
+      <div id="chats-view" class="page" hidden>
+        <div id="chats-body"></div>
+      </div>
 
-    <section id="chat-view" class="screen" hidden>
-      <div class="settings-head"><button type="button" class="ghost back" data-back>Voltar</button><h2 id="chat-title">Conversa</h2></div>
-      <div id="chat-body"></div>
-    </section>
+      <div id="chat-view" class="page" hidden>
+        <div id="chat-body"></div>
+      </div>
+    </main>
 
+    <!-- fixed footer: the command line on the pages where you talk to Chakmati -->
     <footer id="foot">
       <div id="chips" role="group" aria-label="Atalhos"></div>
       <form id="composer" autocomplete="off">
@@ -128,7 +150,10 @@
         <button id="mic" type="button" aria-label="Escutando. Clique para desligar." title="Falar com o Chakmati" hidden><span></span></button>
         <button id="send" type="submit" aria-label="Enviar"><span></span></button>
       </form>
-      <button type="button" id="open-settings" class="link">Ajustes</button>
+    </footer>
+    <footer id="foot-settings" hidden>
+      <button type="button" id="panic" class="ghost">Ocultar tudo agora</button>
+      <button type="button" id="restart" class="ghost">Reiniciar o Chakmati</button>
     </footer>
   </div>
   <script src="../lib/reltime.js"></script>

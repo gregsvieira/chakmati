@@ -904,6 +904,9 @@ async function runSnapshots() {
   sendPanelState();
   await shot('panel.png', panelWin);
 
+  await panelWin.webContents.executeJavaScript("document.getElementById('content').scrollTop = 99999; document.getElementById('create-automation').click()");
+  await shot('panel-bottom.png', panelWin);
+  await panelWin.webContents.executeJavaScript("document.getElementById('content').scrollTop = 0; document.getElementById('automation-note').hidden = true");
   await panelWin.webContents.executeJavaScript("document.getElementById('chips').classList.add('open')");
   await shot('panel-suggestions.png', panelWin);
   await panelWin.webContents.executeJavaScript("document.getElementById('chips').classList.remove('open')");
@@ -912,8 +915,8 @@ async function runSnapshots() {
   await shot('panel-chats.png', panelWin);
   await click('#chats-body .row-btn');
   await shot('panel-chat.png', panelWin);
-  await click('[data-back]');
-  await click('#chats-view [data-back]');
+  await click('#back');
+  await click('#back');
   await panelWin.webContents.executeJavaScript("document.getElementById('open-settings').click()");
   await shot('panel-settings.png', panelWin);
   await panelWin.webContents.executeJavaScript("document.getElementById('back').click()");

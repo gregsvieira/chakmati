@@ -29,8 +29,10 @@
   // ------------------------------------------------------------------ rendering
   function renderHeader() {
     const d = state.describe;
-    $('title').textContent = d.title;
-    $('detail').textContent = d.detail;
+    if (screen === 'main') {
+      $('title').textContent = d.title;
+      $('detail').textContent = d.detail;
+    }
     robot.setMood(d.mood);
     if (state.overview && state.overview.awake && screen === 'main') $('input').focus();
   }
@@ -485,19 +487,24 @@
   });
 
   // Each screen replaces the others: main (with the command line), Ajustes, the list of conversations, one conversation.
-  const SCREENS = { main: ['content', 'foot'], settings: ['settings-view'], chats: ['chats-view'], chat: ['chat-view'] };
+  // The frame never moves: header (arrow + title), the page (the only part that scrolls) and the footer. Pages swap inside it.
+  const PAGES = { main: 'content', settings: 'settings-view', chats: 'chats-view', chat: 'chat-view' };
+  const TITLES = { settings: 'Ajustes', chats: 'Conversas' };
   let screen = 'main';
   let backTo = 'main';
-  function showView(name) {
+  function setTitle(text) { if (screen !== 'main') $('title').textContent = text; }
+  function showView(name, title) {
     screen = name;
-    for (const [view, ids] of Object.entries(SCREENS)) for (const id of ids) $(id).hidden = view !== name;
-    if (name !== 'main') $(SCREENS[name][0]).scrollTop = 0;
-    else $('input').focus();
+    $('panel').dataset.screen = name;
+    for (const [view, id] of Object.entries(PAGES)) $(id).hidden = view !== name;
+    $('foot').hidden = name === 'settings';           // the command line is on every page except Ajustes
+    $('foot-settings').hidden = name !== 'settings';  // Ajustes has its own fixed footer
+    $(PAGES[name]).scrollTop = 0;
+    if (name === 'main') { renderHeader(); $('input').focus(); } else $('title').textContent = title || TITLES[name] || '';
   }
-  const showSettings = (on) => showView(on ? 'settings' : 'main');
+  const goBack = () => showView(screen === 'chat' ? backTo : 'main');
   $('open-settings').addEventListener('click', () => showView('settings'));
-  $('back').addEventListener('click', () => showView('main'));
-  for (const b of document.querySelectorAll('[data-back]')) b.addEventListener('click', () => showView(screen === 'chat' ? backTo : 'main'));
+  $('back').addEventListener('click', goBack);
 
   const fmtDuration = (s) => (Number.isFinite(s) ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '');
   const fmtTime = (iso) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -520,8 +527,8 @@
 
   async function openChat(chat, from) {
     backTo = from;
-    showView('chat');
-    $('chat-title').textContent = chat.name;
+    showView('chat', chat.name);
+    $('title').textContent = chat.name;
     fill($('chat-body'), h('p', { class: 'empty' }, 'Carregando…'));
     const res = await api.messages(chat.id);
     if (!res || res.error) { fill($('chat-body'), h('p', { class: 'warn' }, (res && res.error) || 'Não consegui carregar as mensagens.')); return; }
@@ -554,10 +561,13 @@
     return holder;
   }
 
-  $('close').addEventListener('click', () => { showSettings(false); api.close(); });
+  // Automações: nothing to show yet; the button only says what is coming
+  $('create-automation').addEventListener('click', () => { $('automation-note').hidden = false; });
+
+  $('close').addEventListener('click', () => { showView('main'); api.close(); });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if (!$('settings-view').hidden) showSettings(false);
+    if (screen !== 'main') goBack();
     else api.close();
   });
   $('panic').addEventListener('click', () => api.panic());
