@@ -72,3 +72,13 @@ def test_the_script_is_valid_javascript_and_refuses_to_run_without_a_browser(tmp
     assert subprocess.run(["node", "--check", str(SCRIPT)]).returncode == 0
     result = subprocess.run(["node", str(SCRIPT), str(tmp_path), "check"], capture_output=True, text=True, timeout=30)
     assert result.returncode == 1 and json.loads(result.stdout)["ok"] is False
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")
+async def test_a_large_payload_reaches_the_script_through_a_real_pipe(tmp_path):
+    # regression: reading stdin with readFileSync(0) failed with EAGAIN on the engine's pipe ("voice note not sent: EAGAIN")
+    from liteagent.whatsapp.webvoice import _run
+
+    body = json.dumps({"chatId": "111@lid", "b64": "A" * 1_500_000}).encode()
+    code, out = await _run(["node", str(SCRIPT), str(tmp_path), "echo"], body)
+    assert code == 0 and json.loads(out) == {"ok": True, "length": len(body)}

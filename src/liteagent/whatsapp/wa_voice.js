@@ -11,7 +11,15 @@ const home = process.argv[2];
 const mode = process.argv[3];
 const out = (o) => { process.stdout.write(JSON.stringify(o)); };
 
+// stdin is a pipe from the engine: read it as a stream (readFileSync(0) fails with EAGAIN on a non-blocking pipe)
+async function readStdin() {
+  const chunks = [];
+  for await (const chunk of process.stdin) chunks.push(chunk);
+  return Buffer.concat(chunks).toString('utf8');
+}
+
 async function main() {
+  if (mode === 'echo') { const body = await readStdin(); out({ ok: true, length: body.length }); return; } // used by the tests: no browser
   const pp = require(path.join(home, 'node_modules', 'puppeteer-core'));
   const active = fs.readFileSync(path.join(home, 'run', '_IGNORE_lite-agent', 'DevToolsActivePort'), 'utf8').trim().split('\n');
   const browser = await pp.connect({ browserWSEndpoint: `ws://127.0.0.1:${active[0]}${active[1]}`, defaultViewport: null });
@@ -21,7 +29,7 @@ async function main() {
     const ready = await page.evaluate(() => !!(window.Store && window.Store.Chat && window.WAPI && window.WAPI.procFiles));
     if (!ready) throw new Error('WhatsApp Web is not ready');
     if (mode === 'check') { out({ ok: true }); return; }
-    const input = JSON.parse(fs.readFileSync(0, 'utf8'));
+    const input = JSON.parse(await readStdin());
     if (!/^[0-9A-Za-z._-]+@(c\.us|lid|g\.us)$/.test(input.chatId)) throw new Error('invalid chat id');
     const res = await page.evaluate(async (b64, chatId) => {
       const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));

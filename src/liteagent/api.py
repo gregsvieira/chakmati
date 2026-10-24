@@ -51,7 +51,8 @@ def _action_json(a: Action) -> dict:
     return {
         "id": a.id, "kind": a.kind, "summary": a.summary, "status": a.status,
         "result": a.result, "error": a.error, "expires_at": a.expires_at,
-        "voice": bool((a.payload or {}).get("voice")), "own": bool((a.payload or {}).get("own")),  # an automation with a recording to listen to first
+        "voice": bool((a.payload or {}).get("voice")), "own": bool((a.payload or {}).get("own")),
+        "auto_ok": bool((a.payload or {}).get("auto_ok")), "risk": str((a.payload or {}).get("risk") or ""),  # computer: can it be kept approved, and what kind it is  # an automation with a recording to listen to first
     }
 
 
@@ -413,6 +414,21 @@ def create_app(
         if audio is None:
             raise HTTPException(status_code=404, detail="no recording for this action")
         return Response(audio, media_type="audio/ogg", headers={"Cache-Control": "no-store"})
+
+    @app.get("/computer/standing")
+    async def computer_standing():
+        return {"standing": bool(getattr(computer, "standing", False))}
+
+    class Standing(BaseModel):
+        on: bool
+
+    @app.post("/computer/standing", dependencies=[Depends(ui_only)])
+    async def set_computer_standing(body: Standing):
+        """"Manter aprovado": only safe commands and new files inside the workspace skip the question. Everything else always asks."""
+        if computer is None:
+            raise HTTPException(status_code=503, detail="computer actions are disabled")
+        computer.standing = body.on
+        return {"standing": computer.standing}
 
     @app.post("/actions/{action_id}/approve", dependencies=[Depends(ui_only)])
     async def approve_action(action_id: str):

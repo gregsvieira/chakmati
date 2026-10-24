@@ -86,13 +86,13 @@ class AutomationStore:
     def record_run(self, auto_id: str, key: str, outcome: str, now: float) -> None:
         with self._lock:
             self._db.execute("INSERT INTO automation_runs (automation_id, key, outcome, at) VALUES (?,?,?,?)", (auto_id, key, outcome, now))
-            if outcome == "ok":  # a failed attempt is logged but neither counts as a run nor starts a cooldown
+            if outcome == "ok" or outcome.startswith("parcial"):  # a failed attempt is logged but neither counts as a run nor starts a cooldown
                 self._db.execute("UPDATE automations SET runs = runs + 1, last_run_at = ? WHERE id = ?", (now, auto_id))
             self._db.commit()
 
     def last_run(self, auto_id: str, key: str) -> float | None:
         with self._lock:
-            row = self._db.execute("SELECT MAX(at) AS at FROM automation_runs WHERE automation_id = ? AND key = ? AND outcome = 'ok'", (auto_id, key)).fetchone()
+            row = self._db.execute("SELECT MAX(at) AS at FROM automation_runs WHERE automation_id = ? AND key = ? AND (outcome = 'ok' OR outcome LIKE 'parcial%')", (auto_id, key)).fetchone()
         return row["at"] if row and row["at"] is not None else None
 
     def recent_runs(self, auto_id: str, limit: int = 20) -> list[dict]:

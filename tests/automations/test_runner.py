@@ -177,3 +177,36 @@ async def test_the_whatsapp_watcher_hands_fresh_messages_to_automations_but_not_
     await watcher.poll_once()
     await watcher.poll_once()  # nothing new
     assert got == [[("111@lid", 2)]]
+
+
+async def test_a_voice_reply_where_the_audio_fails_still_counts_so_the_label_is_not_repeated(tmp_path):
+    runner, store, wa, clock = make(tmp_path)
+
+    class HalfBroken(FakeWhatsApp):
+        async def send_automated(self, chat_id, chat_name, text=None, audio=None, mime=None, source=""):
+            if audio is not None:
+                raise RuntimeError("EAGAIN")
+            return await super().send_automated(chat_id, chat_name, text=text, audio=audio, mime=mime, source=source)
+
+    runner._whatsapp = wa = HalfBroken()
+    spec = parse_spec({"name": "Voz", "trigger": {"type": "whatsapp_message"}, "action": {"type": "whatsapp_voice", "to": "sender", "text": "oi"}})
+    auto = store.create(spec, clock())
+    (tmp_path / f"{auto.id}.ogg").write_bytes(b"OggS")
+    await runner.on_whatsapp_messages([(MARIA, 1)])
+    await runner.on_whatsapp_messages([(MARIA, 1)])  # the person writes again right away
+    assert [s["text"] for s in wa.sent] == [PREFIX + "Áudio"]  # one label only, not one per message
+    assert store.recent_runs(auto.id)[0]["outcome"].startswith("parcial")
+
+
+async def test_no_label_is_sent_when_voice_notes_are_not_available(tmp_path):
+    runner, store, wa, clock = make(tmp_path)
+
+    async def unavailable():
+        return None
+
+    wa.media_supported = unavailable
+    spec = parse_spec({"name": "Voz", "trigger": {"type": "whatsapp_message"}, "action": {"type": "whatsapp_voice", "to": "sender", "text": "oi"}})
+    auto = store.create(spec, clock())
+    (tmp_path / f"{auto.id}.ogg").write_bytes(b"OggS")
+    await runner.on_whatsapp_messages([(MARIA, 1)])
+    assert wa.sent == [] and store.recent_runs(auto.id)[0]["outcome"].startswith("falhou")

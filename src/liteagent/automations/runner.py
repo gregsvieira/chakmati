@@ -47,9 +47,17 @@ class AutomationRunner:
                 if not path.is_file():
                     raise FileNotFoundError("a gravação desta automação não foi encontrada")
                 audio = path.read_bytes()
+                check = getattr(self._whatsapp, "media_supported", None)
+                if check is not None and await check() is not True:  # no label if the voice note cannot follow it
+                    raise RuntimeError("o envio de áudio não está disponível agora")
                 # the label first, so the voice note is never mistaken for the person themself
                 await self._whatsapp.send_automated(chat_id, chat_name, text=PREFIX + "Áudio", source=source)
-                await self._whatsapp.send_automated(chat_id, chat_name, audio=audio, mime="audio/ogg", source=source)
+                try:
+                    await self._whatsapp.send_automated(chat_id, chat_name, audio=audio, mime="audio/ogg", source=source)
+                except Exception as exc:  # the label already went out: count this as a reply, or every new message would repeat the label
+                    log.warning("automation %s sent the label but not the audio: %s", auto.name, exc)
+                    self._store.record_run(auto.id, key, f"parcial: só a mensagem de texto foi enviada ({exc})", self._now())
+                    return
             else:
                 await self._whatsapp.send_automated(chat_id, chat_name, text=PREFIX + action["text"], source=source)
         except Exception as exc:  # one broken automation must never stop the others
