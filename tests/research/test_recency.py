@@ -21,6 +21,10 @@ NOW = datetime(2026, 10, 24, 1, 23, tzinfo=timezone(timedelta(hours=-3)))
     ("lançamentos de outubro de 2026", [date(2026, 10, 1)]),
     ("sem datas aqui, só 2026 solto", []),
     ("32/13/2026 não é data", []),
+    ("Estreia em 22/10 nos cinemas", [date(2026, 10, 22)]),
+    ("01/10 – Verity | 22/10 – O Filme Novo", [date(2026, 10, 1), date(2026, 10, 22)]),
+    ("nota 8/10 no IMDb e avaliação 9/10", []),
+    ("receita: 1/2 xícara", [date(2026, 2, 1)]),
 ])
 def test_dates_are_found_in_the_usual_brazilian_writings(text, expected):
     assert extract_dates(text, NOW) == expected
@@ -118,6 +122,21 @@ async def test_passages_reach_the_model_newest_first_with_their_dates_and_the_re
 async def test_the_answer_prompt_no_longer_gives_up_when_the_exact_answer_is_missing():
     assert "closest" in COMPOSE_SYSTEM.lower() and "never invent" in COMPOSE_SYSTEM.lower()
     assert "say so instead of guessing" not in COMPOSE_SYSTEM
+
+
+PAGE_LONG = "<html><body><article>" + "".join(
+    f"<p>Em cartaz: Filme número {i} estreia em {i:02d}/10/2026 com sessões em todo o país durante o mês inteiro de outubro.</p>" for i in range(1, 25)
+) + "</article></body></html>"
+
+
+async def test_the_newest_item_at_the_bottom_of_a_long_list_is_not_lost():
+    llm = SmartLLM()
+    search = FakeSearch([SearchResult("lista", "https://lista.test/1", "x")])
+    tool = ResearchTool(search, pages({"https://lista.test/1": PAGE_LONG}), llm, ByLength(), result_cutoff=0.0, passages=3)
+    await tool.answer("Qual o último filme lançado no cinema?", now=NOW)
+    user = llm.calls[-1][1]["content"]
+    assert "Filme número 24" in user and "(data: 24/10/2026)" in user  # the list is ascending: its last item, released today, still reaches the model
+    assert user.index("(data: 24/10/2026)") < user.index("(data: 07/10/2026)") if "(data: 07/10/2026)" in user else True
 
 
 async def test_an_ordinary_research_question_is_untouched():

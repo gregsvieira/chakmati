@@ -141,10 +141,14 @@ class ResearchTool:
         if not pairs:
             return None, []
 
-        keep = self._passages * 2 if recency else self._passages
-        best = await asyncio.to_thread(
-            rank_passages, query, [p for p, _ in pairs], self._scorer, keep
-        )
+        if recency:
+            # a list of releases is often written oldest-first, so its newest item is at the BOTTOM: look at every passage
+            # of the pages (they already passed the relevance filter) and let the dates decide, not the position
+            best = [p for p, _ in pairs][:150]
+        else:
+            best = await asyncio.to_thread(
+                rank_passages, query, [p for p, _ in pairs], self._scorer, self._passages
+            )
         url_of: dict[str, str] = {}
         for passage, url in pairs:
             url_of.setdefault(passage, url)

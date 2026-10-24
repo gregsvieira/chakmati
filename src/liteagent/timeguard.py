@@ -151,6 +151,8 @@ _MONTH_WORDS = "|".join(sorted(set(_MONTH_NUMBER) | set(_MONTH_ABBREVIATION), ke
 _NUMERIC_DATE = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b")
 _ISO_DATE = re.compile(r"\b(20\d\d)-(\d{2})-(\d{2})\b")
 _WRITTEN_DATE = re.compile(rf"\b(\d{{1,2}})\s*(?:de\s+)?({_MONTH_WORDS})\.?(?:\s*(?:de\s+)?(20\d\d))?\b")
+_DAY_MONTH = re.compile(r"(?<![\d/])(\d{1,2})/(\d{1,2})(?![\d/])")
+_RATING_WORDS = re.compile(r"(nota|avalia\w*|imdb|score|estrelas?|rating|pontos?)\W{0,12}$")
 _MONTH_YEAR = re.compile(rf"\b({_MONTH_WORDS})\.?\s*(?:de\s+)?(20\d\d)\b")
 
 
@@ -186,7 +188,11 @@ def extract_dates(text: str, now: datetime) -> list[date]:
             continue
         month = _month_number(m.group(1))
         if month:
-            add(m.start(), int(m.group(2)), month, 1)
+            add(m.start(), int(m.group(2)), month, 1); spans.append(m.span())
+    for m in _DAY_MONTH.finditer(t):  # "22/10": this year; but "8/10" after "nota" is a rating, not a date
+        if any(s <= m.start() < e for s, e in spans) or _RATING_WORDS.search(t[max(0, m.start() - 16):m.start()]):
+            continue
+        add(m.start(), now.year, int(m.group(2)), int(m.group(1)))
     return [d for _, d in sorted(found, key=lambda pair: pair[0])]
 
 
