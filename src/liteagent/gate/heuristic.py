@@ -25,6 +25,10 @@ _HOME_NOUN = re.compile(r"\b(luz(?:es)?|l[âa]mpadas?|tomadas?|ventilador|ar[- ]
 _HOME_VERB = re.compile(r"\b(lig\w+|deslig\w+|apag\w+|acend\w+|abr\w+|fech\w+|tranc\w+|destranc\w+|ajust\w+|coloc\w+|ativ\w+|diminu\w+|aument\w+|est[áa]|esta)\b", re.IGNORECASE)
 _HOME_PHRASE = re.compile(r"\b(?:ativ\w+|coloc\w+)\s+(?:a\s+)?cena\b|\bporta\b.{0,25}\b(?:trancad\w+|aberta|fechada|destranc\w+)\b|\b(?:tranc\w+|destranc\w+)\s+a\s+porta\b", re.IGNORECASE)
 
+# The computer itself: making a file, opening a program / site / folder (an imperative at the start: "abre o Spotify").
+_COMPUTER_FILE = re.compile(r"\b(?:cri\w+|fa[çc]\w*|salv\w+|grav\w+|escrev\w+|ger[ae]\w*|mont\w+)\b[^.?!]{0,40}\b(?:arquivo|documento|txt|csv|planilha|anota[çc][ãa]o|nota)\b", re.IGNORECASE)
+_COMPUTER_OPEN = re.compile(r"^\W*(?:por favor,?\s*|pode\s+)?(?:abr\w+|inici\w+|lan[çc]\w+)\s+(?:o\s+|a\s+|os\s+|as\s+|um\s+|uma\s+)?\w", re.IGNORECASE)
+
 # Explicit "go and look it up" verbs win over calendar words ("pesquise a agenda política").
 _EXPLICIT_SEARCH = re.compile(
     r"\b(?:pesquis\w*|busc\w*|busq\w*|procur\w*|search|google|look up|find out)\b", re.IGNORECASE
@@ -63,6 +67,8 @@ class HeuristicGate:
         is_calendar = _CALENDAR.search(text) or (_SCHEDULE_VERB.search(text) and _WHEN.search(text))
         if is_calendar and not _EXPLICIT_SEARCH.search(text):
             return GateResult(Route.CALENDAR, 0.9, self.source)
+        if (_COMPUTER_FILE.search(text) or _COMPUTER_OPEN.search(text)) and not _EXPLICIT_SEARCH.search(text):
+            return GateResult(Route.COMPUTER, 0.9, self.source)
         if _RESEARCH.search(text):
             return GateResult(Route.RESEARCH, 0.9, self.source)
         if _TASK.search(text):

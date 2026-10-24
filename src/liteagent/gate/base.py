@@ -11,6 +11,7 @@ class Route(str, Enum):
     WHATSAPP = "whatsapp"
     AUTOMATION = "automation"
     HOME = "home"
+    COMPUTER = "computer"
 
     @property
     def is_slow(self) -> bool:

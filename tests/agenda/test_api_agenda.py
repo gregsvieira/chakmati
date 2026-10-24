@@ -115,6 +115,6 @@ def test_build_app_wires_the_calendar_only_when_enabled(tmp_path):
     from liteagent.main import build_app
 
     off = TestClient(build_app(Settings(db_path=":memory:")))
-    assert off.get("/actions").status_code == 503
+    assert off.get("/actions").json() == []  # the computer's own approvals (files) always exist, even with no integration
     on = TestClient(build_app(Settings(db_path=":memory:", calendar_backend="ics", calendar_ics_path=str(tmp_path / "a.ics"))))
     assert on.get("/actions").json() == []

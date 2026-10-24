@@ -21,6 +21,8 @@ from .research.fetch import PageFetcher
 from .research.search import DuckDuckGoHtmlBackend, build_user_agent
 from .research.searxng import SearxngBackend
 from .research.tool import ResearchTool
+from .computer.assistant import ComputerAssistant
+from .computer.service import ComputerService
 from .home.assistant import HomeAssistantBot
 from .home.client import HomeAssistantClient
 from .home.service import HomeService
@@ -70,6 +72,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         automation_service = AutomationService(automation_store, actions, voice, s.automations_dir, media_check=whatsapp.media_supported)
         automation_runner = AutomationRunner(automation_store, whatsapp, calendar=calendar, voice_dir=s.automations_dir)
         automation_assistant = AutomationAssistant(llm, automation_service, whatsapp)
+    computer_service = ComputerService(s.workspace, actions)
     home_service = home_bot = None
     if s.home_backend == "homeassistant":
         try:
@@ -92,6 +95,8 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         automation_service=automation_service,
         home_assistant=home_bot,
         home_service=home_service,
+        computer_assistant=ComputerAssistant(llm, computer_service),
+        computer_service=computer_service,
     )
     worker = Worker(store, engine.run_job, stream_handler=engine.run_job_stream)
     worker_ref.append(worker)
@@ -107,7 +112,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         watchers.append(CalendarWatcher(calendar, board, s.calendar_poll_seconds, s.calendar_lead_minutes))
     services = [x for x in (calendar, whatsapp, automation_service, home_service) if x is not None]
     if services:
-        watchers.append(ApprovalWatcher(services, board))
+        watchers.append(ApprovalWatcher([*services, computer_service], board))  # (the computer alone is not a reason to run the notifier)
     notifier = Notifier(watchers, background=[events.run] if events else []) if watchers and s.notices_enabled else None
     return create_app(
         engine,
@@ -119,6 +124,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         tts=voice,
         automations=automation_service,
         home=home_service,
+        computer=computer_service,
         on_startup=llm.preload if s.preload_model else None,
         calendar=calendar,
         whatsapp=whatsapp,

@@ -26,6 +26,7 @@ _ROUTE_PROMPTS: dict[Route, str] = {
     Route.WHATSAPP: (
         "You are a WhatsApp assistant, but WhatsApp is not connected. Say so briefly in the user's language."
     ),
+    Route.COMPUTER: "You can act on the computer, but that is not available. Say so briefly in the user's language.",
     Route.HOME: "You control a smart home, but it is not connected. Say so briefly in the user's language.",
     Route.AUTOMATION: "You help create automations, but they are not available. Say so briefly in the user's language.",
     Route.TASK: (
@@ -39,6 +40,7 @@ SYSTEM_PROMPTS: dict[Route, str] = {route: f"{PERSONA} {text}" for route, text i
 
 
 CONFIRM_SECONDS = 30.0
+COMPUTER_OFF = "As ações no computador estão desativadas neste motor."
 HOME_OFF = "A casa inteligente está desativada. Configure o Home Assistant (LITEAGENT_HOME_BACKEND=homeassistant, URL e token)."
 AUTOMATION_OFF = "As automações estão desativadas neste motor."
 
@@ -92,6 +94,8 @@ class Engine:
         automation_service=None,
         home_assistant=None,
         home_service=None,
+        computer_assistant=None,
+        computer_service=None,
         now: Callable[[], float] = time.time,
         clock: Callable[[], datetime] = lambda: datetime.now().astimezone(),
     ):
@@ -109,6 +113,8 @@ class Engine:
         self._automation_service = automation_service
         self._home = home_assistant
         self._home_service = home_service
+        self._computer = computer_assistant
+        self._computer_service = computer_service
 
     def _notify_job(self) -> None:
         if self._on_job_created is not None:
@@ -142,7 +148,7 @@ class Engine:
 
     async def _confirmation(self, text: str) -> str | None:
         """A short yes/no while something waits for confirmation (a new automation, opening the house): does or drops it."""
-        for service in (self._automation_service, self._home_service):
+        for service in (self._automation_service, self._home_service, self._computer_service):
             pending = service.pending_confirmation() if service is not None else None
             answer = verdict(text) if pending is not None else None
             if answer is None:
@@ -153,6 +159,14 @@ class Engine:
             service.reject(pending.id)
             return getattr(service, "cancel_text", "Certo, não criei a automação.")
         return None
+
+    async def _computer_job(self, job: Job) -> str:
+        if self._computer is None:
+            return COMPUTER_OFF
+        result = await self._computer.handle(job.prompt)
+        if "Confirma?" in result:
+            self._awake_until = self._now() + CONFIRM_SECONDS
+        return result
 
     async def _home_job(self, job: Job) -> str:
         if self._home is None:
@@ -220,6 +234,8 @@ class Engine:
             return await self._automation_job(job)
         if job.route == Route.HOME.value:
             return await self._home_job(job)
+        if job.route == Route.COMPUTER.value:
+            return await self._computer_job(job)
         now = self._clock()
         today = today_line(now)  # research answers are about "now": they always know what day it is
         if self._researcher is not None and job.route == Route.RESEARCH.value:
@@ -262,6 +278,9 @@ class Engine:
             return
         if job.route == Route.HOME.value:
             yield await self._home_job(job)
+            return
+        if job.route == Route.COMPUTER.value:
+            yield await self._computer_job(job)
             return
         now = self._clock()
         today = today_line(now)

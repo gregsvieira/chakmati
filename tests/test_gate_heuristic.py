@@ -95,3 +95,19 @@ def test_house_requests_go_to_the_home_route(text):
 ])
 def test_other_talk_is_not_taken_for_the_house(text, route):
     assert HeuristicGate().classify(text).route is route
+
+
+@_pytest.mark.parametrize("text", [
+    "crie um arquivo lista.txt com leite e pão", "salva isso em um arquivo", "cria uma planilha csv com os gastos", "abre o Spotify",
+    "abra o site do G1", "por favor, abre a pasta Downloads", "inicie o Safari",
+])
+def test_computer_requests_go_to_the_computer_route(text):
+    assert HeuristicGate().classify(text).route is Route.COMPUTER
+
+
+@_pytest.mark.parametrize("text, route", [
+    ("pesquise o último filme lançado", Route.RESEARCH), ("abre a porta da garagem", Route.HOME), ("o que tenho na agenda hoje?", Route.CALENDAR),
+    ("quem abriu a loja primeiro?", Route.CHAT), ("escreva um código em python que some dois números", Route.TASK),
+])
+def test_other_requests_keep_their_routes(text, route):
+    assert HeuristicGate().classify(text).route is route
