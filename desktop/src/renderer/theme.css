@@ -31,7 +31,7 @@
   }
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; overflow: clip; overscroll-behavior: none; } /* the page itself never scrolls: only the lists inside it do */
 body { font-family: var(--font-text); font-size: 14px; line-height: 1.45; color: var(--text); -webkit-font-smoothing: antialiased; user-select: none; }
 button { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }

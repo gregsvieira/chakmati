@@ -68,6 +68,20 @@ const webPreferences = () => ({
   spellcheck: false,
 });
 
+// Debugging aid (LITEAGENT_DEBUG_WINDOWS=1): every time a window changes size or place, write who did it to a log file.
+function traceWindow(name, win) {
+  if (process.env.LITEAGENT_DEBUG_WINDOWS !== '1' || !win) return;
+  const file = path.join(app.getPath('userData'), 'window-debug.log');
+  const log = (what, extra = '') => {
+    try { fs.appendFileSync(file, `${new Date().toISOString()} ${name} ${what} ${JSON.stringify(win.getBounds())} ${extra}\n`); } catch { /* debugging only */ }
+  };
+  win.on('resize', () => log('resize', new Error().stack.split('\n').slice(2, 5).join(' < ').replace(/\s+/g, ' ')));
+  win.on('move', () => log('move'));
+  win.on('show', () => log('show'));
+  win.on('hide', () => log('hide'));
+  log('created');
+}
+
 // Saves the settings file; a no-op when there is none (design-snapshot mode), so a stray click can never crash the app.
 function persistSettings() {
   if (settingsFile) settingsLib.save(settingsFile, settings);
@@ -95,6 +109,7 @@ function createWidget() {
   widgetWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   if (!isLinux) widgetWin.setIgnoreMouseEvents(true, { forward: true });
   protect(widgetWin);
+  traceWindow('robô', widgetWin);
   widgetWin.loadFile(path.join(__dirname, 'renderer', 'widget.html'));
   widgetWin.on('closed', () => { widgetWin = null; });
 }
@@ -193,13 +208,14 @@ function localNotice(text, kind = 'system') {
 // ---------------------------------------------------------------------------------------------------- the panel
 function createPanel() {
   panelWin = new BrowserWindow({
-    ...PANEL, show: false, frame: false, transparent: true, resizable: false, hasShadow: true, alwaysOnTop: true,
+    width: PANEL.w, height: PANEL.h, show: false, frame: false, transparent: true, resizable: false, hasShadow: true, alwaysOnTop: true,
     skipTaskbar: true, fullscreenable: false,
     webPreferences: { ...webPreferences(), backgroundThrottling: false }, // a hidden panel must keep listening at full speed
   });
   panelWin.setAlwaysOnTop(true, 'floating');
   panelWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   protect(panelWin);
+  traceWindow('painel', panelWin);
   panelWin.loadFile(path.join(__dirname, 'renderer', 'panel.html'));
   panelWin.on('closed', () => { panelWin = null; state.panelOpen = false; });
 }
@@ -563,6 +579,7 @@ async function downloadVoice() {
 }
 
 function updateSetting(key, value) {
+  if (process.env.LITEAGENT_DEBUG_WINDOWS === '1') { try { fs.appendFileSync(path.join(app.getPath('userData'), 'window-debug.log'), `${new Date().toISOString()} SETTING ${key}=${JSON.stringify(value)}\n`); } catch { /* debugging only */ } }
   if (key === 'protect' && typeof value === 'boolean') settings.protect = value;
   else if (key === 'masked' && typeof value === 'boolean') settings.masked = value;
   else if (key === 'bubbleSide' && settingsLib.SIDES.includes(value)) settings.bubbleSide = value;

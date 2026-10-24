@@ -581,6 +581,8 @@
   $('set-side').addEventListener('change', (e) => api.setSetting('bubbleSide', e.target.value));
 
   api.onOtherSpeaking((on) => { otherSpeaking = on; if (!on) { quietUntil = Date.now() + 700; chimeIfWaiting(); } });
+  // second line of defence: whatever asks the page to scroll (focus, find, a keyboard shortcut) is put back at the top
+  window.addEventListener('scroll', () => { if (window.scrollY || document.scrollingElement.scrollTop) window.scrollTo(0, 0); });
   api.onState((s) => { state = s; stateVersion += 1; render(); if (thread.length) renderThread(false); runQueued(); });
   api.ready();
 })();
