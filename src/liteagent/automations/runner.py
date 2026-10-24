@@ -18,6 +18,7 @@ from .cron import cron_matches
 from .store import Automation, AutomationStore
 
 log = logging.getLogger(__name__)
+PREFIX = "Resposta automática Chakmati: "  # every automatic text says what it is, so nobody mistakes it for the person
 _CONVERSATION = re.compile(r"^[0-9A-Za-z._-]+@(?:c\.us|lid|g\.us)$")
 
 
@@ -47,7 +48,7 @@ class AutomationRunner:
                     raise FileNotFoundError("a gravação desta automação não foi encontrada")
                 await self._whatsapp.send_automated(chat_id, chat_name, audio=path.read_bytes(), mime="audio/ogg", source=source)
             else:
-                await self._whatsapp.send_automated(chat_id, chat_name, text=action["text"], source=source)
+                await self._whatsapp.send_automated(chat_id, chat_name, text=PREFIX + action["text"], source=source)
         except Exception as exc:  # one broken automation must never stop the others
             log.warning("automation %s failed: %s", auto.name, exc)
             self._store.record_run(auto.id, key, f"falhou: {exc}", self._now())

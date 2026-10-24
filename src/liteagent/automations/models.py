@@ -118,7 +118,7 @@ def describe(spec: Spec) -> str:
     mode = ("em áudio, com a sua voz gravada" if action.get("own_voice") else "em áudio, com a minha voz") if action["type"] == "whatsapp_voice" else "por mensagem"
     who = "essa pessoa" if action["to"] == "sender" else action["to"]["name"]
     reply = f"responder {mode} para {who}" if action["to"] == "sender" else f"enviar {mode} para {who}"
-    quoted = f"«{action['text']}»"
+    quoted = f"«{action['text']}»" + ("" if action["type"] == "whatsapp_voice" else ' (a mensagem sai começando com \"Resposta automática Chakmati:\")')
     if trigger["type"] == "whatsapp_message":
         scope = "em conversas individuais e em grupos" if trigger["include_groups"] else "em conversas individuais (grupos ficam de fora)"
         return (f"Quando alguém te escrever no WhatsApp, {scope}, {reply}: {quoted}. "
