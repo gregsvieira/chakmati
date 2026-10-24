@@ -209,3 +209,53 @@ def test_without_speech_recognition_the_list_still_describes_it(tmp_path):
     client, _, _, _ = recorded_client(tmp_path)
     body = client.post("/automations/recorded", content=sine_wav(1.0), headers={**UI, "content-type": "audio/wav"}).json()
     assert "voz gravada" in body["summary"]
+
+
+# ----------------------------------------------------------------------------- an OpenWA that cannot send files
+async def test_audio_automations_are_refused_when_whatsapp_cannot_send_audio(tmp_path):
+    from liteagent.automations.assistant import AutomationAssistant
+    from liteagent.automations.service import AutomationError
+
+    async def no_media():
+        return False
+
+    store, actions = AutomationStore(":memory:"), ActionStore(":memory:")
+    service = AutomationService(store, actions, FakeSynth(), tmp_path, media_check=no_media)
+    with pytest.raises(AutomationError, match="só dá para responder em texto"):
+        await service.ensure_audio_possible()
+
+    class LLM:
+        async def chat(self, messages):
+            return json_intent
+
+    import json as _json
+
+    json_intent = _json.dumps({"action": "create", "when": "message", "reply_mode": "voice", "reply_text": "oi", "include_groups": False})
+
+    class WA:
+        async def chats(self, **kw):
+            return []
+
+    out = await AutomationAssistant(LLM(), service, WA()).handle("responda em áudio")
+    assert "só dá para responder em texto" in out and service.pending_confirmation() is None
+    # text replies are unaffected
+    json_intent = _json.dumps({"action": "create", "when": "message", "reply_mode": "text", "reply_text": "oi", "include_groups": False})
+    assert "Confirma" in await AutomationAssistant(LLM(), service, WA()).handle("responda oi")
+
+
+def test_the_recorded_endpoint_is_refused_when_audio_is_impossible(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from liteagent.api import create_app
+    from liteagent.notices import NoticeBoard
+
+    from .test_audio_service import sine_wav
+
+    async def no_media():
+        return False
+
+    engine, _, _, _ = make(tmp_path)
+    service = AutomationService(AutomationStore(":memory:"), ActionStore(":memory:"), FakeSynth(), tmp_path, media_check=no_media)
+    client = TestClient(create_app(engine, engine._store, board=NoticeBoard(), automations=service))
+    res = client.post("/automations/recorded", content=sine_wav(1.0), headers={**UI, "content-type": "audio/wav"})
+    assert res.status_code == 409 and "texto" in res.json()["detail"]

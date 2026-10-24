@@ -398,6 +398,7 @@ def create_app(
         spec = parse_spec({"name": "Resposta em áudio", "trigger": {"type": "whatsapp_message"},
                            "action": {"type": "whatsapp_voice", "to": "sender", "text": text, "own_voice": True}})
         try:
+            await service.ensure_audio_possible()
             action = await asyncio.to_thread(service.propose_create, spec, ogg)
         except AutomationError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from None
@@ -436,7 +437,8 @@ def create_app(
         if whatsapp is not None:
             try:
                 status = await whatsapp.status()
-                section = {"enabled": True, "connected": status.connected, "state": status.state, "unread": []}
+                section = {"enabled": True, "connected": status.connected, "state": status.state, "unread": [],
+                           "media": await whatsapp.media_supported() if status.connected else None}
                 if status.connected:
                     unread = await whatsapp.chats(unread_only=True, limit=20)
                     section["unread"] = [

@@ -30,6 +30,13 @@ class WhatsAppAuthError(WhatsAppError):
     pass
 
 
+class MediaUnsupported(WhatsAppError):
+    """This OpenWA build cannot send files (no WAPI.sendFile): voice notes are impossible with it."""
+
+
+_NO_MEDIA = ("not supported by the shipped browser runtime", "not implemented on Client")
+
+
 def _id_of(value: Any) -> str | None:
     """Ids come as plain strings or as {"_serialized": ...} / {"user": ..., "server": ...} objects."""
     if isinstance(value, str):
@@ -150,6 +157,8 @@ class OpenWAClient:
                 detail = payload.get("error") or payload.get("message") or response.text[:200]
             except ValueError:
                 detail = response.text[:200]
+            if any(marker in str(detail) for marker in _NO_MEDIA):
+                raise MediaUnsupported(f"OpenWA returned {response.status_code}: {detail}")
             raise WhatsAppError(f"OpenWA returned {response.status_code}: {detail}")
         data = response.json()
         if isinstance(data, dict) and data.get("success") is False:
@@ -180,6 +189,20 @@ class OpenWAClient:
         data = await self._request("POST", "/api/messages/sendText",
                                    body={"to": out.to, "content": out.text, "options": {}})
         return str(data.get("data"))
+
+    async def supports_media(self) -> bool | None:
+        """Can this OpenWA send files? Asked with a request that cannot reach anyone (an impossible recipient and an unreachable
+        URL): the capability check comes first, so "unsupported" is answered before anything is attempted. None = could not tell."""
+        try:
+            await self._request("POST", "/api/messages/sendFileFromUrl",
+                                body={"to": "0@c.us", "url": "http://127.0.0.1:9/probe.ogg", "filename": "probe.ogg"})
+        except MediaUnsupported:
+            return False
+        except WhatsAppAuthError:
+            return None
+        except WhatsAppError as exc:
+            return None if "unreachable" in str(exc) else True
+        return True
 
     async def send_voice(self, chat_id: str, audio: bytes, mime: str) -> str:
         """The audio as a file message. This OpenWA build has no sendPtt/sendAudio/sendFile, only sendFileFromUrl, so the

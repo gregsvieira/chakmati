@@ -15,6 +15,7 @@ import httpx
 from ..approvals import Action, ActionStore, ApprovalService
 from .media import fetch_audio
 from .models import Chat, Message, MessagingProvider, Outgoing, Status
+from .openwa import WhatsAppError
 
 
 class RateLimited(Exception):
@@ -61,6 +62,19 @@ class WhatsAppService(ApprovalService):
         async with self._audio_client_factory() as client:  # a plain client: the OpenWA key must not reach WhatsApp's CDN
             return await fetch_audio(found.media, client)
 
+    MEDIA_RECHECK_SECONDS = 600.0
+
+    async def media_supported(self) -> bool | None:
+        """Whether voice notes can be sent at all (an OpenWA build may lack file sending). Cached for a while."""
+        known = getattr(self, "_media", None)
+        if known is not None and self._now() - known[1] < self.MEDIA_RECHECK_SECONDS:
+            return known[0]
+        check = getattr(self._provider, "supports_media", None)
+        value = await check() if check is not None else True
+        if value is not None:
+            self._media = (value, self._now())
+        return value
+
     # ---- sending without a per-message approval: only for automations the person confirmed when creating them
     MAX_AUDIO_BYTES = 5 * 1024 * 1024
 
@@ -71,6 +85,8 @@ class WhatsAppService(ApprovalService):
         if audio is None and text is None:
             raise ValueError("nothing to send: give a text or an audio")
         if audio is not None:
+            if await self.media_supported() is False:
+                raise WhatsAppError("o OpenWA instalado não consegue enviar áudio")
             Outgoing(chat_id, "x")  # recipient check
             if len(audio) > self.MAX_AUDIO_BYTES or not (mime or "").startswith("audio/"):
                 raise ValueError("the audio is too large or is not audio")

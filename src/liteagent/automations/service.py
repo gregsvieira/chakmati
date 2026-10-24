@@ -22,12 +22,19 @@ class AutomationService(ApprovalService):
     MAX_AUTOMATIONS = 20
 
     def __init__(self, store: AutomationStore, actions: ActionStore, voice, voice_dir: str | Path,
-                 ttl_seconds: float = 3600.0, now: Callable[[], float] = time.time):
+                 ttl_seconds: float = 3600.0, now: Callable[[], float] = time.time, media_check=None):
         super().__init__(actions, ttl_seconds, now)
         self._store = store
         self.store = store
         self._voice = voice  # a VoiceSynth, or None when the enhanced voice does not exist
         self._dir = Path(voice_dir)
+        self._media_check = media_check  # async: can WhatsApp send audio at all?
+
+    NO_AUDIO = "O OpenWA instalado não consegue enviar áudio (falta a função de enviar arquivos). Por enquanto só dá para responder em texto."
+
+    async def ensure_audio_possible(self) -> None:
+        if self._media_check is not None and await self._media_check() is False:
+            raise AutomationError(self.NO_AUDIO)
 
     # ---- files
     def _proposal_file(self, action_id: str) -> Path:

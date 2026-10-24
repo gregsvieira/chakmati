@@ -106,3 +106,37 @@ async def test_send_voice_validates_the_recipient():
     client = OpenWAClient("http://127.0.0.1:8081", "secret", transport=httpx.MockTransport(lambda r: httpx.Response(200, json={"success": True, "data": "x"})))
     with pytest.raises(ValueError):
         await client.send_voice("nope", b"x", "audio/ogg")
+
+
+# ----------------------------------------------------------------------------- an OpenWA build without file sending
+def _client_answering(status, payload):
+    return OpenWAClient("http://127.0.0.1:8081", "k", transport=httpx.MockTransport(lambda r: httpx.Response(status, json=payload)))
+
+
+async def test_supports_media_reads_the_capability_error():
+    nope = {"error": 'Client method "sendFileFromUrl" is not supported by the shipped browser runtime: depends on window.WAPI.sendFile'}
+    assert await _client_answering(500, nope).supports_media() is False
+    assert await _client_answering(500, {"error": "Method sendPtt not implemented on Client"}).supports_media() is False
+    assert await _client_answering(500, {"error": "invalid chat id"}).supports_media() is True
+    assert await _client_answering(200, {"success": True, "data": "x"}).supports_media() is True
+    assert await _client_answering(401, {}).supports_media() is None
+
+
+async def test_service_refuses_audio_without_media_support_and_caches_the_answer():
+    calls = []
+
+    class Provider(FakeProvider):
+        async def supports_media(self):
+            calls.append(1)
+            return False
+
+    clock = [1000.0]
+    service = WhatsAppService(Provider(), ActionStore(":memory:"), now=lambda: clock[0])
+    for _ in range(2):
+        with pytest.raises(WhatsAppError, match="áudio"):
+            await service.send_automated("1@lid", "A", audio=b"x", mime="audio/ogg")
+    assert len(calls) == 1 and service._provider.voices == []
+    assert await service.send_automated("1@lid", "A", text="oi")  # text still goes
+    clock[0] += 601
+    await service.media_supported()
+    assert len(calls) == 2

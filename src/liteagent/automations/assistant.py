@@ -191,6 +191,8 @@ class AutomationAssistant:
                 "action": {"type": "whatsapp_voice" if intent.reply_mode == "voice" else "whatsapp_text", "to": to, "text": intent.reply_text}}
         try:
             spec = parse_spec(data)
+            if spec.action["type"] == "whatsapp_voice":
+                await self._service.ensure_audio_possible()
             action = self._service.propose_create(spec)
         except SpecError as exc:
             return f"Não consegui montar a automação: {exc}."

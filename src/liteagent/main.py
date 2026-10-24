@@ -64,7 +64,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
     automation_service = automation_runner = automation_assistant = None
     if whatsapp is not None:
         automation_store = AutomationStore(s.db_path)
-        automation_service = AutomationService(automation_store, actions, voice, s.automations_dir)
+        automation_service = AutomationService(automation_store, actions, voice, s.automations_dir, media_check=whatsapp.media_supported)
         automation_runner = AutomationRunner(automation_store, whatsapp, calendar=calendar, voice_dir=s.automations_dir)
         automation_assistant = AutomationAssistant(llm, automation_service, whatsapp)
     worker_ref: list[Worker] = []

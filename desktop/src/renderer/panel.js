@@ -616,9 +616,9 @@
   // Stage 2: how the reply is made. Text and audio are written by the person (the audio is recorded by Chakmati in the
   // voice in use); "Minha fala" is recorded by the person.
   const MODE_CHIPS = [
-    { label: 'Áudio', fill: `${WHATSAPP_PROMPT} em áudio: ` },
+    { label: 'Áudio', media: true, fill: `${WHATSAPP_PROMPT} em áudio: ` },
     { label: 'Texto', fill: `${WHATSAPP_PROMPT}: ` },
-    { label: 'Minha fala', own: true },
+    { label: 'Minha fala', media: true, own: true },
   ];
   // Stage 1: the channel.
   const AUTOMATION_CHIPS = [
@@ -626,15 +626,17 @@
     { label: 'Email (em breve)', soon: true },
     { label: 'Alexa (em breve)', soon: true },
   ];
+  // This OpenWA may not be able to send files at all; then audio choices are shown as unavailable instead of failing later.
+  const noMedia = () => !!(state && state.overview && state.overview.whatsapp && state.overview.whatsapp.media === false);
   const renderChips = (list) => fill($('chips'), list.map((c) => h('button', {
-    class: 'chip', type: 'button', disabled: !!c.soon,
+    class: 'chip', type: 'button', disabled: !!c.soon || (!!c.media && noMedia()), title: c.media && noMedia() ? 'O OpenWA instalado não envia áudio.' : null,
     onclick: () => {
       if (c.own) { showSuggestions(false); $('input').value = ''; recordOwnVoice(); return; }
       if (c.run) { showSuggestions(false); submit(c.run); return; }
       $('input').value = c.fill; $('input').focus(); grow();
       if (c.next) renderChips(c.next); else showSuggestions(false); // the next choice stays on screen
     },
-  }, c.label)));
+  }, c.media && noMedia() ? `${c.label} (indisponível)` : c.label)));
   renderChips(CHIPS);
 
   // The shortcuts are suggestions: they rise above the command line when the person clicks it, and go away again.
