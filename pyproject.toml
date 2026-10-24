@@ -15,6 +15,7 @@ dependencies = [
   "cryptography>=50.0.2",
   "faster-whisper>=1.2.1",
   "av>=14,<17",
+  "piper-tts>=1.8.0",
 ]
 
 [project.optional-dependencies]

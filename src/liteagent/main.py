@@ -19,6 +19,7 @@ from .research.searxng import SearxngBackend
 from .research.tool import ResearchTool
 from .whatsapp.assistant import WhatsAppAssistant
 from .stt import SpeechToText
+from .tts import VoiceStore, VoiceSynth
 from .whatsapp.factory import build_whatsapp, build_whatsapp_events
 
 
@@ -85,6 +86,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         board=board,
         notifier=notifier,
         stt=SpeechToText(s.stt_model) if s.stt_model != "off" else None,
+        tts=VoiceSynth(VoiceStore(s.voices_dir)),
         on_startup=llm.preload if s.preload_model else None,
         calendar=calendar,
         whatsapp=whatsapp,

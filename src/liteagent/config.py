@@ -33,6 +33,7 @@ class Settings:
     openwa_api_key_file: str = os.path.expanduser("~/.lite-agent/openwa/api_key.txt")
     whatsapp_max_sends_per_hour: int = 20
     notices_enabled: bool = True
+    voices_dir: str = os.path.expanduser("~/.lite-agent/voices")  # where the downloaded enhanced voice lives
     stt_model: str = "base"  # faster-whisper model for "listen and speak"; "off" disables it
     whatsapp_poll_seconds: float = 10.0
     calendar_poll_seconds: float = 60.0
@@ -71,6 +72,7 @@ class Settings:
             openwa_api_key=env.get("LITEAGENT_OPENWA_API_KEY", d.openwa_api_key),
             openwa_api_key_file=env.get("LITEAGENT_OPENWA_API_KEY_FILE", d.openwa_api_key_file),
             whatsapp_max_sends_per_hour=int(env.get("LITEAGENT_WHATSAPP_MAX_SENDS_PER_HOUR", d.whatsapp_max_sends_per_hour)),
+            voices_dir=os.path.expanduser(env.get("LITEAGENT_VOICES_DIR", d.voices_dir)),
             stt_model=env.get("LITEAGENT_STT_MODEL", d.stt_model),
             notices_enabled=env.get("LITEAGENT_NOTICES", "1").lower() in {"1", "true", "yes"},
             whatsapp_poll_seconds=float(env.get("LITEAGENT_WHATSAPP_POLL_SECONDS", d.whatsapp_poll_seconds)),
