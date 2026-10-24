@@ -8,6 +8,7 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test test/*.test.js",
+    "setup": "electron . --setup",
     "snapshot": "LITEAGENT_DESKTOP_SNAPSHOT=1 electron .",
     "prestart": "node scripts/prepare-electron.js",
     "postinstall": "node scripts/prepare-electron.js",

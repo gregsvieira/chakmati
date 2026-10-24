@@ -14,6 +14,7 @@ const { describe } = require('./lib/describe');
 const { brief } = require('./lib/brief');
 const { pickGreeting } = require('./lib/greetings');
 const { robotPng } = require('./lib/trayicon');
+const { openSetup } = require('./installer');
 
 const ICON = 124;
 const BUBBLE = { w: 320, h: 120 };
@@ -22,6 +23,7 @@ const HOTKEYS = { toggle: 'CommandOrControl+Shift+Space', panic: 'CommandOrContr
 const MAX_TEXT = 2000;
 const SNAPSHOT = process.env.LITEAGENT_DESKTOP_SNAPSHOT;
 const PROTECT_TEST = process.env.LITEAGENT_DESKTOP_PROTECT_TEST;
+const SETUP = process.argv.includes('--setup') || process.env.LITEAGENT_DESKTOP_SETUP === '1';
 const isMac = process.platform === 'darwin';
 const isLinux = process.platform === 'linux';
 
@@ -1009,6 +1011,16 @@ if (!app.requestSingleInstanceLock()) {
     registerIpc();
     if (SNAPSHOT) { await runSnapshots(); return; }
     if (PROTECT_TEST) { await runProtectTest(); return; }
+    if (SETUP) { // the install wizard (started by the native installers with --setup); the normal app starts after it
+      settingsFile = path.join(app.getPath('userData'), 'settings.json');
+      if (isMac) { app.setActivationPolicy?.('regular'); app.dock?.show(); }
+      openSetup({
+        ipcMain, webPreferences, settingsFile,
+        onClosed: () => app.quit(),
+        onFinish: () => { app.relaunch({ args: process.argv.slice(1).filter((a) => a !== '--setup') }); app.exit(0); },
+      });
+      return;
+    }
 
     settingsFile = path.join(app.getPath('userData'), 'settings.json');
     settings = settingsLib.load(settingsFile);
@@ -1022,7 +1034,8 @@ if (!app.requestSingleInstanceLock()) {
     createTray();
     registerShortcuts();
     if (!(await engine.health())) await startEngine();
-    refreshVoiceStatus();
+    await refreshVoiceStatus();
+    if (settings.enhancedVoice && state.voice && !state.voice.installed) downloadVoice(); // chosen (and approved) in the setup wizard; a failure turns it off again
     healthLoop();
     noticeLoop();
     screen.on('display-metrics-changed', applyLayout);
