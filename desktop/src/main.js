@@ -219,6 +219,7 @@ function createPanel() {
   panelWin = new BrowserWindow({
     width: PANEL.w, height: PANEL.h, show: false, frame: false, transparent: true, resizable: false, hasShadow: true, alwaysOnTop: true,
     skipTaskbar: true, fullscreenable: false,
+    ...(isMac ? { vibrancy: 'under-window', visualEffectState: 'active', backgroundColor: '#00000000' } : {}), // macOS: the real blur of what is behind the glass
     webPreferences: { ...webPreferences(), backgroundThrottling: false }, // a hidden panel must keep listening at full speed
   });
   panelWin.setAlwaysOnTop(true, 'floating');

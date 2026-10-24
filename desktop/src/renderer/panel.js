@@ -8,6 +8,7 @@
   let stateVersion = 0; // counts the states received; a card only says "Concluído." after a state newer than its answer
   let speaking = false;
   const syncTalking = () => robot.setTalking(speaking || thread.some((t) => t.status === 'pending')); // the mouth moves while answering and while speaking
+  if (/Mac/.test(navigator.platform || navigator.userAgent)) document.body.dataset.blur = ''; // the system blurs what is behind the window only on macOS
   const thread = []; // {id, role, text, status: 'pending'|'done'|'error'}
   const decided = new Map(); // action id -> {text, error} shown briefly after the person decides
 
