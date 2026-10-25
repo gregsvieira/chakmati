@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from .agenda.models import CalendarEvent
 from .agenda.service import Action, ActionExpired, ActionNotPending, CalendarService
 from .approvals import ApprovalService
+from . import extras
 from .automations.audio import wav_to_ogg_opus_timed
 from .automations.models import describe, parse_spec
 from .automations.service import AutomationError, AutomationService
@@ -292,7 +293,8 @@ def create_app(
     @app.post("/transcribe", dependencies=[Depends(ui_only)])
     async def transcribe(request: Request):
         if stt is None:
-            raise HTTPException(status_code=503, detail="speech recognition is off (LITEAGENT_STT_MODEL)")
+            detail = "speech recognition is off (LITEAGENT_STT_MODEL)" if extras.available("listen") else extras.missing_message("listen", "speech recognition")
+            raise HTTPException(status_code=503, detail=detail)
         if not (request.headers.get("content-type") or "").lower().startswith("audio/"):
             raise HTTPException(status_code=415, detail="send the recording with an audio/* content type")
         audio = await request.body()
@@ -312,7 +314,7 @@ def create_app(
 
     @app.get("/voice/status")
     async def voice_status():
-        return need_voice().store.status()
+        return {**need_voice().store.status(), "engine_ready": extras.available("voice")}
 
     @app.post("/voice/download", dependencies=[Depends(ui_only)])
     async def voice_download():

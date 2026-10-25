@@ -13,16 +13,15 @@ dependencies = [
   "recurring-ical-events>=3.8.2",
   "pyobjc-framework-eventkit>=12.2.2 ; sys_platform == 'darwin'",
   "cryptography>=50.0.2",
-  "faster-whisper>=1.2.1",
-  "av>=14,<17",
-  "piper-tts>=1.8.0",
 ]
 
 [project.optional-dependencies]
 laya = ["laya"]
+voice = ["piper-tts>=1.8.0", "av>=14,<17"]            # enhanced voice and WhatsApp voice notes
+listen = ["faster-whisper>=1.2.1", "av>=14,<17"]      # speech recognition for "talk to Chakmati"
 
 [dependency-groups]
-dev = ["pytest>=8", "pytest-asyncio>=0.23"]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "piper-tts>=1.8.0", "faster-whisper>=1.2.1", "av>=14,<17"]  # the extras too, so every test runs
 
 [build-system]
 requires = ["hatchling"]

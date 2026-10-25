@@ -15,6 +15,18 @@ Local assistant engine: simple messages answer inline in seconds; slow work
          -d '{"text":"pesquise a versão atual do Python"}'   # returns a job_id
     curl -s localhost:8765/jobs/<job_id>
 
+## Optional pieces (extras)
+
+The base install is small (about 125 MB). Voice and microphone are opt-in:
+
+    uv sync --extra voice     # enhanced voice (Piper) and WhatsApp voice notes
+    uv sync --extra listen    # speech recognition (faster-whisper) for "talk to Chakmati"
+    uv sync --extra voice --extra listen    # both (about 250 MB more)
+
+Without them the engine starts normally; each feature answers with what to install (`/voice/status` has `engine_ready`,
+`/transcribe` returns 503 naming the extra). If you used voice or the microphone before, run the command above once.
+Development (`uv sync`) installs both so the whole test suite runs.
+
 ## Streaming (Server-Sent Events)
 
     curl -N localhost:8765/message/stream -H 'content-type: application/json' -d '{"text":"pesquise a capital da Austrália"}'

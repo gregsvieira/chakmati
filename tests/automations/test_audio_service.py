@@ -3,10 +3,11 @@ import math
 import struct
 import wave
 
-import av
 import pytest
 
-from liteagent.approvals import ActionStore
+av = pytest.importorskip("av", reason="needs the voice extra (uv sync --extra voice)")
+
+from liteagent.approvals import ActionStore  # noqa: E402
 from liteagent.automations.audio import wav_to_ogg_opus
 from liteagent.automations.models import SpecError, parse_spec
 from liteagent.automations.service import AutomationError, AutomationService
