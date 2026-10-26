@@ -205,11 +205,11 @@ class FakeSearch:
 
 async def test_a_search_task_starts_from_the_search_backend_not_the_search_site(tmp_path):
     session, search = FakeSession(), FakeSearch()
-    llm = ScriptedLLM("protocolo MCP Anthropic", '{"action":"done","answer":"x"}')
+    llm = ScriptedLLM('{"action":"done","answer":"x"}')
     await run(BrowserAgent(llm, FrameStore(tmp_path), lambda: session, search=search), "use o navegador para pesquisar o protocolo MCP")
-    assert search.query == "protocolo MCP Anthropic"
+    assert search.query == "o protocolo MCP"  # cut out of the request by rules: the model was not asked
     assert session.calls[1] == ("goto", "https://pt.wikipedia.org/wiki/MCP")  # the first result, not duckduckgo.com
-    assert "SEARCH RESULTS" in llm.prompts[1] and "anthropic.com/mcp" in llm.prompts[1] and "localhost" not in llm.prompts[1]
+    assert "SEARCH RESULTS" in llm.prompts[0] and "anthropic.com/mcp" in llm.prompts[0] and "localhost" not in llm.prompts[0]
 
 
 async def test_without_results_it_falls_back_to_the_search_page(tmp_path):
@@ -224,7 +224,7 @@ async def test_a_chatty_model_reply_still_gives_a_query(tmp_path):
     search = FakeSearch()
     session = FakeSession()
     llm = ScriptedLLM('**protocolo MCP**\nAqui está a consulta de busca que você pediu.', '{"action":"done","answer":"x"}')
-    await run(BrowserAgent(llm, FrameStore(tmp_path), lambda: session, search=search), "pesquise o MCP")
+    await run(BrowserAgent(llm, FrameStore(tmp_path), lambda: session, search=search), "me explique o MCP")  # no search verb: the model makes the query
     assert search.query == "protocolo MCP" and session.calls[1][1] == "https://pt.wikipedia.org/wiki/MCP"
 
 
@@ -241,5 +241,5 @@ def test_a_query_is_cut_out_of_the_request_by_rules(task, query):
 async def test_a_model_that_answers_instead_of_making_a_query_is_not_used(tmp_path):
     search, session = FakeSearch(), FakeSession()
     long = "Protocolo de comunicação entre máquinas criado pela Anthropic para conectar LLMs a ferramentas externas."
-    await run(BrowserAgent(ScriptedLLM(long, '{"action":"done","answer":"x"}'), FrameStore(tmp_path), lambda: session, search=search), "use o navegador para pesquisar o protocolo MCP e me diga o que é")
-    assert search.query == "o protocolo MCP"
+    await run(BrowserAgent(ScriptedLLM(long, '{"action":"done","answer":"x"}'), FrameStore(tmp_path), lambda: session, search=search), "o que é o protocolo MCP?")  # no search verb: the model is asked, and answers instead
+    assert search.query == "o que é o protocolo MCP"

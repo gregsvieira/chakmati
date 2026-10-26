@@ -164,3 +164,51 @@ def write(spec: Spec, target: Path) -> None:
                 (frame.paragraphs[0] if i == 0 else frame.add_paragraph()).text = bullet
         prs.save(tmp)
     tmp.replace(target)
+
+
+_WANTS_TOTAL = re.compile(r"\b(?:soma\w*|total|totais)\b", re.IGNORECASE)
+_WANTS_AVERAGE = re.compile(r"\b(?:m[ée]dia\w*)\b", re.IGNORECASE)
+
+
+def _col(n: int) -> str:
+    """0 -> A, 25 -> Z, 26 -> AA"""
+    out = ""
+    n += 1
+    while n:
+        n, rem = divmod(n - 1, 26)
+        out = chr(65 + rem) + out
+    return out
+
+
+def add_formulas(spec: Spec, request: str) -> Spec:
+    """When the request asks for totals or averages and the model left them out, they are written here: the formulas are the part a model gets wrong
+    (the wrong range, the wrong row) and code gets right. Rows are the records, numbers are the columns it adds up. Nothing is touched when the sheet already has formulas."""
+    wants_total, wants_average = bool(_WANTS_TOTAL.search(request)), bool(_WANTS_AVERAGE.search(request))
+    if spec.kind != "xlsx" or not (wants_total or wants_average):
+        return spec
+    sheets = []
+    for sheet in spec.data["sheets"]:
+        rows = [list(r) for r in sheet["rows"]]
+        has_formula = any(isinstance(c, str) and c.startswith("=") for r in rows for c in r)
+        numeric = [j for j in range(1, max((len(r) for r in rows), default=0)) if sum(isinstance(r[j], (int, float)) for r in rows[1:] if j < len(r)) >= max(1, len(rows[1:]) // 2)]
+        if has_formula or len(rows) < 2 or not numeric:
+            sheets.append(sheet)
+            continue
+        first, last = _col(numeric[0]), _col(numeric[-1])
+        header, body = rows[0], rows[1:]
+        width = len(header)
+        add = [(["Total"], "SUM"), (["Média"], "AVERAGE")]
+        columns = [(name[0], fn) for name, fn in add if (fn == "SUM" and wants_total) or (fn == "AVERAGE" and wants_average)]
+        for name, _ in columns:
+            header.append(name)
+        for i, r in enumerate(body, start=2):
+            r.extend([""] * (width - len(r)))
+            for _, fn in columns:
+                r.append(f"={fn}({first}{i}:{last}{i})")
+        if wants_total:  # a totals row under the records, one sum per number column
+            n = len(body) + 1
+            totals = ["Total"] + [""] * (len(header) - 1)
+            for j in [*numeric, width]:  # (the new Total column too)
+                totals[j] = f"=SUM({_col(j)}2:{_col(j)}{n})"
+        sheets.append({"name": sheet["name"], "rows": [header, *body, *( [totals] if wants_total else [])]})
+    return check_spec("xlsx", {"sheets": sheets})

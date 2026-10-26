@@ -11,6 +11,7 @@
 
 import difflib
 import json
+import shlex
 import os
 import shutil
 import subprocess
@@ -22,7 +23,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from ..approvals import Action, ActionStore, ApprovalService
-from .policy import is_dir_in, DOWNLOAD, EXECUTABLE_EXT, RUN, SAFE, Checked, PolicyError, Roots, check, clean_env, resolve
+from .policy import exists_in, is_dir_in, DOWNLOAD, EXECUTABLE_EXT, RUN, SAFE, Checked, PolicyError, Roots, check, clean_env, resolve
 from . import documents, grading
 from .safety import ComputerError, check_content, check_url, find_app, installed_apps, plain, resolve_new_file
 from .secrets import has_secret, looks_secret, redact
@@ -335,7 +336,12 @@ class ComputerService(ApprovalService):
                     out.append((f"Criar o arquivo {target.name}  [seguro]", None, {"type": "create_file", "path": str(target), "content": step["content"]}))
                     roots = roots.after([target])
                 else:
-                    checked = self.validate(step.get("command", ""), roots)
+                    command, fixed, ask = self.fix_names(step.get("command", ""), roots)
+                    if ask:
+                        out.append((command[:80], ask, None))
+                        break
+                    step = {**step, "command": command}
+                    checked = self.validate(command, roots)
                     tag = {SAFE: "seguro", RUN: "roda programa: pede aprovação", DOWNLOAD: "baixa da internet: pede aprovação"}[checked.cls]
                     out.append((f"{checked.shown.replace(str(self.workspace.resolve()) + os.sep, '')}  [{tag}]", None, {"type": "command", "command": step["command"]}))
                     dirs = checked.writes if checked.argv[0] == "mkdir" else [w for w in checked.writes if any(is_dir_in(r, roots) for r in checked.reads)]
@@ -359,6 +365,40 @@ class ComputerService(ApprovalService):
         text = f"Plano ({len(clean)} passos): {goal[:120]}\n" + "\n".join(lines) + "\nAprove o plano, ou diga o que quer mudar. Cada passo ainda pede a sua aprovação."
         return self._propose("computer.plan", text, {"goal": goal[:120], "steps": clean, "risk": "plan", "auto_ok": False})
 
+    _SOURCES = {"cat": "all", "head": "all", "tail": "all", "wc": "all", "stat": "all", "file": "all", "ls": "all", "du": "all", "grep": "after-first", "cp": "first", "mv": "first"}
+
+    def fix_names(self, command: str, roots: Roots | None = None) -> tuple[str, str | None, str | None]:
+        """(the command with the file names it READS made exact, a note about what was changed, a question when a name fits several files).
+        The model writes "cat lista" for lista.txt, or "cp Rascunho.md" in the wrong case: the name is looked up in the workspace, by code. Only
+        the files a command reads are touched (never where it writes), and only when the name does not exist as written."""
+        try:
+            argv = shlex.split(command)
+        except ValueError:
+            return command, None, None
+        mode = self._SOURCES.get(argv[0]) if argv else None
+        if mode is None:
+            return command, None, None
+        roots = roots or self.roots
+        positions = [i for i, a in enumerate(argv[1:], 1) if not a.startswith("-") and not a.isdigit() and "://" not in a]
+        if mode == "first":
+            positions = positions[:1]
+        elif mode == "after-first":
+            positions = positions[1:]
+        changed = []
+        for i in positions:
+            word = argv[i]
+            path = Path(word) if Path(word).is_absolute() else self.workspace.resolve() / word
+            if exists_in(path.resolve() if path.exists() else path, roots) and (path.exists() or path in roots.planned):
+                continue
+            found = self.find_candidates(word)
+            if len(found) > 1:
+                return command, None, "Qual destes? " + ", ".join(p.relative_to(self.workspace).as_posix() for p in found)
+            if len(found) == 1:
+                new = found[0].relative_to(self.workspace).as_posix()
+                changed.append(f"{word} → {new}")
+                argv[i] = new
+        return (shlex.join(argv), "; ".join(changed), None) if changed else (command, None, None)
+
     def find_candidates(self, word: str, limit: int = 6) -> list[Path]:
         """Files and folders of the workspace whose name is `word` (with or without the extension, ignoring case and accents): for "o rascunho"
         when the file is rascunho.txt. Hidden things and backups are left out."""
@@ -377,6 +417,9 @@ class ComputerService(ApprovalService):
                 found.append(path)
             if len(found) >= limit:
                 break
+        if "/" in word:  # "ideias/rascunho.md": the ones whose path ends like that are the real candidates
+            narrowed = [p for p in found if plain(p.relative_to(root).as_posix()).endswith(plain(word))]
+            found = narrowed or found
         return found
 
     def _plan_row(self, plan_id: str) -> tuple[list[dict], int, str] | None:

@@ -45,9 +45,9 @@ async def test_a_step_that_uses_what_an_earlier_step_makes_is_not_refused(tmp_pa
 
 async def test_a_problem_shows_in_the_plan_before_anything_is_approved(tmp_path):
     assistant, service, llm, ws = make(tmp_path, '{"action":"steps","steps":[{"type":"command","command":"mkdir docs"},{"type":"command","command":"cp falta.txt docs/falta.txt"}]}')
-    lines = await assistant.plan("copie falta.txt para docs")
+    lines = await assistant.plan("quero que você copie falta.txt para docs")
     assert lines[0].startswith("1. mkdir docs") and "⚠ cp (origem): não existe" in lines[1]
-    answer = await assistant.handle("copie falta.txt para docs")
+    answer = await assistant.handle("quero que você copie falta.txt para docs")
     assert answer.startswith("Não consegui") and service.pending() == []
 
 
@@ -163,3 +163,38 @@ async def test_delete_with_a_file_name_goes_to_the_trash_plan_and_says_if_it_is_
     assistant, *_ = make(tmp_path, "não sei")
     lines = await assistant.plan("apague o arquivo naoexiste.txt")
     assert len(lines) == 1 and lines[0].startswith("Mover naoexiste.txt para a lixeira") and "⚠" in lines[0]
+
+
+# ------------------------------------------------------------------------------------------------ names inside commands
+async def test_a_name_without_extension_inside_a_command_is_found(tmp_path):
+    assistant, service, llm, ws = make(tmp_path, '{"action":"steps","steps":[{"type":"command","command":"cat lista"}]}')
+    (ws / "lista.txt").write_text("leite")
+    assert await assistant.plan("quero ver o que tem na lista") is None
+    answer = await assistant.handle("quero ver o que tem na lista")
+    assert "lista.txt" in answer and "Não consegui" not in answer and len(llm.prompts) == 1
+
+
+async def test_the_wrong_case_and_a_missing_folder_in_a_command_are_fixed(tmp_path):
+    assistant, service, llm, ws = make(tmp_path, '{"action":"steps","steps":[{"type":"command","command":"cp rascunho.md copia.md"}]}')
+    (ws / "ideias").mkdir()
+    (ws / "ideias" / "Rascunho.md").write_text("x")
+    answer = await assistant.handle("copie o rascunho.md para copia.md")
+    assert "ideias/Rascunho.md" in answer and "[[action:" in answer  # (and where it writes was left alone)
+
+
+async def test_a_command_name_that_fits_two_files_asks(tmp_path):
+    assistant, service, llm, ws = make(tmp_path, '{"action":"steps","steps":[{"type":"command","command":"cat rascunho"}]}')
+    (ws / "rascunho.txt").write_text("x")
+    (ws / "rascunho.md").write_text("y")
+    answer = await assistant.handle("quero ver o que tem no rascunho")
+    assert answer.startswith("Qual destes?") and "rascunho.txt" in answer and "rascunho.md" in answer and service.pending() == []
+
+
+def test_fix_names_only_touches_what_a_command_reads(tmp_path):
+    _, service, _, ws = make(tmp_path, "x")
+    (ws / "lista.txt").write_text("x")
+    assert service.fix_names("cp lista nova.txt")[0] == "cp lista.txt nova.txt"      # the source is fixed, the new name is left as it is
+    assert service.fix_names("mkdir lista")[0] == "mkdir lista"                        # not a command that reads names
+    assert service.fix_names("grep leite lista")[0] == "grep leite lista.txt"          # the first word is the pattern, not a file
+    assert service.fix_names("head -n 5 lista")[0] == "head -n 5 lista.txt"
+    assert service.fix_names("cat naoexiste")[0] == "cat naoexiste"                    # nothing found: the usual error will say so

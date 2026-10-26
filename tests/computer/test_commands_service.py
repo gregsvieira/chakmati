@@ -446,7 +446,7 @@ def test_the_workspace_is_created_on_first_use_and_grep_without_matches_is_not_a
 async def test_one_unparseable_reply_is_retried_once(tmp_path):
     service, runner, _, _ = make(tmp_path)
     llm = LLM("não sei", {"action": "steps", "steps": [{"type": "command", "command": "mkdir a"}]})
-    out = await ComputerAssistant(llm, service).handle("crie a pasta a")
+    out = await ComputerAssistant(llm, service).handle("preciso de uma pasta chamada a")
     assert out.startswith("Executar: mkdir") and len(llm.prompts) == 2 and runner.calls == []
     llm2 = LLM("não sei", "continuo sem saber")
     assert "Não entendi" in await ComputerAssistant(llm2, service).handle("blá") and len(llm2.prompts) == 2

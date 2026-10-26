@@ -13,7 +13,7 @@ from collections.abc import Awaitable, Callable
 
 from ..guard import UNTRUSTED_RULE, fence, strip_markers
 from ..llm import ChatClient
-from . import grading
+from . import documents, grading, rules
 from .policy import PolicyError, resolve
 from .safety import ComputerError, check_url, find_app, plain as plain_name
 from .service import ComputerService
@@ -207,6 +207,26 @@ def contradicts_key(text: str, right: str, chosen: str = "") -> bool:
     return bool(named - {right.upper(), chosen.upper()})
 
 
+_TITLE = re.compile(r"t[ií]tulo(?:\s*:\s*|\s+)(?!(?:e|com|um|uma|o|a)\b)[\"“']?(.+?)[\"”']?(?=\s+(?:e\s+(?:um|uma|o|a|texto|tabela)|com)\b|[,.;]|$)", re.IGNORECASE)
+_TOPIC = re.compile(r"\b(?:sobre|a respeito d[eoa]s?|tema|assunto)\s*:?\s*(.+)$", re.IGNORECASE)
+_TOPIC_TAIL = re.compile(r"\s*(?:,\s*)?(?:\be\s+)?(?:salv\w+|ger[ae]\w*|mont\w+|cri[ae]\w*|com\s+f[óo]rmulas?|no\s+(?:keynote|pages|numbers)|em\s+(?:keynote|pages|numbers))\b.*$", re.IGNORECASE)
+_TOPIC_LEAD = re.compile(r"^(?:o\s+|a\s+|os\s+|as\s+)?(?:tema|assunto)?(?:\s+pesquisad[oa])?\s*[,:]?\s*(?:o\s+|a\s+|os\s+|as\s+)?", re.IGNORECASE)
+
+
+def document_meta(request: str) -> tuple[str, str | None]:
+    """(the title if the request gives one, the topic if the words say it): read by rules. The topic is None when it has to be asked of the model."""
+    title = ""
+    if m := _TITLE.search(request):
+        title = m.group(1).strip(" .")
+    topic = ""
+    if m := _TOPIC.search(request):
+        topic = _TOPIC_LEAD.sub("", _TOPIC_TAIL.sub("", m.group(1))).strip(" .,;")
+    generic = {"", "tema", "assunto", "pesquisado", "pesquisada", "ele", "ela", "isso", "o tema", "o assunto"}
+    if topic.lower() in generic or len(topic.split()) > 10:
+        topic = ""
+    return title, (topic or title or None)
+
+
 def document_kind(text: str) -> str | None:
     """"pptx" | "xlsx" | "docx" when the request is to make such a file, decided by code and not by the model."""
     if not _MAKE.search(text):
@@ -234,9 +254,13 @@ class ComputerAssistant:
         self._gather = gather  # (topic) -> (text found on the internet, source urls); None = no web access
 
     async def _document(self, kind: str, request: str) -> str:
-        meta = _json_object(await self._llm.chat([{"role": "system", "content": META_SYSTEM}, {"role": "user", "content": request}])) or {}
-        topic = str(meta.get("topic") or request)[:120]
-        name = re.sub(r"[^a-z0-9_-]+", "-", plain_name(str(meta.get("name") or topic))).strip("-")[:40] or "documento"
+        title, topic = document_meta(request)
+        if topic is None:  # the words did not say what it is about: the model reads the request
+            meta = _json_object(await self._llm.chat([{"role": "system", "content": META_SYSTEM}, {"role": "user", "content": request}])) or {}
+            topic = str(meta.get("topic") or request)[:120]
+            title = title or str(meta.get("name") or "")
+        topic = topic[:120]
+        name = re.sub(r"[^a-z0-9_-]+", "-", plain_name(title or topic)).strip("-")[:40] or "documento"
         source, urls = "", []
         acronyms = sorted(set(re.findall(r"\b[A-Z]{2,6}\b", request)))
         topic = " ".join([topic, *(a for a in acronyms if a not in topic)])[:140]  # the model may drop (or invent a meaning for) "MCP": it stays in the query
@@ -261,6 +285,8 @@ class ComputerAssistant:
             return "Não consegui montar o conteúdo do documento. Pode pedir de novo com mais detalhes?"
         if kind == "docx" and urls:
             spec["sources"] = urls[:3]
+        if kind == "xlsx":
+            spec = documents.add_formulas(documents.check_spec("xlsx", spec), request).data  # totals and averages asked for are written by code
         action = self._service.propose_create_document(f"{name}.{kind}", kind, spec)
         first, *rest = action.summary.splitlines()
         return f"{first}\nConfirma? Diga sim ou não, ou aprove no painel.\n[[action:{action.id}]]"
@@ -463,6 +489,8 @@ class ComputerAssistant:
             return {"action": "other", "ask": "Não apago nem mando tudo para a lixeira de uma vez. Diga qual arquivo ou pasta (um de cada vez)."}
         if m := _TRASH.search(text):
             return {"action": "trash", "path": m.group(1).strip(" \"'“”")}
+        if (simple := rules.by_rule(text, self._service)) is not None:
+            return simple
         if m := _COPY_OF.search(text):
             word = m.group(1).strip(" \"'“”.")
             found = self._service.find_candidates(word)
@@ -510,8 +538,13 @@ class ComputerAssistant:
         lines: list[str] = []
         ask = None
         if kind == "steps":
-            for i, (line, problem, _) in enumerate(s.preview_steps(intent.get("steps") or []), 1):
+            results = s.preview_steps(intent.get("steps") or [])
+            for i, (line, problem, _) in enumerate(results, 1):
                 lines.append(f"{i}. {line}" + (f"  ⚠ {problem}" if problem else ""))
+            if (asking := next((p for _, p, _ in results if p and p.startswith("Qual destes?")), None)):
+                ask = asking
+            elif results and all(p is None for _, p, _ in results) and len(results) == len(intent.get("steps") or []):
+                intent = {**intent, "steps": [c for _, _, c in results]}  # with the names made exact
         elif kind == "open_app":
             if not intent.get("app"):
                 ask = "Qual aplicativo você quer abrir?"

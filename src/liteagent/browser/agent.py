@@ -185,6 +185,10 @@ class BrowserAgent:
     async def _searched(self, task: str, fallback: str) -> tuple[str, str]:
         """(address to start at, the results as text for the model). The search itself is not done in the browser."""
         try:
+            query = rule_query(task)
+            if query and query != task.strip(" .?!,;") and len(query.split()) <= 10:  # the words said what to search for: no need to ask the model
+                results = await self._search.search(query[:100], limit=5)
+                return self._found(query[:100], results, fallback)
             reply = await self._llm.chat([{"role": "system", "content": QUERY_SYSTEM}, {"role": "user", "content": task}])
             query = next((line.strip().strip('"\'`*# ') for line in reply.splitlines() if line.strip()), "")[:100]  # a chatty model: its first line
             if len(query.split()) > 10:  # a small model answers the question instead of making a query: cut one out of the request
@@ -193,6 +197,9 @@ class BrowserAgent:
         except Exception as exc:
             log.warning("browser: search before browsing failed (%s: %s)", type(exc).__name__, exc)
             return fallback, ""
+        return self._found(query, results, fallback)
+
+    def _found(self, query: str, results, fallback: str) -> tuple[str, str]:
         usable = []
         for r in results:
             try:
