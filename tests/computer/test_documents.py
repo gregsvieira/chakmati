@@ -21,7 +21,7 @@ SHEET = {"sheets": [{"name": "Vendas", "rows": [["Mês", "Valor"], ["Jan", 100],
 
 
 # ------------------------------------------------------------------------------------------- formulas
-@pytest.mark.parametrize("formula", ["=SUM(B2:B4)", "=AVERAGE(A1:A9)", "=B2*C2", "=ROUND(B2/3,2)", "=IF(B2>10,1,0)", "=sum(b2:b3)"])
+@pytest.mark.parametrize("formula", ["=SUM(B2:B4)", "=AVERAGE(A1:A9)", "=B2*C2", "=ROUND(B2/3,2)", "=IF(B2>10,1,0)", "=sum(b2:b3)", "=IF(B3=B$2,1,0)+IF($C3=$C$2,1,0)"])
 def test_plain_formulas_are_allowed(formula):
     assert documents.check_formula(formula).startswith("=")
 

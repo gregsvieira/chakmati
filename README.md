@@ -98,6 +98,14 @@ open it in Pages / Numbers / Keynote, where you save it in their own format. It 
 Spreadsheet formulas are limited to an allow-list (SUM, AVERAGE, MIN, MAX, COUNT, ROUND, IF, ABS, PRODUCT, MEDIAN over cells of the same
 sheet); text found on the internet is fenced as untrusted and the sources are listed in the document.
 
+### Grading exams (PDF with an "X" in the chosen box)
+
+"Corrija as provas da pasta provas, gabarito: 1E - 2B - 3B, cada acerto vale 1 ponto, monte uma planilha no Numbers": reads every PDF
+in that folder of the workspace, finds the student's name (`Aluno: ...`) and the `[X]` marks, compares them with the key you wrote and proposes
+a spreadsheet (answers, `Acertos` and `Nota` as formulas, class average, and a column flagging blank or double-marked questions, which count as wrong).
+The reading is done by code, not by the model. Limits: text PDFs only (a photo or scan needs OCR, not built), up to 100 PDFs, and the layout `[X] A) ...` or similar.
+`scripts/simulate_exams.py OUT TRUTH.json 20` makes 20 filled-in copies to try it.
+
 ## Install wizard (desktop)
 
     cd desktop && npm run setup        # or: electron . --setup

@@ -27,6 +27,8 @@ _BROWSER = re.compile(
 _DOC_MAKE = re.compile(r"\b(?:cri\w+|fa[çc]\w*|mont\w+|ger[ae]\w*|escrev\w+|prepar\w+)\b", re.IGNORECASE)
 _DOC_NOUN = re.compile(r"\b(?:slides?|apresenta[çc][ãa]o|apresenta[çc][õo]es|keynote|powerpoint|planilha|numbers|excel|tabela|pages|docx|documento)\b", re.IGNORECASE)
 
+_GRADE = re.compile(r"\b(?:corrij\w+|corrig\w+|corre[çc][ãa]o)\b.{0,60}\bprovas?\b|\bprovas?\b.{0,60}\b(?:corrij\w+|corrig\w+)", re.IGNORECASE)  # "corrija as provas..."
+
 # Creating a rule that runs by itself: "automatize...", "toda vez que ... responda", "todo dia às 9h mande...".
 _AUTOMATION_WORD = re.compile(r"\bautoma\w+", re.IGNORECASE)
 _AUTOMATION_TRIGGER = re.compile(r"\b(?:toda\s+vez\s+que|sempre\s+que|a\s+cada\s+vez\s+que|todo\s+dia|todos\s+os\s+dias|todo\s+santo\s+dia)\b", re.IGNORECASE)
@@ -75,6 +77,8 @@ class HeuristicGate:
             return GateResult(Route.BROWSER, 0.9, self.source)
         if (_HOME_NOUN.search(text) and _HOME_VERB.search(text) and not _WHATSAPP.search(text)) or _HOME_PHRASE.search(text):
             return GateResult(Route.HOME, 0.9, self.source)
+        if _GRADE.search(text):
+            return GateResult(Route.COMPUTER, 0.9, self.source)
         if _DOC_MAKE.search(text) and _DOC_NOUN.search(text) and not _WHATSAPP.search(text):
             return GateResult(Route.COMPUTER, 0.9, self.source)
         if _AUTOMATION_WORD.search(text) or (_AUTOMATION_TRIGGER.search(text) and _AUTOMATION_VERB.search(text)):

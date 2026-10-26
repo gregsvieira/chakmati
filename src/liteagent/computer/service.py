@@ -23,7 +23,7 @@ from pathlib import Path
 
 from ..approvals import Action, ActionStore, ApprovalService
 from .policy import DOWNLOAD, EXECUTABLE_EXT, RUN, SAFE, Checked, PolicyError, Roots, check, clean_env, resolve
-from . import documents
+from . import documents, grading
 from .safety import ComputerError, check_content, check_url, find_app, installed_apps, resolve_new_file
 from .secrets import has_secret, looks_secret, redact
 
@@ -154,6 +154,21 @@ class ComputerService(ApprovalService):
             raise ComputerError(f"já existe um arquivo {target.name} em {target.parent}")
         payload = {"path": str(target), "kind": kind, "spec": spec.data, "auto_ok": False, "risk": "edit"}
         return self._propose("computer.create_document", f"Criar {target} (abre no {documents.KINDS[kind]})\n{documents.preview(spec)}", payload)
+
+    def propose_grading(self, folder: str, key_text: str, points: float = 1.0) -> tuple[Action, dict, list[str]]:
+        """Reads every PDF in a workspace folder, grades it against the key, and proposes the spreadsheet. (proposal, summary, unreadable files)"""
+        try:
+            target = resolve(folder, self.roots, must_exist=True, what="ler")
+        except PolicyError as exc:
+            raise ComputerError(str(exc)) from None
+        if not target.is_dir():
+            raise ComputerError(f"{folder} não é uma pasta")
+        key = grading.parse_key(key_text)
+        exams, unreadable = grading.read_folder(target)
+        spec, summary = grading.grade(exams, key, points)
+        name = f"correcao-{target.name}.xlsx"
+        action = self.propose_create_document(name, "xlsx", spec)
+        return action, summary, unreadable
 
     def _write_document(self, p: dict) -> str:
         target = resolve_new_file(self.workspace, p["path"], {f".{p['kind']}"})  # checked again at the moment of writing

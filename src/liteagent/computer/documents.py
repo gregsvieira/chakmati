@@ -36,7 +36,7 @@ def check_formula(formula: str) -> str:
     f = formula.strip().upper()
     if not _FORMULA.match(f) or "!" in f or "[" in f:
         raise ComputerError(f"fórmula não permitida: {formula[:40]}")
-    for name in re.findall(r"[A-Z][A-Z0-9]*", f):
+    for name in re.findall(r"\$?[A-Z][A-Z0-9]*(?:\$[0-9]+)?", f):
         if name in _FUNCTIONS or _CELL_REF.match(name) or name in {"TRUE", "FALSE"}:
             continue
         raise ComputerError(f"função ou nome não permitido na fórmula: {name}")

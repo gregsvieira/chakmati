@@ -143,6 +143,12 @@ def parse_intent(reply: str) -> dict:
 Gather = Callable[[str], Awaitable[tuple[str, list[str]]]]
 
 
+_GRADE = re.compile(r"\b(?:corrij\w+|corrig\w+|corre[çc][ãa]o)\b.{0,60}\bprovas?\b|\bprovas?\b.{0,60}\b(?:corrij\w+|corrig\w+)", re.IGNORECASE)
+_FOLDER = re.compile(r"\bpasta\s+[\"“']?([\w\-./ ]+?)[\"”']?(?=\s*(?:[,.;:]|\bque\b|\bcom\b|\bem\b|\bonde\b|$))", re.IGNORECASE)
+_GABARITO = re.compile(r"gabarito\s*(?:[ée]|:)?\s*:?\s*((?:\d{1,3}\s*[-:.)]?\s*[A-Ea-e]\b[\s,;e-]*)+)", re.IGNORECASE)
+_POINTS = re.compile(r"(?:vale|valendo|vale\s+cada)\s+(\d+(?:[.,]\d+)?)\s*pontos?|(\d+(?:[.,]\d+)?)\s*pontos?\s+(?:por|cada)", re.IGNORECASE)
+
+
 def document_kind(text: str) -> str | None:
     """"pptx" | "xlsx" | "docx" when the request is to make such a file, decided by code and not by the model."""
     if not _MAKE.search(text):
@@ -197,7 +203,30 @@ class ComputerAssistant:
         first, *rest = action.summary.splitlines()
         return f"{first}\nConfirma? Diga sim ou não, ou aprove no painel.\n[[action:{action.id}]]"
 
+    def _grade(self, text: str) -> str:
+        """"Corrija as provas da pasta X... gabarito 1E - 2B": done by code from the person's own words; the model is not involved."""
+        folder, gabarito = _FOLDER.search(text), _GABARITO.search(text)
+        if not folder:
+            return "Em que pasta (dentro de ~/Documents/Chakmati) estão as provas? Diga “as provas da pasta provas”."
+        if not gabarito:
+            return "Qual é o gabarito? Escreva assim: “gabarito: 1E - 2B - 3B”."
+        pts = _POINTS.search(text)
+        points = float((pts.group(1) or pts.group(2)).replace(",", ".")) if pts else 1.0
+        action, summary, unreadable = self._service.propose_grading(folder.group(1).strip(), gabarito.group(1), points)
+        lines = [f"Li {summary['alunos']} provas e corrigi com o gabarito {gabarito.group(1).strip()} (cada acerto vale {points:g})."]
+        lines.append("Acertaram tudo: " + (", ".join(summary["acertaram_tudo"]) or "ninguém") + ".")
+        if summary["com_observacao"]:
+            lines.append(f"{summary['com_observacao']} provas têm questão em branco ou com mais de uma marca: está na coluna Observações, vale conferir.")
+        if unreadable:
+            lines.append("Não consegui ler: " + ", ".join(unreadable) + ". Corrija esses à mão.")
+        return "\n".join([*lines, f"{action.summary.splitlines()[0]}", "Confirma? Diga sim ou não, ou aprove no painel.", f"[[action:{action.id}]]"])
+
     async def handle(self, text: str) -> str:
+        if _GRADE.search(text):
+            try:
+                return self._grade(text)
+            except ComputerError as exc:
+                return f"Não consegui: {exc}."
         kind = document_kind(text)
         if kind is not None:
             try:
