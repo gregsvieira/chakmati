@@ -1,5 +1,5 @@
 [project]
-name = "lite-agent"
+name = "chakmati"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
@@ -19,9 +19,17 @@ dependencies = [
 laya = ["laya"]
 voice = ["piper-tts>=1.8.0", "av>=14,<17"]            # enhanced voice and WhatsApp voice notes
 listen = ["faster-whisper>=1.2.1", "av>=14,<17"]      # speech recognition for "talk to Chakmati"
+browser = [
+    "playwright>=1.49",
+]
+documents = [
+    "openpyxl>=3.1",
+    "python-docx>=1.1",
+    "python-pptx>=1.0",
+]
 
 [dependency-groups]
-dev = ["pytest>=8", "pytest-asyncio>=0.23", "piper-tts>=1.8.0", "faster-whisper>=1.2.1", "av>=14,<17"]  # the extras too, so every test runs
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "python-docx>=1.1", "openpyxl>=3.1", "python-pptx>=1.0", "piper-tts>=1.8.0", "faster-whisper>=1.2.1", "av>=14,<17"]  # the extras too, so every test runs
 
 [build-system]
 requires = ["hatchling"]

@@ -5,11 +5,13 @@ Only the person's own words reach the model here. A command's output is shown to
 text reaches the model only for an edit the person asked for (fenced as untrusted, and refused if it holds secrets)."""
 
 import json
+import re
 import subprocess
+from collections.abc import Awaitable, Callable
 
 from ..guard import UNTRUSTED_RULE, fence, strip_markers
 from ..llm import ChatClient
-from .safety import ComputerError
+from .safety import ComputerError, plain as plain_name
 from .service import ComputerService
 
 SYSTEM = """You turn a request to do something on the user's computer into JSON. Reply with ONLY one JSON object, no prose.
@@ -36,6 +38,27 @@ EDIT_SYSTEM = ("You edit a text file following the user's instruction. Reply wit
 HELP = ("Não entendi o que fazer no computador. Exemplos: \"crie um arquivo lista.txt com leite, pão e ovos\", \"crie a pasta projetos\", "
         "\"abre o Spotify\", \"edite a lista.txt trocando leite por café\", \"mande o rascunho.txt para a lixeira\".")
 
+
+# --- Word / Excel / PowerPoint (Pages / Numbers / Keynote open them) ---------------------------------------------------------
+_DOC_KIND = (
+    ("pptx", re.compile(r"\b(?:slides?|apresenta[çc][ãa]o|apresenta[çc][õo]es|keynote|powerpoint|ppt)\b", re.IGNORECASE)),
+    ("xlsx", re.compile(r"\b(?:planilha|numbers|excel|xlsx|tabela)\b", re.IGNORECASE)),
+    ("docx", re.compile(r"\b(?:pages|word|docx|documento\s+de\s+texto|documento)\b", re.IGNORECASE)),
+)
+_MAKE = re.compile(r"\b(?:cri\w+|fa[çc]\w*|mont\w+|ger[ae]\w*|escrev\w+|prepar\w+)\b", re.IGNORECASE)
+_WEB = re.compile(r"\b(?:internet|wikip[eé]dia|site|web|copiad\w+|pesquis\w+|pesquisad\w+|fonte)\b", re.IGNORECASE)
+
+META_SYSTEM = """From the user's request, reply with ONLY one JSON object: {"name":"short file name without extension, no spaces","topic":"the subject to look up or write about, in a few words"}."""
+
+SPEC_SYSTEMS = {
+    "docx": """Write a text document. Reply with ONLY one JSON object: {"title":"...","paragraphs":["...","..."]}.
+Use 2 to 6 paragraphs. If source text is given, copy the relevant sentences from it faithfully (do not invent facts); otherwise write it yourself. Same language as the user.""",
+    "xlsx": """Make a spreadsheet. Reply with ONLY one JSON object: {"sheets":[{"name":"...","rows":[[...],[...]]}]}.
+The first row is the header. A cell is a number, a text, or a formula starting with "=" over cells of the same sheet, like "=SUM(B2:B4)", "=AVERAGE(B2:B4)", "=B2*C2".
+Always include the formulas the user asked for (totals, averages, products) in the right cells, and realistic sample numbers if none were given. Same language as the user.""",
+    "pptx": """Make a slide deck. Reply with ONLY one JSON object: {"title":"deck title","slides":[{"title":"...","bullets":["...","..."]}]}.
+Use 4 to 7 slides with 2 to 4 short bullets each (the first slide is the introduction). If source text is given, base the slides on it; do not invent facts. Same language as the user.""",
+}
 
 ACTIONS = {"steps", "open_app", "open_url", "open_path", "edit", "revert", "trash"}
 STEP_TYPES = ("command", "create_file")
@@ -117,12 +140,65 @@ def parse_intent(reply: str) -> dict:
     return intent
 
 
+Gather = Callable[[str], Awaitable[tuple[str, list[str]]]]
+
+
+def document_kind(text: str) -> str | None:
+    """"pptx" | "xlsx" | "docx" when the request is to make such a file, decided by code and not by the model."""
+    if not _MAKE.search(text):
+        return None
+    return next((kind for kind, pattern in _DOC_KIND if pattern.search(text)), None)
+
+
+def _json_object(reply: str) -> dict | None:
+    first, last = reply.find("{"), reply.rfind("}")
+    try:
+        data = json.loads(reply[first : last + 1]) if 0 <= first < last else None
+    except json.JSONDecodeError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
 class ComputerAssistant:
-    def __init__(self, llm: ChatClient, service: ComputerService):
+    def __init__(self, llm: ChatClient, service: ComputerService, gather: Gather | None = None):
         self._llm = llm
         self._service = service
+        self._gather = gather  # (topic) -> (text found on the internet, source urls); None = no web access
+
+    async def _document(self, kind: str, request: str) -> str:
+        meta = _json_object(await self._llm.chat([{"role": "system", "content": META_SYSTEM}, {"role": "user", "content": request}])) or {}
+        topic = str(meta.get("topic") or request)[:120]
+        name = re.sub(r"[^a-z0-9_-]+", "-", plain_name(str(meta.get("name") or topic))).strip("-")[:40] or "documento"
+        source, urls = "", []
+        if self._gather is not None and (_WEB.search(request) or kind == "pptx"):
+            try:
+                source, urls = await self._gather(topic)
+            except Exception:
+                source, urls = "", []
+        user = request
+        if source:
+            user += f"\n\nSource text (from {', '.join(urls[:3])}):\n{fence(source, 'web')}"
+        system = SPEC_SYSTEMS[kind] + " Write in the language of the user's request, even if the source text is in another language (translate it)." + (UNTRUSTED_RULE if source else "")
+        spec = None
+        for _ in range(2):  # a small model sometimes slips on the JSON: ask once more
+            spec = _json_object(await self._llm.chat([{"role": "system", "content": system}, {"role": "user", "content": user}]))
+            if spec:
+                break
+        if not spec:
+            return "Não consegui montar o conteúdo do documento. Pode pedir de novo com mais detalhes?"
+        if kind == "docx" and urls:
+            spec["sources"] = urls[:3]
+        action = self._service.propose_create_document(f"{name}.{kind}", kind, spec)
+        first, *rest = action.summary.splitlines()
+        return f"{first}\nConfirma? Diga sim ou não, ou aprove no painel.\n[[action:{action.id}]]"
 
     async def handle(self, text: str) -> str:
+        kind = document_kind(text)
+        if kind is not None:
+            try:
+                return await self._document(kind, text)
+            except ComputerError as exc:
+                return f"Não consegui: {exc}."
         reply = await self._llm.chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": text}])
         intent = parse_intent(reply)
         if intent["action"] == "other" or (intent["action"] == "steps" and not intent.get("steps")):  # a small model sometimes slips: ask once more

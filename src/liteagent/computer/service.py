@@ -23,6 +23,7 @@ from pathlib import Path
 
 from ..approvals import Action, ActionStore, ApprovalService
 from .policy import DOWNLOAD, EXECUTABLE_EXT, RUN, SAFE, Checked, PolicyError, Roots, check, clean_env, resolve
+from . import documents
 from .safety import ComputerError, check_content, check_url, find_app, installed_apps, resolve_new_file
 from .secrets import has_secret, looks_secret, redact
 
@@ -137,6 +138,38 @@ class ComputerService(ApprovalService):
         shown = "\n".join(lines[: self.PREVIEW_LINES]) + (f"\n… (+{len(lines) - self.PREVIEW_LINES} linhas)" if len(lines) > self.PREVIEW_LINES else "")
         payload = {"path": str(target), "content": content, "auto_ok": True, "risk": SAFE, "plan": plan}
         return self._propose("computer.create_file", f"Criar o arquivo {target}\n{shown}", payload), None
+
+    def propose_create_document(self, relative: str, kind: str, raw_spec: object) -> Action:
+        """A Word/Excel/PowerPoint file. Always asks, even when "manter aprovado" is on: it is a binary file the person cannot read here."""
+        if kind not in documents.KINDS:
+            raise ComputerError("tipo de documento inválido")
+        name = relative.strip()
+        if not name.lower().endswith(f".{kind}"):
+            name = f"{Path(name).stem or 'documento'}.{kind}"
+        target = resolve_new_file(self.workspace, name, {f".{kind}"})
+        spec = documents.check_spec(kind, raw_spec)
+        if has_secret(json.dumps(spec.data, ensure_ascii=False)):
+            raise ComputerError("o texto parece conter senhas, chaves ou dados pessoais, então não gravo")
+        if target.exists():
+            raise ComputerError(f"já existe um arquivo {target.name} em {target.parent}")
+        payload = {"path": str(target), "kind": kind, "spec": spec.data, "auto_ok": False, "risk": "edit"}
+        return self._propose("computer.create_document", f"Criar {target} (abre no {documents.KINDS[kind]})\n{documents.preview(spec)}", payload)
+
+    def _write_document(self, p: dict) -> str:
+        target = resolve_new_file(self.workspace, p["path"], {f".{p['kind']}"})  # checked again at the moment of writing
+        spec = documents.check_spec(p["kind"], p["spec"])
+        if target.exists() or target.is_symlink():
+            raise ComputerError("o arquivo passou a existir; nada foi escrito")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        documents.write(spec, target)
+        app = documents.KINDS[p["kind"]]
+        try:  # the file is ours and was just written: showing it in the app is part of the job (a failure here is not a failure to write)
+            if sys.platform == "darwin" and app in self._apps().values():
+                self._open(["open", "-a", app, str(target)])
+                return f"Arquivo criado e aberto no {app}: {target}"
+        except Exception:
+            pass
+        return f"Arquivo criado: {target}"
 
     def _write_new(self, target: Path, content: str) -> str:
         target = resolve_new_file(self.workspace, str(target))  # checked again at the moment of writing
@@ -366,6 +399,8 @@ class ComputerService(ApprovalService):
                 result = self._run_checked(checked)
             elif kind == "computer.create_file":
                 result = self._write_new(Path(p["path"]), p["content"])
+            elif kind == "computer.create_document":
+                result = self._write_document(p)
             elif kind == "computer.edit":
                 result = self._do_edit(p)
             elif kind == "computer.revert":
