@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "description": "Floating robot assistant for lite-agent",
+  "author": "Gregory Vieira <89167868+gregsvieira@users.noreply.github.com>",
+  "homepage": "https://github.com/gregsvieira/chakmati",
   "main": "src/main.js",
   "type": "commonjs",
   "scripts": {
@@ -12,9 +14,12 @@
     "snapshot": "LITEAGENT_DESKTOP_SNAPSHOT=1 electron .",
     "prestart": "node scripts/prepare-electron.js",
     "postinstall": "node scripts/prepare-electron.js",
-    "abrir": "open -n node_modules/electron/dist/Electron.app --args \"$PWD\""
+    "abrir": "open -n node_modules/electron/dist/Electron.app --args \"$PWD\"",
+    "fetch-uv": "node scripts/fetch-uv.js",
+    "dist": "node scripts/fetch-uv.js && electron-builder --publish never"
   },
   "devDependencies": {
-    "electron": "^45.0.0"
+    "electron": "^45.0.0",
+    "electron-builder": "^26.18.0"
   }
 }
