@@ -2,7 +2,7 @@
 
 import io
 
-import av
+from ..extras import missing_message
 
 
 def wav_to_ogg_opus(wav: bytes) -> bytes:
@@ -11,6 +11,10 @@ def wav_to_ogg_opus(wav: bytes) -> bytes:
 
 def wav_to_ogg_opus_timed(wav: bytes) -> tuple[bytes, float]:
     """(Ogg/Opus voice note, its length in seconds)."""
+    try:
+        import av
+    except ImportError:
+        raise ValueError(missing_message("voice", "voice notes")) from None
     try:
         source = av.open(io.BytesIO(wav))
     except Exception as exc:

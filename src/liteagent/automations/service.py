@@ -8,6 +8,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from ..approvals import Action, ActionStore, ApprovalService
+from ..tts import VoiceError
 from .audio import wav_to_ogg_opus
 from .models import Spec, describe, parse_spec
 from .store import AutomationStore
@@ -57,7 +58,10 @@ class AutomationService(ApprovalService):
         if voice and recording is None:
             if self._voice is None or not self._voice.store.installed():
                 raise AutomationError("Para responder em áudio é preciso ligar e baixar a Voz melhorada em Ajustes.")
-            recording = wav_to_ogg_opus(self._voice.synthesize(spec.action["text"], "normal"))
+            try:
+                recording = wav_to_ogg_opus(self._voice.synthesize(spec.action["text"], "normal"))
+            except (VoiceError, ValueError) as exc:
+                raise AutomationError(f"Não consegui gravar a resposta em áudio: {exc}") from None
         body = {"name": spec.name, "trigger": spec.trigger, "action": spec.action}
         action = self._propose("automation.create", describe(spec), {"spec": body, "voice": voice, "own": bool(spec.action.get("own_voice"))})
         if recording is not None:

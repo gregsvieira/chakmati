@@ -131,6 +131,7 @@ def installed_store(tmp_path):
 
 
 def test_synthesize_returns_a_valid_wav_and_loads_the_voice_once(tmp_path):
+    pytest.importorskip("numpy", reason="needs the voice extra (uv sync --extra voice)")
     voice = FakeVoice()
     loads = []
     synth = VoiceSynth(installed_store(tmp_path), loader=lambda path: loads.append(path) or voice)
@@ -142,6 +143,7 @@ def test_synthesize_returns_a_valid_wav_and_loads_the_voice_once(tmp_path):
 
 
 def test_fast_speed_shortens_the_phrase_by_scaling_its_length(tmp_path):
+    pytest.importorskip("numpy", reason="needs the voice extra (uv sync --extra voice)")
     voice = FakeVoice()
     synth = VoiceSynth(installed_store(tmp_path), loader=lambda p: voice)
     synth.synthesize("oi", speed="normal")
@@ -188,6 +190,7 @@ def test_status_is_public_and_describes_the_voice(tmp_path):
 
 
 def test_speak_returns_wav_and_needs_the_ui_header(tmp_path):
+    pytest.importorskip("numpy", reason="needs the voice extra (uv sync --extra voice)")
     client, _ = make_client(tmp_path)
     assert client.post("/speak", json={"text": "oi"}).status_code == 403
     r = client.post("/speak", json={"text": "oi", "speed": "fast"}, headers=UI)

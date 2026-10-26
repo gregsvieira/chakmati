@@ -8,6 +8,8 @@ import io
 import threading
 from collections.abc import Callable
 
+from .extras import missing_message
+
 MAX_AUDIO_BYTES = 20 * 1024 * 1024
 # Words the recogniser would otherwise get wrong: the assistant's name and its wake phrases.
 VOCABULARY = "Chakmati, Xácmáti. Ôh, Xácmáti. Ôh, paizão. Agente Xácmáti."
@@ -18,8 +20,10 @@ class TranscribeError(Exception):
 
 
 def _load_whisper(name: str):
-    from faster_whisper import WhisperModel
-
+    try:
+        from faster_whisper import WhisperModel
+    except ImportError:
+        raise TranscribeError(missing_message("listen", "speech recognition")) from None
     return WhisperModel(name, device="cpu", compute_type="int8")
 
 

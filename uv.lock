@@ -857,14 +857,11 @@ name = "lite-agent"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "av" },
     { name = "cryptography" },
     { name = "fastapi" },
-    { name = "faster-whisper" },
     { name = "httpx" },
     { name = "icalendar" },
     { name = "lxml" },
-    { name = "piper-tts" },
     { name = "pydantic" },
     { name = "pyobjc-framework-eventkit", marker = "sys_platform == 'darwin'" },
     { name = "recurring-ical-events" },
@@ -876,34 +873,49 @@ dependencies = [
 laya = [
     { name = "laya" },
 ]
+listen = [
+    { name = "av" },
+    { name = "faster-whisper" },
+]
+voice = [
+    { name = "av" },
+    { name = "piper-tts" },
+]
 
 [package.dev-dependencies]
 dev = [
+    { name = "av" },
+    { name = "faster-whisper" },
+    { name = "piper-tts" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "av", specifier = ">=14,<17" },
+    { name = "av", marker = "extra == 'listen'", specifier = ">=14,<17" },
+    { name = "av", marker = "extra == 'voice'", specifier = ">=14,<17" },
     { name = "cryptography", specifier = ">=50.0.2" },
     { name = "fastapi", specifier = ">=0.115" },
-    { name = "faster-whisper", specifier = ">=1.2.1" },
+    { name = "faster-whisper", marker = "extra == 'listen'", specifier = ">=1.2.1" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "icalendar", specifier = ">=7.3.0" },
     { name = "laya", marker = "extra == 'laya'" },
     { name = "lxml", specifier = ">=6.1.3" },
-    { name = "piper-tts", specifier = ">=1.8.0" },
+    { name = "piper-tts", marker = "extra == 'voice'", specifier = ">=1.8.0" },
     { name = "pydantic", specifier = ">=2.7" },
     { name = "pyobjc-framework-eventkit", marker = "sys_platform == 'darwin'", specifier = ">=12.2.2" },
     { name = "recurring-ical-events", specifier = ">=3.8.2" },
     { name = "trafilatura", specifier = ">=2.3.1" },
     { name = "uvicorn", specifier = ">=0.30" },
 ]
-provides-extras = ["laya"]
+provides-extras = ["laya", "voice", "listen"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "av", specifier = ">=14,<17" },
+    { name = "faster-whisper", specifier = ">=1.2.1" },
+    { name = "piper-tts", specifier = ">=1.8.0" },
     { name = "pytest", specifier = ">=8" },
     { name = "pytest-asyncio", specifier = ">=0.23" },
 ]

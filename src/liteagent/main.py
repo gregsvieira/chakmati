@@ -11,6 +11,7 @@ from .automations.service import AutomationService
 from .automations.store import AutomationStore
 from .notices import AutomationTicker, ApprovalWatcher, CalendarWatcher, NoticeBoard, Notifier, WhatsAppWatcher
 from .config import Settings
+from . import extras
 from .engine import Engine
 from .gate import build_gate
 from .jobs import JobStore, Worker
@@ -120,7 +121,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         worker,
         board=board,
         notifier=notifier,
-        stt=SpeechToText(s.stt_model) if s.stt_model != "off" else None,
+        stt=SpeechToText(s.stt_model) if s.stt_model != "off" and extras.available("listen") else None,
         tts=voice,
         automations=automation_service,
         home=home_service,
