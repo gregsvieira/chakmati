@@ -1,6 +1,9 @@
 import uvicorn
 from fastapi import FastAPI
 
+from .browser.agent import BrowserAgent
+from .browser.frames import FrameStore
+from .browser.session import PlaywrightSession
 from .agenda.assistant import CalendarAssistant
 from .agenda.factory import build_calendar
 from .api import create_app
@@ -83,6 +86,10 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         if token:
             home_service = HomeService(HomeAssistantClient(s.home_url, token), actions)
             home_bot = HomeAssistantBot(llm, home_service)
+    frames = browser_agent = None
+    if s.browser_backend == "chrome":
+        frames = FrameStore(s.browser_frames_dir)
+        browser_agent = BrowserAgent(llm, frames, lambda: PlaywrightSession(s.browser_profile), max_steps=s.browser_max_steps)
     worker_ref: list[Worker] = []
     engine = Engine(
         build_gate(s),
@@ -96,8 +103,9 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         automation_service=automation_service,
         home_assistant=home_bot,
         home_service=home_service,
-        computer_assistant=ComputerAssistant(llm, computer_service),
+        computer_assistant=ComputerAssistant(llm, computer_service, gather=researcher.gather if researcher is not None else None),
         computer_service=computer_service,
+        browser_agent=browser_agent,
     )
     worker = Worker(store, engine.run_job, stream_handler=engine.run_job_stream)
     worker_ref.append(worker)
@@ -126,6 +134,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         automations=automation_service,
         home=home_service,
         computer=computer_service,
+        frames=frames,
         on_startup=llm.preload if s.preload_model else None,
         calendar=calendar,
         whatsapp=whatsapp,

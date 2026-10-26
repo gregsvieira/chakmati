@@ -84,6 +84,32 @@ test('streamMessage posts the text and yields the engine events', async () => {
   assert.deepEqual(JSON.parse(calls[0].init.body), { text: 'tenho mensagens novas?' });
 });
 
+test('a browser screenshot event arrives with the picture fetched from the engine', async () => {
+  const id = 'a'.repeat(32);
+  const calls = [];
+  const fetchImpl = async (url) => {
+    calls.push(url);
+    if (url.endsWith('/message/stream')) return sseResponse([`data: {"type":"screenshot","job_id":"${id}","step":2,"note":"Abrindo"}\n\n`, `data: {"type":"screenshot","job_id":"../x","step":1}\n\n`, 'data: {"type":"done","result":"ok"}\n\n']);
+    return new Response(Buffer.from('jpeg'), { status: 200 });
+  };
+  const events = await collect(new EngineClient({ fetchImpl }).streamMessage('use o navegador'));
+  assert.equal(events[0].image, `data:image/jpeg;base64,${Buffer.from('jpeg').toString('base64')}`);
+  assert.equal(calls[1], `http://127.0.0.1:8765/jobs/${id}/frames/2`);
+  assert.equal(events[1].image, undefined);   // a bad job id never reaches the network
+  assert.equal(calls.length, 2);
+  assert.equal(events[2].type, 'done');
+});
+
+test('a screenshot that cannot be fetched does not end the stream', async () => {
+  const id = 'b'.repeat(32);
+  const fetchImpl = async (url) => url.endsWith('/message/stream')
+    ? sseResponse([`data: {"type":"screenshot","job_id":"${id}","step":1}\n\n`, 'data: {"type":"done","result":"ok"}\n\n'])
+    : new Response('nope', { status: 404 });
+  const events = await collect(new EngineClient({ fetchImpl }).streamMessage('x'));
+  assert.deepEqual(events.map((e) => e.type), ['screenshot', 'done']);
+  assert.equal(events[0].image, undefined);
+});
+
 test('streamMessage refuses empty or oversized text', async () => {
   const c = new EngineClient({ fetchImpl: async () => sseResponse([]) });
   await assert.rejects(() => collect(c.streamMessage('   ')), /empty/i);

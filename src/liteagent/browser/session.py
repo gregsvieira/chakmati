@@ -1,0 +1,132 @@
+"""A real, visible Chrome driven with Playwright (the `browser` extra).
+
+Playwright talks to the Chrome that is already installed (`channel="chrome"`), so there is no driver to match to the
+browser's version and nothing extra to download. The profile is a folder of its own, never the person's everyday one:
+no saved logins or history are reachable, and a Chrome that is already open does not get in the way."""
+
+import os
+import re
+from dataclasses import dataclass
+from urllib.parse import urlparse
+
+from ..extras import missing_message
+
+VIEWPORT = {"width": 1280, "height": 800}
+MAX_TEXT = 1800
+MAX_ELEMENTS = 40
+
+# Marks what can be clicked or typed into with a number and returns a compact description of the page.
+_SNAPSHOT_JS = """
+(max) => {
+  document.querySelectorAll('[data-ck]').forEach((e) => e.removeAttribute('data-ck'));
+  const out = []; let n = 0;
+  const sel = 'a[href],button,input:not([type=hidden]),textarea,select,[role=button],[role=link],[role=textbox],[contenteditable=true]';
+  for (const el of document.querySelectorAll(sel)) {
+    const r = el.getBoundingClientRect();
+    if (r.width < 4 || r.height < 4 || r.bottom < 0 || r.top > innerHeight * 1.5) continue;
+    const st = getComputedStyle(el);
+    if (st.visibility === 'hidden' || st.display === 'none') continue;
+    n += 1; el.setAttribute('data-ck', String(n));
+    const label = (el.getAttribute('aria-label') || el.innerText || el.value || el.placeholder || el.getAttribute('title') || el.getAttribute('name') || '').trim().replace(/\\s+/g, ' ').slice(0, 80);
+    out.push({ id: n, tag: el.tagName.toLowerCase(), type: el.getAttribute('type') || '', label });
+    if (n >= max) break;
+  }
+  return { elements: out, text: (document.body ? document.body.innerText : '').replace(/\\s+/g, ' ').trim() };
+}
+"""
+
+
+@dataclass(frozen=True)
+class Snapshot:
+    url: str
+    title: str
+    text: str
+    elements: list[dict]
+
+
+class BrowserError(Exception):
+    pass
+
+
+def check_navigable(url: str) -> str:
+    """Only http(s) pages on the public internet: never a local file, the engine itself, or the home network."""
+    if "://" not in url and re.match(r"^[a-z][a-z0-9+.-]*:(?!\d)", url.strip(), re.IGNORECASE):  # javascript:, data:, mailto: ...
+        raise BrowserError("só abro endereços http(s)")
+    parsed = urlparse(url if "://" in url else f"https://{url}")
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme not in {"http", "https"} or not host:
+        raise BrowserError("só abro endereços http(s)")
+    if host == "localhost" or host.endswith((".local", ".internal", ".lan")) or host.startswith(("127.", "10.", "192.168.", "169.254.", "0.")) \
+            or (host.startswith("172.") and host.split(".")[1:2] and host.split(".")[1].isdigit() and 16 <= int(host.split(".")[1]) <= 31) or host in {"::1", "[::1]"}:
+        raise BrowserError("não abro endereços locais ou da rede da casa")
+    return parsed.geturl()
+
+
+class PlaywrightSession:
+    def __init__(self, profile_dir: str, headless: bool = False):
+        self._profile = os.path.expanduser(profile_dir)
+        self._headless = headless
+        self._pw = None
+        self._context = None
+        self._page = None
+
+    async def start(self) -> None:
+        try:
+            from playwright.async_api import async_playwright
+        except ImportError as exc:
+            raise BrowserError(missing_message("browser", "The browser agent")) from exc
+        self._pw = await async_playwright().start()
+        try:
+            self._context = await self._pw.chromium.launch_persistent_context(
+                self._profile, channel="chrome", headless=self._headless, viewport=VIEWPORT,
+                args=["--disable-blink-features=AutomationControlled"],
+            )
+        except Exception as exc:
+            await self._pw.stop()
+            raise BrowserError(f"não consegui abrir o Chrome (ele precisa estar instalado): {exc}") from exc
+        self._page = self._context.pages[0] if self._context.pages else await self._context.new_page()
+
+    async def close(self) -> None:
+        if self._context is not None:
+            await self._context.close()
+        if self._pw is not None:
+            await self._pw.stop()
+        self._context = self._pw = self._page = None
+
+    async def goto(self, url: str) -> None:
+        await self._page.goto(check_navigable(url), wait_until="domcontentloaded", timeout=30_000)
+        await self._settle()
+
+    async def back(self) -> None:
+        await self._page.go_back(wait_until="domcontentloaded", timeout=15_000)
+        await self._settle()
+
+    async def _settle(self) -> None:
+        try:
+            await self._page.wait_for_load_state("networkidle", timeout=4_000)
+        except Exception:
+            pass  # pages that never go quiet are fine: what is on screen now is what we use
+
+    async def click(self, ident: int) -> None:
+        await self._page.locator(f'[data-ck="{int(ident)}"]').first.click(timeout=8_000)
+        await self._settle()
+
+    async def type(self, ident: int, text: str, submit: bool) -> None:
+        box = self._page.locator(f'[data-ck="{int(ident)}"]').first
+        if (await box.get_attribute("type") or "").lower() == "password":
+            raise BrowserError("não digito em campos de senha")
+        await box.fill(text, timeout=8_000)
+        if submit:
+            await box.press("Enter")
+            await self._settle()
+
+    async def scroll(self, down: bool) -> None:
+        await self._page.mouse.wheel(0, 700 if down else -700)
+        await self._page.wait_for_timeout(300)
+
+    async def snapshot(self) -> Snapshot:
+        data = await self._page.evaluate(_SNAPSHOT_JS, MAX_ELEMENTS)
+        return Snapshot(self._page.url, await self._page.title(), data["text"][:MAX_TEXT], data["elements"])
+
+    async def screenshot(self) -> bytes:
+        return await self._page.screenshot(type="jpeg", quality=60)

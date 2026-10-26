@@ -27,6 +27,7 @@ _ROUTE_PROMPTS: dict[Route, str] = {
         "You are a WhatsApp assistant, but WhatsApp is not connected. Say so briefly in the user's language."
     ),
     Route.COMPUTER: "You can act on the computer, but that is not available. Say so briefly in the user's language.",
+    Route.BROWSER: "You can use a web browser, but it is not available. Say so briefly in the user's language.",
     Route.HOME: "You control a smart home, but it is not connected. Say so briefly in the user's language.",
     Route.AUTOMATION: "You help create automations, but they are not available. Say so briefly in the user's language.",
     Route.TASK: (
@@ -42,6 +43,7 @@ SYSTEM_PROMPTS: dict[Route, str] = {route: f"{PERSONA} {text}" for route, text i
 CONFIRM_SECONDS = 30.0
 COMPUTER_OFF = "As ações no computador estão desativadas neste motor."
 HOME_OFF = "A casa inteligente está desativada. Configure o Home Assistant (LITEAGENT_HOME_BACKEND=homeassistant, URL e token)."
+BROWSER_OFF = "O navegador está desativado neste motor. Ligue com LITEAGENT_BROWSER_BACKEND=chrome e instale: uv sync --extra browser."
 AUTOMATION_OFF = "As automações estão desativadas neste motor."
 
 CALENDAR_OFF = (
@@ -96,6 +98,7 @@ class Engine:
         home_service=None,
         computer_assistant=None,
         computer_service=None,
+        browser_agent=None,
         now: Callable[[], float] = time.time,
         clock: Callable[[], datetime] = lambda: datetime.now().astimezone(),
     ):
@@ -115,6 +118,7 @@ class Engine:
         self._home_service = home_service
         self._computer = computer_assistant
         self._computer_service = computer_service
+        self._browser = browser_agent
 
     def _notify_job(self) -> None:
         if self._on_job_created is not None:
@@ -236,6 +240,8 @@ class Engine:
             return await self._home_job(job)
         if job.route == Route.COMPUTER.value:
             return await self._computer_job(job)
+        if job.route == Route.BROWSER.value:
+            return "".join([piece async for piece in self.run_job_stream(job)])
         now = self._clock()
         today = today_line(now)  # research answers are about "now": they always know what day it is
         if self._researcher is not None and job.route == Route.RESEARCH.value:
@@ -281,6 +287,13 @@ class Engine:
             return
         if job.route == Route.COMPUTER.value:
             yield await self._computer_job(job)
+            return
+        if job.route == Route.BROWSER.value:
+            if self._browser is None:
+                yield BROWSER_OFF
+                return
+            async for piece in self._browser.run(job.id, job.prompt):
+                yield piece
             return
         now = self._clock()
         today = today_line(now)

@@ -205,11 +205,19 @@
       h('button', { class: 'primary', type: 'button', onclick: () => decideTurn(turn, 'approve') }, 'Aprovar'));
   }
 
+  // The browser at work: the screenshot of the latest step, replaced as each new one arrives, with what it was doing.
+  function shotNode(turn) {
+    if (!turn.shot || !turn.shot.image) return null;
+    return h('figure', { class: 'shot' },
+      h('img', { src: turn.shot.image, alt: turn.shot.title || 'navegador' }),
+      h('figcaption', {}, `${turn.shot.step}. ${turn.shot.note}`, h('span', {}, turn.shot.url)));
+  }
+
   function renderThread(scroll = true) {
     $('thread-section').hidden = thread.length === 0;
     const box = $('thread');
     const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40; // do not yank the reader away from older messages
-    fill(box, thread.map((t) => h('div', { class: `turn ${t.role}${t.status === 'pending' ? ' pending' : ''}${t.status === 'error' ? ' error' : ''}` }, t.text || '…', approvalNode(t))));
+    fill(box, thread.map((t) => h('div', { class: `turn ${t.role}${t.status === 'pending' ? ' pending' : ''}${t.status === 'error' ? ' error' : ''}` }, shotNode(t), t.text || '…', approvalNode(t))));
     syncTalking();
     if (scroll || atBottom) box.scrollTop = box.scrollHeight;  // the conversation has its own scroll: it follows the newest message
     if (scroll) $('thread-section').scrollIntoView({ block: 'end' }); // and a new message brings the conversation into view on the page
@@ -324,7 +332,8 @@
   api.onMessage(({ id, event }) => {
     const turn = thread.find((t) => t.id === id);
     if (!turn) return;
-    if (event.type === 'job') turn.text = turn.text || 'Trabalhando nisso…';
+    if (event.type === 'screenshot') { turn.shot = event; turn.text = turn.text || 'Usando o navegador…'; }
+    else if (event.type === 'job') turn.text = turn.text || 'Trabalhando nisso…';
     else if (event.type === 'delta') { if (turn.text === 'Trabalhando nisso…') turn.raw = ''; setTurnText(turn, (turn.raw || '') + event.text); }
     else if (event.type === 'done') { setTurnText(turn, event.result || turn.text); turn.status = 'done'; deliver(turn); }
     else if (event.type === 'error') { turn.text = event.error || 'Algo deu errado.'; turn.status = 'error'; deliver(turn); }

@@ -1,5 +1,5 @@
 'use strict';
-// HTTP client for the local lite-agent engine. Used only by the main process: the renderer windows have no network access
+// HTTP client for the local Chakmati engine. Used only by the main process: the renderer windows have no network access
 // at all (their CSP forbids it), so every call to the engine goes through here, and here it can only reach loopback.
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]']);
@@ -174,7 +174,16 @@ class EngineClient {
     const res = await this._request('/message/stream', {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: clean }), signal,
     });
-    yield* parseSse(res.body);
+    for await (const event of parseSse(res.body)) yield event.type === 'screenshot' ? await this._withImage(event, signal) : event;
+  }
+
+  // A browser step: the renderer has no network, so the screenshot is fetched here and handed over as a data URL.
+  async _withImage(event, signal) {
+    if (!ACTION_ID.test(String(event.job_id)) || !Number.isInteger(event.step) || event.step < 1) return event;
+    try {
+      const res = await this._request(`/jobs/${event.job_id}/frames/${event.step}`, { signal });
+      return { ...event, image: `data:image/jpeg;base64,${Buffer.from(await res.arrayBuffer()).toString('base64')}` };
+    } catch { return event; } // a missing picture must not end the conversation: the note still shows what happened
   }
 }
 

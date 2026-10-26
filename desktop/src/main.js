@@ -1,5 +1,5 @@
 'use strict';
-// Floating robot assistant for lite-agent. This process owns the windows and is the only one that talks to the engine.
+// Floating robot assistant for Chakmati. This process owns the windows and is the only one that talks to the engine.
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -364,7 +364,7 @@ async function healthLoop() {
     if (up) sayHello();
     // a real problem, not the normal start-up: it was running and stopped, or it never came up
     if (!up && !state.warnedDown && ((wasUp === true) || (wasUp === false && Date.now() - startedAt > 90000))) {
-      localNotice(wasUp === true ? 'Perdi a conexão com o motor do lite-agent.' : 'O motor do lite-agent não iniciou. Veja o engine.log.');
+      localNotice(wasUp === true ? 'Perdi a conexão com o motor do Chakmati.' : 'O motor do Chakmati não iniciou. Veja o engine.log.');
       state.warnedDown = true;
     }
     if (up) state.warnedDown = false;
@@ -522,7 +522,7 @@ async function watchOwaLink() {
 
 async function openWaSetup() {
   const root = projectRoot();
-  if (!root) return { ok: false, error: 'Não encontrei a pasta do lite-agent.' };
+  if (!root) return { ok: false, error: 'Não encontrei a pasta do Chakmati.' };
   const health = await owaHealth();
   if (health && health.connected) { refreshOverview(); return { ok: true, message: 'O WhatsApp já está conectado.' }; }
   // Not connected: always start again with a fresh visible window. An old one may be minimized, hidden or stuck, and
@@ -777,7 +777,7 @@ function registerIpc() {
 
   ipcMain.handle('panel:send', async (_e, text) => {
     if (typeof text !== 'string' || !text.trim() || text.length > MAX_TEXT) return { error: 'Pedido inválido.' };
-    if (!state.engineUp) return { error: 'O motor não está rodando. Inicie o lite-agent.' };
+    if (!state.engineUp) return { error: 'O motor não está rodando. Inicie o Chakmati.' };
     // a command arrived: the microphone stops waiting for one (the wake phrase itself starts the wait again once answered)
     state.awakeUntil = 0;
     syncListening();

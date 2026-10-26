@@ -9,6 +9,7 @@ CASES: list[tuple[str, Route]] = [
     ("olá", Route.CHAT),
     ("crie um arquivo lista.txt com leite e pão", Route.COMPUTER),
     ("abre o Spotify", Route.COMPUTER),
+    ("use o navegador para ver o preço do dólar", Route.BROWSER),
     ("liga a luz da sala", Route.HOME),
     ("a porta da frente está trancada?", Route.HOME),
     ("crie uma automação para responder mensagens do whatsapp", Route.AUTOMATION),

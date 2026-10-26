@@ -31,6 +31,10 @@ class Settings:
     openwa_url: str = "http://127.0.0.1:8081"
     workspace: str = os.path.expanduser("~/Documents/Chakmati")  # the only folder where the agent creates files
     openwa_home: str = os.path.expanduser("~/.lite-agent/openwa")  # where OpenWA is installed (its browser is used for voice notes)
+    browser_backend: str = "off"  # "off" | "chrome" (a visible Chrome driven with Playwright; needs `uv sync --extra browser`)
+    browser_profile: str = os.path.expanduser("~/.lite-agent/browser")  # the agent's own Chrome profile (never the person's)
+    browser_frames_dir: str = os.path.expanduser("~/.lite-agent/frames")  # the screenshot of every step of a browser job
+    browser_max_steps: int = 12
     home_backend: str = "off"  # "off" | "homeassistant" (also the way to reach Alexa-compatible devices)
     home_url: str = "http://homeassistant.local:8123"
     home_token_file: str = os.path.expanduser("~/.lite-agent/home_token.txt")
@@ -77,6 +81,10 @@ class Settings:
             openwa_url=env.get("LITEAGENT_OPENWA_URL", d.openwa_url),
             workspace=os.path.expanduser(env.get("LITEAGENT_WORKSPACE", d.workspace)),
             openwa_home=os.path.expanduser(env.get("LITEAGENT_OPENWA_HOME", d.openwa_home)),
+            browser_backend=env.get("LITEAGENT_BROWSER_BACKEND", d.browser_backend),
+            browser_profile=os.path.expanduser(env.get("LITEAGENT_BROWSER_PROFILE", d.browser_profile)),
+            browser_frames_dir=os.path.expanduser(env.get("LITEAGENT_BROWSER_FRAMES_DIR", d.browser_frames_dir)),
+            browser_max_steps=int(env.get("LITEAGENT_BROWSER_MAX_STEPS", d.browser_max_steps)),
             home_backend=env.get("LITEAGENT_HOME_BACKEND", d.home_backend),
             home_url=env.get("LITEAGENT_HOME_URL", d.home_url),
             home_token_file=os.path.expanduser(env.get("LITEAGENT_HOME_TOKEN_FILE", d.home_token_file)),

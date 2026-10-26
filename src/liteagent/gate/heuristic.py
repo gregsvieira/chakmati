@@ -15,6 +15,18 @@ _TASK = re.compile(
 )
 
 
+# Asking for the browser to be used ("use o navegador para...", "pelo Chrome", "navegue até..."): wins over everything else.
+# ("abre o Chrome" alone is opening a program: that stays with the computer.)
+_BROWSER = re.compile(
+    r"\b(?:use|usa|usar|utilize|utilizar|usando|utilizando|pelo|no|via|com\s+o)\s+(?:o\s+)?(?:navegador|browser|chrome)\b|\bnavegu?e\w*\b|\bnavegar\b",
+    re.IGNORECASE,
+)
+
+# Making a Word / Excel / PowerPoint style file ("crie slides sobre...", "monte uma planilha no Numbers"): a computer job even when
+# the request also says to look something up ("... sobre o tema pesquisado").
+_DOC_MAKE = re.compile(r"\b(?:cri\w+|fa[çc]\w*|mont\w+|ger[ae]\w*|escrev\w+|prepar\w+)\b", re.IGNORECASE)
+_DOC_NOUN = re.compile(r"\b(?:slides?|apresenta[çc][ãa]o|apresenta[çc][õo]es|keynote|powerpoint|planilha|numbers|excel|tabela|pages|docx|documento)\b", re.IGNORECASE)
+
 # Creating a rule that runs by itself: "automatize...", "toda vez que ... responda", "todo dia às 9h mande...".
 _AUTOMATION_WORD = re.compile(r"\bautoma\w+", re.IGNORECASE)
 _AUTOMATION_TRIGGER = re.compile(r"\b(?:toda\s+vez\s+que|sempre\s+que|a\s+cada\s+vez\s+que|todo\s+dia|todos\s+os\s+dias|todo\s+santo\s+dia)\b", re.IGNORECASE)
@@ -59,8 +71,12 @@ class HeuristicGate:
     source = "heuristic"
 
     def classify(self, text: str) -> GateResult:
+        if _BROWSER.search(text):
+            return GateResult(Route.BROWSER, 0.9, self.source)
         if (_HOME_NOUN.search(text) and _HOME_VERB.search(text) and not _WHATSAPP.search(text)) or _HOME_PHRASE.search(text):
             return GateResult(Route.HOME, 0.9, self.source)
+        if _DOC_MAKE.search(text) and _DOC_NOUN.search(text) and not _WHATSAPP.search(text):
+            return GateResult(Route.COMPUTER, 0.9, self.source)
         if _AUTOMATION_WORD.search(text) or (_AUTOMATION_TRIGGER.search(text) and _AUTOMATION_VERB.search(text)):
             return GateResult(Route.AUTOMATION, 0.9, self.source)
         if _WHATSAPP.search(text) and not _EXPLICIT_SEARCH.search(text):

@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager, suppress
 
@@ -16,6 +17,7 @@ from . import extras
 from .automations.audio import wav_to_ogg_opus_timed
 from .automations.models import describe, parse_spec
 from .automations.service import AutomationError, AutomationService
+from .browser.frames import FrameStore
 from .engine import Engine
 from .jobs import DONE, FAILED, JobStore, Worker
 from .notices import NoticeBoard, Notifier
@@ -79,6 +81,7 @@ def create_app(
     automations: AutomationService | None = None,
     home: ApprovalService | None = None,
     computer: ApprovalService | None = None,
+    frames: FrameStore | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -111,6 +114,7 @@ def create_app(
         The text comes from the job row (`partial`, then `result`), so a client that connects
         late, or reconnects, still receives everything from the beginning."""
         sent = 0
+        frames_sent = 0
         last_status = None
         waited = 0.0
         while waited <= STREAM_MAX_SECONDS:
@@ -121,6 +125,10 @@ def create_app(
             if job.status != last_status:
                 last_status = job.status
                 yield {"type": "status", "status": job.status}
+            if frames is not None:  # the browser's screenshots, one event per step, as they are taken
+                for frame in frames.list(job_id)[frames_sent:]:
+                    yield {"type": "screenshot", "job_id": job_id, **frame}
+                    frames_sent += 1
             text = job.result if job.status == DONE and job.result is not None else job.partial
             if len(text) > sent:
                 yield {"type": "delta", "text": text[sent:]}
@@ -162,6 +170,13 @@ def create_app(
             "error": job.error,
             "partial": job.partial,
         }
+
+    @app.get("/jobs/{job_id}/frames/{step}")
+    async def get_frame(job_id: str, step: int):
+        path = frames.path(job_id, step) if frames is not None and re.fullmatch(r"[0-9a-f]{32}", job_id) else None
+        if path is None:
+            raise HTTPException(status_code=404, detail="frame not found")
+        return Response(path.read_bytes(), media_type="image/jpeg", headers={"Cache-Control": "no-store"})
 
     @app.get("/jobs/{job_id}/stream")
     async def stream_job(job_id: str):
