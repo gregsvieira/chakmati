@@ -56,7 +56,7 @@ test('a good download is extracted and the binary lands in the output folder, ex
   assert.deepEqual(urls, ['https://github.com/astral-sh/uv/releases/download/1.0.0/uv-x86_64-unknown-linux-gnu.tar.gz']);
   assert.equal(out, path.join(outDir, 'uv'));
   assert.equal(fs.readFileSync(out, 'utf8'), '#!binary');
-  assert.ok((fs.statSync(out).mode & 0o111) !== 0, 'executable');
+  if (process.platform !== 'win32') assert.ok((fs.statSync(out).mode & 0o111) !== 0, 'executable'); // Windows has no execute bit
   assert.deepEqual(fs.readdirSync(outDir), ['uv']); // no temporary leftovers
 });
 
