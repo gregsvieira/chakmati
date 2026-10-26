@@ -103,7 +103,15 @@ sheet); text found on the internet is fenced as untrusted and the sources are li
 "Corrija as provas da pasta provas, gabarito: 1E - 2B - 3B, cada acerto vale 1 ponto, monte uma planilha no Numbers": reads every PDF
 in that folder of the workspace, finds the student's name (`Aluno: ...`) and the `[X]` marks, compares them with the key you wrote and proposes
 a spreadsheet (answers, `Acertos` and `Nota` as formulas, class average, and a column flagging blank or double-marked questions, which count as wrong).
-The reading is done by code, not by the model. Limits: text PDFs only (a photo or scan needs OCR, not built), up to 100 PDFs, and the layout `[X] A) ...` or similar.
+The reading is done by code, not by the model. Limits: up to 100 files, and the layout `[ ] A) ...` (a box before each option, an X written in it).
+
+**Scans and phone photos** (PDF with no text, JPG, PNG): `uv sync --extra ocr`. An OCR (Apple Vision on a Mac, which is already there; RapidOCR on Windows/Linux, untested) finds the
+name, the questions and the option lines; the X is **not** read as text: the box before each option is measured and counts as marked when it has clearly more ink than an empty one.
+A box with only a little ink is flagged "marca duvidosa", never decided. A handwritten name can be misread by accents ("Nícolas"): check the names column.
+
+**Explaining the mistakes**: add "...e explique por que a escolha de cada aluno está errada" and the sheet gets an `Explicações` tab: one worked solution per question, one explanation per
+wrong option chosen (reused for every student who chose it), and "Não respondeu" for blanks. It is written by the local model, so it is a draft for you to check: an explanation that
+names another option as correct, or that corrects itself in the middle, is replaced by "confira à mão". Small models get ENEM maths wrong: set `LITEAGENT_EXPLAIN_MODEL=deepseek-r1:14b` (or another reasoning model) to work out the questions with a stronger one (about 3 minutes for 20 exams).
 `scripts/simulate_exams.py OUT TRUTH.json 20` makes 20 filled-in copies to try it.
 
 ## Install wizard (desktop)
@@ -159,6 +167,7 @@ Only the macOS arm64 build was checked by hand; the Windows and Ubuntu builds ar
 | `LITEAGENT_CALENDAR_ICS_PATH` | `agenda.ics` |
 | `LITEAGENT_CALENDAR_NAME` | empty = the system's default calendar for new events |
 | `LITEAGENT_BROWSER_BACKEND` | `off` (`chrome`; needs `uv sync --extra browser`), plus `LITEAGENT_BROWSER_HEADLESS` (`1`), `LITEAGENT_BROWSER_PROFILE`, `LITEAGENT_BROWSER_FRAMES_DIR`, `LITEAGENT_BROWSER_MAX_STEPS` (`12`) |
+| `LITEAGENT_EXPLAIN_MODEL` | empty = the chat model; a stronger model for working out exam questions, e.g. `deepseek-r1:14b` |
 | `LITEAGENT_WHATSAPP_BACKEND` | `off` (`openwa`) |
 | `LITEAGENT_OPENWA_URL` | `http://127.0.0.1:8081` |
 | `LITEAGENT_OPENWA_API_KEY` | empty = read `~/.lite-agent/openwa/api_key.txt` (`LITEAGENT_OPENWA_API_KEY_FILE`) |

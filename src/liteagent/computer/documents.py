@@ -77,7 +77,7 @@ def check_spec(kind: str, raw: object) -> Spec:
                     elif isinstance(cell, str) and cell.startswith("="):
                         cells.append(check_formula(cell))
                     else:
-                        cells.append(_text(str(cell), 300))
+                        cells.append(_text(str(cell), 700))
                 clean.append(cells)
             out.append({"name": re.sub(r"[\[\]:*?/\\]", "", _text(sheet.get("name", "Planilha"), 31)) or "Planilha", "rows": clean})
         if not out:

@@ -8,6 +8,7 @@ class Settings:
     ollama_url: str = "http://127.0.0.1:11434"
     chat_model: str = "qwen3.5:latest"
     think: bool = False
+    explain_model: str = ""  # a stronger model for working out the questions of an exam (empty = the chat model); e.g. deepseek-r1:14b, which solved all three ENEM questions
     gate_backend: str = "heuristic"  # "heuristic" | "laya"
     gate_min_confidence: float = 0.6
     db_path: str = "liteagent.db"
@@ -58,6 +59,7 @@ class Settings:
         return cls(
             ollama_url=env.get("LITEAGENT_OLLAMA_URL", d.ollama_url),
             chat_model=env.get("LITEAGENT_CHAT_MODEL", d.chat_model),
+            explain_model=env.get("LITEAGENT_EXPLAIN_MODEL", d.explain_model),
             think=env.get("LITEAGENT_THINK", "0").lower() in {"1", "true", "yes"},
             gate_backend=env.get("LITEAGENT_GATE_BACKEND", d.gate_backend),
             gate_min_confidence=float(

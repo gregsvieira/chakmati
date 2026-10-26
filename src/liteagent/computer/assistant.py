@@ -11,6 +11,7 @@ from collections.abc import Awaitable, Callable
 
 from ..guard import UNTRUSTED_RULE, fence, strip_markers
 from ..llm import ChatClient
+from . import grading
 from .safety import ComputerError, plain as plain_name
 from .service import ComputerService
 
@@ -144,9 +145,58 @@ Gather = Callable[[str], Awaitable[tuple[str, list[str]]]]
 
 
 _GRADE = re.compile(r"\b(?:corrij\w+|corrig\w+|corre[çc][ãa]o)\b.{0,60}\bprovas?\b|\bprovas?\b.{0,60}\b(?:corrij\w+|corrig\w+)", re.IGNORECASE)
-_FOLDER = re.compile(r"\bpasta\s+[\"“']?([\w\-./ ]+?)[\"”']?(?=\s*(?:[,.;:]|\bque\b|\bcom\b|\bem\b|\bonde\b|$))", re.IGNORECASE)
-_GABARITO = re.compile(r"gabarito\s*(?:[ée]|:)?\s*:?\s*((?:\d{1,3}\s*[-:.)]?\s*[A-Ea-e]\b[\s,;e-]*)+)", re.IGNORECASE)
+_FOLDER = re.compile(r"\bpasta\s+[\"“']?([\w\-./ ]+?)[\"”']?(?=\s*(?:[,.;:(]|\bque\b|\bcom\b|\bem\b|\bonde\b|$))", re.IGNORECASE)
+_GABARITO = re.compile(r"gabarito\s*(?:[ée]|:)?\s*:?\s*((?:\d{1,3}\s*[-:.)]?\s*[A-Ea-e]\b(?:\s*[,;-]\s*|\s+e\s+|\s+)?)+)", re.IGNORECASE)
 _POINTS = re.compile(r"(?:vale|valendo|vale\s+cada)\s+(\d+(?:[.,]\d+)?)\s*pontos?|(\d+(?:[.,]\d+)?)\s*pontos?\s+(?:por|cada)", re.IGNORECASE)
+
+
+_EXPLAIN = re.compile(r"\b(?:expli[cq]\w*|justific\w+|coment\w+|por\s*qu[êe]\b.{0,30}\berr\w+)", re.IGNORECASE)
+MAX_EXPLAIN_CALLS = 40
+SOLVE_SYSTEM = ("You are a maths teacher. Solve the multiple-choice question step by step, in Brazilian Portuguese, in at most 6 short lines, showing the calculations. "
+                "Your solution MUST end at the correct option given by the teacher. Reply with the solution only.")
+EXPLAIN_SYSTEM = ("You are a maths teacher writing feedback for a student. In Brazilian Portuguese and in at most 3 short sentences, say why the option the student "
+                  "chose is wrong (what mistake leads to it, with the calculation that gives that number if you can) and what the right reasoning is. "
+                  "Use the worked solution. Be kind and concrete. Reply with the feedback only.")
+
+
+_LATEX = [
+    (re.compile(r"\\\(|\\\)|\\\[|\\\]|(?<!R)\$"), ""),
+    (re.compile(r"\\text\{([^}]*)\}"), r"\1"), (re.compile(r"\\(?:d?frac)\{([^}]*)\}\{([^}]*)\}"), r"(\1)/(\2)"),
+    (re.compile(r"\\sqrt\{([^}]*)\}"), r"raiz(\1)"), (re.compile(r"\\times|\\cdot"), "×"), (re.compile(r"\\implies|\\Rightarrow"), "=>"),
+    (re.compile(r"\\approx"), "≈"), (re.compile(r"\\(?:left|right|,|;|!)"), ""), (re.compile(r"\^\{?2\}?"), "²"),
+    (re.compile(r"\*\*"), ""), (re.compile(r"\\"), ""),
+]
+
+
+def plain_math(text: str) -> str:
+    """The model writes LaTeX and Markdown; a spreadsheet cell should read as plain text."""
+    text = text.replace("\\$", "§")  # a real "R\$" is a dollar sign, not LaTeX
+    for pattern, repl in _LATEX:
+        text = pattern.sub(repl, text)
+    return " ".join(text.replace("§", "$").split())
+
+
+_OPT = r"(?:alternativa|op[çc][ãa]o|letra)\s*\(?([A-E])\b"
+_SAYS_CORRECT = [
+    re.compile(r"(?:correta|certa|correto|certo|gabarito)\W[^.]{0,50}?" + _OPT, re.IGNORECASE),            # "a resposta correta é a alternativa B"
+    re.compile(_OPT + r"\)?\s*(?:\([^)]*\)\s*)?(?:[^.]{0,25}?\bcorrespond\w*|[eé] a (?:correta|certa)|[eé] o (?:correto|certo))", re.IGNORECASE),  # "a alternativa B é a correta"
+    re.compile(r"correspond\w*\s+(?:à|a|ao)\s+" + _OPT, re.IGNORECASE),                                    # "correspondendo à alternativa B"
+]
+
+
+_RAMBLING = re.compile(r"\b(?:vamos refazer|n[ãa]o,\s|na verdade|espere|hmm|let me|wait)\b|\?.*\?", re.IGNORECASE)
+
+
+def rambling(text: str) -> bool:
+    """The model thinking out loud and correcting itself in the answer: not something to hand to a student."""
+    return bool(_RAMBLING.search(text))
+
+
+def contradicts_key(text: str, right: str, chosen: str = "") -> bool:
+    """True when the explanation says some OTHER option is the correct one (a small model sometimes argues against the teacher's own key).
+    The option the student chose may be named as what their wrong number corresponds to: that is not a contradiction."""
+    named = {m.group(1).upper() for pattern in _SAYS_CORRECT for m in pattern.finditer(text)}
+    return bool(named - {right.upper(), chosen.upper()})
 
 
 def document_kind(text: str) -> str | None:
@@ -166,8 +216,9 @@ def _json_object(reply: str) -> dict | None:
 
 
 class ComputerAssistant:
-    def __init__(self, llm: ChatClient, service: ComputerService, gather: Gather | None = None):
+    def __init__(self, llm: ChatClient, service: ComputerService, gather: Gather | None = None, solver: ChatClient | None = None):
         self._llm = llm
+        self._solver = solver or llm  # works out the questions of an exam: a stronger model when one is configured
         self._service = service
         self._gather = gather  # (topic) -> (text found on the internet, source urls); None = no web access
 
@@ -203,8 +254,9 @@ class ComputerAssistant:
         first, *rest = action.summary.splitlines()
         return f"{first}\nConfirma? Diga sim ou não, ou aprove no painel.\n[[action:{action.id}]]"
 
-    def _grade(self, text: str) -> str:
-        """"Corrija as provas da pasta X... gabarito 1E - 2B": done by code from the person's own words; the model is not involved."""
+    async def _grade(self, text: str) -> str:
+        """"Corrija as provas da pasta X... gabarito 1E - 2B": reading and grading are done by code from the person's own words. The model only
+        writes the explanations of the mistakes, when they are asked for, and those go in the spreadsheet as text for the teacher to check."""
         folder, gabarito = _FOLDER.search(text), _GABARITO.search(text)
         if not folder:
             return "Em que pasta (dentro de ~/Documents/Chakmati) estão as provas? Diga “as provas da pasta provas”."
@@ -212,19 +264,85 @@ class ComputerAssistant:
             return "Qual é o gabarito? Escreva assim: “gabarito: 1E - 2B - 3B”."
         pts = _POINTS.search(text)
         points = float((pts.group(1) or pts.group(2)).replace(",", ".")) if pts else 1.0
-        action, summary, unreadable = self._service.propose_grading(folder.group(1).strip(), gabarito.group(1), points)
-        lines = [f"Li {summary['alunos']} provas e corrigi com o gabarito {gabarito.group(1).strip()} (cada acerto vale {points:g})."]
+        shown_key = gabarito.group(1).strip(" ,;-")
+        key = grading.parse_key(shown_key)
+        target, exams, unreadable = self._service.read_exam_folder(folder.group(1).strip())
+        spec, summary = grading.grade(exams, key, points)
+        lines = [f"Li {summary['alunos']} provas e corrigi com o gabarito {shown_key} (cada acerto vale {points:g})."]
         lines.append("Acertaram tudo: " + (", ".join(summary["acertaram_tudo"]) or "ninguém") + ".")
+        if _EXPLAIN.search(text):
+            rows, made = await self._explanations(exams, key)
+            if rows:
+                spec["sheets"].append({"name": "Explicações", "rows": rows})
+                lines.append(f"Na aba Explicações, {len(rows) - 1} erros explicados (escritos pelo modelo local: confira antes de passar para os alunos).")
+            elif made is not None:
+                lines.append(made)
         if summary["com_observacao"]:
-            lines.append(f"{summary['com_observacao']} provas têm questão em branco ou com mais de uma marca: está na coluna Observações, vale conferir.")
+            lines.append(f"{summary['com_observacao']} provas têm questão em branco, com mais de uma marca ou com algo para conferir: está na coluna Observações.")
         if unreadable:
             lines.append("Não consegui ler: " + ", ".join(unreadable) + ". Corrija esses à mão.")
+        action = self._service.propose_create_document(f"correcao-{target.name}.xlsx", "xlsx", spec)
         return "\n".join([*lines, f"{action.summary.splitlines()[0]}", "Confirma? Diga sim ou não, ou aprove no painel.", f"[[action:{action.id}]]"])
+
+    async def _explanations(self, exams: list, key: dict[int, str]) -> tuple[list, str | None]:
+        """(rows for the sheet, a message if it could not be done). One worked solution per question and one explanation per wrong option
+        chosen by someone: written once and reused for every student who made that mistake."""
+        texts = grading.question_texts(exams)
+        wrong = grading.mistakes(exams, key)
+        if not wrong:
+            return [], "Ninguém errou nada, então não há o que explicar."
+        solutions: dict[int, str] = {}
+        cache: dict[tuple[int, str], str] = {}
+        rows = [["Aluno", "Questão", "Marcou", "Correta", "Por que a escolha está errada"]]
+        calls = 0
+        for student, q, marked, right in wrong:
+            question = texts.get(q)
+            if not marked:
+                rows.append([student, f"Q{q}", "em branco", right, f"Não respondeu. A alternativa correta é {right}" + (f") {question.options[right]}" if question and right in question.options else ".")])
+                continue
+            for letter in marked:
+                if letter == right:
+                    continue  # (two boxes marked, one of them the right one: the mistake is the other)
+                if question is None or letter not in question.options or right not in question.options:
+                    cache[(q, letter)] = f"Marcou {letter}, mas a correta é {right}. Não consegui ler o enunciado desta questão para explicar."
+                if (q, letter) not in cache:
+                    if calls >= MAX_EXPLAIN_CALLS:
+                        cache[(q, letter)] = f"Marcou {letter}, mas a correta é {right}."
+                    else:
+                        if q not in solutions:
+                            solutions[q] = await self._solve(question, right)
+                            calls += 1
+                        cache[(q, letter)] = await self._explain(question, solutions[q], letter, right)
+                        calls += 1
+                rows.append([student, f"Q{q}", letter if len(marked) == 1 else f"{marked} (várias)", right, cache[(q, letter)]])
+        return rows, None
+
+    def _question_block(self, question) -> str:
+        options = "\n".join(f"{letter}) {text}" for letter, text in sorted(question.options.items()))
+        return fence(f"{question.stem}\n{options}", "exam")
+
+    async def _solve(self, question, right: str) -> str:
+        reply = await self._solver.chat([
+            {"role": "system", "content": SOLVE_SYSTEM + UNTRUSTED_RULE},
+            {"role": "user", "content": f"{self._question_block(question)}\nCorrect option (from the teacher's key): {right}) {question.options[right]}"},
+        ])
+        return plain_math(strip_markers(reply))[:900]
+
+    async def _explain(self, question, solution: str, letter: str, right: str) -> str:
+        reply = await self._llm.chat([
+            {"role": "system", "content": EXPLAIN_SYSTEM + UNTRUSTED_RULE},
+            {"role": "user", "content": f"{self._question_block(question)}\nWorked solution: {solution}\nCorrect option: {right}) {question.options[right]}\n"
+                                        f"Option the student chose: {letter}) {question.options[letter]}"},
+        ])
+        text = plain_math(strip_markers(reply))
+        if contradicts_key(text, right, letter) or rambling(text):  # never hand the teacher an explanation that argues against her key, or that is the model arguing with itself
+            return f"Marcou {letter}, mas a correta é {right}. O modelo local não conseguiu justificar com segurança: confira esta questão à mão."
+        return text[:650] + ("…" if len(text) > 650 else "")
 
     async def handle(self, text: str) -> str:
         if _GRADE.search(text):
             try:
-                return self._grade(text)
+                return await self._grade(text)
             except ComputerError as exc:
                 return f"Não consegui: {exc}."
         kind = document_kind(text)

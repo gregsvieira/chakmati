@@ -93,6 +93,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         frames = FrameStore(s.browser_frames_dir)
         browser_agent = BrowserAgent(llm, frames, lambda: PlaywrightSession(s.browser_profile, headless=s.browser_headless), max_steps=s.browser_max_steps,
                                     search=search_backend)
+    solver = OllamaClient(s.ollama_url, s.explain_model, think=True, keep_alive="5m", timeout=900) if s.explain_model else None
     worker_ref: list[Worker] = []
     engine = Engine(
         build_gate(s),
@@ -106,7 +107,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         automation_service=automation_service,
         home_assistant=home_bot,
         home_service=home_service,
-        computer_assistant=ComputerAssistant(llm, computer_service, gather=researcher.gather if researcher is not None else None),
+        computer_assistant=ComputerAssistant(llm, computer_service, gather=researcher.gather if researcher is not None else None, solver=solver),
         computer_service=computer_service,
         browser_agent=browser_agent,
     )

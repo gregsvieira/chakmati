@@ -155,20 +155,16 @@ class ComputerService(ApprovalService):
         payload = {"path": str(target), "kind": kind, "spec": spec.data, "auto_ok": False, "risk": "edit"}
         return self._propose("computer.create_document", f"Criar {target} (abre no {documents.KINDS[kind]})\n{documents.preview(spec)}", payload)
 
-    def propose_grading(self, folder: str, key_text: str, points: float = 1.0) -> tuple[Action, dict, list[str]]:
-        """Reads every PDF in a workspace folder, grades it against the key, and proposes the spreadsheet. (proposal, summary, unreadable files)"""
+    def read_exam_folder(self, folder: str) -> tuple[Path, list, list[str]]:
+        """(the folder, the exams read, the files that could not be read) for a folder of exams (PDF with text, scanned PDF, or photo) in the workspace."""
         try:
             target = resolve(folder, self.roots, must_exist=True, what="ler")
         except PolicyError as exc:
             raise ComputerError(str(exc)) from None
         if not target.is_dir():
             raise ComputerError(f"{folder} não é uma pasta")
-        key = grading.parse_key(key_text)
         exams, unreadable = grading.read_folder(target)
-        spec, summary = grading.grade(exams, key, points)
-        name = f"correcao-{target.name}.xlsx"
-        action = self.propose_create_document(name, "xlsx", spec)
-        return action, summary, unreadable
+        return target, exams, unreadable
 
     def _write_document(self, p: dict) -> str:
         target = resolve_new_file(self.workspace, p["path"], {f".{p['kind']}"})  # checked again at the moment of writing

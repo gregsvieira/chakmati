@@ -1,7 +1,10 @@
 """Makes N filled-in copies (PDF) of the three-question maths exam, each with an "X" in the chosen option, to simulate a teacher with a
 pile of exams and only the answer key. Prints the real marks (the ground truth) to a JSON file kept OUTSIDE the folder given to the assistant.
 
-    uv run python scripts/simulate_exams.py OUT_DIR TRUTH_JSON [N]
+    uv run python scripts/simulate_exams.py OUT_DIR TRUTH_JSON [N] [--scan]
+
+--scan: instead of text PDFs, makes what a scanner or a phone camera would: the name and the X in handwriting-like type, a slight tilt, blur and
+noise, saved as image-only PDFs (and a few JPG photos). The real marks are the same ground truth.
 """
 
 import html
@@ -33,29 +36,44 @@ CSS = """body{font-family:Helvetica,Arial,sans-serif;font-size:13.5px;margin:0;l
 .date{position:absolute;right:20px;top:12px;border:2px solid #000;border-radius:20px;padding:6px 26px;font-weight:bold}
 h1{text-align:center;font-size:24px;margin:6px 0 10px}.q{margin-bottom:16px;text-align:justify}
 .o{margin:0}.box{display:inline-block;width:20px;text-align:center;font-weight:bold}
-.foot{text-align:center;font-weight:bold;position:fixed;bottom:10px;left:0;right:0}"""
+.hand .box{font-family:"Bradley Hand","Noteworthy","Chalkboard SE",cursive;font-size:19px;color:#1a2a6c}.hand .head span{font-family:"Bradley Hand","Noteworthy",cursive;font-size:18px;color:#1a2a6c}
+.hand{padding:26px 40px}.foot{text-align:center;font-weight:bold;position:fixed;bottom:10px;left:0;right:0}"""
 
 
-def page(name: str, marks: list[list[int]]) -> str:
+def page(name: str, marks: list[list[int]], hand: bool = False) -> str:
     qs = ""
     for i, ((text, options), chosen) in enumerate(zip(QUESTIONS, marks)):
         rows = "".join(f'<p class="o"><span class="box">[{"X" if j in chosen else "&nbsp;"}]</span> {LETTERS[j]}) {html.escape(opt)}</p>' for j, opt in enumerate(options))
         qs += f'<div class="q"><b>{i + 1}.</b> {html.escape(text)}{rows}</div>'
-    return f"""<html><head><meta charset="utf-8"><style>{CSS}</style></head><body>
+    return f"""<html><head><meta charset="utf-8"><style>{CSS}</style></head><body class="{"hand" if hand else ""}">
 <div class="head"><div class="date">12 / 11 / 2026</div><p>Escola: <span>Escola Municipal Machado de Assis</span></p><p>Série: <span>9º ano B</span></p>
 <p>Professor: <span>Profª Helena Cardoso</span></p><p>Aluno: <span>{html.escape(name)}</span></p></div>
 <h1>PROVA DE MATEMÁTICA</h1>{qs}<div class="foot">ATIVIDADESMATEMATICA.COM.BR</div></body></html>"""
 
 
+def degrade(png_path: Path, rng: random.Random):
+    """A page as a scanner or a phone sees it: grey paper, a little tilt, blur, noise."""
+    from PIL import Image, ImageEnhance, ImageFilter
+    img = Image.open(png_path).convert("L")
+    img = img.rotate(rng.uniform(-1.2, 1.2), resample=Image.BICUBIC, fillcolor=235, expand=False)
+    img = img.filter(ImageFilter.GaussianBlur(rng.uniform(0.5, 1.0)))
+    img = ImageEnhance.Contrast(img).enhance(rng.uniform(0.75, 0.9))
+    img = ImageEnhance.Brightness(img).enhance(rng.uniform(0.93, 1.0))
+    noise = Image.effect_noise(img.size, rng.uniform(10, 18))
+    return Image.blend(img, noise, 0.07)
+
+
 def main() -> None:
-    out, truth_path = Path(sys.argv[1]).expanduser(), Path(sys.argv[2]).expanduser()
-    n = int(sys.argv[3]) if len(sys.argv) > 3 else 20
+    args = [a for a in sys.argv[1:] if a != "--scan"]
+    scan = "--scan" in sys.argv
+    out, truth_path = Path(args[0]).expanduser(), Path(args[1]).expanduser()
+    n = int(args[2]) if len(args) > 2 else 20
     rng = random.Random(2026)
     out.mkdir(parents=True, exist_ok=True)
     truth = {}
     with sync_playwright() as p:
         browser = p.chromium.launch(channel="chrome", headless=True)
-        page_ = browser.new_page()
+        page_ = browser.new_page(viewport={"width": 794, "height": 1123}, device_scale_factor=2)
         for i, name in enumerate(NAMES[:n], 1):
             marks = []
             for q, right in enumerate(KEY):
@@ -68,9 +86,19 @@ def main() -> None:
                     marks.append([])                              # left blank
                 else:
                     marks.append(sorted(rng.sample(range(5), 2)))  # two marked: counts as wrong
-            file = f"prova_{i:02d}.pdf"
-            page_.set_content(page(name, marks))
-            page_.pdf(path=str(out / file), format="A4", margin={"top": "14mm", "bottom": "14mm", "left": "14mm", "right": "14mm"})
+            if scan:
+                as_photo = i % 4 == 0  # one in four is a phone photo (JPG), the rest are scanned PDFs
+                file = f"prova_{i:02d}.{'jpg' if as_photo else 'pdf'}"
+                page_.set_content(page(name, marks, hand=True))
+                png = out / f".tmp{i}.png"
+                page_.screenshot(path=str(png), full_page=False)
+                img = degrade(png, rng)
+                png.unlink()
+                img.save(out / file, quality=82) if as_photo else img.save(out / file, "PDF", resolution=150)
+            else:
+                file = f"prova_{i:02d}.pdf"
+                page_.set_content(page(name, marks))
+                page_.pdf(path=str(out / file), format="A4", margin={"top": "14mm", "bottom": "14mm", "left": "14mm", "right": "14mm"})
             truth[file] = {"aluno": name, "marcado": ["".join(LETTERS[j] for j in m) or "-" for m in marks]}
             truth[file]["acertos"] = sum(1 for m, k in zip(marks, KEY) if m == [LETTERS.index(k)])
         browser.close()
