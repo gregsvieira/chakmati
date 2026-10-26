@@ -1,0 +1,43 @@
+name: build-installers
+
+# Builds the unsigned installers on each system and uploads them as workflow artifacts. It never publishes a release.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'desktop/**'
+      - 'src/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/build.yml'
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-latest, platform: darwin, arch: arm64, flags: '--mac pkg --arm64', artifact: '*.pkg' }
+          - { os: macos-latest, platform: darwin, arch: x64, flags: '--mac pkg --x64', artifact: '*.pkg' }
+          - { os: windows-latest, platform: win32, arch: x64, flags: '--win nsis --x64', artifact: '*.exe' }
+          - { os: ubuntu-latest, platform: linux, arch: x64, flags: '--linux deb --x64', artifact: '*.deb' }
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: node scripts/fetch-uv.js --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
+      - run: npx electron-builder ${{ matrix.flags }} --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chakmati-${{ matrix.platform }}-${{ matrix.arch }}
+          path: desktop/dist/${{ matrix.artifact }}
+          if-no-files-found: error

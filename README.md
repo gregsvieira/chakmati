@@ -84,6 +84,24 @@ microphone, WhatsApp, animations, hiding from screen sharing). Nothing optional 
 size and asks first; "Pular" (skip) is the default button. Needs Ollama running. WhatsApp is only recorded here: connect it later in
 Settings > Integrations. The native installers (`.exe`, `.pkg`, `.deb`) will start this wizard with `--setup`.
 
+## Installers (macOS, Windows, Ubuntu)
+
+    cd desktop && npm install && npm run dist      # builds for the system you are on, into desktop/dist/
+
+The installer carries the app, the engine's code and a pinned `uv` (its SHA-256 is checked at build time); the macOS
+`.pkg` is about 135 MB, most of it Electron. On the first open the setup wizard checks the computer, then prepares the
+engine with that `uv` (Python plus dependencies, about 190 MB) and installs only what you tick; each download asks
+first. Voice and microphone add their Python packages (about 200 MB each, 230 MB together). WhatsApp is not offered in
+the installed app yet.
+
+The installers are **not signed**: Windows (SmartScreen) and macOS (Gatekeeper) warn on the first open. On macOS:
+right-click the app and choose Open. Where things live (remove these folders to uninstall completely): the app's data
+folder (`~/Library/Application Support/Chakmati`, `%APPDATA%\Chakmati`, `~/.config/Chakmati`), plus `~/.lite-agent`
+(voice and WhatsApp files) and the Ollama models.
+
+`.github/workflows/build.yml` builds all of them on GitHub (manual, or on pull requests that touch `desktop/` or the engine).
+Only the macOS arm64 build was checked by hand; the Windows and Ubuntu builds are untested until that workflow runs.
+
 ## Settings (env)
 
 | Variable | Default |
