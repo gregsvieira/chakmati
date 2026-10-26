@@ -8,6 +8,9 @@ const { MODELS, optionsFor } = require('./catalog');
 const { buildPlan } = require('./plan');
 const { runPlan } = require('./run-plan');
 const { makeRunners } = require('./runners');
+const { makeSync } = require('./engine-sync');
+const { writeSetupDone } = require('./first-run');
+const { extrasFromSettings } = require('../lib/engine-launch');
 const { formatSize, levelText } = require('./format');
 const settingsLib = require('../lib/settings');
 
@@ -15,7 +18,7 @@ const OLLAMA_DOWNLOAD = 'https://ollama.com/download';
 
 const ids = (value) => (Array.isArray(value) ? value.filter((v) => typeof v === 'string') : []);
 
-function openSetup({ ipcMain, webPreferences, settingsFile, onClosed, onFinish }) {
+function openSetup({ ipcMain, webPreferences, settingsFile, engine = null, onClosed, onFinish }) {
   const win = new BrowserWindow({ width: 760, height: 720, minWidth: 560, title: 'Instalar o Chakmati', webPreferences: webPreferences() });
   win.removeMenu?.();
   win.loadFile(path.join(__dirname, '..', 'renderer', 'installer.html'));
@@ -24,6 +27,7 @@ function openSetup({ ipcMain, webPreferences, settingsFile, onClosed, onFinish }
 
   const runners = makeRunners({
     saveSettings: async (patch) => settingsLib.save(settingsFile, { ...settingsLib.load(settingsFile), ...patch }),
+    sync: engine ? makeSync({ resourcesPath: engine.resourcesPath, dataDir: engine.dataDir }) : undefined,
   });
 
   async function scan() {
@@ -39,7 +43,7 @@ function openSetup({ ipcMain, webPreferences, settingsFile, onClosed, onFinish }
         disk: hw.freeDiskGb === null ? 'não consegui medir' : `${hw.freeDiskGb} GB livres`,
       },
       model: model && { id: model.id, label: model.label, sizeText: formatSize(model.diskMb) },
-      options: optionsFor(hw.platform).map((o) => ({
+      options: optionsFor(hw.platform, { packaged: !!engine }).map((o) => ({
         id: o.id, label: o.label, description: o.description,
         costText: o.diskMb || o.ramMb ? `cerca de ${formatSize(o.diskMb)} em disco e ${formatSize(o.ramMb)} de memória` : 'não ocupa espaço nem memória extra',
       })),
@@ -48,7 +52,7 @@ function openSetup({ ipcMain, webPreferences, settingsFile, onClosed, onFinish }
 
   function planFor(selected) {
     const hw = readHardware();
-    try { return buildPlan({ hw, verdict: judge(hw), selected: ids(selected) }); } catch (e) {
+    try { return buildPlan({ hw, verdict: judge(hw), selected: ids(selected), engine: engine ? { packaged: true } : null }); } catch (e) {
       return { ok: false, blocked: [e.message], steps: [], baseline: {}, totals: null, warnings: [], after: [] };
     }
   }
@@ -72,6 +76,7 @@ function openSetup({ ipcMain, webPreferences, settingsFile, onClosed, onFinish }
   ipcMain.handle('installer:run', async (_e, selected) => {
     const plan = planFor(selected);
     const result = await runPlan(plan, { approve, runners, onProgress: (p) => send('installer:progress', p) });
+    if (engine && result.status === 'done') writeSetupDone({ dataDir: engine.dataDir, extras: extrasFromSettings(result.settings) });
     return { ...result, after: plan.after };
   });
   ipcMain.handle('installer:ollama-page', async () => {

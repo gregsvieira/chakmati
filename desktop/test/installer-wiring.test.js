@@ -42,3 +42,20 @@ test('the app starts the wizard only on --setup, and downloads the chosen voice 
   assert.match(main, /process\.argv\.includes\('--setup'\)/);
   assert.match(main, /settings\.enhancedVoice && state\.voice && !state\.voice\.installed/);
 });
+
+test('the installed app opens the wizard on its own, and starts the engine from the data folder', () => {
+  const main = read('main.js');
+  assert.match(main, /needsSetup\(\{ packaged: app\.isPackaged/);
+  assert.match(main, /engineLaunch\(\{ packaged: app\.isPackaged/);
+  assert.match(main, /windowsHide: true/);
+  assert.equal(/spawn\('uv'/.test(main), false, 'the engine is no longer started with a hard-coded uv');
+});
+
+test('the wizard writes the marker only after a finished install, and runs uv without a shell', () => {
+  const index = read('installer', 'index.js');
+  assert.match(index, /writeSetupDone\(/);
+  assert.match(index, /result\.status === 'done'/);
+  assert.match(index, /optionsFor\(hw\.platform, \{ packaged: !!engine \}\)/);
+  const sync = read('installer', 'engine-sync.js');
+  assert.equal(/shell:\s*true|exec\(|execSync|child_process'\)\.exec\b/.test(sync), false);
+});
