@@ -300,10 +300,21 @@ async def test_without_a_stronger_model_the_plan_says_so(tmp_path):
     assert "não há modelo de raciocínio instalado" in steps[-2] and "não tem provas" in steps[0]
 
 
+class ScriptedLLM2:
+    def __init__(self, *replies):
+        self.replies, self.prompts = list(replies), []
+
+    async def chat(self, messages):
+        self.prompts.append(messages)
+        return self.replies.pop(0) if len(self.replies) > 1 else self.replies[0]
+
+
 async def test_a_simple_request_has_no_plan(tmp_path):
     service = ComputerService(str(tmp_path / "ws"), ActionStore(":memory:"))
-    assistant = ComputerAssistant(None, service)
-    assert await assistant.plan("abre o Spotify") is None
+    llm = ScriptedLLM2('{"action":"open_app","app":"Safari"}')
+    service._apps = lambda: {"safari": "Safari"}
+    assistant = ComputerAssistant(llm, service)
+    assert await assistant.plan("abre o Safari") is None  # one simple step: no list
     assert await assistant.plan("corrija as provas") is None  # it will ask for the folder and the key instead
 
 

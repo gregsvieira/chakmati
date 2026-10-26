@@ -7,12 +7,15 @@ text reaches the model only for an edit the person asked for (fenced as untruste
 import json
 import re
 import subprocess
+import sys
+from pathlib import Path
 from collections.abc import Awaitable, Callable
 
 from ..guard import UNTRUSTED_RULE, fence, strip_markers
 from ..llm import ChatClient
 from . import grading
-from .safety import ComputerError, plain as plain_name
+from .policy import PolicyError, resolve
+from .safety import ComputerError, check_url, find_app, plain as plain_name
 from .service import ComputerService
 
 SYSTEM = """You turn a request to do something on the user's computer into JSON. Reply with ONLY one JSON object, no prose.
@@ -150,6 +153,11 @@ _GABARITO = re.compile(r"gabarito\s*(?:[ée]|:)?\s*:?\s*((?:\d{1,3}\s*[-:.)]?\s*
 _POINTS = re.compile(r"(?:vale|valendo|vale\s+cada)\s+(\d+(?:[.,]\d+)?)\s*pontos?|(\d+(?:[.,]\d+)?)\s*pontos?\s+(?:por|cada)", re.IGNORECASE)
 
 
+_TRASH = re.compile(r"\b(?:mand\w+|mov\w+|jog\w+|colo\w+|envi\w+|leve\w*)\s+(?:o\s+|a\s+|os\s+|as\s+)?(?:arquivo\s+|pasta\s+)?(.+?)\s+(?:para|pra|na|à|a)\s+(?:a\s+)?lixeira\b", re.IGNORECASE)
+_FILE_VERB = re.compile(r"\b(?:edit\w+|apag\w+|exclu\w+|delet\w+|remov\w+|renome\w+|mov\w+|copi\w+|cop[ií]a|duplic\w+|abr\w+)\b", re.IGNORECASE)
+_MASS = re.compile(r"\b(?:apag\w+|delet\w+|exclu\w+|remov\w+|limp\w+|esvazi\w+)\b.{0,25}\b(?:tudo|todos|todas|inteir\w+)\b", re.IGNORECASE)
+_COPY_OF = re.compile(r"\b(?:fa[çc]a|crie|fazer|criar|tire)\s+(?:uma\s+)?c[óo]pia\s+(?:de\s+|do\s+|da\s+|dos\s+|das\s+)(?:o\s+|a\s+)?(?:arquivo\s+|pasta\s+)?(.+)$", re.IGNORECASE)
+_DELETE_VERB = re.compile(r"\b(?:apag\w+|exclu\w+|delet\w+|remov\w+)\b", re.IGNORECASE)
 _EXPLAIN = re.compile(r"\b(?:expli[cq]\w*|justific\w+|coment\w+|por\s*qu[êe]\b.{0,30}\berr\w+)", re.IGNORECASE)
 MAX_EXPLAIN_CALLS = 40
 SOLVE_SYSTEM = ("You are a maths teacher. Solve the multiple-choice question step by step, in Brazilian Portuguese, in at most 6 short lines, showing the calculations. "
@@ -221,6 +229,7 @@ class ComputerAssistant:
         self._solver = solver  # works out the questions of an exam: a stronger model when one is given...
         self._models = models  # ...or the one the catalog finds installed (liteagent.models.ModelCatalog)
         self._reasoning_for = reasoning_for  # (model name) -> a chat client for it
+        self._intents: dict[str, dict] = {}  # what the model made of a request, kept from the plan to the answer so the model is asked once
         self._service = service
         self._gather = gather  # (topic) -> (text found on the internet, source urls); None = no web access
 
@@ -332,7 +341,23 @@ class ComputerAssistant:
         if _GRADE.search(text):
             return await self._plan_grade(text)
         kind = document_kind(text)
-        return self._plan_document(kind, text) if kind else None
+        if kind:
+            return self._plan_document(kind, text)
+        return await self._plan_loose(text)
+
+    async def _plan_loose(self, text: str) -> list[str] | None:
+        """A request to do something on the computer, outside the big flows: the steps the model understood, each one already checked
+        against the disk and the policy, so a problem shows up in the plan (and not only after the person approved). The model is asked
+        once: what it made of the request is kept for the answer."""
+        intent = await self._parse(text)
+        if len(self._intents) >= 8:
+            self._intents.pop(next(iter(self._intents)))
+        self._intents[text] = intent
+        if intent["action"] == "other":
+            return None
+        lines = self._prepare(intent)[1]
+        shown = len(lines) >= 2 or any("⚠" in line for line in lines) or intent["action"] in {"edit", "trash", "revert"}
+        return lines if shown else None
 
     async def _plan_grade(self, text: str) -> list[str] | None:
         folder, gabarito = _FOLDER.search(text), _GABARITO.search(text)
@@ -421,17 +446,126 @@ class ComputerAssistant:
                 return await self._document(kind, text)
             except ComputerError as exc:
                 return f"Não consegui: {exc}."
-        reply = await self._llm.chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": text}])
-        intent = parse_intent(reply)
-        if intent["action"] == "other" or (intent["action"] == "steps" and not intent.get("steps")):  # a small model sometimes slips: ask once more
-            reply = await self._llm.chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": text + "\n\nReply with the JSON object only."}])
-            intent = parse_intent(reply)
+        intent = await self._intent(text)
+        if intent.get("ask"):  # something the request does not say (which file? which app? which of these?): ask, do not guess
+            return intent["ask"]
         try:
             return await self._act(intent, text)
         except ComputerError as exc:
             return f"Não consegui: {exc}."
         except (OSError, subprocess.SubprocessError, UnicodeDecodeError) as exc:
             return f"Não consegui: {exc}."
+
+    def _by_rule(self, text: str) -> dict | None:
+        """Requests whose words settle what is meant: decided here, before (and without) the model, which gets these wrong now and then.
+        "...para a lixeira" is the trash, "uma cópia do X" is a copy, and "apague tudo" is never done in one go."""
+        if _MASS.search(text):
+            return {"action": "other", "ask": "Não apago nem mando tudo para a lixeira de uma vez. Diga qual arquivo ou pasta (um de cada vez)."}
+        if m := _TRASH.search(text):
+            return {"action": "trash", "path": m.group(1).strip(" \"'“”")}
+        if m := _COPY_OF.search(text):
+            word = m.group(1).strip(" \"'“”.")
+            found = self._service.find_candidates(word)
+            if len(found) == 1:
+                src = found[0]
+                return {"action": "steps", "steps": [{"type": "command", "command": f"cp {src.relative_to(self._service.workspace).as_posix()} {src.with_name(src.stem + '_copia' + src.suffix).relative_to(self._service.workspace).as_posix()}"}]}
+            if len(found) > 1:
+                return {"action": "other", "ask": "Qual destes? " + ", ".join(p.relative_to(self._service.workspace).as_posix() for p in found)}
+        return None
+
+    async def _parse(self, text: str) -> dict:
+        ruled = self._by_rule(text)
+        if ruled is not None:
+            return self._prepare(ruled)[0]
+        reply = await self._llm.chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": text}])
+        intent = parse_intent(reply)
+        if intent["action"] == "other" or (intent["action"] == "steps" and not intent.get("steps")):  # a small model sometimes slips: ask once more
+            reply = await self._llm.chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": text + "\n\nReply with the JSON object only."}])
+            intent = parse_intent(reply)
+        if intent["action"] == "other":
+            intent = self._fallback(text)
+        return self._prepare(intent)[0]
+
+    @staticmethod
+    def _fallback(text: str) -> dict:
+        """The model could not read the request. Two things are still certain from the words alone: "... para a lixeira" names what goes to the
+        trash, and a request with a file verb and no file name needs a question, not the general help."""
+        named = re.search(r"\b[\w-]+\.[A-Za-z0-9]{1,5}\b|/", text)
+        if _DELETE_VERB.search(text) and named:  # "apague o x.txt": it goes to the trash (nothing is deleted); the plan says if it is not there
+            return {"action": "trash", "path": named.group(0)}
+        if _FILE_VERB.search(text) and not named:
+            return {"action": "other", "ask": "Qual arquivo ou pasta, e o que você quer fazer com ele? Diga o nome (dentro da pasta de trabalho)."}
+        return {"action": "other"}
+
+    async def _intent(self, text: str) -> dict:
+        cached = self._intents.pop(text, None)
+        return cached if cached is not None else await self._parse(text)
+
+    # ------------------------------------------------------------------------------------------------ checking a request before it is shown
+    def _prepare(self, intent: dict) -> tuple[dict, list[str]]:
+        """(the intent with names made exact or a question to ask, the lines of the plan). Pure checks against the disk and the policy:
+        nothing is proposed, nothing is run. A file named without its extension is found; a name that fits several asks which one."""
+        s = self._service
+        kind = intent["action"]
+        lines: list[str] = []
+        ask = None
+        if kind == "steps":
+            for i, (line, problem, _) in enumerate(s.preview_steps(intent.get("steps") or []), 1):
+                lines.append(f"{i}. {line}" + (f"  ⚠ {problem}" if problem else ""))
+        elif kind == "open_app":
+            if not intent.get("app"):
+                ask = "Qual aplicativo você quer abrir?"
+            elif sys.platform != "darwin":
+                lines.append("Abrir o aplicativo  ⚠ só funciona no macOS por enquanto")
+            else:
+                app, candidates = find_app(intent["app"], s._apps())
+                if app:
+                    lines.append(f"Abrir o aplicativo {app}")
+                elif candidates:
+                    ask = "Qual destes aplicativos? " + ", ".join(candidates)
+                else:
+                    lines.append(f"Abrir o aplicativo {intent['app']}  ⚠ não encontrei esse aplicativo instalado")
+        elif kind == "open_url":
+            if not intent.get("url"):
+                ask = "Qual site você quer abrir?"
+            else:
+                try:
+                    lines.append(f"Abrir o site {check_url(intent['url'])}")
+                except ComputerError as exc:
+                    lines.append(f"Abrir o site {intent['url'][:60]}  ⚠ {exc}")
+        elif kind in {"open_path", "edit", "revert", "trash"}:
+            word = intent.get("path", "")
+            if not word:
+                ask = "Qual arquivo ou pasta? Diga o nome (dentro de " + str(s.workspace) + ")."
+            else:
+                exact = None
+                try:
+                    exact = resolve(word, s.roots, must_exist=True, what="caminho", editable=True)
+                except PolicyError:
+                    pass
+                if exact is None:
+                    found = s.find_candidates(word)
+                    if len(found) == 1:
+                        intent = {**intent, "path": str(found[0])}
+                        word = found[0].name
+                    elif len(found) > 1:
+                        ask = "Qual destes? " + ", ".join(p.relative_to(s.workspace).as_posix() for p in found)
+                if ask is None:
+                    name = Path(intent["path"]).name if exact is None else exact.name
+                    problem = None
+                    try:
+                        if kind == "edit":
+                            s._editable(intent["path"])
+                        elif kind in {"open_path", "trash"}:
+                            resolve(intent["path"], s.roots, write=(kind == "trash"), editable=(kind == "trash"), must_exist=True, what="caminho")
+                    except (PolicyError, ComputerError) as exc:
+                        problem = str(exc)
+                    text = {"open_path": f"Abrir {name} com o programa padrão", "edit": f"Editar {name}: o original fica como backup_{name} e dá para reverter",
+                            "trash": f"Mover {name} para a lixeira (dá para recuperar)", "revert": f"Reverter a última edição de {name}"}[kind]
+                    lines.append(text + (f"  ⚠ {problem}" if problem else ""))
+        if ask:
+            intent = {"action": "other", "ask": ask}
+        return intent, lines
 
     async def _act(self, intent: dict, request: str) -> str:
         s = self._service

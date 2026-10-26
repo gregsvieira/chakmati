@@ -128,8 +128,13 @@ Before doing a multi-step job (grading exams, making a document, using the brows
     5. Resolver cada questão com modelo de raciocínio deepseek-r1:14b (instalado) e explicar o erro de cada aluno, ...
     6. Montar a planilha com fórmulas (abre no Numbers) e esperar a sua aprovação antes de salvar.
 
-It is the first text of the reply (and stays in it); simple requests ("abre o Spotify") get none. The plan is made by code from the request and from a look at the folder, so it
+It is the first text of the reply (and stays in it); a single simple step ("abre o Spotify") gets none. The plan is made by code from the request and from a look at the folder, so it
 also decides the tool (text or OCR) and the model; it says when something is missing (OCR not installed, no reasoning model).
+
+**Loose requests** (files, folders, apps) get the same treatment from what the model already returned (no extra model call): the steps are shown in plain lines and **checked first** against the disk and the
+policy, in order ("create a.txt, then copy it" is fine; "copy x.txt into a folder nobody creates" shows `⚠ cp (origem): não existe` in the plan). A file named without its extension ("o rascunho") is found; if the name
+fits two files, or the request does not say which file, which app or which site, it asks instead of guessing; "apague tudo" is refused; "... para a lixeira" and "faça uma cópia do X" are read by rule, not by the model.
+`scripts/bench_loose_requests.py` runs 24 such requests against the real model.
 `scripts/simulate_exams.py OUT TRUTH.json 20` makes 20 filled-in copies to try it.
 
 ## Install wizard (desktop)

@@ -22,9 +22,9 @@ from collections.abc import Callable
 from pathlib import Path
 
 from ..approvals import Action, ActionStore, ApprovalService
-from .policy import DOWNLOAD, EXECUTABLE_EXT, RUN, SAFE, Checked, PolicyError, Roots, check, clean_env, resolve
+from .policy import is_dir_in, DOWNLOAD, EXECUTABLE_EXT, RUN, SAFE, Checked, PolicyError, Roots, check, clean_env, resolve
 from . import documents, grading
-from .safety import ComputerError, check_content, check_url, find_app, installed_apps, resolve_new_file
+from .safety import ComputerError, check_content, check_url, find_app, installed_apps, plain, resolve_new_file
 from .secrets import has_secret, looks_secret, redact
 
 MAX_OUTPUT = 4000
@@ -98,9 +98,9 @@ class ComputerService(ApprovalService):
         return body
 
     # ------------------------------------------------------------------------------------------ commands
-    def validate(self, command: str) -> Checked:
+    def validate(self, command: str, roots: Roots | None = None) -> Checked:
         try:
-            return check(command, self.roots)
+            return check(command, roots or self.roots)
         except PolicyError as exc:
             raise ComputerError(str(exc)) from None
 
@@ -319,26 +319,65 @@ class ComputerService(ApprovalService):
         return f"Abri {safe}."
 
     # ------------------------------------------------------------------------------------------ plans
+    def preview_steps(self, steps: list[dict]) -> list[tuple[str, str | None, dict | None]]:
+        """Checks every step of a plan WITHOUT proposing anything: (a line for the person, the problem or None, the clean step or None).
+        The steps are checked in order against what the earlier ones will have made, so "create a.txt, then copy a.txt" is fine and
+        "copy x.txt into a folder that nobody creates" is a problem found now, not after the person has approved."""
+        roots = self.roots
+        out: list[tuple[str, str | None, dict | None]] = []
+        for step in steps:
+            try:
+                if step.get("type") == "create_file":
+                    target = resolve_new_file(self.workspace, step.get("path", ""))
+                    check_content(step.get("content", ""))
+                    if has_secret(step.get("content", "")) or target.exists() or target in roots.planned:
+                        raise ComputerError(f"não posso criar {target.name} (já existe ou o texto tem dados sensíveis)")
+                    out.append((f"Criar o arquivo {target.name}  [seguro]", None, {"type": "create_file", "path": str(target), "content": step["content"]}))
+                    roots = roots.after([target])
+                else:
+                    checked = self.validate(step.get("command", ""), roots)
+                    tag = {SAFE: "seguro", RUN: "roda programa: pede aprovação", DOWNLOAD: "baixa da internet: pede aprovação"}[checked.cls]
+                    out.append((f"{checked.shown.replace(str(self.workspace.resolve()) + os.sep, '')}  [{tag}]", None, {"type": "command", "command": step["command"]}))
+                    dirs = checked.writes if checked.argv[0] == "mkdir" else [w for w in checked.writes if any(is_dir_in(r, roots) for r in checked.reads)]
+                    roots = roots.after(checked.writes, dirs)
+            except ComputerError as exc:
+                shown = step.get("command") or step.get("path") or "?"
+                out.append((str(shown)[:80], str(exc), None))
+                break  # what comes after depends on this step: it cannot be judged
+        return out
+
     def propose_plan(self, goal: str, steps: list[dict]) -> Action:
         """Several steps: the person approves the numbered plan first; each step then still asks for its own approval."""
         if not 2 <= len(steps) <= 12:
             raise ComputerError("um plano tem de 2 a 12 passos")
         lines, clean = [], []
-        for i, step in enumerate(steps, 1):  # every step is validated now, so nothing invalid is ever shown as part of a plan
-            if step.get("type") == "create_file":
-                target = resolve_new_file(self.workspace, step.get("path", ""))
-                check_content(step.get("content", ""))
-                if has_secret(step.get("content", "")) or target.exists():
-                    raise ComputerError(f"passo {i}: não posso criar {target.name} (já existe ou o texto tem dados sensíveis)")
-                lines.append(f"{i}. Criar o arquivo {target.name}  [seguro]")
-                clean.append({"type": "create_file", "path": str(target), "content": step["content"]})
-            else:
-                checked = self.validate(step.get("command", ""))
-                tag = {SAFE: "seguro", RUN: "roda programa: pede aprovação", DOWNLOAD: "baixa da internet: pede aprovação"}[checked.cls]
-                lines.append(f"{i}. {checked.shown}  [{tag}]")
-                clean.append({"type": "command", "command": step["command"]})
+        for i, (line, problem, step) in enumerate(self.preview_steps(steps), 1):  # every step is validated now, so nothing invalid is ever shown as part of a plan
+            if problem:
+                raise ComputerError(f"passo {i}: {problem}")
+            lines.append(f"{i}. {line}")
+            clean.append(step)
         text = f"Plano ({len(clean)} passos): {goal[:120]}\n" + "\n".join(lines) + "\nAprove o plano, ou diga o que quer mudar. Cada passo ainda pede a sua aprovação."
         return self._propose("computer.plan", text, {"goal": goal[:120], "steps": clean, "risk": "plan", "auto_ok": False})
+
+    def find_candidates(self, word: str, limit: int = 6) -> list[Path]:
+        """Files and folders of the workspace whose name is `word` (with or without the extension, ignoring case and accents): for "o rascunho"
+        when the file is rascunho.txt. Hidden things and backups are left out."""
+        wanted = plain(Path(word).stem if Path(word).suffix else word)
+        if not wanted:
+            return []
+        found: list[Path] = []
+        root = self.workspace
+        if not root.is_dir():
+            return []
+        for path in sorted(root.rglob("*")):
+            rel = path.relative_to(root)
+            if len(rel.parts) > 4 or any(part.startswith(".") for part in rel.parts) or path.name.startswith("backup_"):
+                continue
+            if plain(path.stem) == wanted or plain(path.name) == plain(word):
+                found.append(path)
+            if len(found) >= limit:
+                break
+        return found
 
     def _plan_row(self, plan_id: str) -> tuple[list[dict], int, str] | None:
         with self._lock:
