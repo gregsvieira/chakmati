@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 from ..extras import missing_message
 
 VIEWPORT = {"width": 1280, "height": 800}
-MAX_TEXT = 1800
+MAX_TEXT = 4500
 MAX_ELEMENTS = 40
 
 # Marks what can be clicked or typed into with a number and returns a compact description of the page.
@@ -23,14 +23,28 @@ _SNAPSHOT_JS = """
   const sel = 'a[href],button,input:not([type=hidden]),textarea,select,[role=button],[role=link],[role=textbox],[contenteditable=true]';
   for (const el of document.querySelectorAll(sel)) {
     const r = el.getBoundingClientRect();
-    if (r.width < 4 || r.height < 4 || r.bottom < 0 || r.top > innerHeight * 1.5) continue;
+    if (r.width < 8 || r.height < 8 || r.bottom < 0 || r.top > innerHeight * 1.5 || r.right < 0 || r.left > innerWidth) continue;
+    // something else on top of it (a closed menu, a hidden panel, an overlay): a click would never land, so do not offer it
+    if (r.top >= 0 && r.top < innerHeight) {
+      const hit = document.elementFromPoint(Math.min(r.left + r.width / 2, innerWidth - 1), Math.min(r.top + r.height / 2, innerHeight - 1));
+      if (!hit || !(el.contains(hit) || hit.contains(el))) continue;
+    }
     const st = getComputedStyle(el);
     if (st.visibility === 'hidden' || st.display === 'none') continue;
+    // banners, pop-ups and floating panels (not the page itself): the model is told to leave them alone unless it has to close one
+    let overlay = false;
+    const structural = el.matches('input,textarea,select') || !!el.closest('form,header,nav,[role=search],[role=banner]');  // a search box or menu in a sticky bar is the page itself
+    for (let a = el; a && a !== document.body; a = a.parentElement) {
+      const cs = getComputedStyle(a);
+      if (!structural && (cs.position === 'fixed' || cs.position === 'sticky') && a.getBoundingClientRect().height < innerHeight * 0.6) { overlay = true; break; }
+      if (!structural && a.matches('[role=dialog],[aria-modal=true],[class*=banner i],[class*=promo i],[class*=popup i],[class*=cookie i],[id*=banner i],[id*=promo i],[id*=cookie i]')) { overlay = true; break; }
+    }
     n += 1; el.setAttribute('data-ck', String(n));
     const label = (el.getAttribute('aria-label') || el.innerText || el.value || el.placeholder || el.getAttribute('title') || el.getAttribute('name') || '').trim().replace(/\\s+/g, ' ').slice(0, 80);
-    out.push({ id: n, tag: el.tagName.toLowerCase(), type: el.getAttribute('type') || '', label });
+    out.push({ id: n, tag: el.tagName.toLowerCase(), type: el.getAttribute('type') || '', label, overlay });
     if (n >= max) break;
   }
+  out.sort((x, y) => Number(x.overlay) - Number(y.overlay) || x.id - y.id);  // the page's own things first, banners last
   return { elements: out, text: (document.body ? document.body.innerText : '').replace(/\\s+/g, ' ').trim() };
 }
 """
@@ -101,15 +115,21 @@ class PlaywrightSession:
         await self._page.go_back(wait_until="domcontentloaded", timeout=15_000)
         await self._settle()
 
-    async def _settle(self) -> None:
+    async def _settle(self, navigating: bool = False) -> None:
+        if navigating:  # a click or Enter starts a navigation a moment later: without this the address and picture are the old page's
+            await self._page.wait_for_timeout(700)
+            try:
+                await self._page.wait_for_load_state("domcontentloaded", timeout=8_000)
+            except Exception:
+                pass
         try:
             await self._page.wait_for_load_state("networkidle", timeout=4_000)
         except Exception:
             pass  # pages that never go quiet are fine: what is on screen now is what we use
 
     async def click(self, ident: int) -> None:
-        await self._page.locator(f'[data-ck="{int(ident)}"]').first.click(timeout=8_000)
-        await self._settle()
+        await self._page.locator(f'[data-ck="{int(ident)}"]').first.click(timeout=4_000)
+        await self._settle(navigating=True)
 
     async def type(self, ident: int, text: str, submit: bool) -> None:
         box = self._page.locator(f'[data-ck="{int(ident)}"]').first
@@ -118,7 +138,7 @@ class PlaywrightSession:
         await box.fill(text, timeout=8_000)
         if submit:
             await box.press("Enter")
-            await self._settle()
+            await self._settle(navigating=True)
 
     async def scroll(self, down: bool) -> None:
         await self._page.mouse.wheel(0, 700 if down else -700)

@@ -174,3 +174,22 @@ async def test_with_the_browser_off_the_engine_says_so():
     job_id = store.create("browser", "use o navegador")
     answer = await engine.run_job(store.get(job_id))
     assert "LITEAGENT_BROWSER_BACKEND=chrome" in answer
+
+
+async def test_a_human_check_is_reported_not_solved(tmp_path):
+    class Walled(FakeSession):
+        async def snapshot(self): return Snapshot(self.url, "x", "Unfortunately, bots use DuckDuckGo too. Select all squares containing a duck", [])
+    llm = ScriptedLLM()
+    frames = FrameStore(tmp_path)
+    out = await run(BrowserAgent(llm, frames, Walled))
+    assert "verificação" in out[0] and llm.prompts == []  # the model is never asked what to click on a CAPTCHA
+    assert frames.list(JOB)[-1]["note"] == "O site pediu verificação humana"
+
+
+async def test_an_address_in_the_task_is_where_it_starts(tmp_path):
+    session = FakeSession()
+    await run(BrowserAgent(ScriptedLLM('{"action":"done","answer":"x"}'), FrameStore(tmp_path), lambda: session), "abra https://pt.wikipedia.org/wiki/Canberra, e diga o ano.")
+    assert session.calls[1] == ("goto", "https://pt.wikipedia.org/wiki/Canberra")
+    session = FakeSession()
+    await run(BrowserAgent(ScriptedLLM('{"action":"done","answer":"x"}'), FrameStore(tmp_path), lambda: session), "abra http://localhost:8765/actions")
+    assert session.calls[1] == ("goto", "https://duckduckgo.com/")  # a local address is not a start: the search page is
