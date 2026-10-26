@@ -198,3 +198,16 @@ def test_fix_names_only_touches_what_a_command_reads(tmp_path):
     assert service.fix_names("grep leite lista")[0] == "grep leite lista.txt"          # the first word is the pattern, not a file
     assert service.fix_names("head -n 5 lista")[0] == "head -n 5 lista.txt"
     assert service.fix_names("cat naoexiste")[0] == "cat naoexiste"                    # nothing found: the usual error will say so
+
+
+@pytest.mark.parametrize("text", ["edite o arquivo", "abra esse arquivo", "apague a pasta", "copie um arquivo"])
+async def test_a_file_verb_with_no_name_asks_without_calling_the_model(tmp_path, text):
+    assistant, service, llm, ws = make(tmp_path, '{"action":"open_path","path":"qualquer"}')
+    assert (await assistant.handle(text)).startswith("Qual arquivo ou pasta") and llm.prompts == []
+
+
+async def test_a_name_the_model_forgot_is_taken_from_the_request(tmp_path):
+    assistant, service, llm, ws = make(tmp_path, '{"action":"trash"}')
+    (ws / "velho.txt").write_text("x")
+    answer = await assistant.handle("quero me livrar do velho.txt")
+    assert "velho.txt" in answer and "[[action:" in answer

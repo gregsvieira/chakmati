@@ -54,3 +54,9 @@ test('a sources block is dropped even when it comes first or after a single line
   assert.equal(speakable('Fontes:\n- https://exemplo.com'), '');
   assert.equal(speakable('Resposta curta.\nFontes:\n- https://a.com\n- https://b.com'), 'Resposta curta.');
 });
+
+test('the plan shown before a job is not read aloud, only the answer', () => {
+  const { speakable } = require('../src/lib/speech-text');
+  const text = 'Plano:\n1. Procurar a pasta «provas» em ~/Documents/Chakmati: achei 20 arquivos.\n2. Verificar como ler cada prova.\n3. Montar a planilha.\n\nLi 20 provas. Acertaram tudo: Ana.';
+  assert.equal(speakable(text), 'Li 20 provas. Acertaram tudo: Ana.');
+});

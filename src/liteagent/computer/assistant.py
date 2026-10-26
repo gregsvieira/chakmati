@@ -155,6 +155,7 @@ _POINTS = re.compile(r"(?:vale|valendo|vale\s+cada)\s+(\d+(?:[.,]\d+)?)\s*pontos
 
 _TRASH = re.compile(r"\b(?:mand\w+|mov\w+|jog\w+|colo\w+|envi\w+|leve\w*)\s+(?:o\s+|a\s+|os\s+|as\s+)?(?:arquivo\s+|pasta\s+)?(.+?)\s+(?:para|pra|na|à|a)\s+(?:a\s+)?lixeira\b", re.IGNORECASE)
 _FILE_VERB = re.compile(r"\b(?:edit\w+|apag\w+|exclu\w+|delet\w+|remov\w+|renome\w+|mov\w+|copi\w+|cop[ií]a|duplic\w+|abr\w+)\b", re.IGNORECASE)
+_NO_FILE = re.compile(r"^\W*(?:edit\w+|abr\w+|apag\w+|renome\w+|copi\w+|mov\w+|exclu\w+)\s+(?:o|a|um|uma|esse|essa|este|esta|aquele|aquela)?\s*(?:arquivo|pasta)\W*$", re.IGNORECASE)
 _MASS = re.compile(r"\b(?:apag\w+|delet\w+|exclu\w+|remov\w+|limp\w+|esvazi\w+)\b.{0,25}\b(?:tudo|todos|todas|inteir\w+)\b", re.IGNORECASE)
 _COPY_OF = re.compile(r"\b(?:fa[çc]a|crie|fazer|criar|tire)\s+(?:uma\s+)?c[óo]pia\s+(?:de\s+|do\s+|da\s+|dos\s+|das\s+)(?:o\s+|a\s+)?(?:arquivo\s+|pasta\s+)?(.+)$", re.IGNORECASE)
 _DELETE_VERB = re.compile(r"\b(?:apag\w+|exclu\w+|delet\w+|remov\w+)\b", re.IGNORECASE)
@@ -485,6 +486,8 @@ class ComputerAssistant:
     def _by_rule(self, text: str) -> dict | None:
         """Requests whose words settle what is meant: decided here, before (and without) the model, which gets these wrong now and then.
         "...para a lixeira" is the trash, "uma cópia do X" is a copy, and "apague tudo" is never done in one go."""
+        if _NO_FILE.search(text):
+            return {"action": "other", "ask": "Qual arquivo ou pasta, e o que você quer fazer com ele? Diga o nome (dentro da pasta de trabalho)."}
         if _MASS.search(text):
             return {"action": "other", "ask": "Não apago nem mando tudo para a lixeira de uma vez. Diga qual arquivo ou pasta (um de cada vez)."}
         if m := _TRASH.search(text):
@@ -510,6 +513,9 @@ class ComputerAssistant:
         if intent["action"] == "other" or (intent["action"] == "steps" and not intent.get("steps")):  # a small model sometimes slips: ask once more
             reply = await self._llm.chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": text + "\n\nReply with the JSON object only."}])
             intent = parse_intent(reply)
+        if intent["action"] in {"trash", "edit", "revert", "open_path"} and not intent.get("path"):  # the model forgot the name that the request has
+            if named := re.search(r"\b[\w-]+\.[A-Za-z0-9]{1,5}\b", text):
+                intent = {**intent, "path": named.group(0)}
         if intent["action"] == "other":
             intent = self._fallback(text)
         return self._prepare(intent)[0]

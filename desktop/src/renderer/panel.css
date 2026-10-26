@@ -189,3 +189,62 @@ button.small { height: 30px; padding: 0 14px; font-size: 13px; }
 .turn.assistant figure.shot img { display: block; width: 100%; height: auto; }
 .turn.assistant figure.shot figcaption { padding: 5px 9px; font-size: 12px; color: var(--muted); white-space: normal; }
 .turn.assistant figure.shot figcaption span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.7; }
+
+/* ---------------------------------------------------------------------------------------------------------------- topics that fold
+   Each topic of the home page folds by its title. In "focus" the conversation takes the card and every other topic is folded. */
+#topics { display: block; }
+#content section > h2 { display: flex; align-items: center; gap: 6px; }
+#topics section > h2[role="button"] { cursor: pointer; user-select: none; }
+#topics section > h2[role="button"]::before { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); margin: 0 4px 3px 2px; transition: transform 0.15s; }
+#topics section[data-collapsed] > h2[role="button"]::before { transform: rotate(-45deg); }
+#topics section[data-collapsed] > :not(h2) { display: none; }
+#topics section > h2[role="button"]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+.link-btn { margin-left: auto; padding: 2px 10px; border: 1px solid var(--rule); border-radius: 999px; background: none; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.link-btn:hover { background: var(--surface-2); color: var(--text); }
+.link-btn[aria-pressed="true"] { background: var(--surface-2); color: var(--text); }
+#thread-empty { display: none; }
+#thread:empty ~ #thread-empty { display: block; }
+
+#panel[data-focus="thread"][data-layout="compact"] #topics section > :not(h2) { display: none; }
+#panel[data-focus="thread"][data-layout="compact"] #topics section > h2[role="button"]::before { transform: rotate(-45deg); }
+#panel[data-focus="thread"][data-layout="compact"] #content { display: flex; flex-direction: column; }
+#panel[data-focus="thread"][data-layout="compact"] #thread-section { flex: 1; display: flex !important; flex-direction: column; min-height: 0; }
+#panel[data-focus="thread"][data-layout="compact"] #thread { max-height: none; flex: 1; }
+
+/* ---------------------------------------------------------------------------------------------------------------- the right-hand screen */
+#screen { display: none; }
+#screen h2 { margin: 0 0 8px; }
+.live { padding: 1px 8px; border-radius: 999px; background: var(--wine); color: #fff; font-family: var(--font-rounded); font-size: 11px; font-weight: 700; letter-spacing: 0.02em; }
+.live[hidden] { display: none; }
+#screen figure { margin: 0; border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; background: var(--surface-2); }
+#screen figure[hidden], #screen-empty[hidden] { display: none; }
+#screen figure img { display: block; width: 100%; height: auto; background: #fff; }
+#screen figcaption { padding: 8px 12px; font-size: 13px; }
+#screen figcaption small { display: block; margin-top: 2px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#screen-strip { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+#screen-strip button { width: 64px; height: 44px; padding: 0; border: 2px solid transparent; border-radius: 8px; overflow: hidden; background: var(--surface-2); color: var(--muted); font-size: 12px; font-weight: 700; cursor: pointer; position: relative; }
+#screen-strip button img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+#screen-strip button span { position: absolute; left: 3px; bottom: 2px; padding: 0 5px; border-radius: 6px; background: rgba(20, 33, 61, 0.72); color: #fff; font-size: 11px; }
+#screen-strip button[aria-current="true"] { border-color: var(--petrol); }
+#screen-strip button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ---------------------------------------------------------------------------------------------------------------- the wide window
+   Three columns, each with its own scroll: topics on the left, the whole conversation in the middle, what the Chakmati is doing on the right. */
+#panel[data-layout="wide"] { border-radius: 16px; }
+#panel[data-layout="wide"] #page { overflow: hidden; }
+#panel[data-layout="wide"] #content { display: grid; grid-template-columns: 300px minmax(0, 1fr) 420px; padding: 0; overflow: hidden; height: 100%; }
+#panel[data-layout="wide"] #topics { grid-column: 1; min-height: 0; overflow-y: auto; padding: 4px 16px 16px; border-right: 1px solid var(--rule); }
+#panel[data-layout="wide"] #thread-section { grid-column: 2; display: flex !important; flex-direction: column; min-height: 0; padding: 12px 20px 0; border-top: 0; }
+#panel[data-layout="wide"] #thread { max-height: none; flex: 1; min-height: 0; }
+#panel[data-layout="wide"] #focus-thread { display: none; }
+#panel[data-layout="wide"] #screen { grid-column: 3; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; padding: 12px 16px; border-left: 1px solid var(--rule); }
+#panel[data-layout="wide"] .turn.assistant figure.shot { display: none; }   /* the picture is on the right: not twice */
+#panel[data-layout="wide"] #foot { margin: 0 420px 0 300px; }
+#panel[data-layout="wide"] .turn.user { max-width: 70%; }
+#panel[data-layout="wide"] .turn.assistant { max-width: 88%; }
+#panel[data-layout="wide"] #settings-view, #panel[data-layout="wide"] #chats-view, #panel[data-layout="wide"] #chat-view { width: 100%; max-width: 780px; margin: 0 auto; }
+#panel[data-layout="wide"] #foot-settings { justify-content: center; }
+#panel[data-layout="wide"][data-screen]:not([data-screen="main"]) #foot { margin: 0; }
+#panel[data-layout="wide"] #bar { -webkit-app-region: drag; }
+#panel[data-layout="wide"] #bar button { -webkit-app-region: no-drag; }
+#panel[data-layout="wide"] #content[hidden] { display: none; }

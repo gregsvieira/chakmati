@@ -21,6 +21,12 @@
         <h1 id="title">Conectando…</h1>
         <p id="detail"></p>
       </div>
+      <button id="expand" class="icon-btn" type="button" aria-label="Expandir a janela" title="Expandir a janela">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path id="expand-icon" d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button id="maximize" class="icon-btn" type="button" aria-label="Tela cheia" title="Tela cheia" hidden>
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="4.5" y="4.5" width="15" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>
+      </button>
       <button id="open-settings" class="icon-btn" type="button" aria-label="Ajustes" title="Ajustes">
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8zm8.2 4.4v-2l-2.1-.7a6.7 6.7 0 00-.6-1.4l1-2-1.4-1.4-2 1a6.7 6.7 0 00-1.4-.6L13 3.8h-2l-.7 2.1a6.7 6.7 0 00-1.4.6l-2-1-1.4 1.4 1 2c-.2.4-.4.9-.6 1.4L3.8 11v2l2.1.7c.1.5.3 1 .6 1.4l-1 2 1.4 1.4 2-1c.4.3.9.5 1.4.6l.7 2.1h2l.7-2.1c.5-.1 1-.3 1.4-.6l2 1 1.4-1.4-1-2c.3-.4.5-.9.6-1.4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
       </button>
@@ -32,6 +38,7 @@
     <!-- the only part that scrolls -->
     <main id="page">
       <div id="content" class="page">
+        <div id="topics">
         <section id="decisions" hidden>
           <h2>Para você decidir</h2>
           <div id="decision-list"></div>
@@ -57,10 +64,21 @@
           <h2>Avisos recentes</h2>
           <div id="recent-body"></div>
         </section>
+        </div>
         <section id="thread-section" hidden>
-          <h2>Conversa</h2>
+          <h2>Conversa <button id="focus-thread" class="link-btn" type="button" aria-pressed="false" title="Ampliar a conversa e recolher os outros tópicos">Ampliar</button></h2>
           <div id="thread" aria-live="polite"></div>
+          <p id="thread-empty" class="empty">Peça algo ao Chakmati na linha de baixo: a conversa aparece aqui.</p>
         </section>
+        <aside id="screen" aria-label="Tela do Chakmati">
+          <h2>Tela do Chakmati <span id="screen-live" class="live" hidden>ao vivo</span></h2>
+          <p id="screen-empty" class="empty">Quando o Chakmati usar o navegador, a tela dele aparece aqui, passo a passo.</p>
+          <figure id="screen-view" hidden>
+            <img id="screen-img" alt="Tela do navegador">
+            <figcaption><b id="screen-step"></b> <span id="screen-note"></span><small id="screen-url"></small></figcaption>
+          </figure>
+          <div id="screen-strip" role="list" aria-label="Passos"></div>
+        </aside>
       </div>
 
       <div id="settings-view" class="page" hidden>
@@ -162,6 +180,7 @@
     </footer>
   </div>
   <script src="../lib/reltime.js"></script>
+  <script src="../lib/shots.js"></script>
   <script src="../lib/speech-text.js"></script>
   <script src="../lib/vad.js"></script>
   <script src="../lib/listen-policy.js"></script>

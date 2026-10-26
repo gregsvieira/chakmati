@@ -219,6 +219,7 @@
     const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40; // do not yank the reader away from older messages
     fill(box, thread.map((t) => h('div', { class: `turn ${t.role}${t.status === 'pending' ? ' pending' : ''}${t.status === 'error' ? ' error' : ''}` }, shotNode(t), t.text || '…', approvalNode(t))));
     syncTalking();
+    renderScreen();
     if (scroll || atBottom) box.scrollTop = box.scrollHeight;  // the conversation has its own scroll: it follows the newest message
     if (scroll) $('thread-section').scrollIntoView({ block: 'end' }); // and a new message brings the conversation into view on the page
   }
@@ -332,7 +333,7 @@
   api.onMessage(({ id, event }) => {
     const turn = thread.find((t) => t.id === id);
     if (!turn) return;
-    if (event.type === 'screenshot') { turn.shot = event; turn.text = turn.text || 'Usando o navegador…'; }
+    if (event.type === 'screenshot') { Shots.addShot(turn, event); pickedStep = null; turn.text = turn.text || 'Usando o navegador…'; }
     else if (event.type === 'job') turn.text = turn.text || 'Trabalhando nisso…';
     else if (event.type === 'delta') { if (turn.text === 'Trabalhando nisso…') turn.raw = ''; setTurnText(turn, (turn.raw || '') + event.text); }
     else if (event.type === 'done') { setTurnText(turn, event.result || turn.text); turn.status = 'done'; deliver(turn); }
@@ -823,9 +824,69 @@
   $('set-mood').addEventListener('change', (e) => api.setSetting('mood', e.target.value));
   $('set-side').addEventListener('change', (e) => api.setSetting('bubbleSide', e.target.value));
 
+  // ------------------------------------------------------------------ the big window: layout, folding topics, the screen on the right
+  const store = {
+    get(key, fallback) { try { const v = window.localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); } catch { return fallback; } },
+    set(key, value) { try { window.localStorage.setItem(key, JSON.stringify(value)); } catch { /* private window or storage off: the choice just is not remembered */ } },
+  };
+  const TOPICS = ['decisions', 'messages', 'agenda', 'automations', 'recent'];
+  const folded = new Set(store.get('chakmati.folded', []));
+  let pickedStep = null;
+
+  function applyLayout() {
+    const layout = Shots.layoutFor(window.innerWidth);
+    $('panel').dataset.layout = layout;
+    $('panel').dataset.focus = store.get('chakmati.focus', false) ? 'thread' : '';
+    $('focus-thread').setAttribute('aria-pressed', String(!!store.get('chakmati.focus', false)));
+    $('focus-thread').textContent = store.get('chakmati.focus', false) ? 'Reduzir' : 'Ampliar';
+    const mode = (state && state.panelMode) || 'compact';
+    $('expand').setAttribute('aria-label', mode === 'compact' ? 'Expandir a janela' : 'Voltar ao tamanho pequeno');
+    $('expand').title = mode === 'compact' ? 'Expandir a janela' : 'Voltar ao tamanho pequeno';
+    $('maximize').hidden = mode === 'compact';
+    $('maximize').setAttribute('aria-label', mode === 'full' ? 'Sair da tela cheia' : 'Tela cheia');
+    $('maximize').title = mode === 'full' ? 'Sair da tela cheia' : 'Tela cheia';
+    renderScreen();
+  }
+  window.addEventListener('resize', applyLayout);
+  $('expand').addEventListener('click', () => api.setLayout(((state && state.panelMode) || 'compact') === 'compact' ? 'wide' : 'compact'));
+  $('maximize').addEventListener('click', () => api.setLayout(((state && state.panelMode) || 'compact') === 'full' ? 'wide' : 'full'));
+
+  // each topic folds by its title (Enter or Space too); the choice is remembered
+  for (const id of TOPICS) {
+    const section = $(id);
+    const title = section.querySelector('h2');
+    title.setAttribute('role', 'button');
+    title.tabIndex = 0;
+    const sync = () => { if (folded.has(id)) section.dataset.collapsed = '1'; else delete section.dataset.collapsed; title.setAttribute('aria-expanded', String(!folded.has(id))); };
+    const toggle = () => { if (folded.has(id)) folded.delete(id); else folded.add(id); store.set('chakmati.folded', [...folded]); sync(); };
+    title.addEventListener('click', toggle);
+    title.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+    sync();
+  }
+  // "Ampliar": the conversation takes the card and every other topic folds (their own choices come back when it is reduced)
+  $('focus-thread').addEventListener('click', () => { store.set('chakmati.focus', !store.get('chakmati.focus', false)); applyLayout(); });
+
+  // the screen: what the Chakmati is doing in the browser, a picture per step, the latest on top of the strip
+  function renderScreen() {
+    const view = Shots.screenView(thread, pickedStep);
+    $('screen-empty').hidden = !!view;
+    $('screen-view').hidden = !view;
+    $('screen-live').hidden = !(view && view.live);
+    if (!view) { fill($('screen-strip')); return; }
+    const cur = view.current;
+    const img = $('screen-img');
+    if (cur.image) { if (img.getAttribute('src') !== cur.image) img.setAttribute('src', cur.image); img.hidden = false; } else img.hidden = true;
+    $('screen-step').textContent = `Passo ${cur.step} de ${view.total}.`;
+    $('screen-note').textContent = cur.note;
+    $('screen-url').textContent = cur.url;
+    fill($('screen-strip'), view.shots.map((s) => h('button', { type: 'button', role: 'listitem', 'aria-label': `Passo ${s.step}: ${s.note}`, title: s.note, 'aria-current': String(s.step === cur.step),
+      onclick: () => { pickedStep = s.step; renderScreen(); } }, s.image ? h('img', { src: s.image, alt: '' }) : null, h('span', {}, String(s.step)))));
+  }
+
   api.onOtherSpeaking((on) => { otherSpeaking = on; if (!on) { quietUntil = Date.now() + 700; chimeIfWaiting(); } });
   // second line of defence: whatever asks the page to scroll (focus, find, a keyboard shortcut) is put back at the top
   window.addEventListener('scroll', () => { if (window.scrollY || document.scrollingElement.scrollTop) window.scrollTo(0, 0); });
-  api.onState((s) => { state = s; stateVersion += 1; render(); if (thread.length) renderThread(false); runQueued(); });
+  api.onState((s) => { state = s; stateVersion += 1; render(); applyLayout(); if (thread.length) renderThread(false); runQueued(); });
+  applyLayout();
   api.ready();
 })();

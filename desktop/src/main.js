@@ -8,7 +8,7 @@ const { app, BrowserWindow, Tray, Menu, ipcMain, screen, globalShortcut, nativeI
 
 const { EngineClient, EngineError } = require('./lib/engine-client');
 const settingsLib = require('./lib/settings');
-const { chooseSide, layoutWidget, clampIcon, panelBounds } = require('./lib/placement');
+const { chooseSide, layoutWidget, clampIcon, panelBounds, expandedBounds, MIN_WIDE } = require('./lib/placement');
 const { NoticeQueue, present, bubbleDuration } = require('./lib/notice-queue');
 const { describe } = require('./lib/describe');
 const { brief } = require('./lib/brief');
@@ -234,10 +234,26 @@ function createPanel() {
   panelWin.on('closed', () => { panelWin = null; state.panelOpen = false; });
 }
 
+// "compact" is the small card beside the robot; "wide" is a big window in the middle of the screen; "full" fills the usable area.
+// In the big ones the window can be resized by its edges (the page lays itself out from its width).
+let panelMode = 'compact';
+
 function positionPanel() {
   if (!alive(panelWin)) return;
   const wa = nearestWorkArea({ x: icon.x + ICON / 2, y: icon.y + ICON / 2 });
-  panelWin.setBounds(panelBounds({ icon, size: ICON, workArea: wa, panel: PANEL }));
+  if (panelMode === 'compact') panelWin.setBounds(panelBounds({ icon, size: ICON, workArea: wa, panel: PANEL }));
+  else panelWin.setBounds(expandedBounds({ workArea: wa, mode: panelMode }));
+}
+
+function setPanelMode(mode) {
+  if (!['compact', 'wide', 'full'].includes(mode) || mode === panelMode) return;
+  panelMode = mode;
+  if (alive(panelWin)) {
+    panelWin.setResizable(mode !== 'compact');
+    panelWin.setMinimumSize(mode === 'compact' ? 0 : MIN_WIDE.w, mode === 'compact' ? 0 : MIN_WIDE.h);
+    positionPanel();
+  }
+  sendPanelState();
 }
 
 function prettyHotkey(accel) {
@@ -257,6 +273,7 @@ function panelState() {
     ownsEngine: !!engineProcess,
     canOpenWa: !!projectRoot(),
     panelOpen: state.panelOpen,
+    panelMode,
     hotkeys: { toggle: prettyHotkey(HOTKEYS.toggle), panic: prettyHotkey(HOTKEYS.panic) },
   };
 }
@@ -710,6 +727,7 @@ function registerIpc() {
 
   ipcMain.on('panel:ready', sendPanelState);
   ipcMain.on('panel:close', closePanel);
+ipcMain.on('panel:layout', (_e, mode) => setPanelMode(mode));
   // With the panel closed, what Chakmati answers appears the way notices do: a bubble by the character (and spoken, if on).
   ipcMain.on('panel:reply', (_e, p) => {
     if (state.panelOpen || state.hidden || !p || typeof p.text !== 'string' || !p.text.trim()) return;

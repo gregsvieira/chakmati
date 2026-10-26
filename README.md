@@ -135,7 +135,19 @@ also decides the tool (text or OCR) and the model; it says when something is mis
 policy, in order ("create a.txt, then copy it" is fine; "copy x.txt into a folder nobody creates" shows `⚠ cp (origem): não existe` in the plan). A file named without its extension ("o rascunho") is found; if the name
 fits two files, or the request does not say which file, which app or which site, it asks instead of guessing; "apague tudo" is refused; "... para a lixeira" and "faça uma cópia do X" are read by rule, not by the model.
 `scripts/bench_loose_requests.py` runs 24 such requests against the real model.
+
+**What is read by rules, not by the model** (exact, instant, and the model gets these wrong now and then): the file names a command reads (`cat lista` finds `lista.txt`; a name that fits two files asks which);
+"crie a pasta X", "liste os arquivos", "mostre o conteúdo de X", "renomeie X para Y", "copie X para Y", "baixe URL como Z", "abre o <app instalado>", "mande X para a lixeira", "faça uma cópia do X", "apague tudo" (refused);
+the title and the topic of a document ("com o título ...", "sobre ..."); the search query of a browser task ("pesquise ..."); the key and the folder of an exam; and the sums, averages and totals row of a spreadsheet (written by code
+when you ask for them and the model left them out). Anything with an "and then", an unusual name or an unknown word is still left to the model.
 `scripts/simulate_exams.py OUT TRUTH.json 20` makes 20 filled-in copies to try it.
+
+### The expanded window (desktop)
+
+The panel has two shapes. **Small** (the card beside the robot): every topic folds by its title, and **Ampliar** on the conversation gives it the whole card and folds all the other topics (the choice is remembered).
+**Expanded** (the arrows button in the header; the square button next to it goes to full screen; drag the edges to resize): three columns, each with its own scroll. On the left the topics (decisions, messages, agenda,
+automations, recent notices); in the middle the whole conversation with the command line; on the right **Tela do Chakmati**: the live pictures of what the browser is doing (`ao vivo`), the current step with its caption and
+address, and a strip of every step to go back to one. Below 1000 px wide the page goes back to one column by itself. The pictures are the browser's, not your screen: the Chakmati never captures your desktop.
 
 ## Install wizard (desktop)
 
