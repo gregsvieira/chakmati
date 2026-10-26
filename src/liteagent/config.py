@@ -35,6 +35,7 @@ class Settings:
     browser_profile: str = os.path.expanduser("~/.lite-agent/browser")  # the agent's own Chrome profile (never the person's)
     browser_frames_dir: str = os.path.expanduser("~/.lite-agent/frames")  # the screenshot of every step of a browser job
     browser_max_steps: int = 12
+    browser_headless: bool = True  # no Chrome window for the person; the screenshots are the view. False = watch it work
     home_backend: str = "off"  # "off" | "homeassistant" (also the way to reach Alexa-compatible devices)
     home_url: str = "http://homeassistant.local:8123"
     home_token_file: str = os.path.expanduser("~/.lite-agent/home_token.txt")
@@ -84,6 +85,7 @@ class Settings:
             browser_backend=env.get("LITEAGENT_BROWSER_BACKEND", d.browser_backend),
             browser_profile=os.path.expanduser(env.get("LITEAGENT_BROWSER_PROFILE", d.browser_profile)),
             browser_frames_dir=os.path.expanduser(env.get("LITEAGENT_BROWSER_FRAMES_DIR", d.browser_frames_dir)),
+            browser_headless=env.get("LITEAGENT_BROWSER_HEADLESS", "1" if d.browser_headless else "0").lower() in {"1", "true", "yes"},
             browser_max_steps=int(env.get("LITEAGENT_BROWSER_MAX_STEPS", d.browser_max_steps)),
             home_backend=env.get("LITEAGENT_HOME_BACKEND", d.home_backend),
             home_url=env.get("LITEAGENT_HOME_URL", d.home_url),

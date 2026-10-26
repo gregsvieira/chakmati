@@ -82,7 +82,7 @@ Off by default. Needs Chrome installed and `uv sync --extra browser`; turn it on
     curl -N localhost:8765/message/stream -H 'content-type: application/json' \
          -d '{"text":"use o navegador para pesquisar a capital da Austrália"}'
 
-Ask for it by name ("use o navegador...", "pelo Chrome...", "navegue até..."). A visible Chrome (its own profile in
+Ask for it by name ("use o navegador...", "pelo Chrome...", "navegue até..."). A headless Chrome (no window opens; `LITEAGENT_BROWSER_HEADLESS=0` shows it; its own profile in
 `~/.lite-agent/browser`, never yours) opens and works one step at a time; each step emits a `screenshot` event
 (`job_id`, `step`, `url`, `title`, `note`) and the picture is at `GET /jobs/<id>/frames/<step>` (JPEG; the last 20 jobs are kept in
 `~/.lite-agent/frames`). The desktop panel shows the latest screenshot with what it was doing, replaced at each step.
@@ -150,7 +150,7 @@ Only the macOS arm64 build was checked by hand; the Windows and Ubuntu builds ar
 | `LITEAGENT_CALENDAR_BACKEND` | `off` (`auto` \| `macos` \| `ics`) |
 | `LITEAGENT_CALENDAR_ICS_PATH` | `agenda.ics` |
 | `LITEAGENT_CALENDAR_NAME` | empty = the system's default calendar for new events |
-| `LITEAGENT_BROWSER_BACKEND` | `off` (`chrome`; needs `uv sync --extra browser`), plus `LITEAGENT_BROWSER_PROFILE`, `LITEAGENT_BROWSER_FRAMES_DIR`, `LITEAGENT_BROWSER_MAX_STEPS` (`12`) |
+| `LITEAGENT_BROWSER_BACKEND` | `off` (`chrome`; needs `uv sync --extra browser`), plus `LITEAGENT_BROWSER_HEADLESS` (`1`), `LITEAGENT_BROWSER_PROFILE`, `LITEAGENT_BROWSER_FRAMES_DIR`, `LITEAGENT_BROWSER_MAX_STEPS` (`12`) |
 | `LITEAGENT_WHATSAPP_BACKEND` | `off` (`openwa`) |
 | `LITEAGENT_OPENWA_URL` | `http://127.0.0.1:8081` |
 | `LITEAGENT_OPENWA_API_KEY` | empty = read `~/.lite-agent/openwa/api_key.txt` (`LITEAGENT_OPENWA_API_KEY_FILE`) |

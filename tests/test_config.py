@@ -112,3 +112,8 @@ def test_notice_settings():
 def test_stt_model_setting():
     assert Settings.from_env({}).stt_model == "base"
     assert Settings.from_env({"LITEAGENT_STT_MODEL": "off"}).stt_model == "off"
+
+
+def test_the_browser_is_headless_unless_asked_otherwise():
+    assert Settings.from_env({}).browser_headless is True
+    assert Settings.from_env({"LITEAGENT_BROWSER_HEADLESS": "0"}).browser_headless is False
