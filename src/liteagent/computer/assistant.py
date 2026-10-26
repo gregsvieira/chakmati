@@ -37,6 +37,65 @@ HELP = ("Não entendi o que fazer no computador. Exemplos: \"crie um arquivo lis
         "\"abre o Spotify\", \"edite a lista.txt trocando leite por café\", \"mande o rascunho.txt para a lixeira\".")
 
 
+ACTIONS = {"steps", "open_app", "open_url", "open_path", "edit", "revert", "trash"}
+STEP_TYPES = ("command", "create_file")
+
+
+def _shape(data: dict) -> dict:
+    """Keep only the fields we know, as the strict reading of one JSON object."""
+    action = data.get("action")
+    if action is None and isinstance(data.get("steps"), list):  # small models often leave "action" out when there are steps
+        action = "steps"
+    if action not in ACTIONS:
+        return {"action": "other"}
+    out: dict = {"action": action}
+    for key in ("app", "url", "path", "instruction", "goal"):
+        if isinstance(data.get(key), str):
+            out[key] = data[key].strip()
+    steps = data.get("steps")
+    if isinstance(steps, list):
+        out["steps"] = [s for s in steps if isinstance(s, dict) and s.get("type") in STEP_TYPES][:12]
+    return out
+
+
+def _usable(intent: dict) -> bool:
+    return intent["action"] != "other" and (intent["action"] != "steps" or bool(intent.get("steps")))
+
+
+def _fix_step(step: object) -> object:
+    """A step missing its "type" (or with an invented one) gets it from the fields it carries."""
+    if not isinstance(step, dict) or step.get("type") in STEP_TYPES:
+        return step
+    if isinstance(step.get("command"), str):
+        return {**step, "type": "command"}
+    if isinstance(step.get("path"), str) and isinstance(step.get("content"), str):
+        return {**step, "type": "create_file"}
+    return step
+
+
+def _repair(data: dict) -> dict | None:
+    """Fix the shape slips small models make; the content is never invented, and policy.py still judges every command.
+
+    Only used when the strict reading found nothing to do, and never on a reply that says "other" itself."""
+    kind = data.get("type")
+    if data.get("action") not in ACTIONS:
+        if kind in ACTIONS:  # {"type":"open_url","url":...}: "type" where "action" belongs
+            return {**data, "action": kind}
+        bare = _fix_step(data)
+        if isinstance(bare, dict) and bare.get("type") in STEP_TYPES:  # one step with no "steps" around it
+            return {"action": "steps", "steps": [bare]}
+    steps = data.get("steps")
+    if isinstance(steps, list):
+        fixed = [_fix_step(s) for s in steps]
+        if not any(isinstance(s, dict) and s.get("type") in STEP_TYPES for s in fixed):
+            only = fixed[0] if len(fixed) == 1 else None  # one action dressed as a step; with several we do not guess
+            if isinstance(only, dict) and only.get("type") in ACTIONS:
+                return {**only, "action": only["type"]}
+            return None
+        return {**data, "action": "steps", "steps": fixed}
+    return None
+
+
 def parse_intent(reply: str) -> dict:
     first, last = reply.find("{"), reply.rfind("}")
     if first == -1 or last <= first:
@@ -47,19 +106,15 @@ def parse_intent(reply: str) -> dict:
         return {"action": "other"}
     if not isinstance(data, dict):
         return {"action": "other"}
-    action = data.get("action")
-    if action is None and isinstance(data.get("steps"), list):  # small models often leave "action" out when there are steps
-        action = "steps"
-    if action not in {"steps", "open_app", "open_url", "open_path", "edit", "revert", "trash"}:
-        return {"action": "other"}
-    out: dict = {"action": action}
-    for key in ("app", "url", "path", "instruction", "goal"):
-        if isinstance(data.get(key), str):
-            out[key] = data[key].strip()
-    steps = data.get("steps")
-    if isinstance(steps, list):
-        out["steps"] = [s for s in steps if isinstance(s, dict) and s.get("type") in ("command", "create_file")][:12]
-    return out
+    intent = _shape(data)
+    if _usable(intent) or "other" in (data.get("action"), data.get("type")):
+        return intent if _usable(intent) else {"action": "other"}
+    fixed = _repair(data)
+    if fixed is not None:
+        repaired = _shape(fixed)
+        if _usable(repaired):
+            return repaired
+    return intent
 
 
 class ComputerAssistant:

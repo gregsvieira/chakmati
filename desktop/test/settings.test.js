@@ -49,10 +49,10 @@ test('animations are on by default and can be switched off', () => {
 });
 
 test('integrations map to the engine environment: web search on by default, the rest off', () => {
-  assert.deepEqual(engineEnv(DEFAULTS), { LITEAGENT_RESEARCH_BACKEND: 'ddg', LITEAGENT_WHATSAPP_BACKEND: 'off', LITEAGENT_CALENDAR_BACKEND: 'off' });
+  assert.deepEqual(engineEnv(DEFAULTS), { LITEAGENT_CHAT_MODEL: 'qwen3.5:latest', LITEAGENT_RESEARCH_BACKEND: 'ddg', LITEAGENT_WHATSAPP_BACKEND: 'off', LITEAGENT_CALENDAR_BACKEND: 'off' });
   assert.equal(engineEnv(DEFAULTS, { searxng: true }).LITEAGENT_RESEARCH_BACKEND, 'searxng');
   assert.equal(engineEnv({ ...DEFAULTS, research: false }).LITEAGENT_RESEARCH_BACKEND, 'off');
-  assert.deepEqual(engineEnv({ ...DEFAULTS, whatsapp: true, calendar: true }), { LITEAGENT_RESEARCH_BACKEND: 'ddg', LITEAGENT_WHATSAPP_BACKEND: 'openwa', LITEAGENT_CALENDAR_BACKEND: 'auto' });
+  assert.deepEqual(engineEnv({ ...DEFAULTS, whatsapp: true, calendar: true }), { LITEAGENT_CHAT_MODEL: 'qwen3.5:latest', LITEAGENT_RESEARCH_BACKEND: 'ddg', LITEAGENT_WHATSAPP_BACKEND: 'openwa', LITEAGENT_CALENDAR_BACKEND: 'auto' });
   assert.equal(normalize({ whatsapp: 'yes' }).whatsapp, false);
 });
 
@@ -87,4 +87,11 @@ test('the system voice is the default; the enhanced voice is an explicit choice,
   assert.equal(normalize({ enhancedVoice: 'sim' }).enhancedVoice, false);
   assert.equal(normalize({ voiceSpeed: 'fast' }).voiceSpeed, 'fast');
   assert.equal(normalize({ voiceSpeed: 'warp' }).voiceSpeed, 'normal');
+});
+
+test('the chat model is a plain Ollama name and reaches the engine', () => {
+  assert.equal(DEFAULTS.chatModel, 'qwen3.5:latest');
+  assert.equal(normalize({ chatModel: 'qwen3.5:0.8b' }).chatModel, 'qwen3.5:0.8b');
+  assert.equal(engineEnv({ ...DEFAULTS, chatModel: 'qwen3.5:4b' }).LITEAGENT_CHAT_MODEL, 'qwen3.5:4b');
+  for (const bad of ['', 'a b', '../x', 'x;rm', 'm'.repeat(80), 5, null]) assert.equal(normalize({ chatModel: bad }).chatModel, DEFAULTS.chatModel);
 });

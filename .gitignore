@@ -8,3 +8,4 @@ bench_runs*.json
 # desktop app
 desktop/node_modules/
 desktop/dist/
+desktop/build/bin/

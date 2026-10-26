@@ -18,6 +18,8 @@ from urllib.parse import urlsplit
 
 import httpx
 
+from .extras import missing_message
+
 MAX_TEXT = 600
 SPEEDS = {"normal": 1.0, "fast": 0.85}  # Piper's length_scale: smaller is faster
 _ALLOWED_HOST = "huggingface.co"
@@ -141,7 +143,10 @@ class VoiceStore:
 
 
 def _load_piper(model_path: str):
-    from piper import PiperVoice
+    try:
+        from piper import PiperVoice
+    except ImportError:
+        raise VoiceError(missing_message("voice", "the enhanced voice")) from None
 
     return PiperVoice.load(model_path)
 

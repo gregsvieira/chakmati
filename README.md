@@ -15,6 +15,18 @@ Local assistant engine: simple messages answer inline in seconds; slow work
          -d '{"text":"pesquise a versão atual do Python"}'   # returns a job_id
     curl -s localhost:8765/jobs/<job_id>
 
+## Optional pieces (extras)
+
+The base install is small (about 125 MB). Voice and microphone are opt-in:
+
+    uv sync --extra voice     # enhanced voice (Piper) and WhatsApp voice notes
+    uv sync --extra listen    # speech recognition (faster-whisper) for "talk to Chakmati"
+    uv sync --extra voice --extra listen    # both (about 250 MB more)
+
+Without them the engine starts normally; each feature answers with what to install (`/voice/status` has `engine_ready`,
+`/transcribe` returns 503 naming the extra). If you used voice or the microphone before, run the command above once.
+Development (`uv sync`) installs both so the whole test suite runs.
+
 ## Streaming (Server-Sent Events)
 
     curl -N localhost:8765/message/stream -H 'content-type: application/json' -d '{"text":"pesquise a capital da Austrália"}'
@@ -62,6 +74,34 @@ are the only place where other people's text reaches the local model; it is quot
     curl localhost:8765/whatsapp/status
     curl 'localhost:8765/whatsapp/chats?unread=true'
 
+## Install wizard (desktop)
+
+    cd desktop && npm run setup        # or: electron . --setup
+
+Reads the computer (RAM, free disk, cores, system), says whether it meets the minimum, picks the chat model that fits
+(`qwen3.5:0.8b` under ~8 GB, `qwen3.5:4b` up to ~16 GB, `qwen3.5:latest` above) and offers the optional pieces (better voice,
+microphone, WhatsApp, animations, hiding from screen sharing). Nothing optional is ticked. Every download shows its source and
+size and asks first; "Pular" (skip) is the default button. Needs Ollama running. WhatsApp is only recorded here: connect it later in
+Settings > Integrations. The native installers (`.exe`, `.pkg`, `.deb`) will start this wizard with `--setup`.
+
+## Installers (macOS, Windows, Ubuntu)
+
+    cd desktop && npm install && npm run dist      # builds for the system you are on, into desktop/dist/
+
+The installer carries the app, the engine's code and a pinned `uv` (its SHA-256 is checked at build time); the macOS
+`.pkg` is about 135 MB, most of it Electron. On the first open the setup wizard checks the computer, then prepares the
+engine with that `uv` (Python plus dependencies, about 190 MB) and installs only what you tick; each download asks
+first. Voice and microphone add their Python packages (about 200 MB each, 230 MB together). WhatsApp is not offered in
+the installed app yet.
+
+The installers are **not signed**: Windows (SmartScreen) and macOS (Gatekeeper) warn on the first open. On macOS:
+right-click the app and choose Open. Where things live (remove these folders to uninstall completely): the app's data
+folder (`~/Library/Application Support/Chakmati`, `%APPDATA%\Chakmati`, `~/.config/Chakmati`), plus `~/.lite-agent`
+(voice and WhatsApp files) and the Ollama models.
+
+`.github/workflows/build.yml` builds all of them on GitHub (manual, or on pull requests that touch `desktop/` or the engine).
+Only the macOS arm64 build was checked by hand; the Windows and Ubuntu builds are untested until that workflow runs.
+
 ## Settings (env)
 
 | Variable | Default |
@@ -76,8 +116,8 @@ are the only place where other people's text reaches the local model; it is quot
 | `LITEAGENT_SEARXNG_URL` | `http://localhost:8080` |
 | `LITEAGENT_RESEARCH_SCORER` | `keepall` (`laya` is opt-in) |
 | `LITEAGENT_RESULT_CUTOFF` | `0.2` |
-| `LITEAGENT_KEEP_ALIVE` | empty = Ollama default (5 min); e.g. `30m` keeps the model in RAM longer |
-| `LITEAGENT_PRELOAD_MODEL` | `0`; `1` loads the model at startup (first request ~4 s faster, ~6 GB RAM resident) |
+| `LITEAGENT_KEEP_ALIVE` | `30m` (empty = Ollama default, which unloads the model after 5 min idle) |
+| `LITEAGENT_PRELOAD_MODEL` | `1`; loads the model at startup (first request ~4 s faster, ~6 GB RAM resident with the default model). `0` turns it off |
 | `LITEAGENT_RESEARCH_MAX_TOKENS` | `200` (`0` = no cap) |
 | `LITEAGENT_RESEARCH_CONCISE` | `1` (answers in at most 3 short sentences) |
 | `LITEAGENT_FETCH_DEADLINE` | `2.0` seconds to wait for page downloads (`0` = wait for all); a site that hangs is dropped |

@@ -12,6 +12,14 @@ const send = (channel, payload) => ipcRenderer.send(channel, payload);
 
 contextBridge.exposeInMainWorld('assistant', {
   voice: { synthesize: (text, speed) => ipcRenderer.invoke('voice:synthesize', text, speed) },
+  installer: {
+    scan: () => ipcRenderer.invoke('installer:scan'),
+    plan: (selected) => ipcRenderer.invoke('installer:plan', selected),
+    run: (selected) => ipcRenderer.invoke('installer:run', selected),
+    ollamaPage: () => ipcRenderer.invoke('installer:ollama-page'),
+    onProgress: (cb) => listen('installer:progress', cb),
+    finish: () => send('installer:finish'),
+  },
   widget: {
     onLayout: (cb) => listen('widget:layout', cb),
     onBubble: (cb) => listen('widget:bubble', cb),

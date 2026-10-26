@@ -14,6 +14,9 @@ const { describe } = require('./lib/describe');
 const { brief } = require('./lib/brief');
 const { pickGreeting } = require('./lib/greetings');
 const { robotPng } = require('./lib/trayicon');
+const { openSetup } = require('./installer');
+const { engineLaunch, toolPath: engineToolPath } = require('./lib/engine-launch');
+const { needsSetup } = require('./installer/first-run');
 
 const ICON = 124;
 const BUBBLE = { w: 320, h: 120 };
@@ -22,6 +25,7 @@ const HOTKEYS = { toggle: 'CommandOrControl+Shift+Space', panic: 'CommandOrContr
 const MAX_TEXT = 2000;
 const SNAPSHOT = process.env.LITEAGENT_DESKTOP_SNAPSHOT;
 const PROTECT_TEST = process.env.LITEAGENT_DESKTOP_PROTECT_TEST;
+const SETUP = process.argv.includes('--setup') || process.env.LITEAGENT_DESKTOP_SETUP === '1';
 const isMac = process.platform === 'darwin';
 const isLinux = process.platform === 'linux';
 
@@ -400,7 +404,7 @@ const projectRoot = () => {
 };
 
 // An app opened from the Finder or with `open` gets a minimal PATH, without the folders where uv and Homebrew live.
-const toolPath = () => [process.env.PATH || '', path.join(app.getPath('home'), '.local', 'bin'), '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin'].filter(Boolean).join(':');
+const toolPath = () => engineToolPath({ platform: process.platform, base: process.env.PATH || '', home: app.getPath('home') });
 
 // The app starts the engine itself when none is running, with the integrations the person switched on in Ajustes.
 // An engine started by hand is left alone (and then the integrations are chosen by its own environment).
@@ -409,14 +413,15 @@ async function searxngUp() {
 }
 
 async function startEngine() {
-  const root = projectRoot();
-  if (!root || engineProcess) return false;
+  const launch = engineLaunch({ packaged: app.isPackaged, dataDir: app.getPath('userData'), repoRoot: projectRoot(), platform: process.platform });
+  if (!launch || engineProcess) return false;
   const env = settingsLib.engineEnv(settings, { searxng: await searxngUp() });
   if (engineProcess) return false;
+  fs.mkdirSync(launch.cwd, { recursive: true });
   const logFile = path.join(app.getPath('userData'), 'engine.log');
   const log = fs.openSync(logFile, 'a');
-  engineProcess = spawn('uv', ['run', 'python', '-m', 'liteagent.main'], {
-    cwd: root, stdio: ['ignore', log, log], env: { ...process.env, PATH: toolPath(), ...env },
+  engineProcess = spawn(launch.command, launch.args, {
+    cwd: launch.cwd, stdio: ['ignore', log, log], windowsHide: true, env: { ...process.env, PATH: toolPath(), ...launch.env, ...env },
   });
   fs.closeSync(log);
   engineProcess.on('error', () => { engineProcess = null; });
@@ -1009,6 +1014,18 @@ if (!app.requestSingleInstanceLock()) {
     registerIpc();
     if (SNAPSHOT) { await runSnapshots(); return; }
     if (PROTECT_TEST) { await runProtectTest(); return; }
+    const firstRun = needsSetup({ packaged: app.isPackaged, dataDir: app.getPath('userData'), platform: process.platform });
+    if (SETUP || firstRun) { // the install wizard: --setup, or the first run of an installed app; the normal app starts after it
+      settingsFile = path.join(app.getPath('userData'), 'settings.json');
+      if (isMac) { app.setActivationPolicy?.('regular'); app.dock?.show(); }
+      openSetup({
+        ipcMain, webPreferences, settingsFile,
+        engine: app.isPackaged ? { resourcesPath: process.resourcesPath, dataDir: app.getPath('userData') } : null,
+        onClosed: () => app.quit(),
+        onFinish: () => { app.relaunch({ args: process.argv.slice(1).filter((a) => a !== '--setup') }); app.exit(0); },
+      });
+      return;
+    }
 
     settingsFile = path.join(app.getPath('userData'), 'settings.json');
     settings = settingsLib.load(settingsFile);
@@ -1022,7 +1039,8 @@ if (!app.requestSingleInstanceLock()) {
     createTray();
     registerShortcuts();
     if (!(await engine.health())) await startEngine();
-    refreshVoiceStatus();
+    await refreshVoiceStatus();
+    if (settings.enhancedVoice && state.voice && !state.voice.installed) downloadVoice(); // chosen (and approved) in the setup wizard; a failure turns it off again
     healthLoop();
     noticeLoop();
     screen.on('display-metrics-changed', applyLayout);

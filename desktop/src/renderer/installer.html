@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'self'; script-src 'self'">
+  <title>Instalar o Chakmati</title>
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="installer.css">
+</head>
+<body>
+  <main>
+    <h1>Instalar o Chakmati</h1>
+
+    <section id="s-check" aria-live="polite">
+      <h2>Seu computador</h2>
+      <div id="hw" class="card"></div>
+      <p id="verdict" class="verdict"></p>
+      <ul id="reasons"></ul>
+      <div id="ollama-help" class="card" hidden>
+        <p>O Chakmati precisa do Ollama, que roda o modelo de linguagem no seu computador. Instale e abra o Ollama, depois verifique de novo.</p>
+        <button id="open-ollama" type="button">Abrir a página do Ollama</button>
+        <button id="recheck" type="button">Verificar de novo</button>
+      </div>
+      <div class="actions"><button id="to-options" type="button" class="primary">Continuar</button></div>
+    </section>
+
+    <section id="s-options" hidden>
+      <h2>O que instalar além do básico</h2>
+      <p class="muted">Nada vem marcado. O básico (conversar, pesquisar) já funciona; marque só o que quiser, para gastar menos memória e espaço.</p>
+      <p id="model-line" class="card"></p>
+      <ul id="options" class="options"></ul>
+      <div class="actions">
+        <button id="back-check" type="button">Voltar</button>
+        <button id="to-summary" type="button" class="primary">Continuar</button>
+      </div>
+    </section>
+
+    <section id="s-summary" hidden>
+      <h2>Resumo</h2>
+      <ul id="steps"></ul>
+      <p id="totals" class="card"></p>
+      <ul id="warnings" class="warn"></ul>
+      <div class="actions">
+        <button id="back-options" type="button">Voltar</button>
+        <button id="install" type="button" class="primary">Instalar</button>
+      </div>
+    </section>
+
+    <section id="s-run" hidden aria-live="polite">
+      <h2 id="run-title">Instalando…</h2>
+      <progress id="bar" max="100" value="0"></progress>
+      <p id="run-status" class="muted"></p>
+      <ul id="results"></ul>
+      <ul id="after"></ul>
+      <div class="actions"><button id="finish" type="button" class="primary" hidden>Concluir</button></div>
+    </section>
+  </main>
+  <script src="installer.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "version": "0.11.15",
+  "targets": {
+    "darwin-arm64": { "asset": "uv-aarch64-apple-darwin.tar.gz", "sha256": "7e5b336108f8576eda1939920ca0a805b4a9a3c3d3eb2f6140e38b7092fbe4f3" },
+    "darwin-x64": { "asset": "uv-x86_64-apple-darwin.tar.gz", "sha256": "42bca7cc879d117ed7139a0e26de8cab0b6f033ad439a32144f324d1f8580d8c" },
+    "win32-x64": { "asset": "uv-x86_64-pc-windows-msvc.zip", "sha256": "04b98d414a9000e25e5e0e7c9f53749e66b790cdaffc582829e6f58c544ee11c" },
+    "linux-x64": { "asset": "uv-x86_64-unknown-linux-gnu.tar.gz", "sha256": "b03e572f010bea94a4a52d42671ba72981e12894f71576181a1d26ff68546da7" }
+  }
+}

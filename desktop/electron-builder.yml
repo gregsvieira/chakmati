@@ -1,0 +1,48 @@
+appId: com.chakmati.app
+productName: Chakmati
+directories:
+  output: dist
+  buildResources: build
+files:
+  - src/**
+  - package.json
+asar: true
+# The engine travels as plain files (read-only); the wizard creates the Python environment in the app's data folder.
+extraResources:
+  - from: ../pyproject.toml
+    to: engine/pyproject.toml
+  - from: ../uv.lock
+    to: engine/uv.lock
+  - from: ../src
+    to: engine/src
+    filter:
+      - "**/*"
+      - "!**/__pycache__/**"
+      - "!**/*.pyc"
+  - from: build/bin
+    to: bin
+    filter:
+      - uv
+      - uv.exe
+mac:
+  category: public.app-category.productivity
+  identity: null            # no signing certificate yet: the installers are unsigned (macOS shows a warning on first open)
+  extendInfo:
+    NSCalendarsUsageDescription: O Chakmati lê e cria compromissos na sua agenda quando você pede.
+    NSCalendarsFullAccessUsageDescription: O Chakmati lê e cria compromissos na sua agenda quando você pede.
+    NSMicrophoneUsageDescription: O Chakmati usa o microfone para ouvir você quando "Falar com o Chakmati" está ligado.
+  target:
+    - target: pkg
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+linux:
+  category: Utility
+  target:
+    - target: deb
+      arch: [x64]

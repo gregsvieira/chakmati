@@ -15,8 +15,8 @@ class Settings:
     searxng_url: str = "http://localhost:8080"
     result_cutoff: float = 0.2
     research_scorer: str = "keepall"  # "keepall" | "laya"
-    keep_alive: str = ""  # Ollama keep_alive, e.g. "30m"; empty = Ollama default
-    preload_model: bool = False
+    keep_alive: str = "30m"  # Ollama keep_alive, e.g. "30m"; empty = Ollama default (unloads after 5 min idle)
+    preload_model: bool = True
     research_max_tokens: int = 200
     research_concise: bool = True
     fetch_deadline: float = 2.0  # seconds to wait for the page downloads; 0 = wait for all
@@ -64,7 +64,7 @@ class Settings:
             result_cutoff=float(env.get("LITEAGENT_RESULT_CUTOFF", d.result_cutoff)),
             research_scorer=env.get("LITEAGENT_RESEARCH_SCORER", d.research_scorer),
             keep_alive=env.get("LITEAGENT_KEEP_ALIVE", d.keep_alive),
-            preload_model=env.get("LITEAGENT_PRELOAD_MODEL", "0").lower() in {"1", "true", "yes"},
+            preload_model=env.get("LITEAGENT_PRELOAD_MODEL", "1" if d.preload_model else "0").lower() in {"1", "true", "yes"},
             research_max_tokens=int(env.get("LITEAGENT_RESEARCH_MAX_TOKENS", d.research_max_tokens)),
             research_concise=env.get("LITEAGENT_RESEARCH_CONCISE", "1").lower() in {"1", "true", "yes"},
             fetch_deadline=float(env.get("LITEAGENT_FETCH_DEADLINE", d.fetch_deadline)),
