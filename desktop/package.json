@@ -1,8 +1,8 @@
 {
-  "name": "lite-agent-desktop",
+  "name": "chakmati-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "Floating robot assistant for lite-agent",
+  "description": "Floating robot assistant for Chakmati",
   "author": "Gregory Vieira <89167868+gregsvieira@users.noreply.github.com>",
   "homepage": "https://github.com/gregsvieira/chakmati",
   "main": "src/main.js",

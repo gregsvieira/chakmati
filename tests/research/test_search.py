@@ -84,4 +84,4 @@ def test_build_user_agent_adds_the_contact_only_when_given():
     assert build_user_agent("") == USER_AGENT
     assert build_user_agent(None) == USER_AGENT
     ua = build_user_agent("https://example.org/me")
-    assert ua.startswith("lite-agent/0.1") and "contact: https://example.org/me" in ua
+    assert ua.startswith("chakmati/0.1") and "contact: https://example.org/me" in ua

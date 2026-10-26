@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sets up and runs the local OpenWA server (https://openwa.dev) that lite-agent uses to talk to WhatsApp Web.
+# Sets up and runs the local OpenWA server (https://openwa.dev) that Chakmati uses to talk to WhatsApp Web.
 #
 #   scripts/openwa.sh setup      install OpenWA (+ its own Node.js) into ~/.lite-agent/openwa and create an API key
 #   scripts/openwa.sh start      start it with a VISIBLE browser window: scan the QR on first use

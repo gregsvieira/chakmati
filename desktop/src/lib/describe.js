@@ -5,7 +5,7 @@ const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 function describe({ engineUp, overview, busy = false } = {}) {
   if (!engineUp) {
-    return { title: 'Não consigo falar com o motor.', detail: 'Inicie o lite-agent e eu volto sozinho.', mood: 'offline' };
+    return { title: 'Não consigo falar com o motor.', detail: 'Inicie o Chakmati e eu volto sozinho.', mood: 'offline' };
   }
   if (busy) return { title: 'Pensando…', detail: 'Já volto com a resposta.', mood: 'thinking' };
 

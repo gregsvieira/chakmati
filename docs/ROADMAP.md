@@ -36,7 +36,7 @@ dá uma API pública para um programa externo comandar a Alexa ou os dispositivo
 **Home Assistant** (API REST oficial e estável), que controla luzes, tomadas, cenas, ar-condicionado, persianas e fechaduras e
 que também pode expor/importar dispositivos da Alexa. Código em `src/liteagent/home/`; rota `home` no gate.
 - Ligar: `LITEAGENT_HOME_BACKEND=homeassistant`, `LITEAGENT_HOME_URL=http://<ip>:8123` e um token de longa duração do Home
-  Assistant em `~/.lite-agent/home_token.txt` (nunca no repositório).
+  Assistant em `~/.Chakmati/home_token.txt` (nunca no repositório).
 - Comuns (luz, tomada, cena, ar, fechar persiana) acontecem na hora. O que abre a casa (destrancar, abrir portão/garagem/porta)
   só é proposto e espera "sim" ou o botão Aprovar. Tabela fixa de serviços, só domínios permitidos, limite de 30 comandos/min.
 - NÃO testado contra um Home Assistant real (não há um configurado); testado com servidor simulado.

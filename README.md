@@ -1,4 +1,4 @@
-# lite-agent
+# Chakmati
 
 Local assistant engine: simple messages answer inline in seconds; slow work
 (research, multi-step tasks) runs as background jobs.
@@ -74,6 +74,30 @@ are the only place where other people's text reaches the local model; it is quot
     curl localhost:8765/whatsapp/status
     curl 'localhost:8765/whatsapp/chats?unread=true'
 
+## Browser agent (live screenshots)
+
+Off by default. Needs Chrome installed and `uv sync --extra browser`; turn it on with `LITEAGENT_BROWSER_BACKEND=chrome`.
+
+    uv run python -m liteagent.main
+    curl -N localhost:8765/message/stream -H 'content-type: application/json' \
+         -d '{"text":"use o navegador para pesquisar a capital da Austrália"}'
+
+Ask for it by name ("use o navegador...", "pelo Chrome...", "navegue até..."). A visible Chrome (its own profile in
+`~/.lite-agent/browser`, never yours) opens and works one step at a time; each step emits a `screenshot` event
+(`job_id`, `step`, `url`, `title`, `note`) and the picture is at `GET /jobs/<id>/frames/<step>` (JPEG; the last 20 jobs are kept in
+`~/.lite-agent/frames`). The desktop panel shows the latest screenshot with what it was doing, replaced at each step.
+It drives Chrome with Playwright (`channel="chrome"`): no driver to match to the browser's version, nothing extra to download.
+Safety: only public http(s) addresses open (never localhost, the home network or `file:`), passwords are never typed, page text is
+quoted as data and never obeyed, and the model can only pick from a fixed set of actions (goto, click, type, scroll, back, done).
+
+## Documents (Pages, Numbers, Keynote)
+
+Needs `uv sync --extra documents`. "crie um documento no Pages com título e texto da Wikipedia sobre X", "monte uma planilha no
+Numbers com soma e média", "crie slides sobre X" make a `.docx` / `.xlsx` / `.pptx` in the workspace (`~/Documents/Chakmati`) and
+open it in Pages / Numbers / Keynote, where you save it in their own format. It is always a proposal you approve (even with "manter aprovado").
+Spreadsheet formulas are limited to an allow-list (SUM, AVERAGE, MIN, MAX, COUNT, ROUND, IF, ABS, PRODUCT, MEDIAN over cells of the same
+sheet); text found on the internet is fenced as untrusted and the sources are listed in the document.
+
 ## Install wizard (desktop)
 
     cd desktop && npm run setup        # or: electron . --setup
@@ -97,7 +121,7 @@ the installed app yet.
 The installers are **not signed**: Windows (SmartScreen) and macOS (Gatekeeper) warn on the first open. On macOS:
 right-click the app and choose Open. Where things live (remove these folders to uninstall completely): the app's data
 folder (`~/Library/Application Support/Chakmati`, `%APPDATA%\Chakmati`, `~/.config/Chakmati`), plus `~/.lite-agent`
-(voice and WhatsApp files) and the Ollama models.
+(voice, WhatsApp and browser files; the folder keeps its old name so existing data is not orphaned) and the Ollama models.
 
 `.github/workflows/build.yml` builds all of them on GitHub (manual, or on pull requests that touch `desktop/` or the engine).
 Only the macOS arm64 build was checked by hand; the Windows and Ubuntu builds are untested until that workflow runs.
@@ -126,6 +150,7 @@ Only the macOS arm64 build was checked by hand; the Windows and Ubuntu builds ar
 | `LITEAGENT_CALENDAR_BACKEND` | `off` (`auto` \| `macos` \| `ics`) |
 | `LITEAGENT_CALENDAR_ICS_PATH` | `agenda.ics` |
 | `LITEAGENT_CALENDAR_NAME` | empty = the system's default calendar for new events |
+| `LITEAGENT_BROWSER_BACKEND` | `off` (`chrome`; needs `uv sync --extra browser`), plus `LITEAGENT_BROWSER_PROFILE`, `LITEAGENT_BROWSER_FRAMES_DIR`, `LITEAGENT_BROWSER_MAX_STEPS` (`12`) |
 | `LITEAGENT_WHATSAPP_BACKEND` | `off` (`openwa`) |
 | `LITEAGENT_OPENWA_URL` | `http://127.0.0.1:8081` |
 | `LITEAGENT_OPENWA_API_KEY` | empty = read `~/.lite-agent/openwa/api_key.txt` (`LITEAGENT_OPENWA_API_KEY_FILE`) |
