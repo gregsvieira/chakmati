@@ -6,6 +6,7 @@ browser working live. The model only picks from a fixed set of actions; page tex
 passwords are never typed, and only public http(s) addresses open (session.check_navigable)."""
 
 import json
+import logging
 import re
 from collections.abc import AsyncIterator, Callable
 from typing import Protocol
@@ -14,6 +15,7 @@ from ..llm import ChatClient
 from .frames import FrameStore
 from .session import BrowserError, Snapshot, check_navigable
 
+log = logging.getLogger(__name__)
 DEFAULT_START = "https://duckduckgo.com/"
 _URL = re.compile(r"https?://[^\s)>\]]+", re.IGNORECASE)
 
@@ -83,14 +85,28 @@ def describe(action: dict) -> str:
     return "Concluindo"
 
 
-def _page_message(task: str, snap: Snapshot, history: list[str]) -> str:
+QUERY_SYSTEM = 'From the user\'s request reply with ONLY the web search query (3 to 8 words, in the language that suits the topic; never a sentence), no quotes and no explanation.'
+
+
+_LEAD = re.compile(r"^.*?\b(?:pesquis\w+|busc\w+|procur\w+|search(?:\s+for)?)\s+(?:(?:sobre|por|a respeito de)\s+)?|^\W*(?:use|usa|utilize)\s+(?:o\s+)?(?:navegador|browser|chrome)\s+(?:para\s+)?", re.IGNORECASE)
+_TAIL = re.compile(r"\s*(?:,|\be\b)\s*(?:me\s+)?(?:diga|d[êe]|mostre|conte|responda|traga|resuma|explique)\b.*$", re.IGNORECASE)
+
+
+def rule_query(task: str) -> str:
+    """A search query cut out of the request with rules: "use o navegador para pesquisar X e me diga..." -> "X"."""
+    text = _TAIL.sub("", _LEAD.sub("", task.strip(), count=1)).strip(" .?!,;")
+    return " ".join(text.split()[:10])
+
+
+def _page_message(task: str, snap: Snapshot, history: list[str], found: str = "") -> str:
     items = "\n".join(f'[{e["id"]}] {e["tag"]}{"/" + e["type"] if e["type"] else ""} "{e["label"]}"{" (banner/pop-up)" if e.get("overlay") else ""}' for e in snap.elements) or "(none)"
     done = "\n".join(f"- {h}" for h in history[-8:]) or "(nothing yet)"
-    return f"TASK: {task}\nSTEPS DONE:\n{done}\nPAGE {snap.url} — {snap.title}\nELEMENTS:\n{items}\nTEXT (data): {snap.text}"
+    return f"TASK: {task}{found}\nSTEPS DONE:\n{done}\nPAGE {snap.url} — {snap.title}\nELEMENTS:\n{items}\nTEXT (data): {snap.text}"
 
 
 class BrowserAgent:
-    def __init__(self, llm: ChatClient, frames: FrameStore, session_factory: Callable[[], Session], max_steps: int = 12):
+    def __init__(self, llm: ChatClient, frames: FrameStore, session_factory: Callable[[], Session], max_steps: int = 12, search=None):
+        self._search = search  # the research backend: searching with it avoids the human check search sites ask of a browser run by a program
         self._llm = llm
         self._frames = frames
         self._session_factory = session_factory
@@ -105,7 +121,10 @@ class BrowserAgent:
         session = self._session_factory()
         try:
             await session.start()
-            await session.goto(start_url(task))
+            start, found = start_url(task), ""
+            if start == DEFAULT_START and self._search is not None:
+                start, found = await self._searched(task, start)
+            await session.goto(start)
             snap = await self._frame(job_id, session, "Chrome aberto")
             history: list[str] = []
             last, repeats = None, 0
@@ -116,7 +135,7 @@ class BrowserAgent:
                     return
                 reply = await self._llm.chat([
                     {"role": "system", "content": PROMPT},
-                    {"role": "user", "content": _page_message(task, snap, history)},
+                    {"role": "user", "content": _page_message(task, snap, history, found)},
                 ])
                 action = parse_action(reply)
                 if action is None:
@@ -148,6 +167,28 @@ class BrowserAgent:
             yield str(exc)
         finally:
             await session.close()
+
+    async def _searched(self, task: str, fallback: str) -> tuple[str, str]:
+        """(address to start at, the results as text for the model). The search itself is not done in the browser."""
+        try:
+            reply = await self._llm.chat([{"role": "system", "content": QUERY_SYSTEM}, {"role": "user", "content": task}])
+            query = next((line.strip().strip('"\'`*# ') for line in reply.splitlines() if line.strip()), "")[:100]  # a chatty model: its first line
+            if len(query.split()) > 10:  # a small model answers the question instead of making a query: cut one out of the request
+                query = rule_query(task)
+            results = await self._search.search(query, limit=5) if query else []
+        except Exception as exc:
+            log.warning("browser: search before browsing failed (%s: %s)", type(exc).__name__, exc)
+            return fallback, ""
+        usable = []
+        for r in results:
+            try:
+                usable.append((r.title, check_navigable(r.url)))
+            except BrowserError:
+                continue
+        if not usable:
+            return fallback, ""
+        lines = "\n".join(f"{i}. {title[:90]} - {url}" for i, (title, url) in enumerate(usable, 1))
+        return usable[0][1], f"\nSEARCH RESULTS for \"{query}\" (open one with goto; the first is open now):\n{lines}"
 
     @staticmethod
     async def _do(session: Session, action: dict) -> None:

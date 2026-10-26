@@ -193,3 +193,52 @@ async def test_an_address_in_the_task_is_where_it_starts(tmp_path):
     session = FakeSession()
     await run(BrowserAgent(ScriptedLLM('{"action":"done","answer":"x"}'), FrameStore(tmp_path), lambda: session), "abra http://localhost:8765/actions")
     assert session.calls[1] == ("goto", "https://duckduckgo.com/")  # a local address is not a start: the search page is
+
+
+class FakeSearch:
+    async def search(self, query, limit=5):
+        from liteagent.research.search import SearchResult
+        self.query = query
+        return [SearchResult("MCP - Wikipedia", "https://pt.wikipedia.org/wiki/MCP", "x"), SearchResult("Local", "http://localhost/x", "y"), SearchResult("Anthropic", "https://anthropic.com/mcp", "z")]
+
+
+async def test_a_search_task_starts_from_the_search_backend_not_the_search_site(tmp_path):
+    session, search = FakeSession(), FakeSearch()
+    llm = ScriptedLLM("protocolo MCP Anthropic", '{"action":"done","answer":"x"}')
+    await run(BrowserAgent(llm, FrameStore(tmp_path), lambda: session, search=search), "use o navegador para pesquisar o protocolo MCP")
+    assert search.query == "protocolo MCP Anthropic"
+    assert session.calls[1] == ("goto", "https://pt.wikipedia.org/wiki/MCP")  # the first result, not duckduckgo.com
+    assert "SEARCH RESULTS" in llm.prompts[1] and "anthropic.com/mcp" in llm.prompts[1] and "localhost" not in llm.prompts[1]
+
+
+async def test_without_results_it_falls_back_to_the_search_page(tmp_path):
+    class Empty:
+        async def search(self, query, limit=5): return []
+    session = FakeSession()
+    await run(BrowserAgent(ScriptedLLM("q", '{"action":"done","answer":"x"}'), FrameStore(tmp_path), lambda: session, search=Empty()), "pesquise algo")
+    assert session.calls[1] == ("goto", "https://duckduckgo.com/")
+
+
+async def test_a_chatty_model_reply_still_gives_a_query(tmp_path):
+    search = FakeSearch()
+    session = FakeSession()
+    llm = ScriptedLLM('**protocolo MCP**\nAqui está a consulta de busca que você pediu.', '{"action":"done","answer":"x"}')
+    await run(BrowserAgent(llm, FrameStore(tmp_path), lambda: session, search=search), "pesquise o MCP")
+    assert search.query == "protocolo MCP" and session.calls[1][1] == "https://pt.wikipedia.org/wiki/MCP"
+
+
+@pytest.mark.parametrize("task,query", [
+    ("use o navegador para pesquisar o que é o protocolo MCP da Anthropic e me diga em duas frases", "o que é o protocolo MCP da Anthropic"),
+    ("pesquise no Chrome a capital da Austrália", "no Chrome a capital da Austrália"),
+    ("use o navegador para ver o preço do dólar", "ver o preço do dólar"),
+])
+def test_a_query_is_cut_out_of_the_request_by_rules(task, query):
+    from liteagent.browser.agent import rule_query
+    assert rule_query(task) == query
+
+
+async def test_a_model_that_answers_instead_of_making_a_query_is_not_used(tmp_path):
+    search, session = FakeSearch(), FakeSession()
+    long = "Protocolo de comunicação entre máquinas criado pela Anthropic para conectar LLMs a ferramentas externas."
+    await run(BrowserAgent(ScriptedLLM(long, '{"action":"done","answer":"x"}'), FrameStore(tmp_path), lambda: session, search=search), "use o navegador para pesquisar o protocolo MCP e me diga o que é")
+    assert search.query == "o protocolo MCP"

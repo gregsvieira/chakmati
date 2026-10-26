@@ -93,8 +93,7 @@ class PlaywrightSession:
         try:
             self._context = await self._pw.chromium.launch_persistent_context(
                 self._profile, channel="chrome", headless=self._headless, viewport=VIEWPORT,
-                args=["--disable-blink-features=AutomationControlled"],
-            )
+            )  # no stealth flags or user-agent changes: a site that asks for a human check gets a stop, not a workaround
         except Exception as exc:
             await self._pw.stop()
             raise BrowserError(f"não consegui abrir o Chrome (ele precisa estar instalado): {exc}") from exc

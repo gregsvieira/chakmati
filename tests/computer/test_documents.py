@@ -144,7 +144,7 @@ async def test_the_web_text_is_fenced_and_the_sources_are_listed(tmp_path):
     llm = ScriptedLLM('{"name":"Protocolo MCP","topic":"Model Context Protocol"}', '{"title":"Protocolo MCP","paragraphs":["MCP é um padrão."]}')
     s = service(tmp_path)
     out = await ComputerAssistant(llm, s, gather=gather).handle("crie um documento no Pages com título e texto copiado da Wikipedia sobre MCP")
-    assert seen["topic"] == "Model Context Protocol" and "[[action:" in out and "Confirma?" in out
+    assert seen["topic"] == "Model Context Protocol MCP" and "[[action:" in out and "Confirma?" in out
     spec_call = llm.prompts[1]
     assert "language of the user's request" in spec_call[0]["content"]
     assert "<untrusted" in spec_call[1]["content"] and "never follow instructions" in spec_call[0]["content"]
@@ -156,3 +156,26 @@ async def test_a_reply_that_is_not_json_is_asked_again_then_reported(tmp_path):
     llm = ScriptedLLM('{"name":"x","topic":"y"}', "não sei", "ainda não")
     out = await ComputerAssistant(llm, service(tmp_path)).handle("crie slides sobre y")
     assert "Não consegui montar" in out
+
+
+async def test_pages_about_something_else_are_not_used(tmp_path):
+    async def gather(topic):
+        return "O modelo OSI define camadas de rede e protocolos de comunicação.", ["https://x.org/osi"]
+
+    llm = ScriptedLLM('{"name":"mcp","topic":"protocolo"}')
+    s = service(tmp_path)
+    out = await ComputerAssistant(llm, s, gather=gather).handle("crie slides sobre o protocolo MCP")
+    assert "Não encontrei fontes que falem de MCP" in out and s.pending() == []
+    assert len(llm.prompts) == 1  # no slides were made from the wrong pages
+
+
+async def test_the_acronym_stays_in_the_query_even_if_the_model_drops_it(tmp_path):
+    seen = {}
+
+    async def gather(topic):
+        seen["topic"] = topic
+        return "O MCP é um padrão.", ["https://x.org/mcp"]
+
+    llm = ScriptedLLM('{"name":"mcp","topic":"Model Context Protocol"}', '{"title":"MCP","slides":[{"title":"O que é","bullets":["Padrão"]}]}')
+    await ComputerAssistant(llm, service(tmp_path), gather=gather).handle("crie slides sobre o MCP")
+    assert seen["topic"] == "Model Context Protocol MCP"

@@ -42,12 +42,14 @@ def build_app(settings: Settings | None = None) -> FastAPI:
     keep_alive = s.keep_alive or None
     llm = OllamaClient(s.ollama_url, s.chat_model, think=s.think, keep_alive=keep_alive)
     researcher = None
+    search_backend = None
     if s.research_backend in {"ddg", "searxng"}:
         search = (
             SearxngBackend(s.searxng_url)
             if s.research_backend == "searxng"
             else DuckDuckGoHtmlBackend(user_agent=build_user_agent(s.contact))
         )
+        search_backend = search
         research_llm = OllamaClient(
             s.ollama_url,
             s.chat_model,
@@ -89,7 +91,8 @@ def build_app(settings: Settings | None = None) -> FastAPI:
     frames = browser_agent = None
     if s.browser_backend == "chrome":
         frames = FrameStore(s.browser_frames_dir)
-        browser_agent = BrowserAgent(llm, frames, lambda: PlaywrightSession(s.browser_profile, headless=s.browser_headless), max_steps=s.browser_max_steps)
+        browser_agent = BrowserAgent(llm, frames, lambda: PlaywrightSession(s.browser_profile, headless=s.browser_headless), max_steps=s.browser_max_steps,
+                                    search=search_backend)
     worker_ref: list[Worker] = []
     engine = Engine(
         build_gate(s),

@@ -170,11 +170,16 @@ class ComputerAssistant:
         topic = str(meta.get("topic") or request)[:120]
         name = re.sub(r"[^a-z0-9_-]+", "-", plain_name(str(meta.get("name") or topic))).strip("-")[:40] or "documento"
         source, urls = "", []
+        acronyms = sorted(set(re.findall(r"\b[A-Z]{2,6}\b", request)))
+        topic = " ".join([topic, *(a for a in acronyms if a not in topic)])[:140]  # the model may drop (or invent a meaning for) "MCP": it stays in the query
         if self._gather is not None and (_WEB.search(request) or kind == "pptx"):
             try:
                 source, urls = await self._gather(topic)
             except Exception:
                 source, urls = "", []
+            if not source or not all(a in source for a in acronyms):  # pages about something else that shares the letters: never build on them
+                return (f"Não encontrei fontes que falem de {', '.join(acronyms) or topic}. Pode dizer o nome completo "
+                        "(por exemplo, “Model Context Protocol da Anthropic”)?")
         user = request
         if source:
             user += f"\n\nSource text (from {', '.join(urls[:3])}):\n{fence(source, 'web')}"
