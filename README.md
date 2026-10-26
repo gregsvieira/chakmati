@@ -111,7 +111,25 @@ A box with only a little ink is flagged "marca duvidosa", never decided. A handw
 
 **Explaining the mistakes**: add "...e explique por que a escolha de cada aluno está errada" and the sheet gets an `Explicações` tab: one worked solution per question, one explanation per
 wrong option chosen (reused for every student who chose it), and "Não respondeu" for blanks. It is written by the local model, so it is a draft for you to check: an explanation that
-names another option as correct, or that corrects itself in the middle, is replaced by "confira à mão". Small models get ENEM maths wrong: set `LITEAGENT_EXPLAIN_MODEL=deepseek-r1:14b` (or another reasoning model) to work out the questions with a stronger one (about 3 minutes for 20 exams).
+names another option as correct, or that corrects itself in the middle, is replaced by "confira à mão". Small models get ENEM maths wrong, so the questions are worked out by a **reasoning model** when one is there: the engine asks Ollama what is installed
+(`deepseek-r1:14b`, then `:8b`, then `:7b`) and uses the best one **that fits this computer's memory** (file size x 1.4 + 1.5 GB must be under the RAM: the 14B needs about 16 GB,
+the 8B about 12 GB). With none installed, or too little memory, it uses the chat model and the plan says so. `LITEAGENT_EXPLAIN_MODEL` names one yourself. The installer offers it
+(only on computers that can run it, with its own approval for the download). About 2.5 minutes for 20 exams on a 24 GB Mac.
+
+### The plan comes first
+
+Before doing a multi-step job (grading exams, making a document, using the browser) Chakmati shows what it is about to do, after having a look at what is there:
+
+    Plano:
+    1. Procurar a pasta «provas_escaneadas» em ~/Documents/Chakmati: achei 20 arquivos.
+    2. Verificar como ler cada prova: 20 escaneados ou fotos: leitura por OCR.
+    3. Ler o nome e a marcação de cada aluno (nas imagens, medindo o quadradinho de cada alternativa).
+    4. Comparar com o gabarito 1E - 2B - 3B e calcular acertos e nota (1 por acerto), ...
+    5. Resolver cada questão com modelo de raciocínio deepseek-r1:14b (instalado) e explicar o erro de cada aluno, ...
+    6. Montar a planilha com fórmulas (abre no Numbers) e esperar a sua aprovação antes de salvar.
+
+It is the first text of the reply (and stays in it); simple requests ("abre o Spotify") get none. The plan is made by code from the request and from a look at the folder, so it
+also decides the tool (text or OCR) and the model; it says when something is missing (OCR not installed, no reasoning model).
 `scripts/simulate_exams.py OUT TRUTH.json 20` makes 20 filled-in copies to try it.
 
 ## Install wizard (desktop)

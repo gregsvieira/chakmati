@@ -142,3 +142,26 @@ def question_texts(exams: list[Exam]) -> dict[int, Question]:
 def mistakes(exams: list[Exam], key: dict[int, str]) -> list[tuple[str, int, str, str]]:
     """(student, question, letters marked or "", the right letter) for every question not answered rightly."""
     return [(e.student, q, e.marks.get(q, ""), key[q]) for e in exams for q in sorted(key) if e.marks.get(q, "") != key[q]]
+
+
+def inspect_folder(folder: Path) -> dict:
+    """What is in a folder of exams, without grading anything: how many files and how each one will have to be read."""
+    try:
+        from pypdf import PdfReader
+    except ImportError:
+        PdfReader = None
+    found = {"files": 0, "text_pdf": 0, "scanned_pdf": 0, "images": 0}
+    for path in sorted(folder.iterdir()):
+        suffix = path.suffix.lower()
+        if not path.is_file() or path.name.startswith(".") or suffix not in {".pdf", ".jpg", ".jpeg", ".png"}:
+            continue
+        found["files"] += 1
+        if suffix != ".pdf":
+            found["images"] += 1
+            continue
+        try:
+            has_text = PdfReader is not None and bool(parse_text(path.name, (PdfReader(str(path)).pages[0].extract_text() or "")).marks)
+        except Exception:
+            has_text = False
+        found["text_pdf" if has_text else "scanned_pdf"] += 1
+    return found

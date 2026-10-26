@@ -1,7 +1,7 @@
 'use strict';
 // Turns "this computer + what the person ticked" into the list of things to do. Pure: it changes nothing and downloads nothing.
 const { CORE, ENGINE, MODELS, OPTIONS, extrasSizeMb } = require('./catalog');
-const { LIMITS } = require('./tiers');
+const { LIMITS, reasoningFor } = require('./tiers');
 
 const TIGHT_RAM = 0.85; // above this share of the computer's memory the app will feel heavy
 
@@ -17,6 +17,8 @@ function buildPlan({ hw, verdict, selected = [], engine = null }) {
   }
   const model = MODELS.find((m) => m.id === verdict.model);
   const picked = OPTIONS.filter((o) => chosen.has(o.id));
+  const thinker = chosen.has('reasoning') ? reasoningFor(hw) : null;
+  if (chosen.has('reasoning') && !thinker) throw new Error('Este computador não tem memória ou espaço para o modelo de raciocínio.');
 
   const extras = [...new Set(picked.filter((o) => o.extra).map((o) => o.extra))];
   const ollama = { id: 'ollama', kind: 'check-ollama', label: 'Verificar o Ollama', required: true, settings: {} };
@@ -39,7 +41,11 @@ function buildPlan({ hw, verdict, selected = [], engine = null }) {
     ...(engine ? [engineStep] : []),
     modelStep,
     ...(engine && extras.length ? [extrasStep] : []),
-    ...picked.map((o) => ({
+    ...(thinker ? [{
+      id: 'reasoning', kind: 'pull-model', model: thinker.id, label: `Baixar o ${thinker.label.toLowerCase()} (${thinker.id})`, required: false,
+      approval: { source: 'ollama.com (pelo Ollama instalado neste computador)', sizeMb: thinker.diskMb }, settings: {},
+    }] : []),
+    ...picked.filter((o) => o.id !== 'reasoning').map((o) => ({
       id: o.id, kind: 'setting', label: `Ativar: ${o.label}`, required: false,
       ...(o.approval ? { approval: o.approval } : {}),
       ...(engine && o.extra ? { requires: 'extras' } : {}),
@@ -52,8 +58,8 @@ function buildPlan({ hw, verdict, selected = [], engine = null }) {
   for (const o of OPTIONS) if (!chosen.has(o.id)) Object.assign(baseline, o.offSettings);
 
   const totals = {
-    diskMb: CORE.diskMb + model.diskMb + picked.reduce((n, o) => n + o.diskMb, 0) + (engine ? extrasSizeMb(extras) : 0),
-    ramMb: CORE.ramMb + model.ramMb + picked.reduce((n, o) => n + o.ramMb, 0),
+    diskMb: CORE.diskMb + model.diskMb + (thinker ? thinker.diskMb : 0) + picked.reduce((n, o) => n + o.diskMb, 0) + (engine ? extrasSizeMb(extras) : 0),
+    ramMb: CORE.ramMb + Math.max(model.ramMb, thinker ? thinker.ramMb : 0) + picked.reduce((n, o) => n + o.ramMb, 0), // the two models are not in memory together
   };
 
   const blocked = [];

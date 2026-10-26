@@ -1,7 +1,7 @@
 'use strict';
 // The two things the installer asks Ollama for, over its local HTTP API (no shell, no command line built from text).
 const { assertLoopback } = require('../lib/engine-client');
-const { MODELS } = require('./catalog');
+const { MODELS, REASONING } = require('./catalog');
 
 const OLLAMA_URL = 'http://127.0.0.1:11434';
 const NOT_FOUND = 'Não encontrei o Ollama rodando neste computador. Instale e abra o Ollama (ollama.com/download) e tente de novo.';
@@ -16,7 +16,7 @@ function makeRunners({ fetchFn = fetch, baseUrl = OLLAMA_URL, saveSettings, sync
     },
 
     async pullModel(model, onProgress) {
-      if (!MODELS.some((m) => m.id === model)) throw new Error('Esse modelo não está na lista do instalador.');
+      if (![...MODELS, ...REASONING].some((m) => m.id === model)) throw new Error('Esse modelo não está na lista do instalador.');
       const res = await fetchFn(`${baseUrl}/api/pull`, {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model, stream: true }),
       });

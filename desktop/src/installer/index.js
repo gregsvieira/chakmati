@@ -3,7 +3,7 @@
 const path = require('node:path');
 const { BrowserWindow, dialog, shell } = require('electron');
 const { readHardware } = require('./hardware');
-const { verdict: judge, suggestions } = require('./tiers');
+const { verdict: judge, suggestions, reasoningFor } = require('./tiers');
 const { MODELS, optionsFor } = require('./catalog');
 const { buildPlan } = require('./plan');
 const { runPlan } = require('./run-plan');
@@ -43,9 +43,10 @@ function openSetup({ ipcMain, webPreferences, settingsFile, engine = null, onClo
         disk: hw.freeDiskGb === null ? 'não consegui medir' : `${hw.freeDiskGb} GB livres`,
       },
       model: model && { id: model.id, label: model.label, sizeText: formatSize(model.diskMb) },
-      options: optionsFor(hw.platform, { packaged: !!engine }).map((o) => ({
-        id: o.id, label: o.label, description: o.description,
-        costText: o.diskMb || o.ramMb ? `cerca de ${formatSize(o.diskMb)} em disco e ${formatSize(o.ramMb)} de memória` : 'não ocupa espaço nem memória extra',
+      options: optionsFor(hw.platform, { packaged: !!engine }).filter((o) => o.id !== 'reasoning' || reasoningFor(hw)).map((o) => ({
+        id: o.id, label: o.id === 'reasoning' ? `${o.label}: ${reasoningFor(hw).id}` : o.label, description: o.description,
+        costText: o.id === 'reasoning' ? `cerca de ${formatSize(reasoningFor(hw).diskMb)} em disco e ${formatSize(reasoningFor(hw).ramMb)} de memória (não ao mesmo tempo que o modelo de conversa)`
+          : o.diskMb || o.ramMb ? `cerca de ${formatSize(o.diskMb)} em disco e ${formatSize(o.ramMb)} de memória` : 'não ocupa espaço nem memória extra',
       })),
     };
   }

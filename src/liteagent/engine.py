@@ -164,6 +164,21 @@ class Engine:
             return getattr(service, "cancel_text", "Certo, não criei a automação.")
         return None
 
+    async def _plan_text(self, job: Job) -> str:
+        """The steps of this job, shown first ("Plano: 1. ... 2. ..."), or "" when the job is too simple to need one. Never stops the job."""
+        try:
+            if job.route == Route.COMPUTER.value and self._computer is not None and hasattr(self._computer, "plan"):
+                steps = await self._computer.plan(job.prompt)
+            elif job.route == Route.BROWSER.value and self._browser is not None:
+                steps = self._browser.plan(job.prompt)
+            else:
+                steps = None
+        except Exception:
+            steps = None
+        if not steps:
+            return ""
+        return "Plano:\n" + "\n".join(f"{i}. {step}" for i, step in enumerate(steps, 1)) + "\n\n"
+
     async def _computer_job(self, job: Job) -> str:
         if self._computer is None:
             return COMPUTER_OFF
@@ -238,9 +253,7 @@ class Engine:
             return await self._automation_job(job)
         if job.route == Route.HOME.value:
             return await self._home_job(job)
-        if job.route == Route.COMPUTER.value:
-            return await self._computer_job(job)
-        if job.route == Route.BROWSER.value:
+        if job.route in (Route.COMPUTER.value, Route.BROWSER.value):
             return "".join([piece async for piece in self.run_job_stream(job)])
         now = self._clock()
         today = today_line(now)  # research answers are about "now": they always know what day it is
@@ -286,12 +299,16 @@ class Engine:
             yield await self._home_job(job)
             return
         if job.route == Route.COMPUTER.value:
+            if plan := await self._plan_text(job):
+                yield plan  # first thing the person sees: what is about to be done, and with which tool or model
             yield await self._computer_job(job)
             return
         if job.route == Route.BROWSER.value:
             if self._browser is None:
                 yield BROWSER_OFF
                 return
+            if plan := await self._plan_text(job):
+                yield plan
             async for piece in self._browser.run(job.id, job.prompt):
                 yield piece
             return

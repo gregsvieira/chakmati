@@ -160,7 +160,8 @@ def test_screenshots_stream_to_the_ui_and_can_be_fetched(tmp_path):
             events = [json.loads(line[5:]) for line in r.iter_lines() if line.startswith("data:")]
         shots = [e for e in events if e["type"] == "screenshot"]
         assert [s["note"] for s in shots] == ["Chrome aberto", "Concluído"]
-        assert events[-1] == {"type": "done", "result": "pronto"}
+        assert events[-1]["type"] == "done" and events[-1]["result"].startswith("Plano:\n1. ") and events[-1]["result"].endswith("pronto")
+        assert next(e for e in events if e["type"] == "delta")["text"].startswith("Plano:")  # the plan is the first text the person sees
         job_id = shots[0]["job_id"]
         img = client.get(f"/jobs/{job_id}/frames/1")
         assert img.status_code == 200 and img.headers["content-type"] == "image/jpeg" and img.content == b"\xff\xd8jpeg"

@@ -260,3 +260,93 @@ async def test_a_stronger_model_works_out_the_question_when_one_is_configured(tm
 def test_a_model_thinking_out_loud_is_not_handed_to_the_teacher(text, thinking_aloud):
     from liteagent.computer.assistant import rambling
     assert rambling(text) is thinking_aloud
+
+
+# ------------------------------------------------------------------------------------------------ the plan, shown before acting
+async def test_the_plan_says_what_is_there_and_which_tool_and_model_each_step_needs(tmp_path):
+    await asyncio.to_thread(pdf_folder, tmp_path, [("Ana", ["A", "B", "B"]), ("Bia", ["E", "B", "B"])])
+    from liteagent.models import Choice
+
+    class Models:
+        async def reasoning(self):
+            return Choice("deepseek-r1:14b", "modelo de raciocínio deepseek-r1:14b (instalado)")
+    service = ComputerService(str(tmp_path / "ws"), ActionStore(":memory:"))
+    steps = await ComputerAssistant(None, service, models=Models()).plan("Corrija as provas da pasta provas, gabarito: 1E - 2B - 3B, 2 pontos cada, e explique os erros")
+    assert steps[0].startswith("Procurar a pasta «provas»") and "achei 2 arquivos" in steps[0]
+    assert "2 PDF com texto: leitura direta pelos caracteres" in steps[1] and "OCR" not in steps[1]
+    assert "gabarito 1E - 2B - 3B" in steps[3] and "2 por acerto" in steps[3]
+    assert "deepseek-r1:14b (instalado)" in steps[4] and "contrarie o gabarito" in steps[4]
+    assert steps[-1].startswith("Montar a planilha") and "aprovação" in steps[-1]
+
+
+async def test_the_plan_says_ocr_is_needed_for_scans(tmp_path):
+    folder = tmp_path / "ws" / "escaneadas"
+    folder.mkdir(parents=True)
+    from PIL import Image
+    Image.new("L", (200, 200), 255).save(folder / "a.jpg")
+    Image.new("L", (200, 200), 255).save(folder / "b.pdf")  # a PDF that is only a picture
+    service = ComputerService(str(tmp_path / "ws"), ActionStore(":memory:"))
+    steps = await ComputerAssistant(None, service).plan("corrija as provas da pasta escaneadas, gabarito 1A")
+    assert "2 escaneados ou fotos: leitura por OCR" in steps[1]
+    assert len(steps) == 5  # no explanation step: it was not asked for
+
+
+async def test_without_a_stronger_model_the_plan_says_so(tmp_path):
+    from liteagent.models import ModelCatalog
+    import httpx
+    (tmp_path / "ws" / "provas").mkdir(parents=True)
+    models = ModelCatalog("http://ollama.test", ram_gb=16, transport=httpx.MockTransport(lambda r: httpx.Response(200, json={"models": [{"name": "qwen3.5:latest", "size": 6 * 1024**3}]})))
+    steps = await ComputerAssistant(None, ComputerService(str(tmp_path / "ws"), ActionStore(":memory:")), models=models).plan("corrija as provas da pasta provas, gabarito 1A, explique os erros")
+    assert "não há modelo de raciocínio instalado" in steps[-2] and "não tem provas" in steps[0]
+
+
+async def test_a_simple_request_has_no_plan(tmp_path):
+    service = ComputerService(str(tmp_path / "ws"), ActionStore(":memory:"))
+    assistant = ComputerAssistant(None, service)
+    assert await assistant.plan("abre o Spotify") is None
+    assert await assistant.plan("corrija as provas") is None  # it will ask for the folder and the key instead
+
+
+async def test_a_document_plan_names_the_steps(tmp_path):
+    async def gather(topic):
+        return "x", []
+    service = ComputerService(str(tmp_path / "ws"), ActionStore(":memory:"))
+    steps = await ComputerAssistant(None, service, gather=gather).plan("crie slides no Keynote sobre o protocolo MCP")
+    assert steps[0] == "Entender o pedido: criar os slides (Keynote)." and "Buscar textos na internet" in steps[1] and steps[-1].endswith("antes de salvar e abrir.")
+
+
+async def test_the_engine_shows_the_plan_first_then_the_answer(tmp_path):
+    from liteagent.engine import Engine
+    from liteagent.gate.base import GateResult, Route
+    from liteagent.jobs import JobStore
+
+    class Gate:
+        def classify(self, text):
+            return GateResult(Route.COMPUTER, 1.0, "fake")
+
+    class Assistant:
+        async def plan(self, text):
+            return ["Procurar a pasta.", "Ler as provas."]
+        async def handle(self, text):
+            return "Pronto.\n[[action:abc]]"
+    store = JobStore(":memory:")
+    engine = Engine(Gate(), None, store, computer_assistant=Assistant())
+    job = store.get(store.create("computer", "corrija as provas"))
+    pieces = [p async for p in engine.run_job_stream(job)]
+    assert pieces[0] == "Plano:\n1. Procurar a pasta.\n2. Ler as provas.\n\n" and pieces[1].startswith("Pronto.")
+    assert (await engine.run_job(job)).startswith("Plano:\n1. Procurar a pasta.")
+
+
+async def test_a_broken_plan_never_stops_the_job(tmp_path):
+    from liteagent.engine import Engine
+    from liteagent.gate.base import GateResult, Route
+    from liteagent.jobs import JobStore
+
+    class Assistant:
+        async def plan(self, text):
+            raise RuntimeError("boom")
+        async def handle(self, text):
+            return "feito"
+    store = JobStore(":memory:")
+    job = store.get(store.create("computer", "x"))
+    assert await Engine(None, None, store, computer_assistant=Assistant()).run_job(job) == "feito"

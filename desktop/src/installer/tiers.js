@@ -2,6 +2,7 @@
 // Every threshold of the installer lives here. The RAM limits sit a little under the number on the box because the system
 // reports less than what was sold (a "4 GB" computer reports about 3.7 GB, "8 GB" about 7.7, "16 GB" about 15.6).
 // The suggestion limits (voice, microphone, WhatsApp) are estimates, not measurements yet.
+const { REASONING } = require('./catalog');
 const LIMITS = Object.freeze({
   minRamGb: 3.5,
   standardRamGb: 7.5,
@@ -48,10 +49,17 @@ function verdict(hw) {
   return { level, model: MODEL_BY_LEVEL[level], reasons: [], notes };
 }
 
+// The reasoning model this computer can run, or null: the biggest one whose memory and disk needs are met (the chat model is not loaded at the same time).
+function reasoningFor(hw) {
+  if (!hw || verdict(hw).level === 'unsupported') return null;
+  return REASONING.find((m) => hw.ramGb >= m.minRamGb && (hw.freeDiskGb === null || hw.freeDiskGb >= (m.diskMb / 1024) + 8)) || null;
+}
+
 // Only labels: nothing is ever pre-selected from this.
 function suggestions(hw, level) {
-  if (level === 'unsupported') return { voice: false, talk: false, whatsapp: false, animations: false, hideShare: false };
+  if (level === 'unsupported') return { reasoning: false, voice: false, talk: false, whatsapp: false, animations: false, hideShare: false };
   return {
+    reasoning: reasoningFor(hw) !== null,
     voice: hw.ramGb >= LIMITS.standardRamGb,
     talk: hw.ramGb >= LIMITS.fullRamGb && hw.cores >= LIMITS.talkCores,
     whatsapp: hw.ramGb >= LIMITS.fullRamGb && hw.freeDiskGb !== null && hw.freeDiskGb >= LIMITS.whatsappFreeDiskGb,
@@ -60,4 +68,4 @@ function suggestions(hw, level) {
   };
 }
 
-module.exports = { LIMITS, MODEL_BY_LEVEL, verdict, suggestions };
+module.exports = { LIMITS, MODEL_BY_LEVEL, verdict, suggestions, reasoningFor };

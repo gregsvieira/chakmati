@@ -216,9 +216,11 @@ def _json_object(reply: str) -> dict | None:
 
 
 class ComputerAssistant:
-    def __init__(self, llm: ChatClient, service: ComputerService, gather: Gather | None = None, solver: ChatClient | None = None):
+    def __init__(self, llm: ChatClient, service: ComputerService, gather: Gather | None = None, solver: ChatClient | None = None, models=None, reasoning_for=None):
         self._llm = llm
-        self._solver = solver or llm  # works out the questions of an exam: a stronger model when one is configured
+        self._solver = solver  # works out the questions of an exam: a stronger model when one is given...
+        self._models = models  # ...or the one the catalog finds installed (liteagent.models.ModelCatalog)
+        self._reasoning_for = reasoning_for  # (model name) -> a chat client for it
         self._service = service
         self._gather = gather  # (topic) -> (text found on the internet, source urls); None = no web access
 
@@ -289,6 +291,7 @@ class ComputerAssistant:
         chosen by someone: written once and reused for every student who made that mistake."""
         texts = grading.question_texts(exams)
         wrong = grading.mistakes(exams, key)
+        solver = await self._solver_client()
         if not wrong:
             return [], "Ninguém errou nada, então não há o que explicar."
         solutions: dict[int, str] = {}
@@ -310,7 +313,7 @@ class ComputerAssistant:
                         cache[(q, letter)] = f"Marcou {letter}, mas a correta é {right}."
                     else:
                         if q not in solutions:
-                            solutions[q] = await self._solve(question, right)
+                            solutions[q] = await self._solve(question, right, solver)
                             calls += 1
                         cache[(q, letter)] = await self._explain(question, solutions[q], letter, right)
                         calls += 1
@@ -321,8 +324,75 @@ class ComputerAssistant:
         options = "\n".join(f"{letter}) {text}" for letter, text in sorted(question.options.items()))
         return fence(f"{question.stem}\n{options}", "exam")
 
-    async def _solve(self, question, right: str) -> str:
-        reply = await self._solver.chat([
+    # ------------------------------------------------------------------------------------------------ the plan, shown before anything is done
+    async def plan(self, text: str) -> list[str] | None:
+        """The steps this request will take, as the person will see them first (None for a simple one: "abre o Spotify"). Built from the
+        request and from a look at what is there (is the folder there? are the exams text or scans? is the stronger model installed?),
+        so it also says which tool or model each step needs."""
+        if _GRADE.search(text):
+            return await self._plan_grade(text)
+        kind = document_kind(text)
+        return self._plan_document(kind, text) if kind else None
+
+    async def _plan_grade(self, text: str) -> list[str] | None:
+        folder, gabarito = _FOLDER.search(text), _GABARITO.search(text)
+        if not folder or not gabarito:
+            return None  # the answer will ask for what is missing
+        name = folder.group(1).strip()
+        pts = _POINTS.search(text)
+        points = (pts.group(1) or pts.group(2)).replace(".", ",") if pts else "1"
+        steps = []
+        try:
+            target = self._service.workspace / name
+            found = grading.inspect_folder(target) if target.is_dir() else None
+        except Exception:
+            found = None
+        steps.append(f"Procurar a pasta «{name}» em {self._service.workspace}: " + (("a pasta não tem provas (PDF, JPG ou PNG), vou avisar." if not found["files"] else f"achei {found['files']} arquivos.") if found else "não achei, vou avisar."))
+        if found and found["files"]:
+            direct, ocr_n = found["text_pdf"], found["scanned_pdf"] + found["images"]
+            how = []
+            if direct:
+                how.append(f"{direct} PDF com texto: leitura direta pelos caracteres")
+            if ocr_n:
+                from .. import extras
+                how.append(f"{ocr_n} escaneados ou fotos: leitura por OCR" + ("" if extras.available("ocr") else " (⚠ o OCR não está instalado: `uv sync --extra ocr`)"))
+            steps.append("Verificar como ler cada prova: " + "; ".join(how) + ".")
+        else:
+            steps.append("Verificar como ler cada prova (texto direto ou OCR, se for imagem).")
+        steps.append("Ler o nome e a marcação de cada aluno (nas imagens, medindo o quadradinho de cada alternativa).")
+        steps.append(f"Comparar com o gabarito {gabarito.group(1).strip(' ,;-')} e calcular acertos e nota ({points} por acerto), sinalizando questão em branco ou com duas marcas.")
+        if _EXPLAIN.search(text):
+            if self._solver is not None:
+                why = "o modelo de raciocínio configurado"
+            elif self._models is not None:
+                why = (await self._models.reasoning()).why
+            else:
+                why = "o modelo padrão"
+            steps.append(f"Resolver cada questão com {why} e explicar o erro de cada aluno, descartando explicação que contrarie o gabarito.")
+        steps.append("Montar a planilha com fórmulas (abre no Numbers) e esperar a sua aprovação antes de salvar.")
+        return steps
+
+    def _plan_document(self, kind: str, text: str) -> list[str]:
+        label = {"docx": "o documento (Pages)", "xlsx": "a planilha (Numbers)", "pptx": "os slides (Keynote)"}[kind]
+        steps = [f"Entender o pedido: criar {label}."]
+        if self._gather is not None and (_WEB.search(text) or kind == "pptx"):
+            steps.append("Buscar textos na internet sobre o tema (pelo mecanismo de pesquisa, sem abrir o navegador) e conferir se falam mesmo do assunto.")
+        steps.append("Escrever o conteúdo com o modelo padrão" + (", usando o que foi encontrado e citando a fonte." if self._gather is not None and (_WEB.search(text) or kind == "pptx") else "."))
+        steps.append(f"Gerar o arquivo .{kind} na pasta de trabalho, conferindo o formato" + (" e as fórmulas permitidas." if kind == "xlsx" else "."))
+        steps.append(f"Mostrar o que vai ser criado e esperar a sua aprovação antes de salvar e abrir.")
+        return steps
+
+    async def _solver_client(self):
+        if self._solver is not None:
+            return self._solver
+        if self._models is not None and self._reasoning_for is not None:
+            choice = await self._models.reasoning()
+            if choice.model:
+                return self._reasoning_for(choice.model)
+        return self._llm
+
+    async def _solve(self, question, right: str, solver) -> str:
+        reply = await solver.chat([
             {"role": "system", "content": SOLVE_SYSTEM + UNTRUSTED_RULE},
             {"role": "user", "content": f"{self._question_block(question)}\nCorrect option (from the teacher's key): {right}) {question.options[right]}"},
         ])

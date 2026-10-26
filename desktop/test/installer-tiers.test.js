@@ -47,12 +47,12 @@ test('an unmeasurable disk does not block, but says so', () => {
 
 test('suggestions follow RAM, cores and free disk; nothing is suggested when unsupported', () => {
   const big = suggestions(pc({ cores: 8 }), 'full');
-  assert.deepEqual(big, { voice: true, talk: true, whatsapp: true, animations: true, hideShare: true });
+  assert.deepEqual(big, { reasoning: true, voice: true, talk: true, whatsapp: true, animations: true, hideShare: true });
   const mid = suggestions(pc({ ramGb: 7.7, cores: 4, freeDiskGb: 30 }), 'standard');
-  assert.deepEqual(mid, { voice: true, talk: false, whatsapp: false, animations: true, hideShare: true });
+  assert.deepEqual(mid, { reasoning: false, voice: true, talk: false, whatsapp: false, animations: true, hideShare: true });
   const small = suggestions(pc({ ramGb: 3.7 }), 'light');
-  assert.deepEqual(small, { voice: false, talk: false, whatsapp: false, animations: false, hideShare: true });
-  assert.deepEqual(suggestions(pc({ ramGb: 2 }), 'unsupported'), { voice: false, talk: false, whatsapp: false, animations: false, hideShare: false });
+  assert.deepEqual(small, { reasoning: false, voice: false, talk: false, whatsapp: false, animations: false, hideShare: true });
+  assert.deepEqual(suggestions(pc({ ramGb: 2 }), 'unsupported'), { reasoning: false, voice: false, talk: false, whatsapp: false, animations: false, hideShare: false });
   assert.equal(suggestions(pc({ freeDiskGb: 15 }), 'full').whatsapp, false);
   assert.equal(suggestions(pc({ freeDiskGb: null }), 'full').whatsapp, false);
 });

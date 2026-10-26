@@ -19,6 +19,7 @@ from .engine import Engine
 from .gate import build_gate
 from .jobs import JobStore, Worker
 from .llm import OllamaClient
+from .models import ModelCatalog
 from .loop.scorer import KeepAllScorer
 from .loop.twostage import LayaRelevanceScorer
 from .research.fetch import PageFetcher
@@ -93,7 +94,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         frames = FrameStore(s.browser_frames_dir)
         browser_agent = BrowserAgent(llm, frames, lambda: PlaywrightSession(s.browser_profile, headless=s.browser_headless), max_steps=s.browser_max_steps,
                                     search=search_backend)
-    solver = OllamaClient(s.ollama_url, s.explain_model, think=True, keep_alive="5m", timeout=900) if s.explain_model else None
+    catalog = ModelCatalog(s.ollama_url, configured=s.explain_model)  # which stronger model is installed (or named in LITEAGENT_EXPLAIN_MODEL), and fits
     worker_ref: list[Worker] = []
     engine = Engine(
         build_gate(s),
@@ -107,7 +108,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         automation_service=automation_service,
         home_assistant=home_bot,
         home_service=home_service,
-        computer_assistant=ComputerAssistant(llm, computer_service, gather=researcher.gather if researcher is not None else None, solver=solver),
+        computer_assistant=ComputerAssistant(llm, computer_service, gather=researcher.gather if researcher is not None else None, models=catalog, reasoning_for=lambda name: OllamaClient(s.ollama_url, name, think=True, keep_alive="5m", timeout=900)),
         computer_service=computer_service,
         browser_agent=browser_agent,
     )

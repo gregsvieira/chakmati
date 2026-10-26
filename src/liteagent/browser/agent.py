@@ -112,6 +112,20 @@ class BrowserAgent:
         self._session_factory = session_factory
         self._max_steps = max_steps
 
+    def plan(self, task: str) -> list[str]:
+        """The steps, as the person sees them before the browser opens."""
+        url = start_url(task)
+        if url != DEFAULT_START:
+            first = f"Abrir {url} no navegador (sem janela: você acompanha pelos prints)."
+        elif self._search is not None:
+            first = "Montar a busca a partir do pedido e pesquisar pelo mecanismo de pesquisa (os sites de busca pedem verificação humana de um navegador automático)."
+        else:
+            first = "Abrir o site de busca no navegador (sem janela: você acompanha pelos prints)."
+        return [first,
+                "Abrir o primeiro resultado no navegador e tirar um print a cada passo.",
+                f"Ler a página e, se faltar algo, seguir outro link (até {self._max_steps} passos); parar e avisar se um site pedir verificação humana.",
+                "Responder no idioma do pedido, com o que está na página."]
+
     async def _frame(self, job_id: str, session: Session, note: str) -> Snapshot:
         snap = await session.snapshot()
         self._frames.add(job_id, await session.screenshot(), snap.url, snap.title, note)
