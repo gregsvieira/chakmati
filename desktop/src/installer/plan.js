@@ -1,11 +1,11 @@
 'use strict';
 // Turns "this computer + what the person ticked" into the list of things to do. Pure: it changes nothing and downloads nothing.
-const { CORE, MODELS, OPTIONS } = require('./catalog');
+const { CORE, ENGINE, MODELS, OPTIONS, extrasSizeMb } = require('./catalog');
 const { LIMITS } = require('./tiers');
 
 const TIGHT_RAM = 0.85; // above this share of the computer's memory the app will feel heavy
 
-function buildPlan({ hw, verdict, selected = [] }) {
+function buildPlan({ hw, verdict, selected = [], engine = null }) {
   if (verdict.level === 'unsupported') {
     return { ok: false, blocked: [...verdict.reasons], steps: [], baseline: {}, totals: null, warnings: [], after: [] };
   }
@@ -18,16 +18,32 @@ function buildPlan({ hw, verdict, selected = [] }) {
   const model = MODELS.find((m) => m.id === verdict.model);
   const picked = OPTIONS.filter((o) => chosen.has(o.id));
 
+  const extras = [...new Set(picked.filter((o) => o.extra).map((o) => o.extra))];
+  const ollama = { id: 'ollama', kind: 'check-ollama', label: 'Verificar o Ollama', required: true, settings: {} };
+  const engineStep = {
+    id: 'engine', kind: 'sync-engine', label: 'Preparar o motor do Chakmati', required: true, extras: [],
+    approval: { source: 'python.org e pypi.org (pelo uv que vem no instalador)', sizeMb: ENGINE.baseMb }, settings: {},
+  };
+  const modelStep = {
+    id: 'model', kind: 'pull-model', model: model.id, label: `Baixar o ${model.label.toLowerCase()} (${model.id})`, required: true,
+    approval: { source: 'ollama.com (pelo Ollama instalado neste computador)', sizeMb: model.diskMb },
+    settings: { chatModel: model.id },
+  };
+  const extrasStep = {
+    id: 'extras', kind: 'sync-extras', label: `Instalar os pacotes de ${extras.map((e) => (e === 'voice' ? 'voz' : 'microfone')).join(' e ')}`,
+    required: false, extras,
+    approval: { source: 'pypi.org (pelo uv que vem no instalador)', sizeMb: extrasSizeMb(extras) }, settings: {},
+  };
   const steps = [
-    { id: 'ollama', kind: 'check-ollama', label: 'Verificar o Ollama', required: true, settings: {} },
-    {
-      id: 'model', kind: 'pull-model', model: model.id, label: `Baixar o ${model.label.toLowerCase()} (${model.id})`, required: true,
-      approval: { source: 'ollama.com (pelo Ollama instalado neste computador)', sizeMb: model.diskMb },
-      settings: { chatModel: model.id },
-    },
+    ollama,
+    ...(engine ? [engineStep] : []),
+    modelStep,
+    ...(engine && extras.length ? [extrasStep] : []),
     ...picked.map((o) => ({
       id: o.id, kind: 'setting', label: `Ativar: ${o.label}`, required: false,
-      ...(o.approval ? { approval: o.approval } : {}), settings: { ...o.settings },
+      ...(o.approval ? { approval: o.approval } : {}),
+      ...(engine && o.extra ? { requires: 'extras' } : {}),
+      settings: { ...o.settings },
     })),
   ];
 
@@ -36,7 +52,7 @@ function buildPlan({ hw, verdict, selected = [] }) {
   for (const o of OPTIONS) if (!chosen.has(o.id)) Object.assign(baseline, o.offSettings);
 
   const totals = {
-    diskMb: CORE.diskMb + model.diskMb + picked.reduce((n, o) => n + o.diskMb, 0),
+    diskMb: CORE.diskMb + model.diskMb + picked.reduce((n, o) => n + o.diskMb, 0) + (engine ? extrasSizeMb(extras) : 0),
     ramMb: CORE.ramMb + model.ramMb + picked.reduce((n, o) => n + o.ramMb, 0),
   };
 

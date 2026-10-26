@@ -10,22 +10,32 @@ const MODELS = Object.freeze([
   model('qwen3.5:latest', 'Modelo completo', 6600),
 ]);
 
+// Measured on macOS arm64 with `uv sync --frozen --no-dev --no-editable` (MB installed; the downloads are smaller):
+// base 124 + uv's managed Python 65; each extra on top of the base (the two together share packages).
+const ENGINE = Object.freeze({ baseMb: 189, extraMb: Object.freeze({ voice: 198, listen: 183, both: 228 }) });
+
+function extrasSizeMb(extras) {
+  if (!extras.length) return 0;
+  if (extras.includes('voice') && extras.includes('listen')) return ENGINE.extraMb.both;
+  return ENGINE.extraMb[extras[0]];
+}
+
 const ALL = ['darwin', 'win32', 'linux'];
 const OPTIONS = Object.freeze([
   {
-    id: 'voice', label: 'Voz melhorada', platforms: ALL, diskMb: 63, ramMb: 300,
+    id: 'voice', label: 'Voz melhorada', platforms: ALL, extra: 'voice', diskMb: 63, ramMb: 300,
     description: 'Voz neural em português do Brasil, falada no próprio computador.',
     settings: { enhancedVoice: true }, offSettings: { enhancedVoice: false },
     approval: { source: 'huggingface.co/rhasspy/piper-voices (voz Piper "jeff", conferida por SHA-256)', sizeMb: 63 },
   },
   {
-    id: 'talk', label: 'Falar com o Chakmati (microfone)', platforms: ALL, diskMb: 140, ramMb: 500,
+    id: 'talk', label: 'Falar com o Chakmati (microfone)', platforms: ALL, extra: 'listen', diskMb: 140, ramMb: 500,
     description: 'O microfone fica ouvindo as frases de chamada e os comandos. Reconhecimento de voz local.',
     settings: { talk: true, hear: true }, offSettings: { talk: false },
     approval: { source: 'Hugging Face (modelo Whisper "base", baixado no primeiro uso)', sizeMb: 140 },
   },
   {
-    id: 'whatsapp', label: 'WhatsApp', platforms: ['darwin', 'linux'], diskMb: 1200, ramMb: 800,
+    id: 'whatsapp', label: 'WhatsApp', platforms: ['darwin', 'linux'], needsRepo: true, diskMb: 1200, ramMb: 800,
     description: 'Ler e responder mensagens, sempre com a sua aprovação para enviar.',
     settings: {}, offSettings: {},
     after: 'WhatsApp: depois da instalação, conecte em Ajustes > Integrações (isso instala o OpenWA e mostra o QR code).',
@@ -42,6 +52,6 @@ const OPTIONS = Object.freeze([
   },
 ]);
 
-const optionsFor = (platform) => OPTIONS.filter((o) => o.platforms.includes(platform));
+const optionsFor = (platform, { packaged = false } = {}) => OPTIONS.filter((o) => o.platforms.includes(platform) && !(packaged && o.needsRepo));
 
-module.exports = { CORE, MODELS, OPTIONS, optionsFor };
+module.exports = { CORE, ENGINE, MODELS, OPTIONS, extrasSizeMb, optionsFor };

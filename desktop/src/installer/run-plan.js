@@ -7,6 +7,8 @@ async function execute(step, runners, onProgress) {
     case 'check-ollama': return runners.checkOllama();
     case 'pull-model': return runners.pullModel(step.model, onProgress);
     case 'setting': return undefined; // only changes settings, which are saved at the end
+    case 'sync-engine': return runners.syncEngine([], onProgress);
+    case 'sync-extras': return runners.syncEngine(step.extras, onProgress);
     default: throw new Error(`Passo desconhecido: ${step.kind}`);
   }
 }
@@ -18,6 +20,10 @@ async function runPlan(plan, { approve, runners, onProgress = () => {} }) {
   const stop = (status) => ({ status, results, settings: null });
 
   for (const step of plan.steps) {
+    if (step.requires && !results.some((r) => r.id === step.requires && r.status === 'done')) {
+      results.push({ id: step.id, status: 'skipped' }); // what it needs was declined or failed
+      continue;
+    }
     if (step.approval) {
       let yes = false;
       try { yes = (await approve(step)) === true; } catch { yes = false; }

@@ -6,7 +6,7 @@ const { MODELS } = require('./catalog');
 const OLLAMA_URL = 'http://127.0.0.1:11434';
 const NOT_FOUND = 'Não encontrei o Ollama rodando neste computador. Instale e abra o Ollama (ollama.com/download) e tente de novo.';
 
-function makeRunners({ fetchFn = fetch, baseUrl = OLLAMA_URL, saveSettings }) {
+function makeRunners({ fetchFn = fetch, baseUrl = OLLAMA_URL, saveSettings, sync }) {
   assertLoopback(baseUrl);
   return {
     async checkOllama() {
@@ -45,6 +45,11 @@ function makeRunners({ fetchFn = fetch, baseUrl = OLLAMA_URL, saveSettings }) {
       }
       if (buffer.trim()) handle(buffer.trim());
       if (!finished) throw new Error('O download do modelo não terminou.');
+    },
+
+    async syncEngine(extras, onProgress) {
+      if (!sync) throw new Error('O motor só é preparado no aplicativo instalado.');
+      return sync(extras, onProgress);
     },
 
     saveSettings: (patch) => saveSettings(patch),
