@@ -13,7 +13,7 @@ function buildPlan({ hw, verdict, selected = [], engine = null }) {
   for (const id of chosen) {
     const option = OPTIONS.find((o) => o.id === id);
     if (!option) throw new Error(`Item desconhecido: ${id}`);
-    if (!option.platforms.includes(hw.platform)) throw new Error(`Item indisponível neste sistema: ${id}`);
+    if (!option.platforms.includes(hw.platform) || (engine && option.needsRepo)) throw new Error(`Item indisponível neste sistema: ${id}`);
   }
   const model = MODELS.find((m) => m.id === verdict.model);
   const picked = OPTIONS.filter((o) => chosen.has(o.id));
