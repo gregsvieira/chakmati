@@ -18,6 +18,7 @@ from .automations.audio import wav_to_ogg_opus_timed
 from .automations.models import describe, parse_spec
 from .automations.service import AutomationError, AutomationService
 from .browser.frames import FrameStore
+from .browser.inputs import InputBroker, MAX_ANSWER
 from .engine import Engine
 from .jobs import DONE, FAILED, JobStore, Worker
 from .notices import NoticeBoard, Notifier
@@ -82,6 +83,7 @@ def create_app(
     home: ApprovalService | None = None,
     computer: ApprovalService | None = None,
     frames: FrameStore | None = None,
+    inputs: InputBroker | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -115,6 +117,7 @@ def create_app(
         late, or reconnects, still receives everything from the beginning."""
         sent = 0
         frames_sent = 0
+        asked = None  # the question of the browser agent that the client has been told about
         last_status = None
         waited = 0.0
         while waited <= STREAM_MAX_SECONDS:
@@ -129,6 +132,14 @@ def create_app(
                 for frame in frames.list(job_id)[frames_sent:]:
                     yield {"type": "screenshot", "job_id": job_id, **frame}
                     frames_sent += 1
+            if inputs is not None:  # the agent is waiting for something only the person can say (a user name, a password)
+                waiting = inputs.pending(job_id)
+                if waiting is not None and waiting.id != asked:
+                    asked = waiting.id
+                    yield {"type": "input", "job_id": job_id, "request_id": waiting.id, "key": waiting.key, "prompt": waiting.prompt, "secret": waiting.secret}
+                elif waiting is None and asked is not None:
+                    yield {"type": "input_done", "request_id": asked}
+                    asked = None
             text = job.result if job.status == DONE and job.result is not None else job.partial
             if len(text) > sent:
                 yield {"type": "delta", "text": text[sent:]}
@@ -178,6 +189,23 @@ def create_app(
             raise HTTPException(status_code=404, detail="frame not found")
         return Response(path.read_bytes(), media_type="image/jpeg", headers={"Cache-Control": "no-store"})
 
+    def ui_only(x_liteagent_ui: str | None = Header(default=None)) -> None:
+        # Writes are decided by the user's own UI. A custom header cannot be sent by a web page on another
+        # origin without a CORS preflight, which this server never grants, so a random site cannot approve.
+        if x_liteagent_ui != "1":
+            raise HTTPException(status_code=403, detail="approval must come from the user interface (X-LiteAgent-UI: 1)")
+
+    class InputIn(BaseModel):
+        request_id: str = Field(min_length=32, max_length=32, pattern=r"^[0-9a-f]{32}$")
+        value: str = Field(max_length=MAX_ANSWER)
+
+    @app.post("/jobs/{job_id}/input", dependencies=[Depends(ui_only)])
+    async def answer_input(job_id: str, body: InputIn):
+        """The person's answer to a question of the browser agent. Only the app's own window may send it; the value is not stored or logged."""
+        if inputs is None or not re.fullmatch(r"[0-9a-f]{32}", job_id) or not inputs.answer(job_id, body.request_id, body.value):
+            raise HTTPException(status_code=404, detail="nothing is waiting for an answer")
+        return {"ok": True}
+
     @app.get("/jobs/{job_id}/stream")
     async def stream_job(job_id: str):
         if store.get(job_id) is None:
@@ -205,12 +233,6 @@ def create_app(
         if calendar is None:
             raise HTTPException(status_code=503, detail="calendar integration is disabled (LITEAGENT_CALENDAR_BACKEND)")
         return calendar
-
-    def ui_only(x_liteagent_ui: str | None = Header(default=None)) -> None:
-        # Writes are decided by the user's own UI. A custom header cannot be sent by a web page on another
-        # origin without a CORS preflight, which this server never grants, so a random site cannot approve.
-        if x_liteagent_ui != "1":
-            raise HTTPException(status_code=403, detail="approval must come from the user interface (X-LiteAgent-UI: 1)")
 
     @app.get("/agenda/events")
     async def agenda_events(start: datetime, end: datetime):

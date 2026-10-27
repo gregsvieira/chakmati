@@ -57,6 +57,7 @@ contextBridge.exposeInMainWorld('assistant', {
     audio: (chatId, messageId) => ipcRenderer.invoke('panel:audio', chatId, messageId),
     transcribe: (bytes, mime) => ipcRenderer.invoke('panel:transcribe', bytes, mime),
     send: (text) => ipcRenderer.invoke('panel:send', text),
+    answerInput: (jobId, requestId, value) => ipcRenderer.invoke('panel:input', jobId, requestId, value),
     cancel: (id) => send('panel:cancel', id),
     automation: (id, op) => ipcRenderer.invoke('panel:automation', id, op),
     preview: (id) => ipcRenderer.invoke('panel:preview', id),

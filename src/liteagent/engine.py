@@ -14,7 +14,7 @@ from .llm import ChatClient
 from .research.tool import ResearchTool
 
 _ROUTE_PROMPTS: dict[Route, str] = {
-    Route.CHAT: "You are a concise, friendly assistant. Answer in the user's language.",
+    Route.CHAT: "You are a concise, friendly assistant. Answer in the user's language. Never invent rules, permissions or security policies (you do not have a policy against visiting sites or using accounts): if a request needs a tool you do not have in this chat, say what you would need.",
     Route.RESEARCH: (
         "You are a research assistant. Answer in the user's language. "
         "You have no web access yet: say what you know and what you could not verify."

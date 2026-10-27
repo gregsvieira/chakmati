@@ -210,16 +210,45 @@
     if (!turn.shot || !turn.shot.image) return null;
     return h('figure', { class: 'shot' },
       h('img', { src: turn.shot.image, alt: turn.shot.title || 'navegador' }),
-      h('figcaption', {}, `${turn.shot.step}. ${turn.shot.note}`, h('span', {}, turn.shot.url)));
+      h('figcaption', {}, turn.shot.note, h('span', {}, turn.shot.url)));
+  }
+
+  // The question of the browser ("qual é o seu usuário?", the password): an input in the conversation. The node is made once and kept
+  // across redraws, so what is being typed is not lost; a password input is masked, and what is typed is cleared as soon as it is sent.
+  function askNode(turn) {
+    if (turn.askSent) return h('p', { class: 'hint' }, 'Resposta enviada.');
+    if (!turn.ask) return null;
+    if (!turn.askEl) {
+      const ask = turn.ask;
+      const input = h('input', { type: ask.secret ? 'password' : 'text', class: 'ask-input', autocomplete: ask.secret ? 'new-password' : 'off', spellcheck: 'false',
+        maxlength: 500, 'aria-label': ask.prompt, placeholder: ask.secret ? 'Digite a senha (ela fica oculta)' : 'Digite aqui' });
+      const send = h('button', { type: 'submit', class: 'primary small' }, 'Enviar');
+      const problem = h('p', { class: 'warn', hidden: true }, 'Não consegui enviar. Tente de novo.');
+      turn.askEl = h('form', { class: 'ask', autocomplete: 'off', onsubmit: async (e) => {
+        e.preventDefault();
+        const value = input.value;
+        if (!value) return;
+        input.disabled = true; send.disabled = true;
+        const res = await api.answerInput(ask.job_id, ask.request_id, value);
+        input.value = '';
+        if (res && res.ok) { turn.ask = null; turn.askEl = null; turn.askInput = null; turn.askSent = true; } else { input.disabled = false; send.disabled = false; problem.hidden = false; }
+        renderThread(false);
+      } }, h('label', { class: 'ask-label' }, ask.prompt), h('div', { class: 'ask-row' }, input, send), problem);
+      turn.askInput = input;
+    }
+    return turn.askEl;
   }
 
   function renderThread(scroll = true) {
     $('thread-section').hidden = thread.length === 0;
     const box = $('thread');
+    const typing = thread.find((t) => t.askInput && t.askInput === document.activeElement);
     const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40; // do not yank the reader away from older messages
-    fill(box, thread.map((t) => h('div', { class: `turn ${t.role}${t.status === 'pending' ? ' pending' : ''}${t.status === 'error' ? ' error' : ''}` }, shotNode(t), t.text || '…', approvalNode(t))));
+    fill(box, thread.map((t) => h('div', { class: `turn ${t.role}${t.status === 'pending' ? ' pending' : ''}${t.status === 'error' ? ' error' : ''}` }, shotNode(t), t.text || '…', approvalNode(t), askNode(t))));
     syncTalking();
     renderScreen();
+    const wanted = typing || thread.find((t) => t.focusAsk && t.askInput);
+    if (wanted) { wanted.focusAsk = false; wanted.askInput.focus(); }
     if (scroll || atBottom) box.scrollTop = box.scrollHeight;  // the conversation has its own scroll: it follows the newest message
     if (scroll) $('thread-section').scrollIntoView({ block: 'end' }); // and a new message brings the conversation into view on the page
   }
@@ -334,6 +363,11 @@
     const turn = thread.find((t) => t.id === id);
     if (!turn) return;
     if (event.type === 'screenshot') { Shots.addShot(turn, event); pickedStep = null; turn.text = turn.text || 'Usando o navegador…'; }
+    else if (event.type === 'input') {
+      turn.ask = { job_id: event.job_id, request_id: event.request_id, prompt: event.prompt, secret: !!event.secret };
+      turn.askEl = null; turn.askSent = false; turn.focusAsk = true;
+      if (state && !state.panelOpen) api.reply(`${event.prompt} (abra o painel para responder)`);
+    } else if (event.type === 'input_done') { turn.ask = null; turn.askEl = null; }
     else if (event.type === 'job') turn.text = turn.text || 'Trabalhando nisso…';
     else if (event.type === 'delta') { if (turn.text === 'Trabalhando nisso…') turn.raw = ''; setTurnText(turn, (turn.raw || '') + event.text); }
     else if (event.type === 'done') { setTurnText(turn, event.result || turn.text); turn.status = 'done'; deliver(turn); }
@@ -836,6 +870,7 @@
   function applyLayout() {
     const layout = Shots.layoutFor(window.innerWidth);
     $('panel').dataset.layout = layout;
+    placeRobot(layout);
     $('panel').dataset.focus = store.get('chakmati.focus', false) ? 'thread' : '';
     $('focus-thread').setAttribute('aria-pressed', String(!!store.get('chakmati.focus', false)));
     $('focus-thread').textContent = store.get('chakmati.focus', false) ? 'Reduzir' : 'Ampliar';
@@ -866,21 +901,35 @@
   // "Ampliar": the conversation takes the card and every other topic folds (their own choices come back when it is reduced)
   $('focus-thread').addEventListener('click', () => { store.set('chakmati.focus', !store.get('chakmati.focus', false)); applyLayout(); });
 
-  // the screen: what the Chakmati is doing in the browser, a picture per step, the latest on top of the strip
+  // the screen: the browser as it is right now. Each new picture fades in over the last one: nothing says it is a sequence of pictures.
+  let frontImg = $('screen-img-a');
+  let backImg = $('screen-img-b');
+  let shownSrc = '';
   function renderScreen() {
-    const view = Shots.screenView(thread, pickedStep);
+    const view = Shots.screenView(thread, null);
     $('screen-empty').hidden = !!view;
     $('screen-view').hidden = !view;
     $('screen-live').hidden = !(view && view.live);
-    if (!view) { fill($('screen-strip')); return; }
+    if (!view) { shownSrc = ''; return; }
     const cur = view.current;
-    const img = $('screen-img');
-    if (cur.image) { if (img.getAttribute('src') !== cur.image) img.setAttribute('src', cur.image); img.hidden = false; } else img.hidden = true;
-    $('screen-step').textContent = `Passo ${cur.step} de ${view.total}.`;
-    $('screen-note').textContent = cur.note;
     $('screen-url').textContent = cur.url;
-    fill($('screen-strip'), view.shots.map((s) => h('button', { type: 'button', role: 'listitem', 'aria-label': `Passo ${s.step}: ${s.note}`, title: s.note, 'aria-current': String(s.step === cur.step),
-      onclick: () => { pickedStep = s.step; renderScreen(); } }, s.image ? h('img', { src: s.image, alt: '' }) : null, h('span', {}, String(s.step)))));
+    $('screen-note').textContent = cur.note;
+    if (cur.image && cur.image !== shownSrc) {
+      shownSrc = cur.image;
+      const next = backImg;
+      next.setAttribute('src', cur.image);
+      const show = () => { next.classList.add('on'); frontImg.classList.remove('on'); [frontImg, backImg] = [next, frontImg]; };
+      if (typeof next.decode === 'function') next.decode().then(show, show); else show();
+    }
+  }
+
+  // the big robot: in the expanded window it leaves the header and stands above the conversation
+  const robotBox = $('head-robot');
+  const robotHome = robotBox.parentNode;
+  const robotNext = robotBox.nextSibling;
+  function placeRobot(layout) {
+    if (layout === 'wide') { if (robotBox.parentNode !== $('hero')) $('hero').appendChild(robotBox); }
+    else if (robotBox.parentNode !== robotHome) robotHome.insertBefore(robotBox, robotNext);
   }
 
   api.onOtherSpeaking((on) => { otherSpeaking = on; if (!on) { quietUntil = Date.now() + 700; chimeIfWaiting(); } });

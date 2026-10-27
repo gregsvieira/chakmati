@@ -216,17 +216,20 @@ button.small { height: 30px; padding: 0 14px; font-size: 13px; }
 #screen h2 { margin: 0 0 8px; }
 .live { padding: 1px 8px; border-radius: 999px; background: var(--wine); color: #fff; font-family: var(--font-rounded); font-size: 11px; font-weight: 700; letter-spacing: 0.02em; }
 .live[hidden] { display: none; }
-#screen figure { margin: 0; border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; background: var(--surface-2); }
-#screen figure[hidden], #screen-empty[hidden] { display: none; }
-#screen figure img { display: block; width: 100%; height: auto; background: #fff; }
-#screen figcaption { padding: 8px 12px; font-size: 13px; }
-#screen figcaption small { display: block; margin-top: 2px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#screen-strip { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-#screen-strip button { width: 64px; height: 44px; padding: 0; border: 2px solid transparent; border-radius: 8px; overflow: hidden; background: var(--surface-2); color: var(--muted); font-size: 12px; font-weight: 700; cursor: pointer; position: relative; }
-#screen-strip button img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
-#screen-strip button span { position: absolute; left: 3px; bottom: 2px; padding: 0 5px; border-radius: 6px; background: rgba(20, 33, 61, 0.72); color: #fff; font-size: 11px; }
-#screen-strip button[aria-current="true"] { border-color: var(--petrol); }
-#screen-strip button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* the browser as the person would see it: an address bar and the page; no counters, no strip of pictures */
+.browser { border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; background: var(--surface-2); }
+.browser[hidden], #screen-empty[hidden] { display: none; }
+.browser-bar { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--rule); background: var(--surface); }
+.browser-bar .dots { flex: none; width: 46px; height: 10px; background: radial-gradient(circle 5px at 5px 5px, #ed6a5e 98%, transparent) 0 0 / 16px 10px repeat-x; }
+.browser-bar .addr { flex: 1; min-width: 0; padding: 3px 10px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.viewport { position: relative; aspect-ratio: 1280 / 800; background: #fff; }
+.viewport .frame { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; opacity: 0; transition: opacity 0.25s ease; }
+.viewport .frame.on { opacity: 1; }
+.status { margin: 0; padding: 8px 12px; min-height: 2.2em; color: var(--muted); font-size: 13px; }
+body[data-still] .viewport .frame { transition: none; }
+@media (prefers-reduced-motion: reduce) { .viewport .frame { transition: none; } }
+
+#hero { display: none; }
 
 /* ---------------------------------------------------------------------------------------------------------------- the wide window
    Three columns, each with its own scroll: topics on the left, the whole conversation in the middle, what the Chakmati is doing on the right. */
@@ -238,7 +241,11 @@ button.small { height: 30px; padding: 0 14px; font-size: 13px; }
 #panel[data-layout="wide"] #thread { max-height: none; flex: 1; min-height: 0; }
 #panel[data-layout="wide"] #focus-thread { display: none; }
 #panel[data-layout="wide"] #screen { grid-column: 3; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; padding: 12px 16px; border-left: 1px solid var(--rule); }
-#panel[data-layout="wide"] .turn.assistant figure.shot { display: none; }   /* the picture is on the right: not twice */
+#panel[data-layout="wide"] .turn.assistant figure.shot { display: none; }
+#panel[data-layout="wide"] #hero { display: flex; justify-content: center; align-items: flex-end; flex: none; height: 168px; padding: 4px 0 0; }
+#panel[data-layout="wide"] #hero #head-robot { width: 78px; height: 168px; }
+#panel[data-layout="wide"] #hero #head-robot svg { width: 100%; height: 100%; }
+#panel[data-layout="wide"] #bar #head-robot { display: none; }   /* the picture is on the right: not twice */
 #panel[data-layout="wide"] #foot { margin: 0 420px 0 300px; }
 #panel[data-layout="wide"] .turn.user { max-width: 70%; }
 #panel[data-layout="wide"] .turn.assistant { max-width: 88%; }
@@ -248,3 +255,10 @@ button.small { height: 30px; padding: 0 14px; font-size: 13px; }
 #panel[data-layout="wide"] #bar { -webkit-app-region: drag; }
 #panel[data-layout="wide"] #bar button { -webkit-app-region: no-drag; }
 #panel[data-layout="wide"] #content[hidden] { display: none; }
+
+/* the browser asks for something only the person knows */
+.ask { display: grid; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--rule); }
+.ask-label { font-weight: 650; }
+.ask-row { display: flex; gap: 8px; }
+.ask-input { flex: 1; min-width: 0; height: 34px; padding: 0 12px; border: 1px solid var(--rule); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; user-select: text; }
+.ask-input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }

@@ -66,18 +66,22 @@
         </section>
         </div>
         <section id="thread-section" hidden>
+          <div id="hero" aria-hidden="true"></div>
           <h2>Conversa <button id="focus-thread" class="link-btn" type="button" aria-pressed="false" title="Ampliar a conversa e recolher os outros tópicos">Ampliar</button></h2>
           <div id="thread" aria-live="polite"></div>
           <p id="thread-empty" class="empty">Peça algo ao Chakmati na linha de baixo: a conversa aparece aqui.</p>
         </section>
         <aside id="screen" aria-label="Tela do Chakmati">
           <h2>Tela do Chakmati <span id="screen-live" class="live" hidden>ao vivo</span></h2>
-          <p id="screen-empty" class="empty">Quando o Chakmati usar o navegador, a tela dele aparece aqui, passo a passo.</p>
-          <figure id="screen-view" hidden>
-            <img id="screen-img" alt="Tela do navegador">
-            <figcaption><b id="screen-step"></b> <span id="screen-note"></span><small id="screen-url"></small></figcaption>
-          </figure>
-          <div id="screen-strip" role="list" aria-label="Passos"></div>
+          <p id="screen-empty" class="empty">Quando o Chakmati usar o navegador, a tela dele aparece aqui.</p>
+          <div id="screen-view" class="browser" hidden>
+            <div class="browser-bar"><span class="dots" aria-hidden="true"></span><span id="screen-url" class="addr"></span></div>
+            <div class="viewport">
+              <img id="screen-img-a" alt="" class="frame on">
+              <img id="screen-img-b" alt="" class="frame">
+            </div>
+            <p id="screen-note" class="status" aria-live="polite"></p>
+          </div>
         </aside>
       </div>
 

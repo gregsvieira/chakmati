@@ -198,3 +198,20 @@ test('"manter aprovado" is sent as a strict boolean with the UI header', async (
   await client.setStanding('yes');
   assert.deepEqual(JSON.parse(calls[1].init.body), { on: false });
 });
+
+test('an answer to the browser goes to the engine with the UI header, and only with well-formed ids', async () => {
+  const calls = [];
+  const fetchImpl = async (url, init) => { calls.push({ url, init }); return new Response('{"ok":true}', { status: 200 }); };
+  const c = new EngineClient({ fetchImpl });
+  const job = 'a'.repeat(32);
+  const req = 'b'.repeat(32);
+  assert.deepEqual(await c.sendInput(job, req, 'meu-usuario'), { ok: true });
+  assert.equal(calls[0].url, `http://127.0.0.1:8765/jobs/${job}/input`);
+  assert.equal(calls[0].init.headers['X-LiteAgent-UI'], '1');
+  assert.deepEqual(JSON.parse(calls[0].init.body), { request_id: req, value: 'meu-usuario' });
+  await assert.rejects(() => c.sendInput('../x', req, 'v'), /invalid request/);
+  await assert.rejects(() => c.sendInput(job, 'nope', 'v'), /invalid request/);
+  await assert.rejects(() => c.sendInput(job, req, ''), /invalid answer/);
+  await assert.rejects(() => c.sendInput(job, req, 'x'.repeat(501)), /invalid answer/);
+  assert.equal(calls.length, 1);
+});

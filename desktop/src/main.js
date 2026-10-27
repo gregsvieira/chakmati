@@ -245,6 +245,12 @@ function positionPanel() {
   else panelWin.setBounds(expandedBounds({ workArea: wa, mode: panelMode }));
 }
 
+// In the big window the character stands in the conversation (the page draws it), so the little one on the desktop steps aside.
+function syncWidget() {
+  if (!alive(widgetWin) || state.hidden) return;
+  if (state.panelOpen && panelMode !== 'compact') widgetWin.hide(); else widgetWin.showInactive();
+}
+
 function setPanelMode(mode) {
   if (!['compact', 'wide', 'full'].includes(mode) || mode === panelMode) return;
   panelMode = mode;
@@ -253,6 +259,7 @@ function setPanelMode(mode) {
     panelWin.setMinimumSize(mode === 'compact' ? 0 : MIN_WIDE.w, mode === 'compact' ? 0 : MIN_WIDE.h);
     positionPanel();
   }
+  syncWidget();
   sendPanelState();
 }
 
@@ -288,6 +295,7 @@ function openPanel() {
   positionPanel();
   panelWin.show();
   panelWin.focus();
+  syncWidget();
   sendPanelState();
   refreshOverview();
   clearInterval(panelTimer);
@@ -299,6 +307,7 @@ function closePanel() {
   state.panelOpen = false;
   clearInterval(panelTimer);
   if (alive(panelWin)) panelWin.hide();
+  syncWidget();
   sendPanelState(); // the panel window keeps running (and listening): it must know it is closed
   rebuildMenu();
 }
@@ -793,7 +802,10 @@ ipcMain.on('panel:layout', (_e, mode) => setPanelMode(mode));
   ipcMain.handle('panel:openwa', () => openWaSetup());
   ipcMain.handle('panel:set-setting', (_e, payload) => (payload && updateSetting(payload.key, payload.value) ? { ok: true } : { ok: false }));
 
-  ipcMain.handle('panel:send', async (_e, text) => {
+  ipcMain.handle('panel:input', async (_e, jobId, requestId, value) => {
+  try { return await engine.sendInput(jobId, requestId, value); } catch { return { ok: false, error: 'Não consegui enviar a resposta. Tente de novo.' }; }
+});
+ipcMain.handle('panel:send', async (_e, text) => {
     if (typeof text !== 'string' || !text.trim() || text.length > MAX_TEXT) return { error: 'Pedido inválido.' };
     if (!state.engineUp) return { error: 'O motor não está rodando. Inicie o Chakmati.' };
     // a command arrived: the microphone stops waiting for one (the wake phrase itself starts the wait again once answered)

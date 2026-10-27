@@ -130,10 +130,10 @@ class PlaywrightSession:
         await self._page.locator(f'[data-ck="{int(ident)}"]').first.click(timeout=4_000)
         await self._settle(navigating=True)
 
-    async def type(self, ident: int, text: str, submit: bool) -> None:
+    async def type(self, ident: int, text: str, submit: bool, secret: bool = False) -> None:
         box = self._page.locator(f'[data-ck="{int(ident)}"]').first
-        if (await box.get_attribute("type") or "").lower() == "password":
-            raise BrowserError("não digito em campos de senha")
+        if (await box.get_attribute("type") or "").lower() == "password" and not secret:
+            raise BrowserError("uma senha só é digitada se você me der: eu pergunto na conversa")
         await box.fill(text, timeout=8_000)
         if submit:
             await box.press("Enter")

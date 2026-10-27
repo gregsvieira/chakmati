@@ -29,6 +29,20 @@ _DOC_NOUN = re.compile(r"\b(?:slides?|apresenta[çc][ãa]o|apresenta[çc][õo]es
 
 _GRADE = re.compile(r"\b(?:corrij\w+|corrig\w+|corre[çc][ãa]o)\b.{0,60}\bprovas?\b|\bprovas?\b.{0,60}\b(?:corrij\w+|corrig\w+)", re.IGNORECASE)  # "corrija as provas..."
 
+# A site or social network named with something to do there ("acesse meu instagram e envie...", "entre no youtube"): the browser, not WhatsApp or the calendar.
+_SITE_NAME = re.compile(r"\b(?:instagram|facebook|youtube|linkedin|twitter|tiktok|github|gmail|outlook|netflix|amazon|mercado\s?livre|x\.com)\b", re.IGNORECASE)
+_SITE_ACT = re.compile(r"\b(?:acess\w+|entr\w+|abr\w+|logu\w+|naveg\w+|v[áa]\s+(?:para|ao|no|na)|envi\w+|mand\w+|post\w+|curt\w+|segu\w+)\b", re.IGNORECASE)
+
+# An address with something to DO on the page ("entre em https://... com o meu usuário", "abra https://... e me diga o título"): the browser agent.
+# A bare "abra https://..." is just opening the page in the person's own browser (the computer).
+_URL = re.compile(r"https?://\S+", re.IGNORECASE)
+_URL_TASK = re.compile(r"\b(?:acess\w+|entr\w+|logu\w+|naveg\w+|cliqu\w+|digit\w+|preench\w+|diga|dizer|copi\w+|le(?:ia|r)|encontr\w+|extra\w+|resum\w+|compar\w+|me\s+(?:diga|mostre|conte)|usu[áa]rio|senha|login)\b", re.IGNORECASE)
+
+# Things said about files in plain words: a file name with an extension and a verb to do something with it, the trash, a copy "do X", downloading from an address.
+_FILE_TOKEN = re.compile(r"\b[\w-]+\.(?:txt|md|csv|json|pdf|docx|xlsx|pptx|py|js|html|xml|log|jpg|jpeg|png|zip)\b|\b\w+/[\w-]+\.\w{2,5}\b", re.IGNORECASE)
+_FILE_VERB = re.compile(r"\b(?:copi\w+|renome\w+|mov\w+|mand\w+|mostr\w+|leia|ler|abr\w+|edit\w+|apag\w+|delet\w+|exclu\w+|list\w+|cri\w+|fa[çc]a|troque|mude)\b", re.IGNORECASE)
+_COMPUTER_WORDS = re.compile(r"^\W*edit\w+\s+(?:o|a|os|as)\s+\w+|\blixeira\b|\bc[óo]pia\s+d[oae]s?\b|\b(?:apag\w+|delet\w+|exclu\w+|remov\w+|limp\w+)\b.{0,20}\b(?:tudo|todos|todas)\b|\b(?:baix\w+|download)\b[^\n]*https://", re.IGNORECASE)
+
 # Creating a rule that runs by itself: "automatize...", "toda vez que ... responda", "todo dia às 9h mande...".
 _AUTOMATION_WORD = re.compile(r"\bautoma\w+", re.IGNORECASE)
 _AUTOMATION_TRIGGER = re.compile(r"\b(?:toda\s+vez\s+que|sempre\s+que|a\s+cada\s+vez\s+que|todo\s+dia|todos\s+os\s+dias|todo\s+santo\s+dia)\b", re.IGNORECASE)
@@ -40,8 +54,8 @@ _HOME_VERB = re.compile(r"\b(lig\w+|deslig\w+|apag\w+|acend\w+|abr\w+|fech\w+|tr
 _HOME_PHRASE = re.compile(r"\b(?:ativ\w+|coloc\w+)\s+(?:a\s+)?cena\b|\bporta\b.{0,25}\b(?:trancad\w+|aberta|fechada|destranc\w+)\b|\b(?:tranc\w+|destranc\w+)\s+a\s+porta\b", re.IGNORECASE)
 
 # The computer itself: making a file, opening a program / site / folder (an imperative at the start: "abre o Spotify").
-_COMPUTER_FILE = re.compile(r"\b(?:cri\w+|fa[çc]\w*|salv\w+|grav\w+|escrev\w+|ger[ae]\w*|mont\w+)\b[^.?!]{0,40}\b(?:arquivo|documento|txt|csv|planilha|anota[çc][ãa]o|nota|pasta|diret[óo]rio)\b"
-                           r"|\b(?:mov\w+|mand\w+|copi\w+|renome\w+|edit\w+|apag\w+|delet\w+|exclu\w+|remov\w+|baix\w+|rod[ae]\w*|execut\w+|revert\w+|list\w+|mostr\w+)\b[^?!]{0,40}\b(?:arquivo|pasta|diret[óo]rio|script|lixeira|backup)\b", re.IGNORECASE)
+_COMPUTER_FILE = re.compile(r"\b(?:cri\w+|fa[çc]\w*|salv\w+|grav\w+|escrev\w+|ger[ae]\w*|mont\w+)\b[^.?!]{0,40}\b(?:arquivo|documento|txt|csv|planilha|anota[çc][ãa]o|nota|pastas?|diret[óo]rio)\b"
+                           r"|\b(?:mov\w+|mand\w+|copi\w+|renome\w+|edit\w+|apag\w+|delet\w+|exclu\w+|remov\w+|baix\w+|rod[ae]\w*|execut\w+|revert\w+|list\w+|mostr\w+)\b[^?!]{0,40}\b(?:arquivos?|pastas?|diret[óo]rio|script|lixeira|backup)\b", re.IGNORECASE)
 _COMPUTER_OPEN = re.compile(r"^\W*(?:por favor,?\s*|pode\s+)?(?:abr\w+|inici\w+|lan[çc]\w+)\s+(?:o\s+|a\s+|os\s+|as\s+|um\s+|uma\s+)?\w", re.IGNORECASE)
 
 # Explicit "go and look it up" verbs win over calendar words ("pesquise a agenda política").
@@ -73,11 +87,13 @@ class HeuristicGate:
     source = "heuristic"
 
     def classify(self, text: str) -> GateResult:
-        if _BROWSER.search(text):
+        if _BROWSER.search(text) or (_URL.search(text) and _URL_TASK.search(text) and not re.search(r"\bwhats\w*|\bzap", text, re.IGNORECASE)) or (_SITE_NAME.search(text) and _SITE_ACT.search(text) and not re.search(r"\bwhats\w*|\bzap", text, re.IGNORECASE)):
             return GateResult(Route.BROWSER, 0.9, self.source)
         if (_HOME_NOUN.search(text) and _HOME_VERB.search(text) and not _WHATSAPP.search(text)) or _HOME_PHRASE.search(text):
             return GateResult(Route.HOME, 0.9, self.source)
         if _GRADE.search(text):
+            return GateResult(Route.COMPUTER, 0.9, self.source)
+        if (_COMPUTER_WORDS.search(text) or (_FILE_TOKEN.search(text) and _FILE_VERB.search(text))) and not (_URL.search(text) and _URL_TASK.search(text)) and not _WHATSAPP.search(text):
             return GateResult(Route.COMPUTER, 0.9, self.source)
         if _DOC_MAKE.search(text) and _DOC_NOUN.search(text) and not _WHATSAPP.search(text):
             return GateResult(Route.COMPUTER, 0.9, self.source)

@@ -3,6 +3,7 @@ from fastapi import FastAPI
 
 from .browser.agent import BrowserAgent
 from .browser.frames import FrameStore
+from .browser.inputs import InputBroker
 from .browser.session import PlaywrightSession
 from .agenda.assistant import CalendarAssistant
 from .agenda.factory import build_calendar
@@ -89,11 +90,12 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         if token:
             home_service = HomeService(HomeAssistantClient(s.home_url, token), actions)
             home_bot = HomeAssistantBot(llm, home_service)
-    frames = browser_agent = None
+    frames = browser_agent = inputs = None
     if s.browser_backend == "chrome":
         frames = FrameStore(s.browser_frames_dir)
+        inputs = InputBroker()
         browser_agent = BrowserAgent(llm, frames, lambda: PlaywrightSession(s.browser_profile, headless=s.browser_headless), max_steps=s.browser_max_steps,
-                                    search=search_backend)
+                                    search=search_backend, ask=inputs.ask)
     catalog = ModelCatalog(s.ollama_url, configured=s.explain_model)  # which stronger model is installed (or named in LITEAGENT_EXPLAIN_MODEL), and fits
     worker_ref: list[Worker] = []
     engine = Engine(
@@ -140,6 +142,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         home=home_service,
         computer=computer_service,
         frames=frames,
+        inputs=inputs,
         on_startup=llm.preload if s.preload_model else None,
         calendar=calendar,
         whatsapp=whatsapp,
