@@ -201,3 +201,21 @@ def test_a_real_page_that_only_mentions_captcha_in_its_fine_print_is_let_through
     assert not still_blocked(Snapshot("https://br.shein.com/women", "Roupas", "texto protegido por captcha", many))
     assert still_blocked(Snapshot("https://br.shein.com/risk/challenge?x=1", "Roupas", "ok", many))
     assert still_blocked(CHALLENGE)
+
+
+def test_the_plan_ends_with_the_goal_before_the_warning():
+    plan = BrowserAgent(LLM(), None, None).plan("pesquise na loja da Shein três camisetas oversized e adicione ao carrinho")
+    assert plan[-3:] == ["Adicionar ao carrinho (sem pagar).", "Informar que foi adicionado ao carrinho (ou o que impediu).", plan[-1]]
+    assert plan[-1].startswith("Atenção") and not any(p.startswith("Responder no idioma") for p in plan)
+
+
+def test_a_plan_without_a_goal_still_ends_by_answering():
+    plan = BrowserAgent(LLM(), None, None).plan("pesquise o protocolo MCP")
+    assert plan[-2] == "Responder no idioma do pedido, com o que está na página."
+
+
+def test_other_goals_get_their_own_steps_and_paying_is_left_to_the_person():
+    from liteagent.browser.agent import goal_steps
+    assert "pagar é com você" in goal_steps("compre esse tênis no site")[0]
+    assert goal_steps("baixe o pdf da fatura")[0].startswith("Baixar")
+    assert goal_steps("pesquise sobre gatos") == []
