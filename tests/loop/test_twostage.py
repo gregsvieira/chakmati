@@ -2,8 +2,8 @@ import json
 
 import httpx
 
-from liteagent.loop import twostage
-from liteagent.loop.twostage import (
+from chakmati.loop import twostage
+from chakmati.loop.twostage import (
     RELEVANCE_QUESTION,
     LayaRelevanceScorer,
     LLMVerifier,

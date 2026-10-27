@@ -1,7 +1,7 @@
 import httpx
 
-from liteagent.research.fetch import PageFetcher, chunk_text, extract_text
-from liteagent.research.search import USER_AGENT
+from chakmati.research.fetch import PageFetcher, chunk_text, extract_text
+from chakmati.research.search import USER_AGENT
 
 ARTICLE = """<html><head><title>Python 3.13</title></head><body>
 <nav>Home | About | Login</nav>

@@ -2,10 +2,10 @@ from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
-from liteagent.research.fetch import PageFetcher
-from liteagent.research.search import SearchResult
-from liteagent.research.tool import COMPOSE_SYSTEM, RECENCY_SUFFIX, ResearchTool
-from liteagent.timeguard import extract_dates, is_recency_question, order_by_date, passage_date, recency_fallback_query
+from chakmati.research.fetch import PageFetcher
+from chakmati.research.search import SearchResult
+from chakmati.research.tool import COMPOSE_SYSTEM, RECENCY_SUFFIX, ResearchTool
+from chakmati.timeguard import extract_dates, is_recency_question, order_by_date, passage_date, recency_fallback_query
 
 from .test_tool import FakeSearch, pages
 

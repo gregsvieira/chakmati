@@ -1,11 +1,11 @@
 import pytest
 
-from liteagent.engine import SYSTEM_PROMPTS, Engine
-from liteagent.gate.base import GateResult, Route
-from liteagent.jobs import JobStore
-from liteagent.persona import AWAKE_SECONDS, LISTENING_PROMPTS, PERSONA, wake_reply
-from liteagent.research.tool import COMPOSE_SYSTEM
-from liteagent.whatsapp.assistant import SUMMARY_SYSTEM
+from chakmati.engine import SYSTEM_PROMPTS, Engine
+from chakmati.gate.base import GateResult, Route
+from chakmati.jobs import JobStore
+from chakmati.persona import AWAKE_SECONDS, LISTENING_PROMPTS, PERSONA, wake_reply
+from chakmati.research.tool import COMPOSE_SYSTEM
+from chakmati.whatsapp.assistant import SUMMARY_SYSTEM
 
 @pytest.mark.parametrize("text", [
     "Ôh, Xácmáti", "oh xacmati", "  OH,   CHAKMATI!! ", "Chakmati", "ô chakmati",

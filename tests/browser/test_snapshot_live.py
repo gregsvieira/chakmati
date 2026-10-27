@@ -5,7 +5,7 @@ import sys
 
 import pytest
 
-from liteagent.browser.session import PlaywrightSession
+from chakmati.browser.session import PlaywrightSession
 
 CHROME = sys.platform == "darwin" and shutil.which("open") and __import__("os").path.exists("/Applications/Google Chrome.app")
 pytestmark = pytest.mark.skipif(not CHROME, reason="needs Google Chrome installed")

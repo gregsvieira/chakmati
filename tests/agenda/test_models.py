@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from liteagent.agenda.models import MAX_TITLE, CalendarEvent, NewEvent
+from chakmati.agenda.models import MAX_TITLE, CalendarEvent, NewEvent
 
 UTC = timezone.utc
 T0 = datetime(2026, 10, 24, 15, 0, tzinfo=UTC)

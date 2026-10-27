@@ -2,12 +2,12 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from liteagent.agenda.models import CalendarEvent
-from liteagent.automations.models import parse_spec
-from liteagent.automations.runner import PREFIX, AutomationRunner
-from liteagent.automations.store import AutomationStore
-from liteagent.whatsapp.models import Chat
-from liteagent.whatsapp.service import RateLimited
+from chakmati.agenda.models import CalendarEvent
+from chakmati.automations.models import parse_spec
+from chakmati.automations.runner import PREFIX, AutomationRunner
+from chakmati.automations.store import AutomationStore
+from chakmati.whatsapp.models import Chat
+from chakmati.whatsapp.service import RateLimited
 
 NOW = datetime(2026, 10, 24, 9, 0, tzinfo=timezone(timedelta(hours=-3)))
 TS = NOW
@@ -156,7 +156,7 @@ async def test_a_calendar_trigger_without_a_calendar_does_nothing(tmp_path):
 
 
 async def test_the_whatsapp_watcher_hands_fresh_messages_to_automations_but_not_the_baseline():
-    from liteagent.notices import NoticeBoard, WhatsAppWatcher
+    from chakmati.notices import NoticeBoard, WhatsAppWatcher
 
     class Service:
         def __init__(self):

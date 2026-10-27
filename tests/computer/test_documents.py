@@ -2,13 +2,13 @@ import sys
 
 import pytest
 
-from liteagent.approvals import ActionStore
-from liteagent.computer import documents
-from liteagent.computer.assistant import ComputerAssistant, document_kind
-from liteagent.computer.safety import ComputerError
-from liteagent.computer.service import ComputerService
-from liteagent.gate.base import Route
-from liteagent.gate.heuristic import HeuristicGate
+from chakmati.approvals import ActionStore
+from chakmati.computer import documents
+from chakmati.computer.assistant import ComputerAssistant, document_kind
+from chakmati.computer.safety import ComputerError
+from chakmati.computer.service import ComputerService
+from chakmati.gate.base import Route
+from chakmati.gate.heuristic import HeuristicGate
 
 APPS = {"pages": "Pages", "numbers": "Numbers", "keynote": "Keynote"}
 
@@ -190,7 +190,7 @@ async def test_the_acronym_stays_in_the_query_even_if_the_model_drops_it(tmp_pat
     ("crie slides sobre o tema", "", None),
 ])
 def test_the_title_and_topic_are_read_from_the_words(request_, title, topic):
-    from liteagent.computer.assistant import document_meta
+    from chakmati.computer.assistant import document_meta
     assert document_meta(request_) == (title, topic)
 
 
@@ -219,5 +219,5 @@ def test_only_what_was_asked_for_and_never_over_the_models_own_formulas():
 
 
 def test_column_letters_go_past_z():
-    from liteagent.computer.documents import _col
+    from chakmati.computer.documents import _col
     assert [_col(0), _col(25), _col(26), _col(27), _col(51), _col(52)] == ["A", "Z", "AA", "AB", "AZ", "BA"]

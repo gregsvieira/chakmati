@@ -1,6 +1,6 @@
 """Compare ways of scoring "is this candidate part good?" on the labelled set.
 
-Run:  uv run python -m liteagent.loop.compare
+Run:  uv run python -m chakmati.loop.compare
 Needs: Ollama running with the chat model, and `uv sync --extra laya`.
 """
 

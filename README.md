@@ -7,7 +7,7 @@ Local assistant engine: simple messages answer inline in seconds; slow work
 
     uv sync
     ollama pull qwen3.5:latest        # or set CHAKMATI_CHAT_MODEL
-    uv run python -m liteagent.main   # http://127.0.0.1:8765
+    uv run python -m chakmati.main   # http://127.0.0.1:8765
 
     curl -s localhost:8765/message -H 'content-type: application/json' \
          -d '{"text":"olá"}'
@@ -60,7 +60,7 @@ banned. Use a secondary number, keep volumes low, never expose OpenWA beyond 127
 
     scripts/openwa.sh setup      # once: installs OpenWA and its own Node.js under ~/.lite-agent/openwa (system Node untouched)
     scripts/openwa.sh start      # opens a window with a QR code: WhatsApp > Linked devices > Link a device
-    CHAKMATI_WHATSAPP_BACKEND=openwa uv run python -m liteagent.main
+    CHAKMATI_WHATSAPP_BACKEND=openwa uv run python -m chakmati.main
 
 Then, in natural language: "tenho mensagens novas?", "o que o João disse?", "resuma a conversa com a Maria",
 "manda pro João: chego em 10 min". After the first login the session is kept; later use `scripts/openwa.sh start-bg`.
@@ -80,7 +80,7 @@ are the only place where other people's text reaches the local model; it is quot
 
 Off by default. Needs Chrome installed and `uv sync --extra browser`; turn it on with `CHAKMATI_BROWSER_BACKEND=chrome`.
 
-    uv run python -m liteagent.main
+    uv run python -m chakmati.main
     curl -N localhost:8765/message/stream -H 'content-type: application/json' \
          -d '{"text":"use o navegador para pesquisar a capital da Austrália"}'
 
@@ -168,7 +168,7 @@ the browser and opens directly.
 
 ### Patriotic answers
 
-A few questions are answered with pride in Brazil (`src/liteagent/patriot.py`), typed out word by word like any reply: *quem inventou o avião* (Santos Dumont, then "Mas costumam dizer que foi os irmãos Wright..."),
+A few questions are answered with pride in Brazil (`src/chakmati/patriot.py`), typed out word by word like any reply: *quem inventou o avião* (Santos Dumont, then "Mas costumam dizer que foi os irmãos Wright..."),
 *qual é a águia mais imponente / de que país é a águia mais imponente* (the Harpia Brasileira, with real facts), and *Pelé ou Maradona* ("É o Pelé!", then "Mas costumam responder assim:" and the model's own answer, as it would
 normally give it). Nothing else is changed; the texts are constants in that file.
 
@@ -223,7 +223,7 @@ Only the macOS arm64 build was checked by hand; the Windows and Ubuntu builds ar
 | `CHAKMATI_DB_PATH` | `liteagent.db` |
 | `CHAKMATI_RESEARCH_BACKEND` | `off` (`ddg` = DuckDuckGo HTML, `searxng` = a SearXNG instance) |
 | `CHAKMATI_SEARXNG_URL` | `http://localhost:8080` |
-| `CHAKMATI_RESEARCH_SCORER` | `keepall` (`laya` is opt-in) |
+| `CHAKMATI_RESEARCH_SCORER` | `keepall` (`laya` is opt-in; the install wizard offers it with the advice "Não recomendado. Possui baixa eficácia neste projeto até o momento.") |
 | `CHAKMATI_RESULT_CUTOFF` | `0.2` |
 | `CHAKMATI_KEEP_ALIVE` | `30m` (empty = Ollama default, which unloads the model after 5 min idle) |
 | `CHAKMATI_PRELOAD_MODEL` | `1`; loads the model at startup (first request ~4 s faster, ~6 GB RAM resident with the default model). `0` turns it off |
@@ -269,7 +269,7 @@ cd desktop && npm install && npm start   # abre o Chakmati; ele inicia o motor s
 `npm start` o pedido vai para o Terminal. Antes de abrir, o app declara os motivos no `Info.plist` do Electron
 (`desktop/scripts/prepare-electron.js`, executado sozinho pelo `npm start` e pelo `npm install`).
 
-O motor também pode rodar sozinho, sem o app: `uv run python -m liteagent.main` (escuta em 127.0.0.1:8765). As integrações
+O motor também pode rodar sozinho, sem o app: `uv run python -m chakmati.main` (escuta em 127.0.0.1:8765). As integrações
 (WhatsApp, agenda, pesquisa na internet) são ligadas em **Ajustes**; o WhatsApp precisa do OpenWA (`scripts/openwa.sh`).
 O SearXNG local é opcional: sem ele a pesquisa usa o DuckDuckGo.
 

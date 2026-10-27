@@ -2,11 +2,11 @@ import importlib.util
 
 import pytest
 
-from liteagent.config import Settings
-from liteagent.gate import build_gate, laya_gate
-from liteagent.gate.base import Route
-from liteagent.gate.heuristic import HeuristicGate
-from liteagent.gate.laya_gate import ROUTE_QUESTION, LayaGate
+from chakmati.config import Settings
+from chakmati.gate import build_gate, laya_gate
+from chakmati.gate.base import Route
+from chakmati.gate.heuristic import HeuristicGate
+from chakmati.gate.laya_gate import ROUTE_QUESTION, LayaGate
 
 
 def fake_predictor(choice: str, confidence: float):

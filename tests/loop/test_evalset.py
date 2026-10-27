@@ -1,4 +1,4 @@
-from liteagent.loop.evalset import ITEMS, pairwise_accuracy
+from chakmati.loop.evalset import ITEMS, pairwise_accuracy
 
 
 def test_dataset_shape():
@@ -29,8 +29,8 @@ def test_wrong_ranked_above_good_scores_zero_for_wrong_only():
     assert result["irrelevant"] == 1.0
 
 
-from liteagent.loop.evalset import strategy_report
-from liteagent.loop.prune import prune_by_rank
+from chakmati.loop.evalset import strategy_report
+from chakmati.loop.prune import prune_by_rank
 
 
 def test_strategy_report_perfect_scores_top_half():
@@ -52,7 +52,7 @@ def test_strategy_report_keep_everything():
     }
 
 
-from liteagent.loop.evalset import ALL_ITEMS, ITEMS_EXTRA
+from chakmati.loop.evalset import ALL_ITEMS, ITEMS_EXTRA
 
 
 def test_extra_items_shape_and_combined_set():

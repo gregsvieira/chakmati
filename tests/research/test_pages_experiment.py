@@ -1,4 +1,4 @@
-from liteagent.research.pages_experiment import fetch_wait, usable_pages
+from chakmati.research.pages_experiment import fetch_wait, usable_pages
 
 
 def test_fetch_wait_is_the_slowest_of_the_first_n_capped_by_the_deadline():
@@ -17,7 +17,7 @@ def test_usable_pages_requires_success_within_the_deadline():
     assert usable_pages(bodies, durations, 2, 2.0) == ["a", None]
 
 
-from liteagent.research.pages_experiment import first_k_successes
+from chakmati.research.pages_experiment import first_k_successes
 
 
 def test_first_k_successes_picks_the_k_fastest_usable_pages_in_rank_order():

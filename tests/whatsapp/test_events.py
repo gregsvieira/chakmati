@@ -3,8 +3,8 @@ import asyncio
 import httpx
 import pytest
 
-from liteagent.notices import NoticeBoard
-from liteagent.whatsapp.events import WhatsAppEvents, parse_sse_lines
+from chakmati.notices import NoticeBoard
+from chakmati.whatsapp.events import WhatsAppEvents, parse_sse_lines
 
 
 def _ev(event, payload=None, ts_ms=2_000_000):

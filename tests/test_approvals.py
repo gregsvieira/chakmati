@@ -1,6 +1,6 @@
 import pytest
 
-from liteagent.approvals import (
+from chakmati.approvals import (
     Action,
     ActionExpired,
     ActionNotPending,

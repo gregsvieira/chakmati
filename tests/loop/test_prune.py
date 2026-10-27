@@ -1,6 +1,6 @@
 import pytest
 
-from liteagent.loop.prune import PruneConfig, prune
+from chakmati.loop.prune import PruneConfig, prune
 
 
 def test_drops_below_threshold():
@@ -30,7 +30,7 @@ def test_length_mismatch_raises():
         prune(["a"], [0.1, 0.2], PruneConfig())
 
 
-from liteagent.loop.prune import prune_by_rank, prune_relative_to_best
+from chakmati.loop.prune import prune_by_rank, prune_relative_to_best
 
 
 def test_by_rank_keeps_top_fraction_in_original_order():

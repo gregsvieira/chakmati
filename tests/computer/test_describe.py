@@ -1,6 +1,6 @@
 import pytest
 
-from liteagent.computer.describe import friendly, plain_error
+from chakmati.computer.describe import friendly, plain_error
 
 
 @pytest.mark.parametrize("argv,text", [

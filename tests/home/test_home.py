@@ -3,11 +3,11 @@ import json
 import httpx
 import pytest
 
-from liteagent.approvals import ActionStore
-from liteagent.home.assistant import HomeAssistantBot, parse_intent
-from liteagent.home.client import HomeAssistantClient
-from liteagent.home.models import Entity, HomeError, plan
-from liteagent.home.service import HomeService
+from chakmati.approvals import ActionStore
+from chakmati.home.assistant import HomeAssistantBot, parse_intent
+from chakmati.home.client import HomeAssistantClient
+from chakmati.home.models import Entity, HomeError, plan
+from chakmati.home.service import HomeService
 
 LIGHT = Entity("light.sala", "Luz da sala", "light", "off")
 QUARTO = Entity("light.quarto", "Luz do quarto", "light", "on")
@@ -192,9 +192,9 @@ async def test_client_errors_are_readable():
 
 # ----------------------------------------------------------------------------- the engine
 async def test_the_engine_runs_house_requests_and_a_spoken_yes_opens_the_door():
-    from liteagent.engine import Engine
-    from liteagent.gate.base import GateResult, Route
-    from liteagent.jobs import JobStore
+    from chakmati.engine import Engine
+    from chakmati.gate.base import GateResult, Route
+    from chakmati.jobs import JobStore
 
     class Gate:
         def classify(self, text):
@@ -213,9 +213,9 @@ async def test_the_engine_runs_house_requests_and_a_spoken_yes_opens_the_door():
 
 
 async def test_without_home_assistant_the_route_says_it_is_off():
-    from liteagent.engine import Engine
-    from liteagent.gate.base import GateResult, Route
-    from liteagent.jobs import JobStore
+    from chakmati.engine import Engine
+    from chakmati.gate.base import GateResult, Route
+    from chakmati.jobs import JobStore
 
     class Gate:
         def classify(self, text):

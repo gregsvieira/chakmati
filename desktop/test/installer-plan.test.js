@@ -21,7 +21,7 @@ test('nothing selected: only check Ollama and fetch the model for this computer'
 
 test('what was not chosen is written off, so nothing optional ends up on', () => {
   const p = plan(pc());
-  assert.deepEqual(p.baseline, { enhancedVoice: false, talk: false, still: true, protect: false });
+  assert.deepEqual(p.baseline, { enhancedVoice: false, talk: false, laya: false, still: true, protect: false });
 });
 
 test('chosen items become steps after the model, and leave the baseline', () => {

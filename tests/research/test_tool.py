@@ -1,9 +1,9 @@
 import httpx
 
-from liteagent.research.fetch import PageFetcher
-from liteagent.research.search import SearchResult
-from liteagent.guard import UNTRUSTED_RULE
-from liteagent.research.tool import COMPOSE_SYSTEM, ResearchAnswer, ResearchTool
+from chakmati.research.fetch import PageFetcher
+from chakmati.research.search import SearchResult
+from chakmati.guard import UNTRUSTED_RULE
+from chakmati.research.tool import COMPOSE_SYSTEM, ResearchAnswer, ResearchTool
 
 PAGE = """<html><body><article><p>{text}</p><p>Mais detalhes importantes sobre o assunto aparecem
 neste segundo parágrafo, com informação suficiente para ser extraída.</p></article></body></html>"""
@@ -100,7 +100,7 @@ def test_render_appends_sources():
 
 
 async def test_concise_flag_appends_the_brevity_instruction_only_when_enabled():
-    from liteagent.research.tool import CONCISE_SUFFIX
+    from chakmati.research.tool import CONCISE_SUFFIX
 
     results = [SearchResult("A", "https://a.test/1", "s")]
     mapping = {"https://a.test/1": PAGE.format(text="Texto suficiente para ser extraído da página de teste.")}

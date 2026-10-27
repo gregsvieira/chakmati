@@ -2,8 +2,8 @@ import json
 
 import httpx
 
-from liteagent.research.evalset import LabelledResult
-from liteagent.research.judge import llm_relevance_scorer
+from chakmati.research.evalset import LabelledResult
+from chakmati.research.judge import llm_relevance_scorer
 
 
 def item():

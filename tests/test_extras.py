@@ -6,20 +6,20 @@ import sys
 import pytest
 from fastapi.testclient import TestClient
 
-from liteagent import extras
-from liteagent.api import create_app
-from liteagent.approvals import ActionStore
-from liteagent.automations.audio import wav_to_ogg_opus
-from liteagent.automations.models import parse_spec
-from liteagent.automations.service import AutomationError, AutomationService
-from liteagent.automations.store import AutomationStore
-from liteagent.config import Settings
-from liteagent.engine import Engine
-from liteagent.gate.base import GateResult, Route
-from liteagent.jobs import JobStore
-from liteagent.main import build_app
-from liteagent.stt import SpeechToText, TranscribeError
-from liteagent.tts import VoiceError, VoiceStore, VoiceSynth, _load_piper
+from chakmati import extras
+from chakmati.api import create_app
+from chakmati.approvals import ActionStore
+from chakmati.automations.audio import wav_to_ogg_opus
+from chakmati.automations.models import parse_spec
+from chakmati.automations.service import AutomationError, AutomationService
+from chakmati.automations.store import AutomationStore
+from chakmati.config import Settings
+from chakmati.engine import Engine
+from chakmati.gate.base import GateResult, Route
+from chakmati.jobs import JobStore
+from chakmati.main import build_app
+from chakmati.stt import SpeechToText, TranscribeError
+from chakmati.tts import VoiceError, VoiceStore, VoiceSynth, _load_piper
 
 
 
@@ -65,7 +65,7 @@ def test_the_engine_modules_import_without_the_optional_packages():
     code = (
         "import sys\n"
         "for m in ('av', 'faster_whisper', 'piper', 'numpy', 'onnxruntime'): sys.modules[m] = None\n"
-        "import liteagent.api, liteagent.main, liteagent.stt, liteagent.tts, liteagent.automations.audio, liteagent.automations.service\n"
+        "import chakmati.api, chakmati.main, chakmati.stt, chakmati.tts, chakmati.automations.audio, chakmati.automations.service\n"
         "print('ok')\n"
     )
     done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)

@@ -3,7 +3,7 @@ import json
 import httpx
 import pytest
 
-from liteagent.llm import OllamaClient
+from chakmati.llm import OllamaClient
 
 
 def make_client(handler, think=False):

@@ -2,8 +2,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from liteagent.agenda.models import CalendarEvent, NewEvent
-from liteagent.agenda.service import (
+from chakmati.agenda.models import CalendarEvent, NewEvent
+from chakmati.agenda.service import (
     ActionExpired,
     ActionNotPending,
     ActionStore,

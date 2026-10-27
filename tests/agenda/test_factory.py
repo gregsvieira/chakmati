@@ -1,9 +1,9 @@
 import pytest
 
-from liteagent.agenda import factory
-from liteagent.agenda.factory import LazyProvider, build_calendar
-from liteagent.agenda.ics import IcsCalendarProvider
-from liteagent.config import Settings
+from chakmati.agenda import factory
+from chakmati.agenda.factory import LazyProvider, build_calendar
+from chakmati.agenda.ics import IcsCalendarProvider
+from chakmati.config import Settings
 
 
 def test_off_builds_nothing():

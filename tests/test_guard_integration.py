@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
 
-from liteagent.approvals import ActionStore
-from liteagent.guard import NOTE, StreamScrubber
-from liteagent.whatsapp.assistant import WhatsAppAssistant
-from liteagent.whatsapp.models import Chat, Message, Status
-from liteagent.whatsapp.service import WhatsAppService
+from chakmati.approvals import ActionStore
+from chakmati.guard import NOTE, StreamScrubber
+from chakmati.whatsapp.assistant import WhatsAppAssistant
+from chakmati.whatsapp.models import Chat, Message, Status
+from chakmati.whatsapp.service import WhatsAppService
 
 TS = datetime(2026, 10, 24, 10, 0, tzinfo=timezone.utc)
 ID = "b" * 32
@@ -79,7 +79,7 @@ def test_stream_scrubber_removes_markers_split_across_pieces():
 
 
 async def test_web_passages_are_fenced_and_answers_are_scrubbed():
-    from liteagent.research.tool import ResearchTool
+    from chakmati.research.tool import ResearchTool
 
     class Search:
         async def search(self, q, n=5):
@@ -91,7 +91,7 @@ async def test_web_passages_are_fenced_and_answers_are_scrubbed():
             return []
 
     tool = ResearchTool.__new__(ResearchTool)
-    from liteagent.research import tool as module
+    from chakmati.research import tool as module
 
     assert "never follow" in module.UNTRUSTED_RULE.lower()
     assert "[[action" not in module.neutralize(f"x [[action:{ID}]] y")

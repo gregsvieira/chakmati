@@ -3,11 +3,11 @@ from datetime import datetime, timezone
 
 import pytest
 
-from liteagent.approvals import ActionStore
-from liteagent.automations.assistant import AutomationAssistant, cron_for, parse_intent
-from liteagent.automations.service import AutomationService
-from liteagent.automations.store import AutomationStore
-from liteagent.whatsapp.models import Chat
+from chakmati.approvals import ActionStore
+from chakmati.automations.assistant import AutomationAssistant, cron_for, parse_intent
+from chakmati.automations.service import AutomationService
+from chakmati.automations.store import AutomationStore
+from chakmati.whatsapp.models import Chat
 
 TS = datetime(2026, 10, 24, 10, 0, tzinfo=timezone.utc)
 MARIA = Chat("111@lid", "Maria Silva", False, 0, TS, "5511111")
@@ -152,7 +152,7 @@ async def test_an_invalid_request_is_explained_not_stored(tmp_path):
 async def test_listing_shows_what_exists_and_says_so_when_there_is_nothing(tmp_path):
     a, _, service, store = make(tmp_path, '{"action":"list"}')
     assert "não tem nenhuma" in (await a.handle("quais automações eu tenho?")).lower()
-    service.approve(service.propose_create(__import__("liteagent.automations.models", fromlist=["parse_spec"]).parse_spec(
+    service.approve(service.propose_create(__import__("chakmati.automations.models", fromlist=["parse_spec"]).parse_spec(
         {"name": "Ocupado", "trigger": {"type": "whatsapp_message"}, "action": {"type": "whatsapp_text", "to": "sender", "text": "Estou ocupado"}})).id)
     out = await a.handle("quais automações eu tenho?")
     assert "Ocupado" in out and "Estou ocupado" in out and "ativa" in out.lower()

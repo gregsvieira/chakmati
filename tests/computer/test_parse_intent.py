@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from liteagent.computer.assistant import parse_intent
+from chakmati.computer.assistant import parse_intent
 
 OTHER = {"action": "other"}
 
@@ -153,7 +153,7 @@ def test_unrelated_json_is_still_other():
 
 def test_repairing_the_shape_never_lets_a_forbidden_command_through():
     # the parser only fixes the shape; policy.check still judges every command before anything runs
-    from liteagent.computer.policy import PolicyError, Roots, check
+    from chakmati.computer.policy import PolicyError, Roots, check
 
     got = parse_intent('{"type":"command","command":"rm -rf /"}')
     assert got["steps"] == [{"type": "command", "command": "rm -rf /"}]

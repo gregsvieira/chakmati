@@ -1,4 +1,4 @@
-from liteagent.config import Settings
+from chakmati.config import Settings
 
 
 def test_defaults():

@@ -2,10 +2,10 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from liteagent.engine import Engine
-from liteagent.gate.base import GateResult, Route
-from liteagent.jobs import JobStore
-from liteagent.timeguard import needs_today, needs_web, today_line
+from chakmati.engine import Engine
+from chakmati.gate.base import GateResult, Route
+from chakmati.jobs import JobStore
+from chakmati.timeguard import needs_today, needs_web, today_line
 
 NOW = datetime(2026, 10, 24, 1, 23, tzinfo=timezone(timedelta(hours=-3)))  # a Saturday
 
@@ -138,7 +138,7 @@ async def test_a_research_route_always_carries_todays_date():
 
 
 # ----------------------------------------------------------------------------- calendar arithmetic is done in code
-from liteagent.timeguard import calendar_facts  # noqa: E402
+from chakmati.timeguard import calendar_facts  # noqa: E402
 
 
 def facts(text, now=NOW):

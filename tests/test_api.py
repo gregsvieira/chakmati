@@ -3,12 +3,12 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from liteagent.api import create_app
-from liteagent.config import Settings
-from liteagent.engine import Engine
-from liteagent.gate.base import GateResult, Route
-from liteagent.jobs import JobStore, Worker
-from liteagent.main import build_app
+from chakmati.api import create_app
+from chakmati.config import Settings
+from chakmati.engine import Engine
+from chakmati.gate.base import GateResult, Route
+from chakmati.jobs import JobStore, Worker
+from chakmati.main import build_app
 
 
 class FakeGate:

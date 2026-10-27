@@ -1,8 +1,8 @@
 import pytest
 
-from liteagent.config import Settings
-from liteagent.whatsapp.factory import build_whatsapp
-from liteagent.whatsapp.openwa import OpenWAClient
+from chakmati.config import Settings
+from chakmati.whatsapp.factory import build_whatsapp
+from chakmati.whatsapp.openwa import OpenWAClient
 
 
 def test_off_builds_nothing():
@@ -45,9 +45,9 @@ def test_unknown_backend_is_an_error():
 
 
 def test_events_listener_exists_only_when_whatsapp_is_on():
-    from liteagent.config import Settings
-    from liteagent.notices import NoticeBoard
-    from liteagent.whatsapp.factory import build_whatsapp_events
+    from chakmati.config import Settings
+    from chakmati.notices import NoticeBoard
+    from chakmati.whatsapp.factory import build_whatsapp_events
 
     assert build_whatsapp_events(Settings(whatsapp_backend="off"), NoticeBoard()) is None
     assert build_whatsapp_events(Settings(whatsapp_backend="openwa", openwa_api_key="k"), NoticeBoard()) is not None

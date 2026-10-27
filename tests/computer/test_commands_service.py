@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from liteagent.approvals import ActionStore
-from liteagent.computer.assistant import ComputerAssistant
-from liteagent.computer.safety import ComputerError
-from liteagent.computer.service import ComputerService, run_argv
+from chakmati.approvals import ActionStore
+from chakmati.computer.assistant import ComputerAssistant
+from chakmati.computer.safety import ComputerError
+from chakmati.computer.service import ComputerService, run_argv
 
 
 class Runner:
@@ -307,7 +307,7 @@ def test_the_trash_refuses_workspace_roots_secrets_and_the_system(tmp_path):
 def test_no_code_path_in_the_package_can_delete_anything():
     # policy.py holds the refusal patterns as text; everything that actually acts is scanned
     for name in ("service.py", "safety.py", "assistant.py", "secrets.py"):
-        source = (Path("src/liteagent/computer") / name).read_text()
+        source = (Path("src/chakmati/computer") / name).read_text()
         for forbidden in ("os.remove(", "os.unlink(", ".unlink(", "rmtree", "os.rmdir", "shutil.move(", "os.removedirs", "send2trash"):
             assert forbidden not in source, (name, forbidden)
 
@@ -379,11 +379,11 @@ async def test_trash_and_revert_requests_go_through_approval(tmp_path):
 def _client(tmp_path):
     from fastapi.testclient import TestClient
 
-    from liteagent.api import create_app
-    from liteagent.engine import Engine
-    from liteagent.gate.base import GateResult, Route
-    from liteagent.jobs import JobStore
-    from liteagent.notices import NoticeBoard
+    from chakmati.api import create_app
+    from chakmati.engine import Engine
+    from chakmati.gate.base import GateResult, Route
+    from chakmati.jobs import JobStore
+    from chakmati.notices import NoticeBoard
 
     class Gate:
         def classify(self, text):
@@ -423,7 +423,7 @@ def test_pending_computer_actions_say_whether_they_can_be_kept_approved(tmp_path
 
 
 def test_a_reply_with_steps_but_no_action_word_still_counts_as_steps():
-    from liteagent.computer.assistant import parse_intent
+    from chakmati.computer.assistant import parse_intent
 
     intent = parse_intent('{"steps":[{"type":"command","command":"mkdir a"},{"type":"command","command":"mkdir a/b"}]}')
     assert intent["action"] == "steps" and len(intent["steps"]) == 2

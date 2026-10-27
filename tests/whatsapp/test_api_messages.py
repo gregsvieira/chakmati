@@ -7,13 +7,13 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from liteagent.api import create_app
-from liteagent.approvals import ActionStore
-from liteagent.engine import Engine
-from liteagent.gate.base import GateResult, Route
-from liteagent.jobs import JobStore
-from liteagent.whatsapp.models import Chat, MediaRef, Message, Status
-from liteagent.whatsapp.service import WhatsAppService
+from chakmati.api import create_app
+from chakmati.approvals import ActionStore
+from chakmati.engine import Engine
+from chakmati.gate.base import GateResult, Route
+from chakmati.jobs import JobStore
+from chakmati.whatsapp.models import Chat, MediaRef, Message, Status
+from chakmati.whatsapp.service import WhatsAppService
 
 from .test_media import KEY, PLAIN, encrypt_audio
 

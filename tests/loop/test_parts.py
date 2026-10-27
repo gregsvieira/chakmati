@@ -1,4 +1,4 @@
-from liteagent.loop.parts import compose_messages, draft_messages, parse_parts
+from chakmati.loop.parts import compose_messages, draft_messages, parse_parts
 
 
 def test_parse_json_array():

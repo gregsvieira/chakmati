@@ -3,13 +3,13 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from fastapi.testclient import TestClient
 
-from liteagent.agenda.ics import IcsCalendarProvider
-from liteagent.agenda.models import NewEvent
-from liteagent.agenda.service import ActionStore, CalendarService
-from liteagent.api import create_app
-from liteagent.engine import Engine
-from liteagent.gate.base import GateResult, Route
-from liteagent.jobs import JobStore
+from chakmati.agenda.ics import IcsCalendarProvider
+from chakmati.agenda.models import NewEvent
+from chakmati.agenda.service import ActionStore, CalendarService
+from chakmati.api import create_app
+from chakmati.engine import Engine
+from chakmati.gate.base import GateResult, Route
+from chakmati.jobs import JobStore
 
 BRT = timezone(timedelta(hours=-3))
 T0 = datetime(2026, 10, 24, 15, 0, tzinfo=BRT)
@@ -111,8 +111,8 @@ def test_everything_is_503_when_the_calendar_is_disabled():
 
 
 def test_build_app_wires_the_calendar_only_when_enabled(tmp_path):
-    from liteagent.config import Settings
-    from liteagent.main import build_app
+    from chakmati.config import Settings
+    from chakmati.main import build_app
 
     off = TestClient(build_app(Settings(db_path=":memory:")))
     assert off.get("/actions").json() == []  # the computer's own approvals (files) always exist, even with no integration

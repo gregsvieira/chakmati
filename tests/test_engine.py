@@ -1,8 +1,8 @@
 import pytest
 
-from liteagent.engine import SYSTEM_PROMPTS, Engine
-from liteagent.gate.base import GateResult, Route
-from liteagent.jobs import QUEUED, JobStore
+from chakmati.engine import SYSTEM_PROMPTS, Engine
+from chakmati.gate.base import GateResult, Route
+from chakmati.jobs import QUEUED, JobStore
 
 
 class FakeGate:

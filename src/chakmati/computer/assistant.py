@@ -249,7 +249,7 @@ class ComputerAssistant:
     def __init__(self, llm: ChatClient, service: ComputerService, gather: Gather | None = None, solver: ChatClient | None = None, models=None, reasoning_for=None):
         self._llm = llm
         self._solver = solver  # works out the questions of an exam: a stronger model when one is given...
-        self._models = models  # ...or the one the catalog finds installed (liteagent.models.ModelCatalog)
+        self._models = models  # ...or the one the catalog finds installed (chakmati.models.ModelCatalog)
         self._reasoning_for = reasoning_for  # (model name) -> a chat client for it
         self._intents: dict[str, dict] = {}  # what the model made of a request, kept from the plan to the answer so the model is asked once
         self._service = service

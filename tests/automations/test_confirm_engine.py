@@ -1,13 +1,13 @@
 import pytest
 
-from liteagent.approvals import ActionStore
-from liteagent.automations.confirm import verdict
-from liteagent.automations.models import parse_spec
-from liteagent.automations.service import AutomationService
-from liteagent.automations.store import AutomationStore
-from liteagent.engine import Engine
-from liteagent.gate.base import GateResult, Route
-from liteagent.jobs import JobStore
+from chakmati.approvals import ActionStore
+from chakmati.automations.confirm import verdict
+from chakmati.automations.models import parse_spec
+from chakmati.automations.service import AutomationService
+from chakmati.automations.store import AutomationStore
+from chakmati.engine import Engine
+from chakmati.gate.base import GateResult, Route
+from chakmati.jobs import JobStore
 
 
 @pytest.mark.parametrize("text, expected", [
@@ -124,8 +124,8 @@ async def test_without_the_assistant_the_route_says_automations_are_off(tmp_path
 def api_client(tmp_path):
     from fastapi.testclient import TestClient
 
-    from liteagent.api import create_app
-    from liteagent.notices import NoticeBoard
+    from chakmati.api import create_app
+    from chakmati.notices import NoticeBoard
 
     engine, service, store, _ = make(tmp_path)
     app = create_app(engine, engine._store, board=NoticeBoard(), automations=service)
@@ -169,8 +169,8 @@ class FakeStt:
 def recorded_client(tmp_path, stt=None):
     from fastapi.testclient import TestClient
 
-    from liteagent.api import create_app
-    from liteagent.notices import NoticeBoard
+    from chakmati.api import create_app
+    from chakmati.notices import NoticeBoard
 
     engine, service, store, clock = make(tmp_path)
     app = create_app(engine, engine._store, board=NoticeBoard(), automations=service, stt=stt)
@@ -213,8 +213,8 @@ def test_without_speech_recognition_the_list_still_describes_it(tmp_path):
 
 # ----------------------------------------------------------------------------- an OpenWA that cannot send files
 async def test_audio_automations_are_refused_when_whatsapp_cannot_send_audio(tmp_path):
-    from liteagent.automations.assistant import AutomationAssistant
-    from liteagent.automations.service import AutomationError
+    from chakmati.automations.assistant import AutomationAssistant
+    from chakmati.automations.service import AutomationError
 
     async def no_media():
         return False
@@ -246,8 +246,8 @@ async def test_audio_automations_are_refused_when_whatsapp_cannot_send_audio(tmp
 def test_the_recorded_endpoint_is_refused_when_audio_is_impossible(tmp_path):
     from fastapi.testclient import TestClient
 
-    from liteagent.api import create_app
-    from liteagent.notices import NoticeBoard
+    from chakmati.api import create_app
+    from chakmati.notices import NoticeBoard
 
     from .test_audio_service import sine_wav
 

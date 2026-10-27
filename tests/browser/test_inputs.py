@@ -6,15 +6,15 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from liteagent.api import create_app
-from liteagent.browser.agent import BrowserAgent, describe, is_personal_field, start_url
-from liteagent.browser.frames import FrameStore
-from liteagent.browser.inputs import InputBroker
-from liteagent.browser.session import BrowserError, Snapshot
-from liteagent.engine import Engine
-from liteagent.gate.base import GateResult, Route
-from liteagent.gate.heuristic import HeuristicGate
-from liteagent.jobs import JobStore, Worker
+from chakmati.api import create_app
+from chakmati.browser.agent import BrowserAgent, describe, is_personal_field, start_url
+from chakmati.browser.frames import FrameStore
+from chakmati.browser.inputs import InputBroker
+from chakmati.browser.session import BrowserError, Snapshot
+from chakmati.engine import Engine
+from chakmati.gate.base import GateResult, Route
+from chakmati.gate.heuristic import HeuristicGate
+from chakmati.jobs import JobStore, Worker
 
 JOB = "b" * 32
 LOGIN = [{"id": 1, "tag": "input", "type": "text", "label": "Número de celular, nome de usuário ou email"},
@@ -303,7 +303,7 @@ async def test_finishing_before_sending_the_form_is_sent_back_once(tmp_path):
     ("Welcome to the Secure Area. Logout", False),
 ])
 def test_what_counts_as_the_page_saying_the_login_failed(text, failed):
-    from liteagent.browser.agent import _FAILED
+    from chakmati.browser.agent import _FAILED
     assert bool(_FAILED.search(text)) is failed
 
 

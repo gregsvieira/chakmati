@@ -3,17 +3,17 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from liteagent.agenda.models import CalendarEvent
-from liteagent.approvals import Action
-from liteagent.notices import (
+from chakmati.agenda.models import CalendarEvent
+from chakmati.approvals import Action
+from chakmati.notices import (
     ApprovalWatcher,
     CalendarWatcher,
     NoticeBoard,
     Notifier,
     WhatsAppWatcher,
 )
-from liteagent.whatsapp.models import Chat
-from liteagent.whatsapp.openwa import WhatsAppError
+from chakmati.whatsapp.models import Chat
+from chakmati.whatsapp.openwa import WhatsAppError
 
 TS = datetime(2026, 10, 23, 10, 0, tzinfo=timezone.utc)
 

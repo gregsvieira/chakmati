@@ -1,8 +1,8 @@
 """Does Laya help as a search-result filter, compared with the engine's own ranking?
 
-Step 1  uv run python -m liteagent.research.experiment collect   # queries the web once, caches results
+Step 1  uv run python -m chakmati.research.experiment collect   # queries the web once, caches results
 Step 2  (a person labels results: docs/superpowers/results/2026-10-23-search_labels.json)
-Step 3  uv run python -m liteagent.research.experiment run       # scores and compares
+Step 3  uv run python -m chakmati.research.experiment run       # scores and compares
 """
 
 import asyncio

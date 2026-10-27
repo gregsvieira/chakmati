@@ -1,7 +1,7 @@
 import pytest
 
-from liteagent.gate.base import Route
-from liteagent.gate.heuristic import HeuristicGate
+from chakmati.gate.base import Route
+from chakmati.gate.heuristic import HeuristicGate
 
 
 @pytest.mark.parametrize(

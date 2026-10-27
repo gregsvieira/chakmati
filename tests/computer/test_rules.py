@@ -1,8 +1,8 @@
 import pytest
 
-from liteagent.approvals import ActionStore
-from liteagent.computer.rules import by_rule
-from liteagent.computer.service import ComputerService
+from chakmati.approvals import ActionStore
+from chakmati.computer.rules import by_rule
+from chakmati.computer.service import ComputerService
 
 APPS = {"safari": "Safari", "safari technology preview": "Safari Technology Preview", "spotify": "Spotify", "google chrome": "Google Chrome"}
 
@@ -62,7 +62,7 @@ def test_what_no_rule_settles_goes_to_the_model(service, text):
 
 
 async def test_a_rule_request_never_calls_the_model(service):
-    from liteagent.computer.assistant import ComputerAssistant
+    from chakmati.computer.assistant import ComputerAssistant
 
     class Boom:
         async def chat(self, messages):

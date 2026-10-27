@@ -1,5 +1,5 @@
-from liteagent.gate import laya_gate
-from liteagent.loop.scorer import PART_QUESTION, LayaPartScorer
+from chakmati.gate import laya_gate
+from chakmati.loop.scorer import PART_QUESTION, LayaPartScorer
 
 
 def noul_result(p):
@@ -52,7 +52,7 @@ def test_empty_parts():
     assert LayaPartScorer(lambda t, q: noul_result(0.5)).score("Q", []) == []
 
 
-from liteagent.loop.scorer import KeepAllScorer
+from chakmati.loop.scorer import KeepAllScorer
 
 
 def test_keep_all_scorer_scores_everything_one():

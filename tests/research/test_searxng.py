@@ -3,8 +3,8 @@ from urllib.parse import parse_qs
 import httpx
 import pytest
 
-from liteagent.research.search import SearchResult
-from liteagent.research.searxng import USER_AGENT, SearxngBackend, SearxngUnavailable, parse_searxng_html
+from chakmati.research.search import SearchResult
+from chakmati.research.searxng import USER_AGENT, SearxngBackend, SearxngUnavailable, parse_searxng_html
 
 HTML = """
 <div id="urls">

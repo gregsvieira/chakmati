@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from liteagent.agenda.mac import (
+from chakmati.agenda.mac import (
     allday_end_from_eventkit,
     allday_end_to_eventkit,
     make_event_id,

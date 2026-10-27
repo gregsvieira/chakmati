@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from liteagent.approvals import ActionStore
-from liteagent.computer.assistant import ComputerAssistant, parse_intent
-from liteagent.computer.safety import ComputerError, check_url, find_app, resolve_new_file
-from liteagent.computer.service import ComputerService
+from chakmati.approvals import ActionStore
+from chakmati.computer.assistant import ComputerAssistant, parse_intent
+from chakmati.computer.safety import ComputerError, check_url, find_app, resolve_new_file
+from chakmati.computer.service import ComputerService
 
 APPS = {"safari": "Safari", "google chrome": "Google Chrome", "spotify": "Spotify", "calendar": "Calendar", "calculator": "Calculator"}
 
@@ -175,9 +175,9 @@ async def test_assistant_opens_a_site(tmp_path):
 
 # ----------------------------------------------------------------------------- the engine
 async def test_the_engine_routes_a_file_request_and_a_spoken_yes_creates_it(tmp_path):
-    from liteagent.engine import Engine
-    from liteagent.gate.base import GateResult, Route
-    from liteagent.jobs import JobStore
+    from chakmati.engine import Engine
+    from chakmati.gate.base import GateResult, Route
+    from chakmati.jobs import JobStore
 
     class Gate:
         def classify(self, text):
@@ -194,9 +194,9 @@ async def test_the_engine_routes_a_file_request_and_a_spoken_yes_creates_it(tmp_
 
 
 async def test_with_nothing_wired_the_route_says_it_is_off():
-    from liteagent.engine import Engine
-    from liteagent.gate.base import GateResult, Route
-    from liteagent.jobs import JobStore
+    from chakmati.engine import Engine
+    from chakmati.gate.base import GateResult, Route
+    from chakmati.jobs import JobStore
 
     class Gate:
         def classify(self, text):

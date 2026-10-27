@@ -2,8 +2,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from liteagent.agenda.assistant import CalendarAssistant, parse_intent
-from liteagent.agenda.models import CalendarEvent, NewEvent
+from chakmati.agenda.assistant import CalendarAssistant, parse_intent
+from chakmati.agenda.models import CalendarEvent, NewEvent
 
 BRT = timezone(timedelta(hours=-3))
 NOW = datetime(2026, 10, 23, 18, 30, tzinfo=BRT)  # a Friday
@@ -167,7 +167,7 @@ async def test_the_prompt_carries_the_current_date_and_timezone():
 # ----------------------------------------------------------------------------- "dia N" is resolved in code
 from dataclasses import replace as _replace  # noqa: E402
 
-from liteagent.agenda.assistant import Intent, resolve_bare_day  # noqa: E402
+from chakmati.agenda.assistant import Intent, resolve_bare_day  # noqa: E402
 
 
 def intent_at(month, day, hour=9, minute=0, duration_min=None):

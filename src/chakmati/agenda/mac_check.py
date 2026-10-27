@@ -1,6 +1,6 @@
 """Manual check of the macOS backend against the real Calendar.app (asks for permission on first run).
 
-    uv run python -m liteagent.agenda.mac_check
+    uv run python -m chakmati.agenda.mac_check
 
 It prints only counts, creates one clearly named test event for tomorrow at 03:00 and deletes it again.
 """

@@ -2,9 +2,9 @@ from datetime import datetime, timezone
 
 import pytest
 
-from liteagent.whatsapp.assistant import HELP, WhatsAppAssistant, parse_intent, resolve_chat
-from liteagent.whatsapp.models import Chat, Message, Status
-from liteagent.whatsapp.openwa import WhatsAppError
+from chakmati.whatsapp.assistant import HELP, WhatsAppAssistant, parse_intent, resolve_chat
+from chakmati.whatsapp.models import Chat, Message, Status
+from chakmati.whatsapp.openwa import WhatsAppError
 
 TS = datetime(2026, 10, 23, 10, 0, tzinfo=timezone.utc)
 

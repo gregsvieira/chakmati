@@ -6,7 +6,7 @@ Step 2  for every ranker x pages configuration run the real ResearchTool on that
         check whether the final answer contains the expected fact.
 Step 3  fetch-stage waiting time per pages value, computed from the measured download times.
 
-Run:  uv run python -m liteagent.research.pages_experiment   (needs SearXNG on :8080 and Ollama)
+Run:  uv run python -m chakmati.research.pages_experiment   (needs SearXNG on :8080 and Ollama)
 """
 
 import asyncio

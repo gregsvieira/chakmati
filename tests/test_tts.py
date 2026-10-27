@@ -7,11 +7,11 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from liteagent.api import create_app
-from liteagent.engine import Engine
-from liteagent.gate.base import GateResult, Route
-from liteagent.jobs import JobStore
-from liteagent.tts import MAX_TEXT, VoiceError, VoiceFile, VoiceStore, VoiceSynth
+from chakmati.api import create_app
+from chakmati.engine import Engine
+from chakmati.gate.base import GateResult, Route
+from chakmati.jobs import JobStore
+from chakmati.tts import MAX_TEXT, VoiceError, VoiceFile, VoiceStore, VoiceSynth
 
 UI = {"X-LiteAgent-UI": "1"}
 MODEL = b"fake-onnx-model-bytes" * 50

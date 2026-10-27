@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from liteagent.models import ModelCatalog
+from chakmati.models import ModelCatalog
 
 GB = 1024**3
 

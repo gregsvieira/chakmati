@@ -1,4 +1,4 @@
-from liteagent.loop.metered import MeteredLLM
+from chakmati.loop.metered import MeteredLLM
 
 
 class Inner:

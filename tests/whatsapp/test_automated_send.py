@@ -1,9 +1,9 @@
 import httpx
 import pytest
 
-from liteagent.approvals import ActionStore
-from liteagent.whatsapp.openwa import OpenWAClient, WhatsAppError
-from liteagent.whatsapp.service import RateLimited, WhatsAppService
+from chakmati.approvals import ActionStore
+from chakmati.whatsapp.openwa import OpenWAClient, WhatsAppError
+from chakmati.whatsapp.service import RateLimited, WhatsAppService
 
 
 class FakeProvider:

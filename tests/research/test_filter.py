@@ -1,5 +1,5 @@
-from liteagent.research.filter import filter_results, rank_passages
-from liteagent.research.search import SearchResult
+from chakmati.research.filter import filter_results, rank_passages
+from chakmati.research.search import SearchResult
 
 
 class WordScorer:

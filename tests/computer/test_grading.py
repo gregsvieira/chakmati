@@ -3,13 +3,13 @@ import os
 
 import pytest
 
-from liteagent.approvals import ActionStore
-from liteagent.computer import grading
-from liteagent.computer.assistant import ComputerAssistant
-from liteagent.computer.safety import ComputerError
-from liteagent.computer.service import ComputerService
-from liteagent.gate.base import Route
-from liteagent.gate.heuristic import HeuristicGate
+from chakmati.approvals import ActionStore
+from chakmati.computer import grading
+from chakmati.computer.assistant import ComputerAssistant
+from chakmati.computer.safety import ComputerError
+from chakmati.computer.service import ComputerService
+from chakmati.gate.base import Route
+from chakmati.gate.heuristic import HeuristicGate
 
 TEXT = """PROVA DE MATEMÁTICA
 1. (ENEM 2024) Um pintor pretende fazer uma reprodução:
@@ -47,7 +47,7 @@ def test_double_and_blank_marks_are_wrong_and_flagged():
 
 
 def test_the_spreadsheet_formulas_pass_the_allow_list():
-    from liteagent.computer import documents
+    from chakmati.computer import documents
     spec, _ = grading.grade([grading.parse_text("a.pdf", TEXT)] * 3, {1: "E", 2: "B", 3: "B"}, 0.5)
     documents.check_spec("xlsx", spec)  # raises if a formula is not allowed
 
@@ -189,7 +189,7 @@ async def test_without_the_ocr_extra_the_message_says_what_to_install(tmp_path, 
     Image.new("L", (300, 300), 255).save(folder / "a.jpg")
     import sys
     monkeypatch.setitem(sys.modules, "pypdfium2", None)
-    monkeypatch.setattr("liteagent.computer.ocr.ocr_lines", lambda image: (_ for _ in ()).throw(ComputerError("Reading scanned exams is not installed: run `uv sync --extra ocr`")))
+    monkeypatch.setattr("chakmati.computer.ocr.ocr_lines", lambda image: (_ for _ in ()).throw(ComputerError("Reading scanned exams is not installed: run `uv sync --extra ocr`")))
     service = ComputerService(str(tmp_path / "ws"), ActionStore(":memory:"))
     out = await ComputerAssistant(None, service).handle("corrija as provas da pasta escaneadas, gabarito 1A")
     assert "uv sync --extra ocr" in out
@@ -201,13 +201,13 @@ async def test_without_the_ocr_extra_the_message_says_what_to_install(tmp_path, 
     ("corrija as provas que estão na pasta turma-a. Gabarito: 1A", "turma-a"),
 ])
 def test_the_folder_is_found_in_the_request(text, folder):
-    from liteagent.computer.assistant import _FOLDER
+    from chakmati.computer.assistant import _FOLDER
     assert _FOLDER.search(text).group(1).strip() == folder
 
 
 # ------------------------------------------------------------------------------------------------ guards on what the model writes
 def test_latex_becomes_plain_text_and_real_dollar_signs_stay():
-    from liteagent.computer.assistant import plain_math
+    from chakmati.computer.assistant import plain_math
     out = plain_math(r"Então $\frac{15k}{30} \implies k = 30.000$, **portanto** \text{R\$ 6.000} e 24\text{ m}^2")
     assert out == "Então (15k)/(30) => k = 30.000, portanto R$ 6.000 e 24 m²"
     assert plain_math("a constante é R$ 30.000,00 e $x = 2$") == "a constante é R$ 30.000,00 e x = 2"
@@ -223,7 +223,7 @@ def test_latex_becomes_plain_text_and_real_dollar_signs_stay():
     ("A opção A está incorreta porque confunde as unidades.", "A", False),
 ])
 def test_an_explanation_that_argues_against_the_key_is_caught(text, chosen, contradicts):
-    from liteagent.computer.assistant import contradicts_key
+    from chakmati.computer.assistant import contradicts_key
     assert contradicts_key(text, "E", chosen) is contradicts
 
 
@@ -258,14 +258,14 @@ async def test_a_stronger_model_works_out_the_question_when_one_is_configured(tm
     ("A opção D usa a razão entre as áreas (1600); a escala linear é a raiz quadrada: 1 : 40.", False),
 ])
 def test_a_model_thinking_out_loud_is_not_handed_to_the_teacher(text, thinking_aloud):
-    from liteagent.computer.assistant import rambling
+    from chakmati.computer.assistant import rambling
     assert rambling(text) is thinking_aloud
 
 
 # ------------------------------------------------------------------------------------------------ the plan, shown before acting
 async def test_the_plan_says_what_is_there_and_which_tool_and_model_each_step_needs(tmp_path):
     await asyncio.to_thread(pdf_folder, tmp_path, [("Ana", ["A", "B", "B"]), ("Bia", ["E", "B", "B"])])
-    from liteagent.models import Choice
+    from chakmati.models import Choice
 
     class Models:
         async def reasoning(self):
@@ -292,7 +292,7 @@ async def test_the_plan_says_ocr_is_needed_for_scans(tmp_path):
 
 
 async def test_without_a_stronger_model_the_plan_says_so(tmp_path):
-    from liteagent.models import ModelCatalog
+    from chakmati.models import ModelCatalog
     import httpx
     (tmp_path / "ws" / "provas").mkdir(parents=True)
     models = ModelCatalog("http://ollama.test", ram_gb=16, transport=httpx.MockTransport(lambda r: httpx.Response(200, json={"models": [{"name": "qwen3.5:latest", "size": 6 * 1024**3}]})))
@@ -327,9 +327,9 @@ async def test_a_document_plan_names_the_steps(tmp_path):
 
 
 async def test_the_engine_shows_the_plan_first_then_the_answer(tmp_path):
-    from liteagent.engine import Engine
-    from liteagent.gate.base import GateResult, Route
-    from liteagent.jobs import JobStore
+    from chakmati.engine import Engine
+    from chakmati.gate.base import GateResult, Route
+    from chakmati.jobs import JobStore
 
     class Gate:
         def classify(self, text):
@@ -349,9 +349,9 @@ async def test_the_engine_shows_the_plan_first_then_the_answer(tmp_path):
 
 
 async def test_a_broken_plan_never_stops_the_job(tmp_path):
-    from liteagent.engine import Engine
-    from liteagent.gate.base import GateResult, Route
-    from liteagent.jobs import JobStore
+    from chakmati.engine import Engine
+    from chakmati.gate.base import GateResult, Route
+    from chakmati.jobs import JobStore
 
     class Assistant:
         async def plan(self, text):

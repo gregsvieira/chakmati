@@ -5,7 +5,7 @@ Corpus: the first 4 pages of the cached DuckDuckGo results for each case, extrac
 regex written BEFORE looking at any ranker output (see CASES). The end-to-end check gives the top 4
 passages of each ranker to the LLM with the same prompt as ResearchTool and checks the answer.
 
-Run:  uv run python -m liteagent.research.passages_experiment
+Run:  uv run python -m chakmati.research.passages_experiment
 """
 
 import json

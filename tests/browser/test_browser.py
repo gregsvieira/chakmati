@@ -3,14 +3,14 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from liteagent.api import create_app
-from liteagent.browser.agent import BrowserAgent, parse_action
-from liteagent.browser.frames import FrameStore
-from liteagent.browser.session import BrowserError, Snapshot, check_navigable
-from liteagent.engine import Engine
-from liteagent.gate.base import GateResult, Route
-from liteagent.gate.heuristic import HeuristicGate
-from liteagent.jobs import JobStore, Worker
+from chakmati.api import create_app
+from chakmati.browser.agent import BrowserAgent, parse_action
+from chakmati.browser.frames import FrameStore
+from chakmati.browser.session import BrowserError, Snapshot, check_navigable
+from chakmati.engine import Engine
+from chakmati.gate.base import GateResult, Route
+from chakmati.gate.heuristic import HeuristicGate
+from chakmati.jobs import JobStore, Worker
 
 JOB = "a" * 32
 
@@ -198,7 +198,7 @@ async def test_an_address_in_the_task_is_where_it_starts(tmp_path):
 
 class FakeSearch:
     async def search(self, query, limit=5):
-        from liteagent.research.search import SearchResult
+        from chakmati.research.search import SearchResult
         self.query = query
         return [SearchResult("MCP - Wikipedia", "https://pt.wikipedia.org/wiki/MCP", "x"), SearchResult("Local", "http://localhost/x", "y"), SearchResult("Anthropic", "https://anthropic.com/mcp", "z")]
 
@@ -234,7 +234,7 @@ async def test_a_chatty_model_reply_still_gives_a_query(tmp_path):
     ("use o navegador para ver o preço do dólar", "ver o preço do dólar"),
 ])
 def test_a_query_is_cut_out_of_the_request_by_rules(task, query):
-    from liteagent.browser.agent import rule_query
+    from chakmati.browser.agent import rule_query
     assert rule_query(task) == query
 
 

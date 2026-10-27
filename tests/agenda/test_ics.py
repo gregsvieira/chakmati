@@ -2,8 +2,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from liteagent.agenda.ics import IcsCalendarProvider
-from liteagent.agenda.models import NewEvent
+from chakmati.agenda.ics import IcsCalendarProvider
+from chakmati.agenda.models import NewEvent
 
 UTC = timezone.utc
 BRT = timezone(timedelta(hours=-3))

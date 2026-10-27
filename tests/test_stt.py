@@ -1,11 +1,11 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from liteagent.api import create_app
-from liteagent.engine import Engine
-from liteagent.gate.base import GateResult, Route
-from liteagent.jobs import JobStore
-from liteagent.stt import MAX_AUDIO_BYTES, SpeechToText, TranscribeError
+from chakmati.api import create_app
+from chakmati.engine import Engine
+from chakmati.gate.base import GateResult, Route
+from chakmati.jobs import JobStore
+from chakmati.stt import MAX_AUDIO_BYTES, SpeechToText, TranscribeError
 
 UI = {"X-LiteAgent-UI": "1"}
 

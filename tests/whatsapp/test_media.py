@@ -8,9 +8,9 @@ import pytest
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-from liteagent.whatsapp.media import MAX_AUDIO_BYTES, MediaError, check_media_url, decrypt_audio, fetch_audio
-from liteagent.whatsapp.models import MediaRef
-from liteagent.whatsapp.openwa import parse_message
+from chakmati.whatsapp.media import MAX_AUDIO_BYTES, MediaError, check_media_url, decrypt_audio, fetch_audio
+from chakmati.whatsapp.models import MediaRef
+from chakmati.whatsapp.openwa import parse_message
 
 
 def _hkdf(ikm: bytes, info: bytes, n: int) -> bytes:

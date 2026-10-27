@@ -1,6 +1,6 @@
-from liteagent.bench import CASES, evaluate
-from liteagent.gate.base import GateResult, Route
-from liteagent.gate.heuristic import HeuristicGate
+from chakmati.bench import CASES, evaluate
+from chakmati.gate.base import GateResult, Route
+from chakmati.gate.heuristic import HeuristicGate
 
 
 class ConstantGate:

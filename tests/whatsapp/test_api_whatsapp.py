@@ -3,16 +3,16 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from fastapi.testclient import TestClient
 
-from liteagent.agenda.ics import IcsCalendarProvider
-from liteagent.agenda.models import NewEvent
-from liteagent.agenda.service import CalendarService
-from liteagent.api import create_app
-from liteagent.approvals import ActionStore
-from liteagent.engine import Engine
-from liteagent.gate.base import GateResult, Route
-from liteagent.jobs import JobStore
-from liteagent.whatsapp.models import Chat, Status
-from liteagent.whatsapp.service import WhatsAppService
+from chakmati.agenda.ics import IcsCalendarProvider
+from chakmati.agenda.models import NewEvent
+from chakmati.agenda.service import CalendarService
+from chakmati.api import create_app
+from chakmati.approvals import ActionStore
+from chakmati.engine import Engine
+from chakmati.gate.base import GateResult, Route
+from chakmati.jobs import JobStore
+from chakmati.whatsapp.models import Chat, Status
+from chakmati.whatsapp.service import WhatsAppService
 
 TS = datetime(2026, 10, 23, 10, 0, tzinfo=timezone.utc)
 MARIA = Chat("205123@lid", "Maria Silva", False, 2, TS, "5511999990000")
@@ -128,8 +128,8 @@ def test_everything_is_503_when_whatsapp_is_disabled(tmp_path):
 
 
 def test_build_app_wires_whatsapp_only_when_enabled(tmp_path):
-    from liteagent.config import Settings
-    from liteagent.main import build_app
+    from chakmati.config import Settings
+    from chakmati.main import build_app
 
     off = TestClient(build_app(Settings(db_path=":memory:")))
     assert off.get("/whatsapp/status").status_code == 503

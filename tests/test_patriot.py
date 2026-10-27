@@ -1,9 +1,9 @@
 import pytest
 
-from liteagent import patriot
-from liteagent.canned import canned_answer
-from liteagent.engine import Engine
-from liteagent.jobs import JobStore
+from chakmati import patriot
+from chakmati.canned import canned_answer
+from chakmati.engine import Engine
+from chakmati.jobs import JobStore
 
 
 @pytest.mark.parametrize("text", [

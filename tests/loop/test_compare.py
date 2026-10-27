@@ -1,5 +1,5 @@
-from liteagent.loop.compare import summarize
-from liteagent.loop.evalset import ALL_ITEMS
+from chakmati.loop.compare import summarize
+from chakmati.loop.evalset import ALL_ITEMS
 
 
 def test_summarize_perfect_scorer():

@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from liteagent.whatsapp.models import MAX_TEXT, Message, Outgoing
+from chakmati.whatsapp.models import MAX_TEXT, Message, Outgoing
 
 TS = datetime(2026, 10, 23, 10, 32, tzinfo=timezone.utc)
 

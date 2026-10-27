@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from liteagent.research.search import (
+from chakmati.research.search import (
     USER_AGENT,
     DuckDuckGoHtmlBackend,
     SearchResult,
@@ -77,7 +77,7 @@ async def test_backend_http_error_raises():
         await backend.search("q")
 
 
-from liteagent.research.search import build_user_agent
+from chakmati.research.search import build_user_agent
 
 
 def test_build_user_agent_adds_the_contact_only_when_given():

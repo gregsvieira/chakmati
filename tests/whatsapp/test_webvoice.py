@@ -7,8 +7,8 @@ from pathlib import Path
 import httpx
 import pytest
 
-from liteagent.whatsapp.openwa import OpenWAClient, WhatsAppError
-from liteagent.whatsapp.webvoice import SCRIPT, WebVoiceSender
+from chakmati.whatsapp.openwa import OpenWAClient, WhatsAppError
+from chakmati.whatsapp.webvoice import SCRIPT, WebVoiceSender
 
 
 class Runner:
@@ -77,7 +77,7 @@ def test_the_script_is_valid_javascript_and_refuses_to_run_without_a_browser(tmp
 @pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")
 async def test_a_large_payload_reaches_the_script_through_a_real_pipe(tmp_path):
     # regression: reading stdin with readFileSync(0) failed with EAGAIN on the engine's pipe ("voice note not sent: EAGAIN")
-    from liteagent.whatsapp.webvoice import _run
+    from chakmati.whatsapp.webvoice import _run
 
     body = json.dumps({"chatId": "111@lid", "b64": "A" * 1_500_000}).encode()
     code, out = await _run(["node", str(SCRIPT), str(tmp_path), "echo"], body)

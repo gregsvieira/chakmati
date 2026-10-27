@@ -30,8 +30,8 @@ test('the main process refuses a hidden item even if the page sends it (installe
   assert.doesNotThrow(() => buildPlan({ hw, verdict: verdict(hw), selected: ['whatsapp'] })); // development still has it
 });
 
-test('only voice and microphone need Python packages', () => {
-  assert.deepEqual(OPTIONS.filter((o) => o.extra).map((o) => [o.id, o.extra]), [['voice', 'voice'], ['talk', 'listen']]);
+test('only voice, microphone and Laya need Python packages', () => {
+  assert.deepEqual(OPTIONS.filter((o) => o.extra).map((o) => [o.id, o.extra]), [['voice', 'voice'], ['talk', 'listen'], ['laya', 'laya']]);
 });
 
 test('a development plan has no engine or extras step', () => {

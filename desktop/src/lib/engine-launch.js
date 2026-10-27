@@ -4,7 +4,7 @@
 // folder and is created by the wizard with the uv that ships in resources/bin. Development: unchanged (uv run in the checkout).
 const path = require('node:path');
 
-const EXTRA_NAMES = Object.freeze(['voice', 'listen']);
+const EXTRA_NAMES = Object.freeze(['voice', 'listen', 'laya']);
 
 const isWin = (platform) => platform === 'win32';
 const pathOf = (platform) => (isWin(platform) ? path.win32 : path.posix);
@@ -13,6 +13,7 @@ function extrasFromSettings(settings) {
   const extras = [];
   if (settings.enhancedVoice) extras.push('voice');
   if (settings.talk) extras.push('listen');
+  if (settings.laya) extras.push('laya');
   return extras;
 }
 
@@ -42,13 +43,13 @@ function dataEnv({ dataDir, platform }) {
 function engineLaunch({ packaged, dataDir, repoRoot, platform = process.platform }) {
   if (!packaged) {
     if (!repoRoot) return null;
-    return { command: 'uv', args: ['run', 'python', '-m', 'liteagent.main'], cwd: repoRoot, env: {} };
+    return { command: 'uv', args: ['run', 'python', '-m', 'chakmati.main'], cwd: repoRoot, env: {} };
   }
   const p = pathOf(platform);
   const cwd = p.join(dataDir, 'engine-data'); // writable: the engine keeps its database and calendar file relative to it
   return {
     command: venvPython({ dataDir, platform }),
-    args: ['-m', 'liteagent.main'],
+    args: ['-m', 'chakmati.main'],
     cwd,
     env: { CHAKMATI_DB_PATH: p.join(cwd, 'liteagent.db'), CHAKMATI_CALENDAR_ICS_PATH: p.join(cwd, 'agenda.ics') },
   };

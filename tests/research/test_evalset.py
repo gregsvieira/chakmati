@@ -1,4 +1,4 @@
-from liteagent.research.evalset import LabelledResult, ranking_metrics, with_injected_negatives
+from chakmati.research.evalset import LabelledResult, ranking_metrics, with_injected_negatives
 
 
 def item(q, rank, relevant, source="natural"):

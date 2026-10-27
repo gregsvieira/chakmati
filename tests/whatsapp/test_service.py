@@ -2,9 +2,9 @@ from datetime import datetime, timezone
 
 import pytest
 
-from liteagent.approvals import ActionNotPending, ActionStore
-from liteagent.whatsapp.models import Chat, Message
-from liteagent.whatsapp.service import RateLimited, WhatsAppService
+from chakmati.approvals import ActionNotPending, ActionStore
+from chakmati.whatsapp.models import Chat, Message
+from chakmati.whatsapp.service import RateLimited, WhatsAppService
 
 TS = datetime(2026, 10, 23, 10, 0, tzinfo=timezone.utc)
 MARIA = Chat("205123@lid", "Maria Silva", False, 0, TS, "5511999990000")

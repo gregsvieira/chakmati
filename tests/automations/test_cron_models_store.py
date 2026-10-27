@@ -2,9 +2,9 @@ from datetime import datetime, timezone
 
 import pytest
 
-from liteagent.automations.cron import CronError, cron_matches, describe_cron, fires_per_day, validate_cron
-from liteagent.automations.models import SpecError, describe, parse_spec
-from liteagent.automations.store import AutomationStore
+from chakmati.automations.cron import CronError, cron_matches, describe_cron, fires_per_day, validate_cron
+from chakmati.automations.models import SpecError, describe, parse_spec
+from chakmati.automations.store import AutomationStore
 
 SAT_0900 = datetime(2026, 10, 24, 9, 0, tzinfo=timezone.utc)  # a Saturday
 MON_0900 = datetime(2026, 10, 26, 9, 0, tzinfo=timezone.utc)

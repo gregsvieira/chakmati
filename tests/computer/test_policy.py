@@ -2,8 +2,8 @@ import os
 
 import pytest
 
-from liteagent.computer.policy import DOWNLOAD, RUN, SAFE, PolicyError, Roots, check, clean_env
-from liteagent.computer.secrets import has_secret, looks_secret, redact
+from chakmati.computer.policy import DOWNLOAD, RUN, SAFE, PolicyError, Roots, check, clean_env
+from chakmati.computer.secrets import has_secret, looks_secret, redact
 
 
 @pytest.fixture

@@ -3,9 +3,9 @@ disk and the policy before it is shown, and a request that does not say enough b
 
 import pytest
 
-from liteagent.approvals import ActionStore
-from liteagent.computer.assistant import ComputerAssistant
-from liteagent.computer.service import ComputerService
+from chakmati.approvals import ActionStore
+from chakmati.computer.assistant import ComputerAssistant
+from chakmati.computer.service import ComputerService
 
 
 class LLM:

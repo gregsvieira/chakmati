@@ -7,11 +7,11 @@ import pytest
 
 av = pytest.importorskip("av", reason="needs the voice extra (uv sync --extra voice)")
 
-from liteagent.approvals import ActionStore  # noqa: E402
-from liteagent.automations.audio import wav_to_ogg_opus
-from liteagent.automations.models import SpecError, parse_spec
-from liteagent.automations.service import AutomationError, AutomationService
-from liteagent.automations.store import AutomationStore
+from chakmati.approvals import ActionStore  # noqa: E402
+from chakmati.automations.audio import wav_to_ogg_opus
+from chakmati.automations.models import SpecError, parse_spec
+from chakmati.automations.service import AutomationError, AutomationService
+from chakmati.automations.store import AutomationStore
 
 
 def sine_wav(seconds=1.0, rate=22050) -> bytes:

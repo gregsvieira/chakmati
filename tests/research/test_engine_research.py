@@ -1,9 +1,9 @@
-from liteagent.config import Settings
-from liteagent.engine import Engine
-from liteagent.gate.base import GateResult, Route
-from liteagent.jobs import JobStore
-from liteagent.main import build_app
-from liteagent.research.tool import ResearchAnswer
+from chakmati.config import Settings
+from chakmati.engine import Engine
+from chakmati.gate.base import GateResult, Route
+from chakmati.jobs import JobStore
+from chakmati.main import build_app
+from chakmati.research.tool import ResearchAnswer
 
 
 class FakeGate:
@@ -65,9 +65,9 @@ def test_build_app_wires_researcher_only_when_enabled(monkeypatch):
 
 
 def test_build_app_research_scorer_selection(monkeypatch):
-    from liteagent.loop.scorer import KeepAllScorer
-    from liteagent.loop.twostage import LayaRelevanceScorer
-    from liteagent.research import tool as tool_module
+    from chakmati.loop.scorer import KeepAllScorer
+    from chakmati.loop.twostage import LayaRelevanceScorer
+    from chakmati.research import tool as tool_module
 
     captured = []
     real_init = tool_module.ResearchTool.__init__
@@ -84,9 +84,9 @@ def test_build_app_research_scorer_selection(monkeypatch):
 
 
 def test_build_app_selects_search_backend(monkeypatch):
-    from liteagent.research import tool as tool_module
-    from liteagent.research.search import DuckDuckGoHtmlBackend
-    from liteagent.research.searxng import SearxngBackend
+    from chakmati.research import tool as tool_module
+    from chakmati.research.search import DuckDuckGoHtmlBackend
+    from chakmati.research.searxng import SearxngBackend
 
     captured = []
     real_init = tool_module.ResearchTool.__init__
@@ -104,7 +104,7 @@ def test_build_app_selects_search_backend(monkeypatch):
 
 
 def test_build_app_applies_speed_settings_to_the_research_client(monkeypatch):
-    from liteagent.research import tool as tool_module
+    from chakmati.research import tool as tool_module
 
     captured = {}
     real_init = tool_module.ResearchTool.__init__
@@ -121,7 +121,7 @@ def test_build_app_applies_speed_settings_to_the_research_client(monkeypatch):
 
 
 def test_build_app_passes_the_fetch_deadline_and_zero_means_none(monkeypatch):
-    from liteagent.research import tool as tool_module
+    from chakmati.research import tool as tool_module
 
     seen = []
     real_init = tool_module.ResearchTool.__init__
@@ -137,7 +137,7 @@ def test_build_app_passes_the_fetch_deadline_and_zero_means_none(monkeypatch):
 
 
 def test_build_app_passes_max_pages(monkeypatch):
-    from liteagent.research import tool as tool_module
+    from chakmati.research import tool as tool_module
 
     seen = []
     real_init = tool_module.ResearchTool.__init__

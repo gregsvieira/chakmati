@@ -1,4 +1,4 @@
-"""Calendar service with a human-in-the-loop write path (see liteagent.approvals)."""
+"""Calendar service with a human-in-the-loop write path (see chakmati.approvals)."""
 
 import time
 from collections.abc import Callable

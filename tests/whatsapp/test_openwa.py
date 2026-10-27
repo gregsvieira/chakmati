@@ -4,8 +4,8 @@ from datetime import datetime
 import httpx
 import pytest
 
-from liteagent.whatsapp.models import Chat, Message
-from liteagent.whatsapp.openwa import (
+from chakmati.whatsapp.models import Chat, Message
+from chakmati.whatsapp.openwa import (
     OpenWAClient,
     WhatsAppAuthError,
     WhatsAppError,

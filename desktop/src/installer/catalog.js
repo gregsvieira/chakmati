@@ -20,12 +20,13 @@ const REASONING = Object.freeze([
 
 // Measured on macOS arm64 with `uv sync --frozen --no-dev --no-editable` (MB installed; the downloads are smaller):
 // base 124 + uv's managed Python 65; each extra on top of the base (the two together share packages).
-const ENGINE = Object.freeze({ baseMb: 189, extraMb: Object.freeze({ voice: 198, listen: 183, both: 228 }) });
+// Laya (not measured: an estimate, it brings PyTorch and transformers; its own weights are fetched on first use).
+const ENGINE = Object.freeze({ baseMb: 189, extraMb: Object.freeze({ voice: 198, listen: 183, both: 228, laya: 1500 }) });
 
 function extrasSizeMb(extras) {
-  if (!extras.length) return 0;
-  if (extras.includes('voice') && extras.includes('listen')) return ENGINE.extraMb.both;
-  return ENGINE.extraMb[extras[0]];
+  const speech = extras.filter((e) => e === 'voice' || e === 'listen');
+  const speechMb = !speech.length ? 0 : speech.length === 2 ? ENGINE.extraMb.both : ENGINE.extraMb[speech[0]];
+  return speechMb + (extras.includes('laya') ? ENGINE.extraMb.laya : 0);
 }
 
 const ALL = ['darwin', 'win32', 'linux'];
@@ -53,6 +54,13 @@ const OPTIONS = Object.freeze([
     description: 'Ler e responder mensagens, sempre com a sua aprovação para enviar.',
     settings: {}, offSettings: {},
     after: 'WhatsApp: depois da instalação, conecte em Ajustes > Integrações (isso instala o OpenWA e mostra o QR code).',
+  },
+  {
+    id: 'laya', label: 'Laya (filtro de relevância da pesquisa)', platforms: ALL, extra: 'laya', diskMb: 1500, ramMb: 800,
+    advice: 'Não recomendado. Possui baixa eficácia neste projeto até o momento.',
+    description: 'Um modelo extra que descarta trechos pouco relevantes das páginas da pesquisa antes de responder.',
+    settings: { laya: true }, offSettings: { laya: false },
+    approval: { source: 'pypi.org e huggingface.co (PyTorch e o modelo Laya, pelo uv que vem no instalador)', sizeMb: 1500 },
   },
   {
     id: 'animations', label: 'Animações do personagem', platforms: ALL, diskMb: 0, ramMb: 0,

@@ -13,6 +13,7 @@ const DEFAULTS = Object.freeze({
   voiceSpeed: 'normal',   // 'normal' | 'fast' (enhanced voice only)
   speakEmojis: false,     // read emojis aloud ("rosto sorrindo"); off: they are skipped when speaking
   micSource: 'computer',  // 'computer' = the computer's own microphone, 'system' = whatever the system default is
+  laya: false,            // the Laya relevance filter for the web search (opt-in; the setup wizard says it is not recommended)
   talk: false,            // "Falar com o Chakmati": the microphone is always listening for the wake phrases and commands
   autoRunSafe: false,     // keep SAFE computer commands approved (never scripts, downloads, edits, the trash or opening programs)
   autoSend: false,        // approve WhatsApp sends automatically (the person's standing permission; the engine still rate-limits)
@@ -36,6 +37,7 @@ function normalize(raw) {
   if (typeof r.autoRunSafe === 'boolean') s.autoRunSafe = r.autoRunSafe;
   if (typeof r.hear === 'boolean') s.hear = r.hear;
   if (typeof r.talk === 'boolean') s.talk = r.talk;
+  if (typeof r.laya === 'boolean') s.laya = r.laya;
   if (typeof r.speakEmojis === 'boolean') s.speakEmojis = r.speakEmojis;
   if (typeof r.enhancedVoice === 'boolean') s.enhancedVoice = r.enhancedVoice;
   if (r.voiceSpeed === 'normal' || r.voiceSpeed === 'fast') s.voiceSpeed = r.voiceSpeed;
@@ -72,6 +74,7 @@ function engineEnv(settings, { searxng = false } = {}) {
     CHAKMATI_RESEARCH_BACKEND: !settings.research ? 'off' : searxng ? 'searxng' : 'ddg',
     CHAKMATI_WHATSAPP_BACKEND: settings.whatsapp ? 'openwa' : 'off',
     CHAKMATI_CALENDAR_BACKEND: settings.calendar ? 'auto' : 'off',
+    CHAKMATI_RESEARCH_SCORER: settings.laya ? 'laya' : 'keepall',
   };
 }
 

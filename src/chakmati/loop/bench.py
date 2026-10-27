@@ -1,6 +1,6 @@
 """Live end-to-end comparison of answering strategies (needs Ollama; Laya optional).
 
-Run:  uv run python -m liteagent.loop.bench
+Run:  uv run python -m chakmati.loop.bench
 
 Modes
   plain         one chat call, think=False

@@ -1,10 +1,10 @@
 """Cookie notices and pop-ups that cover a shop are pressed away by code before the model is asked anything (the Shein case)."""
 
-from liteagent.browser.agent import BrowserAgent, start_url
-from liteagent.browser.frames import FrameStore
-from liteagent.browser.session import Snapshot
-from liteagent.gate.base import Route
-from liteagent.gate.heuristic import HeuristicGate
+from chakmati.browser.agent import BrowserAgent, start_url
+from chakmati.browser.frames import FrameStore
+from chakmati.browser.session import Snapshot
+from chakmati.gate.base import Route
+from chakmati.gate.heuristic import HeuristicGate
 
 JOB = "c" * 32
 
@@ -110,7 +110,7 @@ async def test_a_browser_that_dies_is_reported_in_a_sentence(tmp_path):
 
 
 # ------------------------------------------------------------------------------------------------ a human check: the person passes it, the Chakmati does not
-from liteagent.browser.agent import BLOCKED, DECLINED, needs_human, still_blocked
+from chakmati.browser.agent import BLOCKED, DECLINED, needs_human, still_blocked
 
 CHALLENGE = Snapshot("https://br.shein.com/risk/challenge?captcha_type=909&redirection=x", "", "", [])
 SHOP = Snapshot("https://br.shein.com/", "Shein", "Camisetas oversized R$ 59,90", [el(1, "Pesquisar", tag="input")])
@@ -215,7 +215,7 @@ def test_a_plan_without_a_goal_still_ends_by_answering():
 
 
 def test_other_goals_get_their_own_steps_and_paying_is_left_to_the_person():
-    from liteagent.browser.agent import goal_steps
+    from chakmati.browser.agent import goal_steps
     assert "pagar é com você" in goal_steps("compre esse tênis no site")[0]
     assert goal_steps("baixe o pdf da fatura")[0].startswith("Baixar")
     assert goal_steps("pesquise sobre gatos") == []

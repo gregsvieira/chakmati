@@ -1,4 +1,4 @@
-from liteagent.research.passages_experiment import gold_in_top, rank_of_first
+from chakmati.research.passages_experiment import gold_in_top, rank_of_first
 
 
 def test_rank_of_first_is_one_based_and_breaks_ties_by_input_order():

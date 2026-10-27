@@ -2,7 +2,7 @@ import json
 
 import httpx
 
-from liteagent.research.rankers import Bm25Scorer, EmbeddingScorer
+from chakmati.research.rankers import Bm25Scorer, EmbeddingScorer
 
 
 def test_bm25_ranks_passages_that_share_rare_query_terms_higher():

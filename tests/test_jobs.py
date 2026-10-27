@@ -1,7 +1,7 @@
 import asyncio
 import pytest
 
-from liteagent.jobs import DONE, FAILED, QUEUED, RUNNING, JobStore, Worker
+from chakmati.jobs import DONE, FAILED, QUEUED, RUNNING, JobStore, Worker
 
 
 @pytest.fixture
@@ -80,7 +80,7 @@ async def test_worker_run_once_empty_queue(store):
 
 import sqlite3
 
-from liteagent.jobs import Worker as _Worker  # noqa: E402  (same class, explicit for the streaming tests)
+from chakmati.jobs import Worker as _Worker  # noqa: E402  (same class, explicit for the streaming tests)
 
 
 def test_partial_defaults_empty_and_can_be_updated(store):
@@ -154,7 +154,7 @@ async def test_wake_makes_the_worker_pick_up_a_job_without_waiting_for_the_poll(
 # ------------------------------------------------------------------------------------------------ stopping a job
 async def test_a_running_job_can_be_stopped_and_the_next_one_still_runs():
     import asyncio
-    from liteagent.jobs import CANCELLED
+    from chakmati.jobs import CANCELLED
     store = JobStore(":memory:")
     started, ran = asyncio.Event(), []
 
@@ -179,7 +179,7 @@ async def test_a_running_job_can_be_stopped_and_the_next_one_still_runs():
 
 
 async def test_a_waiting_job_that_is_stopped_never_runs():
-    from liteagent.jobs import CANCELLED
+    from chakmati.jobs import CANCELLED
     store = JobStore(":memory:")
     waiting = store.create("task", "later")
     worker = Worker(store, lambda job: (_ for _ in ()).throw(AssertionError("must not run")))

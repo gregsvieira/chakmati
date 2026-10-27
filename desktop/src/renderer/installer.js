@@ -68,7 +68,7 @@ function renderOptions() {
     });
     const title = el('span', { className: 'name', textContent: o.label });
     if (scan.suggested[o.id]) title.append(el('span', { className: 'badge', textContent: 'Recomendado para este PC' }));
-    const text = el('span', {}, title, el('br'), el('span', { textContent: o.description }), el('br'), el('span', { className: 'cost', textContent: o.costText }));
+    const text = el('span', {}, title, el('br'), el('span', { textContent: o.description }), el('br'), ...(o.advice ? [el('span', { className: 'advice', textContent: o.advice }), el('br')] : []), el('span', { className: 'cost', textContent: o.costText }));
     return el('li', {}, el('label', {}, box, text));
   }));
   show('options');

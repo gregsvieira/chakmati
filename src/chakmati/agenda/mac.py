@@ -2,7 +2,7 @@
 Calendar.app (iCloud, Google, Exchange, local). The first use asks the user for permission.
 
 Only the pure helpers are unit-tested; the EventKit calls need a Mac and the user's permission, and are
-checked with `python -m liteagent.agenda.mac_check`.
+checked with `python -m chakmati.agenda.mac_check`.
 """
 
 import threading

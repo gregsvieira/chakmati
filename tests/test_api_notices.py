@@ -5,20 +5,20 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from fastapi.testclient import TestClient
 
-from liteagent.agenda.ics import IcsCalendarProvider
-from liteagent.agenda.models import NewEvent
-from liteagent.agenda.service import CalendarService
-from liteagent.api import create_app
-from liteagent.approvals import ActionStore
-from liteagent.config import Settings
-from liteagent.engine import Engine
-from liteagent.gate.base import GateResult, Route
-from liteagent.jobs import JobStore
-from liteagent.main import build_app
-from liteagent.notices import NoticeBoard, Notifier
-from liteagent.whatsapp.models import Chat, Status
-from liteagent.whatsapp.openwa import WhatsAppError
-from liteagent.whatsapp.service import WhatsAppService
+from chakmati.agenda.ics import IcsCalendarProvider
+from chakmati.agenda.models import NewEvent
+from chakmati.agenda.service import CalendarService
+from chakmati.api import create_app
+from chakmati.approvals import ActionStore
+from chakmati.config import Settings
+from chakmati.engine import Engine
+from chakmati.gate.base import GateResult, Route
+from chakmati.jobs import JobStore
+from chakmati.main import build_app
+from chakmati.notices import NoticeBoard, Notifier
+from chakmati.whatsapp.models import Chat, Status
+from chakmati.whatsapp.openwa import WhatsAppError
+from chakmati.whatsapp.service import WhatsAppService
 
 TS = datetime(2026, 10, 23, 10, 0, tzinfo=timezone.utc)
 
@@ -135,7 +135,7 @@ def test_the_notifier_runs_with_the_app_and_stops_with_it(tmp_path):
 
 
 def test_build_app_starts_the_watchers_that_match_the_enabled_integrations(tmp_path):
-    from liteagent.notices import ApprovalWatcher, AutomationTicker, CalendarWatcher, WhatsAppWatcher
+    from chakmati.notices import ApprovalWatcher, AutomationTicker, CalendarWatcher, WhatsAppWatcher
 
     app = build_app(Settings(db_path=":memory:", calendar_backend="ics", calendar_ics_path=str(tmp_path / "a.ics"),
                              whatsapp_backend="openwa", openwa_url="http://127.0.0.1:1"))

@@ -1,4 +1,4 @@
-from liteagent.loop.runner import ThinkLoop
+from chakmati.loop.runner import ThinkLoop
 
 
 class ScriptedLLM:

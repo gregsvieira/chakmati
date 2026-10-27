@@ -1,6 +1,6 @@
 import pytest
 
-from liteagent.guard import NOTE, fence, looks_like_order, neutralize, strip_markers, suspicious
+from chakmati.guard import NOTE, fence, looks_like_order, neutralize, strip_markers, suspicious
 
 ID = "a" * 32
 
