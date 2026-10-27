@@ -27,7 +27,9 @@ SITES = {
     "outlook": "https://outlook.live.com/", "amazon": "https://www.amazon.com.br/", "mercado livre": "https://www.mercadolivre.com.br/", "mercadolivre": "https://www.mercadolivre.com.br/",
     "shein": "https://br.shein.com/", "aliexpress": "https://pt.aliexpress.com/", "shopee": "https://shopee.com.br/", "magalu": "https://www.magazineluiza.com.br/",
     "magazine luiza": "https://www.magazineluiza.com.br/", "americanas": "https://www.americanas.com.br/", "zara": "https://www.zara.com/br/", "nike": "https://www.nike.com.br/",
-    "netflix": "https://www.netflix.com/", "spotify": "https://open.spotify.com/", "whatsapp web": "https://web.whatsapp.com/",
+    "renner": "https://www.lojasrenner.com.br/", "c&a": "https://www.cea.com.br/", "riachuelo": "https://www.riachuelo.com.br/", "hering": "https://www.hering.com.br/",
+    "centauro": "https://www.centauro.com.br/", "netshoes": "https://www.netshoes.com.br/", "kabum": "https://www.kabum.com.br/", "casas bahia": "https://www.casasbahia.com.br/",
+    "dafiti": "https://www.dafiti.com.br/", "submarino": "https://www.submarino.com.br/", "carrefour": "https://www.carrefour.com.br/", "netflix": "https://www.netflix.com/", "spotify": "https://open.spotify.com/", "whatsapp web": "https://web.whatsapp.com/",
 }
 _STORE_PHRASE = re.compile(r"\b(?:na|no|em)\s+(?:a\s+|o\s+)?(?:loja|site|app|aplicativo|p[áa]gina)\s+(?:da|do|de)\s+\w+", re.IGNORECASE)
 _SITE_VERB = re.compile(r"\b(?:acess\w+|abr\w+|entr\w+|v[áa]\s+(?:para|ao|no|na)|naveg\w+|logu\w+)\b", re.IGNORECASE)

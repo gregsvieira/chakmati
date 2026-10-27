@@ -219,3 +219,16 @@ def test_other_goals_get_their_own_steps_and_paying_is_left_to_the_person():
     assert "pagar é com você" in goal_steps("compre esse tênis no site")[0]
     assert goal_steps("baixe o pdf da fatura")[0].startswith("Baixar")
     assert goal_steps("pesquise sobre gatos") == []
+
+
+def test_shopping_on_a_site_goes_to_the_browser_even_when_the_store_is_not_known_by_name():
+    for text in ("pesquise três camisetas oversized na Renner e adicione ao carrinho",
+                 "procure um tênis no site da Vivara e coloque na sacola",
+                 "adicione esse produto ao carrinho",
+                 "busque camisetas na Riachuelo"):
+        assert HeuristicGate().classify(text).route is Route.BROWSER, text
+    assert HeuristicGate().classify("qual a capital da França?").route is not Route.BROWSER
+
+
+def test_more_stores_open_straight_at_their_site():
+    assert start_url("acesse a Renner e veja camisetas") == "https://www.lojasrenner.com.br/"
