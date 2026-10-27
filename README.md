@@ -199,7 +199,7 @@ you open the panel. A plain outline when there is nothing. The face follows the 
 
 Under the real figures of the computer the wizard may add one light remark, in reverse: a weak computer (under about 7.5 GB of memory) is praised absurdly ("Nossa, é uma honra ser convidado para essa máquina da NASA!"),
 a very strong one (16 GB and 8 cores or more) is teased as a relic ("Primeira vez que vou tentar rodar no laptop da Xuxa."), and one in between, or one that cannot run the app, gets nothing. The same computer always gets the same line
-(`desktop/src/installer/quips.js`, four lines each way).
+(`desktop/src/features/installer/quips.js`, four lines each way).
 
 
     cd desktop && npm run setup        # or: electron . --setup
@@ -269,6 +269,23 @@ All start with `CHAKMATI_` (`CHAKMATI_CHAT_MODEL`, `CHAKMATI_BROWSER_BACKEND`, .
     uv run pytest
 
 ## Desktop: Chakmati, o assistente flutuante (Electron)
+
+### Desktop (Electron) layout
+
+```
+desktop/src/
+  main.js          entry: only starts app/start.js
+  preload.js       the only bridge between the pages and the app
+  app/             composition: start, IPC registration, hardening, design snapshots
+  shared/          kernel: context (shared state), constants, util, window preferences, ui/ (theme, robot)
+  features/        agenda  approvals  automations  browser  engine  installer  notices  panel  settings  tray  voice  whatsapp  widget
+                   each with its main-process code (service, window, ipc), its public API in index.js, and renderer/ scripts for its part of the pages
+```
+
+The panel page is assembled from the features' renderer scripts (`core.js` first, `boot.js` last; they share one `window.Panel` namespace).
+Rules (`desktop/test/app/architecture.test.js`): `shared` depends on nothing above it, a feature reaches another feature only through its `index.js`,
+and no feature depends on `app/`.
+
 
 O Chakmati, um robozinho de lata com chapéu amarelo, fica sempre por cima das janelas. Quando algo acontece, ele escreve um balão em cima, embaixo ou ao lado
 (o lado com mais espaço na tela): "Você recebeu uma nova mensagem de Maria Victoria". Clicar no Chakmati abre o painel com

@@ -9,7 +9,7 @@
   "type": "commonjs",
   "scripts": {
     "start": "electron .",
-    "test": "node --test test/*.test.js",
+    "test": "node --test \"test/**/*.test.js\"",
     "setup": "electron . --setup",
     "snapshot": "CHAKMATI_DESKTOP_SNAPSHOT=1 electron .",
     "prestart": "node scripts/prepare-electron.js",

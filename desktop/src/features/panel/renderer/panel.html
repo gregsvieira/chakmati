@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; media-src data:; style-src 'self'; script-src 'self'">
+  <title>Chakmati</title>
+  <link rel="stylesheet" href="../../../shared/ui/theme.css">
+  <link rel="stylesheet" href="../../../shared/ui/robot.css">
+  <link rel="stylesheet" href="panel.css">
+  <link rel="stylesheet" href="glass.css">
+</head>
+<body>
+  <div id="panel" data-screen="main">
+    <!-- fixed header: back arrow + the title of the page you are on -->
+    <header id="bar">
+      <button id="back" class="icon-btn" type="button" aria-label="Voltar">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div id="head-robot"><span id="head-approval" class="bell" data-state="idle" role="img" aria-label="Nenhuma novidade" title="Nenhuma novidade"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path class="bell-body" d="M12 3a6 6 0 00-6 6v3.6l-1.6 2.6a1 1 0 00.9 1.5h13.4a1 1 0 00.9-1.5L18 12.6V9a6 6 0 00-6-6z"/><path class="bell-clapper" d="M9.8 19a2.4 2.4 0 004.4 0"/></svg></span></div>
+      <div class="head-text">
+        <h1 id="title">Conectando…</h1>
+        <p id="detail"></p>
+        <button id="retry" class="link-btn" type="button" hidden>Tentar de novo</button>
+      </div>
+      <button id="expand" class="icon-btn" type="button" aria-label="Expandir a janela" title="Expandir a janela">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path id="expand-icon" d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button id="maximize" class="icon-btn" type="button" aria-label="Tela cheia" title="Tela cheia" hidden>
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="4.5" y="4.5" width="15" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>
+      </button>
+      <button id="open-settings" class="icon-btn" type="button" aria-label="Ajustes" title="Ajustes">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8zm8.2 4.4v-2l-2.1-.7a6.7 6.7 0 00-.6-1.4l1-2-1.4-1.4-2 1a6.7 6.7 0 00-1.4-.6L13 3.8h-2l-.7 2.1a6.7 6.7 0 00-1.4.6l-2-1-1.4 1.4 1 2c-.2.4-.4.9-.6 1.4L3.8 11v2l2.1.7c.1.5.3 1 .6 1.4l-1 2 1.4 1.4 2-1c.4.3.9.5 1.4.6l.7 2.1h2l.7-2.1c.5-.1 1-.3 1.4-.6l2 1 1.4-1.4-1-2c.3-.4.5-.9.6-1.4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      </button>
+      <button id="close" class="icon-btn" type="button" aria-label="Fechar painel" title="Fechar">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+      </button>
+    </header>
+
+    <!-- the only part that scrolls -->
+    <main id="page">
+      <div id="content" class="page">
+        <div id="topics">
+        <div class="fold fold-left">
+          <span id="fold-left-badge" class="badge" hidden></span>
+          <button id="fold-left" class="icon-btn" type="button" aria-expanded="true" aria-label="Minimizar a lateral esquerda" title="Minimizar a lateral esquerda"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+        <section id="decisions" hidden>
+          <h2>Para você decidir</h2>
+          <div id="decision-list"></div>
+        </section>
+        <section id="messages" hidden>
+          <h2>Mensagens</h2>
+          <div id="messages-body"></div>
+        </section>
+        <section id="agenda" hidden>
+          <h2>Hoje na agenda</h2>
+          <div id="agenda-body"></div>
+        </section>
+        <section id="automations">
+          <h2>Automações</h2>
+          <div id="automations-body">
+            <p class="empty" id="automations-empty">Nenhuma automação ainda.</p>
+            <div id="automation-list"></div>
+            <button type="button" id="create-automation" class="primary small">Criar</button>
+            <p class="hint" id="automation-note" hidden>Diga ou escreva o que quer. Ele repete o plano e só cria depois do seu sim.</p>
+          </div>
+        </section>
+        <section id="recent">
+          <h2>Avisos recentes</h2>
+          <div id="recent-body"></div>
+        </section>
+        </div>
+        <section id="thread-section" hidden>
+          <div id="hero" aria-hidden="true"></div>
+          <h2><span class="h-title">Conversa</span> <button id="focus-thread" class="link-btn" type="button" aria-pressed="false" title="Ampliar a conversa e recolher os outros tópicos">Ampliar</button></h2>
+          <div id="thread" aria-live="polite"></div>
+          <p id="thread-empty" class="empty">Peça algo ao Chakmati na linha de baixo: a conversa aparece aqui.</p>
+        </section>
+        <aside id="screen" aria-label="Tela do Chakmati">
+          <div class="fold fold-right">
+            <button id="fold-right" class="icon-btn" type="button" aria-expanded="true" aria-label="Minimizar a Tela do Chakmati" title="Minimizar a Tela do Chakmati"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <span id="fold-right-live" class="live-dot" hidden title="O Chakmati está usando o navegador"></span>
+            <h2>Tela do Chakmati <span id="screen-live" class="live" hidden>ao vivo</span></h2>
+          </div>
+          <p id="screen-empty" class="empty">Quando o Chakmati usar o navegador, a tela dele aparece aqui.</p>
+          <div id="screen-view" class="browser" hidden>
+            <div class="browser-bar"><span class="dots" aria-hidden="true"></span><span id="screen-url" class="addr"></span></div>
+            <div class="viewport">
+              <img id="screen-img-a" alt="" class="frame on">
+              <img id="screen-img-b" alt="" class="frame">
+            </div>
+            <p id="screen-note" class="status" aria-live="polite"></p>
+          </div>
+          <p id="screen-warning" class="warning" role="note">O Chakmati pode cometer erros ao navegar na web. Confira o que ele fizer, principalmente antes de enviar mensagens, comprar ou apagar algo.</p>
+        </aside>
+      </div>
+
+      <div id="settings-view" class="page" hidden>
+        <section class="cat">
+          <h3>Integrações</h3>
+          <label class="switch"><input type="checkbox" id="set-whatsapp"><span class="track"></span>
+              <span class="switch-text">WhatsApp
+                <small id="wa-status">Ler, resumir e enviar mensagens (sempre com a sua aprovação).</small></span></label>
+          <button type="button" id="wa-connect" class="ghost" hidden>Conectar WhatsApp via OpenWa</button>
+          <label class="switch"><input type="checkbox" id="set-calendar"><span class="track"></span>
+              <span class="switch-text">Agenda
+                <small>Ver e marcar compromissos no calendário do computador.</small></span></label>
+          <label class="switch"><input type="checkbox" id="set-research"><span class="track"></span>
+              <span class="switch-text">Pesquisar na internet
+                <small>Perguntas que precisam de dados atuais, como lançamentos e notícias, são pesquisadas na web.</small></span></label>
+          <p class="hint" id="engine-hint" hidden></p>
+          <label class="switch"><input type="checkbox" id="set-autorun"><span class="track"></span>
+            <span class="switch-text">Manter comandos seguros aprovados
+              <small>Comandos de leitura e criar pastas e arquivos novos na pasta de trabalho rodam sem perguntar. Rodar scripts, baixar da internet, abrir programas, editar e mandar para a lixeira sempre pedem a sua aprovação.</small></span></label>
+        </section>
+        <section class="cat">
+          <h3>Voz</h3>
+          <label class="switch"><input type="checkbox" id="set-hear"><span class="track"></span>
+            <span class="switch-text">Ouvir o Chakmati
+              <small>As respostas e os avisos são lidos em voz alta, com a voz em português do sistema.</small></span></label>
+          <label class="switch"><input type="checkbox" id="set-talk"><span class="track"></span>
+            <span class="switch-text">Falar com o Chakmati
+              <small>O microfone fica sempre escutando, sem botão: diga “Ôh, Xácmáti”, “Ôh, paizão” ou “Agente Xácmáti” e depois o comando. Ligar isto liga o Ouvir também. O reconhecimento roda no seu computador; na primeira vez baixa um modelo de cerca de 140 MB.</small></span></label>
+          <label class="field">Microfone
+            <select id="set-mic">
+              <option value="computer">O do próprio computador</option><option value="system">O padrão do sistema</option>
+            </select></label>
+          <label class="switch"><input type="checkbox" id="set-enhanced"><span class="track"></span>
+              <span class="switch-text">Voz melhorada
+                <small id="enhanced-status">Usa a voz do sistema.</small></span></label>
+          <progress id="voice-progress" max="100" value="0" hidden></progress>
+          <label class="field">Velocidade da voz melhorada
+              <select id="set-voicespeed"><option value="normal">Normal</option><option value="fast">Mais rápida</option></select></label>
+          <button type="button" id="remove-voice" class="ghost" hidden>Apagar a voz baixada</button>
+          <label class="switch"><input type="checkbox" id="set-emojis"><span class="track"></span>
+            <span class="switch-text">Descrever os emojis ao falar
+              <small>Desligado, o Chakmati pula os emojis quando fala. Ligado, ele diz o que eles são (por exemplo, “rosto sorrindo”).</small></span></label>
+        </section>
+        <section class="cat">
+          <h3>Aparência</h3>
+          <label class="field">Humor do Chakmati
+            <select id="set-mood">
+              <option value="auto">Automático</option><option value="idle">Calmo</option><option value="alert">Alerta</option>
+              <option value="thinking">Pensativo</option><option value="happy">Feliz</option>
+            </select></label>
+          <label class="field">Onde aparece o balão
+            <select id="set-side">
+              <option value="auto">Automático</option><option value="top">Em cima</option><option value="bottom">Embaixo</option>
+              <option value="left">À esquerda</option><option value="right">À direita</option>
+            </select></label>
+          <label class="switch"><input type="checkbox" id="set-still"><span class="track"></span>
+            <span class="switch-text">Desativar animações
+              <small>O Chakmati fica parado: sem piscar, sem pulinho e sem a boca mexendo.</small></span></label>
+        </section>
+        <section class="cat">
+          <h3>Privacidade e envio</h3>
+          <label class="switch"><input type="checkbox" id="set-protect"><span class="track"></span>
+            <span class="switch-text">Esconder do compartilhamento de tela
+              <small>Pede ao sistema para deixar o Chakmati fora de gravações e compartilhamentos. Funciona no Windows e em parte do macOS: teste antes de compartilhar.</small></span></label>
+          <label class="switch"><input type="checkbox" id="set-masked"><span class="track"></span>
+            <span class="switch-text">Modo discreto
+              <small>Avisos e listas sem nomes nem títulos. Os pedidos de aprovação sempre mostram o texto completo.</small></span></label>
+          <label class="switch"><input type="checkbox" id="set-autosend"><span class="track"></span>
+            <span class="switch-text">Enviar mensagens do WhatsApp sem pedir aprovação
+              <small>As mensagens que você pedir ao Chakmati para enviar saem na hora, sem o botão Aprovar. Agenda continua pedindo. Desligue se quiser conferir cada envio.</small></span></label>
+        </section>
+        <section class="cat">
+          <h3>Atalhos</h3>
+          <p class="hint" id="hotkeys"></p>
+        </section>
+      </div>
+
+      <div id="chats-view" class="page" hidden>
+        <div id="chats-body"></div>
+      </div>
+
+      <div id="chat-view" class="page" hidden>
+        <div id="chat-body"></div>
+      </div>
+    </main>
+
+    <!-- fixed footer: the command line on the pages where you talk to Chakmati -->
+    <footer id="foot">
+      <div id="chips" role="group" aria-label="Atalhos"></div>
+      <form id="composer" autocomplete="off">
+        <textarea id="input" rows="1" maxlength="2000" placeholder="Peça algo ao Chakmati…" aria-label="Pedido ao Chakmati"></textarea>
+        <button id="mic" type="button" aria-label="Escutando. Clique para desligar." title="Falar com o Chakmati" hidden><span></span></button>
+        <button id="send" type="submit" aria-label="Enviar" title="Enviar"><svg class="icon-send" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/></svg><svg class="icon-stop" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="5.5" y="5.5" width="13" height="13" rx="2.5" fill="currentColor"/></svg></button>
+      </form>
+    </footer>
+    <footer id="foot-settings" hidden>
+      <button type="button" id="panic" class="ghost">Ocultar tudo agora</button>
+      <button type="button" id="restart" class="ghost">Reiniciar o Chakmati</button>
+    </footer>
+    <div id="notice-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="notice-title" aria-describedby="notice-body" hidden>
+      <div class="modal-card">
+        <h2 id="notice-title">Atenção: proteja o seu número</h2>
+        <div id="notice-body">
+          <p>Colocamos algumas regras para evitar que o seu número seja bloqueado pela Meta, dona do WhatsApp: toda mensagem só sai com a sua aprovação, e o envio é limitado a 20 por hora, com um intervalo entre uma mensagem e outra.</p>
+          <p>Mesmo assim, o maior cuidado é seu. Recomendamos:</p>
+          <ul>
+            <li>não abusar de automações para o WhatsApp (nada de envios em massa ou repetitivos);</li>
+            <li>não enviar mensagens para contatos desconhecidos;</li>
+            <li>usar, de preferência, um número secundário.</li>
+          </ul>
+        </div>
+        <button id="notice-ok" class="primary" type="button">Compreendi e estou ciente!</button>
+      </div>
+    </div>
+  </div>
+  <script src="../links.js"></script>
+  <script src="../../notices/reltime.js"></script>
+  <script src="../../whatsapp/notice-gate.js"></script>
+  <script src="../../browser/shots.js"></script>
+  <script src="../../voice/speech-text.js"></script>
+  <script src="../../voice/vad.js"></script>
+  <script src="../../voice/listen-policy.js"></script>
+  <script src="../../notices/title.js"></script>
+  <script src="../../settings/intent.js"></script>
+  <script src="../../voice/wav.js"></script>
+  <script src="../../voice/renderer/voice.js"></script>
+  <script src="../../../shared/ui/robot.js"></script>
+  <script src="core.js"></script>
+  <script src="layout.js"></script>
+  <script src="../../whatsapp/renderer/whatsapp.js"></script>
+  <script src="../../approvals/renderer/decisions.js"></script>
+  <script src="../../automations/renderer/automations.js"></script>
+  <script src="../../agenda/renderer/agenda.js"></script>
+  <script src="../../notices/renderer/recent.js"></script>
+  <script src="../../settings/renderer/settings.js"></script>
+  <script src="../../browser/renderer/screen.js"></script>
+  <script src="thread.js"></script>
+  <script src="../../voice/renderer/ambient.js"></script>
+  <script src="boot.js"></script>
+</body>
+</html>
