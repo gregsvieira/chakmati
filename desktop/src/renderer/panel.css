@@ -316,3 +316,12 @@ body[data-still] #panel[data-layout="wide"] #content, body[data-still] #panel[da
 /* the small card sits beside the big character on the desktop (with its bell): the header does not repeat them */
 #panel[data-layout="compact"] #bar #head-robot { display: none; }
 #panel[data-layout="compact"] #bar { padding-left: 18px; }
+
+/* small card: the conversation sits at the bottom, right above the command line, and "Ampliar" grows it upward (the topics fold above it) */
+#panel[data-layout="compact"] #content { display: flex; flex-direction: column; }
+#panel[data-layout="compact"] #topics { flex: none; }
+#panel[data-layout="compact"] #thread-section { margin-top: auto; position: sticky; bottom: 0; padding-bottom: 4px; backdrop-filter: blur(14px); }   /* (blurred, not painted: it only hides what scrolls under it) */
+#panel[data-layout="compact"][data-focus="thread"] #thread-section { flex: 1; margin-top: 0; }
+#panel[data-layout="compact"] #content[hidden] { display: none; }
+/* when the conversation is open the messages stand at its bottom, like in any chat (margin, not justify-content: a long one still scrolls from its top) */
+#panel[data-layout="compact"][data-focus="thread"] #thread > :first-child, #panel[data-layout="wide"] #thread > :first-child { margin-top: auto; }
