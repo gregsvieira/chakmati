@@ -312,3 +312,7 @@ body[data-still] #panel[data-layout="wide"] #content, body[data-still] #panel[da
 /* the browser can make mistakes: said under the screen, always */
 .warning { margin: 10px 0 0; padding: 8px 12px; border-left: 3px solid var(--amber); border-radius: 6px; background: var(--surface-2); color: var(--text); font-size: 12.5px; line-height: 1.4; }
 #panel[data-layout="wide"][data-right="folded"] #screen > .warning { display: none; }
+
+/* the small card sits beside the big character on the desktop (with its bell): the header does not repeat them */
+#panel[data-layout="compact"] #bar #head-robot { display: none; }
+#panel[data-layout="compact"] #bar { padding-left: 18px; }
