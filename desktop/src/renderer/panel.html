@@ -20,6 +20,7 @@
       <div class="head-text">
         <h1 id="title">Conectando…</h1>
         <p id="detail"></p>
+        <button id="retry" class="link-btn" type="button" hidden>Tentar de novo</button>
       </div>
       <button id="expand" class="icon-btn" type="button" aria-label="Expandir a janela" title="Expandir a janela">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path id="expand-icon" d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -184,7 +185,7 @@
       <form id="composer" autocomplete="off">
         <textarea id="input" rows="1" maxlength="2000" placeholder="Peça algo ao Chakmati…" aria-label="Pedido ao Chakmati"></textarea>
         <button id="mic" type="button" aria-label="Escutando. Clique para desligar." title="Falar com o Chakmati" hidden><span></span></button>
-        <button id="send" type="submit" aria-label="Enviar" title="Enviar"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/></svg></button>
+        <button id="send" type="submit" aria-label="Enviar" title="Enviar"><svg class="icon-send" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/></svg><svg class="icon-stop" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="5.5" y="5.5" width="13" height="13" rx="2.5" fill="currentColor"/></svg></button>
       </form>
     </footer>
     <footer id="foot-settings" hidden>

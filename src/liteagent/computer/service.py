@@ -25,6 +25,7 @@ from pathlib import Path
 from ..approvals import Action, ActionStore, ApprovalService
 from .policy import exists_in, is_dir_in, DOWNLOAD, EXECUTABLE_EXT, RUN, SAFE, Checked, PolicyError, Roots, check, clean_env, resolve
 from . import documents, grading
+from .describe import friendly
 from .safety import ComputerError, check_content, check_url, find_app, installed_apps, plain, resolve_new_file
 from .secrets import has_secret, looks_secret, redact
 
@@ -92,7 +93,7 @@ class ComputerService(ApprovalService):
     # ------------------------------------------------------------------------------------------ describing a proposal
     def _risk_text(self, checked: Checked) -> str:
         label = {SAFE: "seguro", RUN: "roda um programa: sempre pede aprovação", DOWNLOAD: "baixa da internet: sempre pede aprovação"}[checked.cls]
-        body = f"Executar: {checked.shown}\n({checked.label}; {label})\nVerificado: " + "; ".join(checked.checks)
+        body = f"{friendly(checked.argv, self.workspace.resolve())}\nComando: {checked.shown}\n({checked.label}; {label})\nVerificado: " + "; ".join(checked.checks)
         if checked.preview is not None:
             lines = checked.preview.read_text(encoding="utf-8", errors="replace").splitlines()
             body += f"\nScript {checked.preview.name} ({len(lines)} linhas):\n" + "\n".join(lines[:40]) + ("\n…" if len(lines) > 40 else "")
@@ -343,7 +344,8 @@ class ComputerService(ApprovalService):
                     step = {**step, "command": command}
                     checked = self.validate(command, roots)
                     tag = {SAFE: "seguro", RUN: "roda programa: pede aprovação", DOWNLOAD: "baixa da internet: pede aprovação"}[checked.cls]
-                    out.append((f"{checked.shown.replace(str(self.workspace.resolve()) + os.sep, '')}  [{tag}]", None, {"type": "command", "command": step["command"]}))
+                    shown = checked.shown.replace(str(self.workspace.resolve()) + os.sep, "")
+                    out.append((f"{friendly(checked.argv, self.workspace.resolve())} ({shown})  [{tag}]" + (f"  (nome ajustado: {fixed})" if fixed else ""), None, {"type": "command", "command": step["command"]}))
                     dirs = checked.writes if checked.argv[0] == "mkdir" else [w for w in checked.writes if any(is_dir_in(r, roots) for r in checked.reads)]
                     roots = roots.after(checked.writes, dirs)
             except ComputerError as exc:

@@ -20,7 +20,7 @@ from .automations.service import AutomationError, AutomationService
 from .browser.frames import FrameStore
 from .browser.inputs import InputBroker, MAX_ANSWER
 from .engine import Engine
-from .jobs import DONE, FAILED, JobStore, Worker
+from .jobs import CANCELLED, DONE, FAILED, JobStore, Worker
 from .notices import NoticeBoard, Notifier
 from .persona import wake_reply
 from .stt import SpeechToText, TranscribeError
@@ -148,7 +148,10 @@ def create_app(
                 yield {"type": "done", "result": job.result or ""}
                 return
             if job.status == FAILED:
-                yield {"type": "error", "error": job.error or "failed"}
+                if job.error == CANCELLED:
+                    yield {"type": "cancelled", "text": CANCELLED}
+                else:
+                    yield {"type": "error", "error": job.error or "failed"}
                 return
             await asyncio.sleep(STREAM_POLL_SECONDS)
             waited += STREAM_POLL_SECONDS
@@ -205,6 +208,14 @@ def create_app(
         if inputs is None or not re.fullmatch(r"[0-9a-f]{32}", job_id) or not inputs.answer(job_id, body.request_id, body.value):
             raise HTTPException(status_code=404, detail="nothing is waiting for an answer")
         return {"ok": True}
+
+    @app.post("/jobs/{job_id}/cancel", dependencies=[Depends(ui_only)])
+    async def cancel_job(job_id: str):
+        """The person pressed Parar: the job stops where it is. Only the app's own window may ask."""
+        if not re.fullmatch(r"[0-9a-f]{32}", job_id) or store.get(job_id) is None:
+            raise HTTPException(status_code=404, detail="job not found")
+        stopped = worker.cancel(job_id) if worker is not None else False
+        return {"ok": stopped}
 
     @app.get("/jobs/{job_id}/stream")
     async def stream_job(job_id: str):

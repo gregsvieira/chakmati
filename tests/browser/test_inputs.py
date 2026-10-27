@@ -360,3 +360,26 @@ async def test_the_login_action_reuses_what_the_model_already_asked(tmp_path):
 def test_the_plan_of_a_browser_task_warns_that_it_can_make_mistakes():
     plan = BrowserAgent(LLM(), None, None).plan("pesquise o protocolo MCP")
     assert plan[-1].startswith("Atenção: posso cometer erros ao navegar") and "enviar, comprar ou apagar" in plan[-1]
+
+
+def test_stopping_a_job_over_the_api(tmp_path):
+    import time
+    store, frames, broker = JobStore(":memory:"), FrameStore(tmp_path), InputBroker(timeout=30)
+    llm = LLM(ASK_PASS)
+    engine = Engine(OneGate(), llm, store, browser_agent=BrowserAgent(llm, frames, lambda: LoginSession(), ask=broker.ask))
+    worker = Worker(store, engine.run_job, stream_handler=engine.run_job_stream)
+    client = TestClient(create_app(engine, store, worker, frames=frames, inputs=broker))
+    events = []
+    with client:
+        with client.stream("POST", "/message/stream", json={"text": "acesse meu instagram"}) as r:
+            for line in r.iter_lines():
+                if not line.startswith("data:"):
+                    continue
+                event = json.loads(line[5:])
+                events.append(event)
+                if event["type"] == "input":   # the agent is waiting for a password: the person presses Parar instead
+                    assert client.post(f"/jobs/{event['job_id']}/cancel").status_code == 403            # only the app's own window
+                    stop = client.post(f"/jobs/{event['job_id']}/cancel", headers={"X-LiteAgent-UI": "1"})
+                    assert stop.status_code == 200 and stop.json() == {"ok": True}
+    assert events[-1] == {"type": "cancelled", "text": "Interrompido por você."}
+    assert client.post("/jobs/" + "0" * 32 + "/cancel", headers={"X-LiteAgent-UI": "1"}).status_code == 404

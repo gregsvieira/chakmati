@@ -153,6 +153,14 @@ address, and a strip of every step to go back to one. Each side can be minimized
 
 **It asks, it does not make things up.** When a page wants a user name, a password, a code or any detail the request did not give, the browser agent asks you in the conversation: an input appears under the answer (a masked one for the password) and what you type goes straight to the page. The answer is kept in memory only until it is typed, is never given to the language model, never written in the database, the captions or the pictures' notes, and the API accepts it only from the app's own window. A made-up value is refused by code, a password is never typed from text, the login button is not clicked with the password empty, and a login is never reported as done when the page says it failed. `{"action":"login"}` does the whole classic form by code (asks, fills both fields, sends). A site you name ("acesse meu instagram") is opened directly.
 
+### Made for people who never saw a terminal
+
+- **Parar:** while the Chakmati works, the send button becomes a red square. Pressing it stops the job in the engine (the browser closes, nothing more is done) and the answer says "Interrompido por você."; a stray Enter does not stop anything. A job that has not started never starts.
+- **Always says what it is doing:** the field says "Trabalhando nisso… toque em Parar para interromper" while busy; the plan is a folded card ("Plano (5 passos)", open while it works); the bell has a shape (a dot for news, "!" for a request) as well as a colour.
+- **Plain words:** commands are shown as "Copiar o arquivo a.txt para b.txt" (the command itself in parentheses), approvals open with that sentence, and refusals say what to do ("Não encontrei esse arquivo ou pasta na pasta de trabalho. Confira o nome.").
+- **Text you can read:** the glass is light and fairly solid, so the grey-blue text keeps a contrast of 5.6:1 in light mode and 9.2:1 in dark (measured; the minimum recommended is 4.5:1).
+- **Nothing lost:** Esc does not close the panel while there is a half-written message; when the engine does not answer there is a "Tentar de novo" button.
+
 ### Patriotic answers
 
 A few questions are answered with pride in Brazil (`src/liteagent/patriot.py`), typed out word by word like any reply: *quem inventou o avião* (Santos Dumont, then "Mas costumam dizer que foi os irmãos Wright..."),

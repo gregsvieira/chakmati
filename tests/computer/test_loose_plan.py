@@ -31,7 +31,7 @@ STEPS = '{"action":"steps","steps":[{"type":"create_file","path":"a.txt","conten
 async def test_the_plan_is_the_model_s_steps_in_plain_lines_and_the_model_is_asked_only_once(tmp_path):
     assistant, service, llm, ws = make(tmp_path, STEPS)
     lines = await assistant.plan("crie a.txt com oi e copie para b.txt")
-    assert lines == ["1. Criar o arquivo a.txt  [seguro]", "2. cp a.txt b.txt  [seguro]"]
+    assert lines == ["1. Criar o arquivo a.txt  [seguro]", "2. Copiar o arquivo a.txt para b.txt (cp a.txt b.txt)  [seguro]"]
     answer = await assistant.handle("crie a.txt com oi e copie para b.txt")
     assert "Plano (2 passos)" in answer and "[[action:" in answer
     assert len(llm.prompts) == 1  # the answer reused what the plan had asked
@@ -46,7 +46,7 @@ async def test_a_step_that_uses_what_an_earlier_step_makes_is_not_refused(tmp_pa
 async def test_a_problem_shows_in_the_plan_before_anything_is_approved(tmp_path):
     assistant, service, llm, ws = make(tmp_path, '{"action":"steps","steps":[{"type":"command","command":"mkdir docs"},{"type":"command","command":"cp falta.txt docs/falta.txt"}]}')
     lines = await assistant.plan("quero que você copie falta.txt para docs")
-    assert lines[0].startswith("1. mkdir docs") and "⚠ cp (origem): não existe" in lines[1]
+    assert lines[0].startswith("1. Criar a pasta docs (mkdir docs)") and "⚠ cp (origem): não existe" in lines[1]
     answer = await assistant.handle("quero que você copie falta.txt para docs")
     assert answer.startswith("Não consegui") and service.pending() == []
 
@@ -114,7 +114,7 @@ async def test_moving_into_a_folder_keeps_the_file_name(tmp_path):
     assistant, service, llm, ws = make(tmp_path, '{"action":"steps","steps":[{"type":"command","command":"mkdir arquivos"},{"type":"command","command":"mv lista.txt arquivos"}]}')
     (ws / "lista.txt").write_text("x")
     lines = await assistant.plan("crie a pasta arquivos e mova a lista.txt para lá")
-    assert len(lines) == 2 and not any("⚠" in l for l in lines) and lines[1].endswith("arquivos/lista.txt  [seguro]")
+    assert len(lines) == 2 and not any("⚠" in l for l in lines) and lines[1].endswith("(mv lista.txt arquivos/lista.txt)  [seguro]") and lines[1].startswith("2. Mover lista.txt para arquivos/lista.txt")
 
 
 async def test_when_the_model_cannot_read_a_trash_request_the_words_still_do(tmp_path):

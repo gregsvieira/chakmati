@@ -176,6 +176,13 @@ class EngineClient {
     return { ok: true };
   }
 
+  // Parar: stops a job in the engine (the browser closes, nothing more is done).
+  async cancelJob(jobId) {
+    if (!ACTION_ID.test(String(jobId))) throw new Error('invalid request');
+    await this._request(`/jobs/${jobId}/cancel`, { method: 'POST', headers: UI });
+    return { ok: true };
+  }
+
   async* streamMessage(text, signal) {
     const clean = String(text ?? '').trim();
     if (!clean) throw new Error('empty message');

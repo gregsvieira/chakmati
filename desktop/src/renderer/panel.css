@@ -325,3 +325,19 @@ body[data-still] #panel[data-layout="wide"] #content, body[data-still] #panel[da
 #panel[data-layout="compact"] #content[hidden] { display: none; }
 /* when the conversation is open the messages stand at its bottom, like in any chat (margin, not justify-content: a long one still scrolls from its top) */
 #panel[data-layout="compact"][data-focus="thread"] #thread > :first-child, #panel[data-layout="wide"] #thread > :first-child { margin-top: auto; }
+
+/* while the Chakmati is working the send button becomes "Parar" (a square), so the person can always interrupt */
+#send .icon-stop { display: none; }
+#send[data-mode="stop"] .icon-send { display: none; }
+#send[data-mode="stop"] .icon-stop { display: block; }
+#send[data-mode="stop"] { background: var(--wine); }
+#send[data-mode="stop"] svg { margin-left: 0; }
+.link-btn { min-height: 28px; }
+
+/* the plan of a job: a quiet card, folded when the job is done */
+.turn.assistant details.plan { margin: 0 0 8px; padding: 6px 10px; border-left: 3px solid var(--petrol); border-radius: 6px; background: var(--surface-2); white-space: normal; }
+.turn.assistant details.plan summary { cursor: pointer; font-weight: 650; font-size: 13px; color: var(--muted); list-style-position: inside; width: auto; }
+.turn.assistant details.plan summary:hover { color: var(--text); }
+.turn.assistant details.plan ol { margin: 6px 0 2px; padding-left: 20px; font-size: 13px; line-height: 1.45; }
+.turn.assistant details.plan li { margin-bottom: 3px; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread details.plan { display: none; }

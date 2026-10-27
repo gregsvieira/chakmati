@@ -83,3 +83,9 @@ body[data-still] .robot[data-talking="true"] .flap { transform: translateY(2px);
 @keyframes bell-ring { 0%, 70%, 100% { transform: rotate(0); } 76% { transform: rotate(14deg); } 82% { transform: rotate(-12deg); } 88% { transform: rotate(8deg); } 94% { transform: rotate(-4deg); } }
 body[data-still] .bell svg { animation: none !important; }
 @media (prefers-reduced-motion: reduce) { .bell svg { animation: none !important; } }
+
+/* the bell says it with a shape too, not only with a colour: a dot for news, an exclamation mark for something that waits for you */
+.bell { position: relative; }
+.bell[data-state="notice"]::after, .bell[data-state="request"]::after { position: absolute; right: -3px; top: -3px; min-width: 10px; height: 10px; border-radius: 999px; background: #fff; color: #14213d; font: 700 9px/10px system-ui, sans-serif; text-align: center; box-shadow: 0 0 0 1px rgba(20, 33, 61, 0.35); }
+.bell[data-state="notice"]::after { content: ""; }
+.bell[data-state="request"]::after { content: "!"; }

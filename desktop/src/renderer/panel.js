@@ -55,6 +55,7 @@
       $('detail').textContent = d.detail;
     }
     robot.setMood(d.mood);
+    $('retry').hidden = !!state.engineUp || screen !== 'main';   // the engine is not answering: one button to try again (restarts it when the app started it)
     if (state.overview && state.overview.awake && screen === 'main') $('input').focus();
   }
 
@@ -266,12 +267,26 @@
     return turn.askEl;
   }
 
+  // "Plano:\n1. ...\n2. ..." at the start of an answer is a card: open while the Chakmati works, folded when it is done (the person can open it again)
+  const PLAN = /^Plano:\n((?:\d+\.[^\n]*\n?)+)\n*/;
+  function bodyNodes(turn) {
+    const text = turn.text || '…';
+    const m = PLAN.exec(text);
+    if (!m) return [text];
+    const steps = m[1].trim().split('\n').map((l) => l.replace(/^\d+\.\s*/, ''));
+    const open = turn.planOpen !== undefined ? turn.planOpen : turn.status === 'pending';
+    const card = h('details', { class: 'plan', open, ontoggle: (e) => { turn.planOpen = e.currentTarget.open; } },
+      h('summary', {}, `Plano (${steps.length} ${steps.length === 1 ? 'passo' : 'passos'})`), h('ol', {}, steps.map((t) => h('li', {}, t))));
+    const rest = text.slice(m[0].length).trim();
+    return rest ? [card, rest] : [card];
+  }
+
   function renderThread(scroll = true) {
     $('thread-section').hidden = thread.length === 0;
     const box = $('thread');
     const typing = thread.find((t) => t.askInput && t.askInput === document.activeElement);
     const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40; // do not yank the reader away from older messages
-    fill(box, thread.map((t) => h('div', { class: `turn ${t.role}${t.status === 'pending' ? ' pending' : ''}${t.status === 'error' ? ' error' : ''}` }, shotNode(t), t.text || '…', approvalNode(t), askNode(t))));
+    fill(box, thread.map((t) => h('div', { class: `turn ${t.role}${t.status === 'pending' ? ' pending' : ''}${t.status === 'error' ? ' error' : ''}` }, shotNode(t), bodyNodes(t), approvalNode(t), askNode(t))));
     syncTalking();
     renderScreen();
     const wanted = typing || thread.find((t) => t.focusAsk && t.askInput);
@@ -338,7 +353,7 @@
     renderAutomations();
     renderPendingMark();
     renderSettings();
-    $('send').disabled = !!state.busy;
+    syncSendButton();
   }
 
   // ------------------------------------------------------------------ conversation
@@ -396,7 +411,10 @@
       if ($('panel').dataset.layout === 'compact' && !store.get('chakmati.focus', false)) { store.set('chakmati.focus', true); applyLayout(); }
       if (state && !state.panelOpen) api.reply(`${event.prompt} (abra o painel para responder)`);
     } else if (event.type === 'input_done') { turn.ask = null; turn.askEl = null; }
-    else if (event.type === 'job') turn.text = turn.text || 'Trabalhando nisso…';
+    else if (event.type === 'cancelled') {
+      setTurnText(turn, `${turn.raw || (turn.text === 'Trabalhando nisso…' || turn.text === 'Usando o navegador…' ? '' : turn.text) || ''}\n\n${event.text || 'Interrompido por você.'}`.trim());
+      turn.status = 'done'; turn.ask = null; turn.askEl = null;
+    } else if (event.type === 'job') turn.text = turn.text || 'Trabalhando nisso…';
     else if (event.type === 'delta') { if (turn.text === 'Trabalhando nisso…') turn.raw = ''; setTurnText(turn, (turn.raw || '') + event.text); }
     else if (event.type === 'done') { setTurnText(turn, event.result || turn.text); turn.status = 'done'; deliver(turn); }
     else if (event.type === 'error') { turn.text = event.error || 'Algo deu errado.'; turn.status = 'error'; deliver(turn); }
@@ -437,11 +455,27 @@
     return speaking || otherSpeaking || Date.now() < quietUntil; // not while Chakmati talks: it would hear itself
   }; // not while Chakmati talks or works: it would hear itself
 
+  // Busy: the send button is "Parar" and the field says what is going on (nothing is silently ignored)
+  function syncSendButton() {
+    const busy = !!(state && state.busy);
+    const btn = $('send');
+    btn.dataset.mode = busy ? 'stop' : 'send';
+    btn.disabled = false;
+    btn.setAttribute('aria-label', busy ? 'Parar' : 'Enviar');
+    btn.title = busy ? 'Parar o que o Chakmati está fazendo' : 'Enviar';
+    updateHint();
+  }
+
+  function stopWork() {
+    const turn = thread.slice().reverse().find((t) => t.status === 'pending');
+    if (turn) api.cancel(turn.id);
+  }
+
   function updateHint() {
     if (!state) return;
     const talk = state.settings.talk;
     const awake = !!(state.overview && state.overview.awake);
-    input.placeholder = !talk ? 'Peça algo ao Chakmati…' : awake ? 'Aguardando seu comando… fale agora' : 'Escutando… diga “Ôh, Xácmáti”';
+    input.placeholder = state.busy ? 'Trabalhando nisso… toque em Parar para interromper' : !talk ? 'Peça algo ao Chakmati…' : awake ? 'Aguardando seu comando… fale agora' : 'Escutando… diga “Ôh, Xácmáti”';
     micButton.classList.toggle('on', talk);
     micButton.classList.toggle('recording', talk && speechInProgress);
     micButton.hidden = !talk;
@@ -774,6 +808,10 @@
   });
   $('composer').addEventListener('submit', (e) => {
     e.preventDefault();
+    if (state && state.busy) {   // working: the button stops it; Enter alone does not (so a stray Enter never kills a long job)
+      if (e.submitter && e.submitter.id === 'send') stopWork();
+      return;
+    }
     const text = input.value;
     input.value = '';
     grow();
@@ -798,6 +836,7 @@
   }
   const goBack = () => showView(screen === 'chat' ? backTo : 'main');
   $('open-settings').addEventListener('click', () => showView('settings'));
+  $('retry').addEventListener('click', () => { $('retry').textContent = 'Tentando…'; if (state && state.ownsEngine) api.restart(); else api.refresh(); setTimeout(() => { $('retry').textContent = 'Tentar de novo'; }, 4000); });
   $('back').addEventListener('click', goBack);
 
   const fmtDuration = (s) => (Number.isFinite(s) ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '');
@@ -862,6 +901,7 @@
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (screen !== 'main') goBack();
+    else if (document.activeElement && document.activeElement.matches('input, textarea') && document.activeElement.value.trim()) document.activeElement.blur();  // a half-written message is not thrown away by a stray Esc
     else api.close();
   });
   $('panic').addEventListener('click', () => api.panic());

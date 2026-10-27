@@ -215,3 +215,16 @@ test('an answer to the browser goes to the engine with the UI header, and only w
   await assert.rejects(() => c.sendInput(job, req, 'x'.repeat(501)), /invalid answer/);
   assert.equal(calls.length, 1);
 });
+
+test('Parar asks the engine to stop the job, with the UI header, and only for a well-formed id', async () => {
+  const calls = [];
+  const fetchImpl = async (url, init) => { calls.push({ url, init }); return new Response('{"ok":true}', { status: 200 }); };
+  const c = new EngineClient({ fetchImpl });
+  const job = 'c'.repeat(32);
+  assert.deepEqual(await c.cancelJob(job), { ok: true });
+  assert.equal(calls[0].url, `http://127.0.0.1:8765/jobs/${job}/cancel`);
+  assert.equal(calls[0].init.method, 'POST');
+  assert.equal(calls[0].init.headers['X-LiteAgent-UI'], '1');
+  await assert.rejects(() => c.cancelJob('../etc'), /invalid request/);
+  assert.equal(calls.length, 1);
+});

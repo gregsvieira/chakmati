@@ -47,6 +47,8 @@ let quitting = false;
 let happyUntil = 0;
 const queue = new NoticeQueue();
 const streams = new Map();
+const jobOf = new Map();   // stream id -> the engine's job id, once the engine says it queued one
+const stopped = new Set(); // streams the person stopped with Parar
 const state = { voice: null, engineUp: false, overview: null, notices: [], busy: 0, hidden: false, panelOpen: false, bubbleVisible: false, warnedDown: false, unread: 0, asking: false };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -764,7 +766,15 @@ ipcMain.on('panel:layout', (_e, mode) => setPanelMode(mode));
   ipcMain.on('panel:refresh', refreshOverview);
   ipcMain.on('panel:panic', () => setHidden(true));
   ipcMain.on('panel:restart', restartApp);
-  ipcMain.on('panel:cancel', (_e, id) => { const ac = streams.get(id); if (ac) ac.abort(); });
+  // Parar: a job (browser, files) is stopped in the engine and its own stream says so; a plain answer is simply no longer waited for.
+  ipcMain.on('panel:cancel', async (_e, id) => {
+    const ac = streams.get(id);
+    if (!ac) return;
+    stopped.add(id);
+    const jobId = jobOf.get(id);
+    if (jobId) { try { await engine.cancelJob(jobId); return; } catch { /* the engine could not be asked: stop waiting for it instead */ } }
+    ac.abort();
+  });
 
   // Reading a conversation. Names and texts are hidden in discreet mode, so these refuse to run then.
   const guard = () => (settings.masked ? 'Modo discreto ligado: desligue em Ajustes para ver as conversas.' : state.engineUp ? null : 'O motor não está rodando.');
@@ -839,17 +849,21 @@ ipcMain.handle('panel:send', async (_e, text) => {
       let failed = false;
       try {
         for await (const event of engine.streamMessage(text, ac.signal)) {
+          if (event.type === 'job' && event.job_id) jobOf.set(id, event.job_id);
           if (event.type === 'input') { state.asking = true; syncBell(); refreshMood(); } else if (event.type === 'input_done') { state.asking = false; syncBell(); refreshMood(); }
           sendTo(panelWin, 'panel:message', { id, event });
         }
       } catch (e) {
-        failed = true;
-        sendTo(panelWin, 'panel:message', { id, event: { type: 'error', error: timedOut ? 'Demorei demais e parei de esperar. Pode pedir de novo.' : friendlyError(e) } });
+        failed = !stopped.has(id);
+        if (stopped.has(id)) sendTo(panelWin, 'panel:message', { id, event: { type: 'cancelled', text: 'Interrompido por você.' } });
+        else sendTo(panelWin, 'panel:message', { id, event: { type: 'error', error: timedOut ? 'Demorei demais e parei de esperar. Pode pedir de novo.' : friendlyError(e) } });
       } finally {
         if (state.asking) { state.asking = false; syncBell(); refreshMood(); }
         sendTo(panelWin, 'panel:message', { id, event: { type: 'end' } });
         clearTimeout(timeout);
         streams.delete(id);
+        jobOf.delete(id);
+        stopped.delete(id);
         state.busy = Math.max(0, state.busy - 1);
         if (!failed) happyUntil = Date.now() + 3000;
         clearTimeout(moodTimer);

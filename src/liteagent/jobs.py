@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
 
 QUEUED, RUNNING, DONE, FAILED = "queued", "running", "done", "failed"
+CANCELLED = "Interrompido por você."  # the error text of a job the person stopped (the UI shows it as a stop, not as a failure)
 
 
 @dataclass(frozen=True)
@@ -95,6 +96,12 @@ class JobStore:
     def fail(self, job_id: str, error: str) -> None:
         self._set(job_id, FAILED, None, error)
 
+    def cancel_queued(self, job_id: str) -> bool:
+        """Stops a job that has not started: it is marked as stopped and never runs."""
+        cur = self._db.execute("UPDATE jobs SET status = ?, error = ?, updated_at = ? WHERE id = ? AND status = ?", (FAILED, CANCELLED, time.time(), job_id, QUEUED))
+        self._db.commit()
+        return cur.rowcount > 0
+
     def requeue_running(self) -> int:
         cur = self._db.execute(
             "UPDATE jobs SET status = ?, updated_at = ? WHERE status = ?",
@@ -123,6 +130,8 @@ class Worker:
         self._stream_handler = stream_handler
         self._flush = flush_interval
         self._wakeup = asyncio.Event()
+        self._current: tuple[str, asyncio.Future] | None = None  # the job being worked on, so the person can stop it
+        self._stopped: str | None = None
 
     def wake(self) -> None:
         """Tell an idle worker that a job was just queued, so it does not wait for the next poll."""
@@ -145,20 +154,38 @@ class Worker:
             self._store.set_partial(job.id, "".join(parts))
         return "".join(parts)
 
+    async def _execute(self, job: Job) -> str:
+        if self._stream_handler is not None:
+            return await self._run_stream(job)
+        assert self._handler is not None
+        return await self._handler(job)
+
+    def cancel(self, job_id: str) -> bool:
+        """Stops the job: the one running is interrupted (the browser closes, nothing more is done), a waiting one never starts."""
+        if self._current is not None and self._current[0] == job_id:
+            self._stopped = job_id
+            self._current[1].cancel()
+            return True
+        return self._store.cancel_queued(job_id)
+
     async def run_once(self) -> bool:
         job = self._store.claim_next()
         if job is None:
             return False
+        task = asyncio.ensure_future(self._execute(job))
+        self._current = (job.id, task)
         try:
-            if self._stream_handler is not None:
-                result = await self._run_stream(job)
-            else:
-                assert self._handler is not None
-                result = await self._handler(job)
+            result = await task
+        except asyncio.CancelledError:
+            if self._stopped != job.id:
+                raise  # the worker itself is being shut down
+            self._store.fail(job.id, CANCELLED)
         except Exception as exc:
             self._store.fail(job.id, f"{type(exc).__name__}: {exc}")
         else:
             self._store.finish(job.id, result)
+        finally:
+            self._current, self._stopped = None, None
         return True
 
     async def run_forever(self) -> None:

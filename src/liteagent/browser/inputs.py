@@ -34,8 +34,8 @@ class InputBroker:
         self._pending[job_id] = request
         try:
             return await asyncio.wait_for(request.future, self._timeout)
-        except (asyncio.TimeoutError, asyncio.CancelledError):
-            return None
+        except asyncio.TimeoutError:
+            return None  # (a cancelled job is not swallowed here: it must stop)
         finally:
             if self._pending.get(job_id) is request:
                 del self._pending[job_id]

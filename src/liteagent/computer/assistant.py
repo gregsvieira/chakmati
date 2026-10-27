@@ -15,6 +15,7 @@ from ..guard import UNTRUSTED_RULE, fence, strip_markers
 from ..llm import ChatClient
 from . import documents, grading, rules
 from .policy import PolicyError, resolve
+from .describe import plain_error
 from .safety import ComputerError, check_url, find_app, plain as plain_name
 from .service import ComputerService
 
@@ -479,9 +480,9 @@ class ComputerAssistant:
         try:
             return await self._act(intent, text)
         except ComputerError as exc:
-            return f"Não consegui: {exc}."
+            return f"Não consegui: {plain_error(str(exc))}"
         except (OSError, subprocess.SubprocessError, UnicodeDecodeError) as exc:
-            return f"Não consegui: {exc}."
+            return f"Não consegui: {plain_error(str(exc))}"
 
     def _by_rule(self, text: str) -> dict | None:
         """Requests whose words settle what is meant: decided here, before (and without) the model, which gets these wrong now and then.

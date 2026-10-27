@@ -69,4 +69,4 @@ async def test_a_rule_request_never_calls_the_model(service):
             raise AssertionError("the model should not be asked")
     assistant = ComputerAssistant(Boom(), service)
     assert "[[action:" in await assistant.handle("copie a lista.txt para lista_2.txt")
-    assert "ls -l" in await assistant.handle("liste os arquivos")
+    assert "Listar os arquivos" in await assistant.handle("liste os arquivos")
