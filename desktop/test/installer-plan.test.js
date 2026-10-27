@@ -81,3 +81,43 @@ test('unknown ids and items not offered on this system are rejected', () => {
 test('the same id twice counts once', () => {
   assert.deepEqual(plan(pc(), ['voice', 'voice']).steps.map((s) => s.id), ['ollama', 'model', 'voice']);
 });
+
+// ---------------------------------------------------------------------------------------------- the reasoning model
+const { reasoningFor, suggestions } = require('../src/installer/tiers');
+const { optionsFor } = require('../src/installer/catalog');
+
+test('the reasoning model offered depends on the computer: big with 16 GB, compact with 12, none with 8', () => {
+  assert.equal(reasoningFor(pc({ ramGb: 15.6 })).id, 'deepseek-r1:14b');
+  assert.equal(reasoningFor(pc({ ramGb: 11.7 })).id, 'deepseek-r1:8b');
+  assert.equal(reasoningFor(pc({ ramGb: 7.7 })), null);
+  assert.equal(reasoningFor(pc({ ramGb: 2 })), null);              // an unsupported computer
+  assert.equal(reasoningFor(pc({ freeDiskGb: 14 })).id, 'deepseek-r1:8b'); // 14b needs about 9 GB + 8 free: 14 GB is only enough for the compact one
+  assert.equal(reasoningFor(pc({ freeDiskGb: 9 })), null);
+  assert.equal(suggestions(pc({ ramGb: 7.7 }), 'standard').reasoning, false);
+  assert.equal(suggestions(pc({ ramGb: 15.6 }), 'full').reasoning, true);
+});
+
+test('ticking it adds an optional, approved download after the chat model; nothing is lost if it is declined', () => {
+  const p = plan(pc(), ['reasoning']);
+  assert.deepEqual(p.steps.map((s) => s.id), ['ollama', 'model', 'reasoning']);
+  const step = p.steps[2];
+  assert.equal(step.kind, 'pull-model');
+  assert.equal(step.model, 'deepseek-r1:14b');
+  assert.equal(step.required, false);
+  assert.equal(step.approval.sizeMb, 9000);
+  assert.deepEqual(step.settings, {});
+  assert.equal(p.totals.diskMb, 1500 + 6600 + 9000);
+});
+
+test('the two models are not counted as in memory together', () => {
+  const p = plan(pc(), ['reasoning']);
+  assert.equal(p.totals.ramMb, 400 + Math.max(7100, 11250));
+});
+
+test('asking for it on a computer without the memory is refused, not silently dropped', () => {
+  assert.throws(() => plan(pc({ ramGb: 7.7 }), ['reasoning']), /não tem memória/);
+});
+
+test('the option exists in the catalog on every system, with a size that depends on the computer', () => {
+  assert.ok(optionsFor('win32').some((o) => o.id === 'reasoning' && o.dynamic));
+});

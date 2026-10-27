@@ -30,7 +30,7 @@ test('options only touch settings that exist, with values the app accepts', () =
 });
 
 test('an option that downloads something says where from and how much', () => {
-  for (const o of OPTIONS.filter((x) => x.approval)) {
+  for (const o of OPTIONS.filter((x) => x.approval && !x.dynamic)) { // (the reasoning model's size depends on the computer: the plan fills it in)
     assert.ok(o.approval.source && o.approval.sizeMb > 0, o.id);
   }
   assert.ok(OPTIONS.find((o) => o.id === 'voice').approval);

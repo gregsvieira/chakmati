@@ -28,6 +28,26 @@
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
   // ------------------------------------------------------------------ rendering
+  // The notice before WhatsApp and automations: read once ("Compreendi e estou ciente!"), then never again. Esc or a click outside closes it
+  // without doing the action. Remembered in this window's storage.
+  const waGate = window.NoticeGate.createGate((() => { try { return window.localStorage; } catch { return { getItem: () => null, setItem: () => {} }; } })(), 'chakmati.whatsapp-notice');
+  let closeNotice = null;
+  function showWhatsAppNotice(onAck, onCancel) {
+    const modal = $('notice-modal');
+    const finish = (fn) => { modal.hidden = true; closeNotice = null; document.removeEventListener('keydown', onKey, true); modal.removeEventListener('mousedown', onOutside); fn(); };
+    const onKey = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); finish(onCancel); }
+      else if (e.key === 'Tab') { e.preventDefault(); $('notice-ok').focus(); }   // the only thing to press is the button
+    };
+    const onOutside = (e) => { if (e.target === modal) finish(onCancel); };
+    $('notice-ok').onclick = () => finish(onAck);
+    modal.hidden = false;
+    closeNotice = () => finish(onCancel);
+    document.addEventListener('keydown', onKey, true);
+    modal.addEventListener('mousedown', onOutside);
+    $('notice-ok').focus();
+  }
+
   function renderHeader() {
     const d = state.describe;
     if (screen === 'main') {
@@ -35,6 +55,7 @@
       $('detail').textContent = d.detail;
     }
     robot.setMood(d.mood);
+    $('retry').hidden = !!state.engineUp || screen !== 'main';   // the engine is not answering: one button to try again (restarts it when the app started it)
     if (state.overview && state.overview.awake && screen === 'main') $('input').focus();
   }
 
@@ -73,6 +94,9 @@
 
   let waNote = '';
   async function connectWhatsApp() {
+    return waGate.run(showWhatsAppNotice, doConnectWhatsApp);
+  }
+  async function doConnectWhatsApp() {
     waNote = 'Abrindo o OpenWA…';
     renderMessages();
     const res = await api.openWa();
@@ -113,11 +137,15 @@
 
   function renderPendingMark() {
     const n = ((state && state.overview && state.overview.pending) || []).length;
+    const bell = (state && state.bell) || { state: 'idle', label: 'Nenhuma novidade' };
     const mark = $('head-approval');
-    mark.classList.toggle('pending', n > 0);
-    const label = n > 0 ? `${plural(n, 'aprovação pendente', 'aprovações pendentes')}` : 'Nenhuma aprovação pendente';
-    mark.setAttribute('aria-label', label);
-    mark.title = label;
+    mark.dataset.state = bell.state;                  // idle (outline) | notice (red) | request (yellow)
+    mark.setAttribute('aria-label', bell.label);
+    mark.title = bell.label;
+    const badge = $('fold-left-badge');  // the list of decisions is on the left: when it is minimized the number stays on its button
+    badge.hidden = !(n > 0);
+    badge.textContent = String(n);
+    badge.setAttribute('aria-label', plural(n, 'aprovação pendente', 'aprovações pendentes'));
   }
 
   function renderAutomations() {
@@ -205,12 +233,85 @@
       h('button', { class: 'primary', type: 'button', onclick: () => decideTurn(turn, 'approve') }, 'Aprovar'));
   }
 
+  // The browser at work: the screenshot of the latest step, replaced as each new one arrives, with what it was doing.
+  function shotNode(turn) {
+    if (!turn.shot || !turn.shot.image) return null;
+    return h('figure', { class: 'shot' },
+      h('img', { src: turn.shot.image, alt: turn.shot.title || 'navegador' }),
+      h('figcaption', {}, turn.shot.note, h('span', {}, turn.shot.url)));
+  }
+
+  // The question of the browser ("qual é o seu usuário?", the password): an input in the conversation. The node is made once and kept
+  // across redraws, so what is being typed is not lost; a password input is masked, and what is typed is cleared as soon as it is sent.
+  function askNode(turn) {
+    if (turn.askSent) return h('p', { class: 'hint' }, 'Resposta enviada.');
+    if (!turn.ask) return null;
+    if (!turn.askEl) {
+      const ask = turn.ask;
+      const input = h('input', { type: ask.secret ? 'password' : 'text', class: 'ask-input', autocomplete: ask.secret ? 'new-password' : 'off', spellcheck: 'false',
+        maxlength: 500, 'aria-label': ask.prompt, placeholder: ask.secret ? 'Digite a senha (ela fica oculta)' : 'Digite aqui' });
+      const send = h('button', { type: 'submit', class: 'primary small' }, ask.confirm ? 'Já resolvi' : 'Enviar');
+      const fail = ask.confirm ? h('button', { type: 'button', class: 'small', onclick: () => { value = 'nao'; form.requestSubmit(); } }, 'Não consegui') : null;
+      let value = null;
+      const problem = h('p', { class: 'warn', hidden: true }, 'Não consegui enviar. Tente de novo.');
+      const form = turn.askEl = h('form', { class: 'ask', autocomplete: 'off', onsubmit: async (e) => {
+        e.preventDefault();
+        const answer = ask.confirm ? (value || 'ok') : input.value;   // a confirmation has nothing to type: "Já resolvi" is ok, "Não consegui" is nao
+        value = null;
+        if (!answer) return;
+        input.disabled = true; send.disabled = true; if (fail) fail.disabled = true;
+        const res = await api.answerInput(ask.job_id, ask.request_id, answer);
+        input.value = '';
+        if (res && res.ok) { turn.ask = null; turn.askEl = null; turn.askInput = null; turn.askSent = true; } else { input.disabled = false; send.disabled = false; if (fail) fail.disabled = false; problem.hidden = false; }
+        renderThread(false);
+      } }, h('label', { class: 'ask-label' }, ask.prompt), h('div', { class: 'ask-row' }, input, send, fail), problem);
+      if (ask.confirm) input.hidden = true;
+      turn.askInput = input;
+    }
+    return turn.askEl;
+  }
+
+  // Addresses in a message: the text stays and a small link icon follows it; the icon opens the address in the person's own browser
+  function linkNodes(text) {
+    return window.Links.splitLinks(text).map((part) => part.url
+      ? h('span', { class: 'link' }, part.url, h('button', { type: 'button', class: 'link-open', title: 'Abrir o link no navegador', 'aria-label': `Abrir ${part.url} no navegador`,
+        onclick: (e) => { e.stopPropagation(); window.assistant.panel.openLink(part.url); } }, linkIcon()))
+      : part.text);
+  }
+  function linkIcon() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('width', '14'); svg.setAttribute('height', '14'); svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M14 3h7v7h-2V6.4l-8.3 8.3-1.4-1.4L17.6 5H14V3zM5 5h6v2H5v12h12v-6h2v8H3V5h2z');
+    path.setAttribute('fill', 'currentColor');
+    svg.appendChild(path);
+    return svg;
+  }
+
+  // "Plano:\n1. ...\n2. ..." at the start of an answer is a card: open while the Chakmati works, folded when it is done (the person can open it again)
+  const PLAN = /^Plano:\n((?:\d+\.[^\n]*\n?)+)\n*/;
+  function bodyNodes(turn) {
+    const text = turn.text || '…';
+    const m = PLAN.exec(text);
+    if (!m) return [h('span', { class: 'turn-text' }, linkNodes(text))];
+    const steps = m[1].trim().split('\n').map((l) => l.replace(/^\d+\.\s*/, ''));
+    const open = turn.planOpen !== undefined ? turn.planOpen : turn.status === 'pending';
+    const card = h('details', { class: 'plan', open, ontoggle: (e) => { turn.planOpen = e.currentTarget.open; } },
+      h('summary', {}, `Plano (${steps.length} ${steps.length === 1 ? 'passo' : 'passos'})`), h('ol', {}, steps.map((t) => h('li', {}, t))));
+    const rest = text.slice(m[0].length).trim();
+    return rest ? [card, h('span', { class: 'turn-text' }, linkNodes(rest))] : [card];
+  }
+
   function renderThread(scroll = true) {
     $('thread-section').hidden = thread.length === 0;
     const box = $('thread');
+    const typing = thread.find((t) => t.askInput && t.askInput === document.activeElement);
     const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40; // do not yank the reader away from older messages
-    fill(box, thread.map((t) => h('div', { class: `turn ${t.role}${t.status === 'pending' ? ' pending' : ''}${t.status === 'error' ? ' error' : ''}` }, t.text || '…', approvalNode(t))));
+    fill(box, thread.map((t) => h('div', { class: `turn ${t.role}${t.status === 'pending' ? ' pending' : ''}${t.status === 'error' ? ' error' : ''}` }, shotNode(t), bodyNodes(t), approvalNode(t), askNode(t))));
     syncTalking();
+    renderScreen();
+    const wanted = typing || thread.find((t) => t.focusAsk && t.askInput);
+    if (wanted) { wanted.focusAsk = false; wanted.askInput.focus(); }
     if (scroll || atBottom) box.scrollTop = box.scrollHeight;  // the conversation has its own scroll: it follows the newest message
     if (scroll) $('thread-section').scrollIntoView({ block: 'end' }); // and a new message brings the conversation into view on the page
   }
@@ -272,8 +373,9 @@
     renderRecent();
     renderAutomations();
     renderPendingMark();
+    renderTopicHints();
     renderSettings();
-    $('send').disabled = !!state.busy;
+    syncSendButton();
   }
 
   // ------------------------------------------------------------------ conversation
@@ -324,7 +426,17 @@
   api.onMessage(({ id, event }) => {
     const turn = thread.find((t) => t.id === id);
     if (!turn) return;
-    if (event.type === 'job') turn.text = turn.text || 'Trabalhando nisso…';
+    if (event.type === 'screenshot') { Shots.addShot(turn, event); pickedStep = null; turn.text = turn.text || 'Usando o navegador…'; }
+    else if (event.type === 'input') {
+      turn.ask = { job_id: event.job_id, request_id: event.request_id, prompt: event.prompt, secret: !!event.secret, confirm: !!event.confirm };
+      turn.askEl = null; turn.askSent = false; turn.focusAsk = true;
+      if ($('panel').dataset.layout === 'compact' && !store.get('chakmati.focus', false)) { store.set('chakmati.focus', true); applyLayout(); }
+      if (state && !state.panelOpen) api.reply(`${event.prompt} (abra o painel para responder)`);
+    } else if (event.type === 'input_done') { turn.ask = null; turn.askEl = null; }
+    else if (event.type === 'cancelled') {
+      setTurnText(turn, `${turn.raw || (turn.text === 'Trabalhando nisso…' || turn.text === 'Usando o navegador…' ? '' : turn.text) || ''}\n\n${event.text || 'Interrompido por você.'}`.trim());
+      turn.status = 'done'; turn.ask = null; turn.askEl = null;
+    } else if (event.type === 'job') turn.text = turn.text || 'Trabalhando nisso…';
     else if (event.type === 'delta') { if (turn.text === 'Trabalhando nisso…') turn.raw = ''; setTurnText(turn, (turn.raw || '') + event.text); }
     else if (event.type === 'done') { setTurnText(turn, event.result || turn.text); turn.status = 'done'; deliver(turn); }
     else if (event.type === 'error') { turn.text = event.error || 'Algo deu errado.'; turn.status = 'error'; deliver(turn); }
@@ -365,11 +477,27 @@
     return speaking || otherSpeaking || Date.now() < quietUntil; // not while Chakmati talks: it would hear itself
   }; // not while Chakmati talks or works: it would hear itself
 
+  // Busy: the send button is "Parar" and the field says what is going on (nothing is silently ignored)
+  function syncSendButton() {
+    const busy = !!(state && state.busy);
+    const btn = $('send');
+    btn.dataset.mode = busy ? 'stop' : 'send';
+    btn.disabled = false;
+    btn.setAttribute('aria-label', busy ? 'Parar' : 'Enviar');
+    btn.title = busy ? 'Parar o que o Chakmati está fazendo' : 'Enviar';
+    updateHint();
+  }
+
+  function stopWork() {
+    const turn = thread.slice().reverse().find((t) => t.status === 'pending');
+    if (turn) api.cancel(turn.id);
+  }
+
   function updateHint() {
     if (!state) return;
     const talk = state.settings.talk;
     const awake = !!(state.overview && state.overview.awake);
-    input.placeholder = !talk ? 'Peça algo ao Chakmati…' : awake ? 'Aguardando seu comando… fale agora' : 'Escutando… diga “Ôh, Xácmáti”';
+    input.placeholder = state.busy ? 'Trabalhando nisso… toque em Parar para interromper' : !talk ? 'Peça algo ao Chakmati…' : awake ? 'Aguardando seu comando… fale agora' : 'Escutando… diga “Ôh, Xácmáti”';
     micButton.classList.toggle('on', talk);
     micButton.classList.toggle('recording', talk && speechInProgress);
     micButton.hidden = !talk;
@@ -702,6 +830,10 @@
   });
   $('composer').addEventListener('submit', (e) => {
     e.preventDefault();
+    if (state && state.busy) {   // working: the button stops it; Enter alone does not (so a stray Enter never kills a long job)
+      if (e.submitter && e.submitter.id === 'send') stopWork();
+      return;
+    }
     const text = input.value;
     input.value = '';
     grow();
@@ -726,6 +858,7 @@
   }
   const goBack = () => showView(screen === 'chat' ? backTo : 'main');
   $('open-settings').addEventListener('click', () => showView('settings'));
+  $('retry').addEventListener('click', () => { $('retry').textContent = 'Tentando…'; if (state && state.ownsEngine) api.restart(); else api.refresh(); setTimeout(() => { $('retry').textContent = 'Tentar de novo'; }, 4000); });
   $('back').addEventListener('click', goBack);
 
   const fmtDuration = (s) => (Number.isFinite(s) ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '');
@@ -784,19 +917,25 @@
   }
 
   // Automações: nothing to show yet; the button only says what is coming
-  $('create-automation').addEventListener('click', () => { $('automation-note').hidden = false; $('input').value = ''; renderChips(AUTOMATION_CHIPS); $('input').focus(); showSuggestions2(); });
+  $('create-automation').addEventListener('click', () => waGate.run(showWhatsAppNotice, () => { $('automation-note').hidden = false; $('input').value = ''; renderChips(AUTOMATION_CHIPS); $('input').focus(); showSuggestions2(); }));
 
   $('close').addEventListener('click', () => { showView('main'); api.close(); });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (screen !== 'main') goBack();
+    else if (document.activeElement && document.activeElement.matches('input, textarea') && document.activeElement.value.trim()) document.activeElement.blur();  // a half-written message is not thrown away by a stray Esc
     else api.close();
   });
   $('panic').addEventListener('click', () => api.panic());
   $('restart').addEventListener('click', () => api.restart());
   $('set-protect').addEventListener('change', (e) => api.setSetting('protect', e.target.checked));
   $('set-masked').addEventListener('change', (e) => api.setSetting('masked', e.target.checked));
-  $('set-whatsapp').addEventListener('change', (e) => api.setSetting('whatsapp', e.target.checked));
+  $('set-whatsapp').addEventListener('change', (e) => {
+    const box = e.target;
+    if (!box.checked) { api.setSetting('whatsapp', false); return; }
+    box.checked = false;  // it only turns on after the notice was acknowledged
+    waGate.run(showWhatsAppNotice, () => { box.checked = true; api.setSetting('whatsapp', true); });
+  });
   $('set-research').addEventListener('change', (e) => api.setSetting('research', e.target.checked));
   $('set-calendar').addEventListener('change', (e) => api.setSetting('calendar', e.target.checked));
   $('wa-connect').addEventListener('click', connectWhatsApp);
@@ -814,9 +953,136 @@
   $('set-mood').addEventListener('change', (e) => api.setSetting('mood', e.target.value));
   $('set-side').addEventListener('change', (e) => api.setSetting('bubbleSide', e.target.value));
 
+  // ------------------------------------------------------------------ the big window: layout, folding topics, the screen on the right
+  const store = {
+    get(key, fallback) { try { const v = window.localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); } catch { return fallback; } },
+    set(key, value) { try { window.localStorage.setItem(key, JSON.stringify(value)); } catch { /* private window or storage off: the choice just is not remembered */ } },
+  };
+  const TOPICS = ['decisions', 'messages', 'agenda', 'automations', 'recent'];
+  // Which topics are folded: in the small card they start folded (one line each, with a hint of what is inside), in the big window open (there is room).
+  // Each layout remembers its own choices.
+  const foldedBy = {
+    compact: new Set(store.get('chakmati.folded-compact', TOPICS.filter((t) => t !== 'decisions'))),
+    wide: new Set(store.get('chakmati.folded-wide', [])),
+  };
+  const layoutNow = () => ($('panel').dataset.layout === 'wide' ? 'wide' : 'compact');
+  const folded = { has: (id) => foldedBy[layoutNow()].has(id) };
+  let pickedStep = null;
+
+  const folds = { left: store.get('chakmati.left', false) === true, right: store.get('chakmati.right', false) === true };
+  function applyFolds() {
+    $('panel').dataset.left = folds.left ? 'folded' : '';
+    $('panel').dataset.right = folds.right ? 'folded' : '';
+    for (const side of ['left', 'right']) {
+      const btn = $(`fold-${side}`);
+      const name = side === 'left' ? 'a lateral esquerda' : 'a Tela do Chakmati';
+      btn.setAttribute('aria-expanded', String(!folds[side]));
+      btn.setAttribute('aria-label', `${folds[side] ? 'Mostrar' : 'Minimizar'} ${name}`);
+      btn.title = `${folds[side] ? 'Mostrar' : 'Minimizar'} ${name}`;
+    }
+    renderPendingMark();
+  }
+  for (const side of ['left', 'right']) $(`fold-${side}`).addEventListener('click', () => { folds[side] = !folds[side]; store.set(`chakmati.${side}`, folds[side]); applyFolds(); });
+
+  function applyLayout() {
+    const layout = Shots.layoutFor(window.innerWidth);
+    $('panel').dataset.layout = layout;
+    placeRobot(layout);
+    syncTopics();
+    renderTopicHints();
+    applyFolds();
+    $('panel').dataset.focus = store.get('chakmati.focus', false) ? 'thread' : '';
+    $('focus-thread').setAttribute('aria-pressed', String(!!store.get('chakmati.focus', false)));
+    $('focus-thread').textContent = store.get('chakmati.focus', false) ? 'Reduzir' : 'Ampliar';
+    const mode = (state && state.panelMode) || 'compact';
+    $('expand').setAttribute('aria-label', mode === 'compact' ? 'Expandir a janela' : 'Voltar ao tamanho pequeno');
+    $('expand').title = mode === 'compact' ? 'Expandir a janela' : 'Voltar ao tamanho pequeno';
+    $('maximize').hidden = mode === 'compact';
+    $('maximize').setAttribute('aria-label', mode === 'full' ? 'Sair da tela cheia' : 'Tela cheia');
+    $('maximize').title = mode === 'full' ? 'Sair da tela cheia' : 'Tela cheia';
+    renderScreen();
+  }
+  window.addEventListener('resize', applyLayout);
+  $('expand').addEventListener('click', () => api.setLayout(((state && state.panelMode) || 'compact') === 'compact' ? 'wide' : 'compact'));
+  $('maximize').addEventListener('click', () => api.setLayout(((state && state.panelMode) || 'compact') === 'full' ? 'wide' : 'full'));
+
+  // each topic folds by its title (Enter or Space too); the choice is remembered
+  const topicSyncs = [];
+  for (const id of TOPICS) {
+    const section = $(id);
+    const title = section.querySelector('h2');
+    title.setAttribute('role', 'button');
+    title.tabIndex = 0;
+    const hint = h('small', { class: 'topic-hint', id: `hint-${id}` });
+    title.append(hint);
+    const sync = () => { if (folded.has(id)) section.dataset.collapsed = '1'; else delete section.dataset.collapsed; title.setAttribute('aria-expanded', String(!folded.has(id))); };
+    const toggle = () => {
+      const set = foldedBy[layoutNow()];
+      if (set.has(id)) set.delete(id); else set.add(id);
+      store.set(`chakmati.folded-${layoutNow()}`, [...set]);
+      sync();
+    };
+    title.addEventListener('click', toggle);
+    title.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+    topicSyncs.push(sync);
+    sync();
+  }
+  const syncTopics = () => topicSyncs.forEach((f) => f());
+
+  // what is inside a folded topic, in a few words (so folding it does not hide whether anything is there)
+  function renderTopicHints() {
+    if (!state) return;
+    const o = state.overview || {};
+    const wa = o.whatsapp || {};
+    const unread = (wa.unread || []).length;
+    const set = (id, text) => { const e = $(`hint-${id}`); if (e) e.textContent = text; };
+    set('messages', !wa.enabled ? 'WhatsApp desligado' : (wa.error || wa.connected === false) ? 'WhatsApp desconectado' : unread ? plural(unread, 'conversa com novidade', 'conversas com novidade') : 'nada novo');
+    set('automations', (o.automations || []).length ? plural(o.automations.length, 'automação', 'automações') : 'nenhuma');
+    set('agenda', (((o.calendar || {}).today) || []).length ? plural(o.calendar.today.length, 'compromisso hoje', 'compromissos hoje') : 'livre hoje');
+    set('recent', (state.notices || []).length ? plural(state.notices.length, 'aviso', 'avisos') : 'nenhum');
+  }
+  // "Ampliar": the conversation takes the card and every other topic folds (their own choices come back when it is reduced)
+  function setFocus(on) { store.set('chakmati.focus', on); applyLayout(); renderThread(true); }
+  $('focus-thread').addEventListener('click', () => setFocus(!store.get('chakmati.focus', false)));
+  // the strip of two lines opens when it is clicked; a question for the person (the user name, a password) opens it by itself
+  $('thread').addEventListener('click', () => { if ($('panel').dataset.layout === 'compact' && !store.get('chakmati.focus', false)) setFocus(true); });
+
+  // the screen: the browser as it is right now. Each new picture fades in over the last one: nothing says it is a sequence of pictures.
+  let frontImg = $('screen-img-a');
+  let backImg = $('screen-img-b');
+  let shownSrc = '';
+  function renderScreen() {
+    const view = Shots.screenView(thread, null);
+    $('screen-empty').hidden = !!view;
+    $('screen-view').hidden = !view;
+    $('screen-live').hidden = !(view && view.live);
+    $('fold-right-live').hidden = !(view && view.live);
+    if (!view) { shownSrc = ''; return; }
+    const cur = view.current;
+    $('screen-url').textContent = cur.url;
+    $('screen-note').textContent = cur.note;
+    if (cur.image && cur.image !== shownSrc) {
+      shownSrc = cur.image;
+      const next = backImg;
+      next.setAttribute('src', cur.image);
+      const show = () => { next.classList.add('on'); frontImg.classList.remove('on'); [frontImg, backImg] = [next, frontImg]; };
+      if (typeof next.decode === 'function') next.decode().then(show, show); else show();
+    }
+  }
+
+  // the big robot: in the expanded window it leaves the header and stands above the conversation
+  const robotBox = $('head-robot');
+  const robotHome = robotBox.parentNode;
+  const robotNext = robotBox.nextSibling;
+  function placeRobot(layout) {
+    if (layout === 'wide') { if (robotBox.parentNode !== $('hero')) $('hero').appendChild(robotBox); }
+    else if (robotBox.parentNode !== robotHome) robotHome.insertBefore(robotBox, robotNext);
+  }
+
   api.onOtherSpeaking((on) => { otherSpeaking = on; if (!on) { quietUntil = Date.now() + 700; chimeIfWaiting(); } });
   // second line of defence: whatever asks the page to scroll (focus, find, a keyboard shortcut) is put back at the top
   window.addEventListener('scroll', () => { if (window.scrollY || document.scrollingElement.scrollTop) window.scrollTo(0, 0); });
-  api.onState((s) => { state = s; stateVersion += 1; render(); if (thread.length) renderThread(false); runQueued(); });
+  api.onState((s) => { state = s; stateVersion += 1; render(); applyLayout(); if (thread.length) renderThread(false); runQueued(); });
+  applyLayout();
   api.ready();
 })();

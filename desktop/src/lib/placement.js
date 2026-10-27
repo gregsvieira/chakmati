@@ -79,4 +79,15 @@ function panelBounds({ icon, size, workArea, panel }) {
   return { x, y, width: panel.w, height: panel.h };
 }
 
-module.exports = { GAP, SIDES, chooseSide, layoutWidget, clampIcon, panelBounds };
+// The expanded panel: "wide" is a big window in the middle of the screen (the person can still drag its edges); "full" fills the usable area.
+const WIDE = { maxW: 1440, maxH: 900, share: 0.92 };
+const MIN_WIDE = { w: 1000, h: 600 };
+function expandedBounds({ workArea, mode }) {
+  const wa = workArea;
+  if (mode === 'full') return { x: wa.x, y: wa.y, width: wa.width, height: wa.height };
+  const width = Math.max(Math.min(WIDE.maxW, Math.round(wa.width * WIDE.share)), Math.min(MIN_WIDE.w, wa.width));
+  const height = Math.max(Math.min(WIDE.maxH, Math.round(wa.height * WIDE.share)), Math.min(MIN_WIDE.h, wa.height));
+  return { x: wa.x + Math.round((wa.width - width) / 2), y: wa.y + Math.round((wa.height - height) / 2), width, height };
+}
+
+module.exports = { GAP, SIDES, MIN_WIDE, chooseSide, layoutWidget, clampIcon, panelBounds, expandedBounds };

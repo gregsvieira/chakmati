@@ -14,12 +14,36 @@ const items = (list, texts) => list.replaceChildren(...texts.map((t) => el('li',
 const show = (name) => { for (const s of document.querySelectorAll('main > section')) s.hidden = s.id !== `s-${name}`; };
 
 let scan;
+let face = null;   // the tiny Chakmati that says the remark about the computer
 const chosen = new Set();
+
+// WhatsApp: the first time it is ticked, a notice about not getting the number blocked has to be read ("Compreendi e estou ciente!").
+// Esc or a click outside closes it without ticking the box.
+const waGate = window.NoticeGate.createGate((() => { try { return window.localStorage; } catch { return { getItem: () => null, setItem: () => {} }; } })(), 'chakmati.whatsapp-notice');
+function showWhatsAppNotice(onAck, onCancel) {
+  const modal = $('notice-modal');
+  const finish = (fn) => { modal.hidden = true; document.removeEventListener('keydown', onKey, true); modal.removeEventListener('mousedown', onOutside); fn(); };
+  const onKey = (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); finish(onCancel); } else if (e.key === 'Tab') { e.preventDefault(); $('notice-ok').focus(); }
+  };
+  const onOutside = (e) => { if (e.target === modal) finish(onCancel); };
+  $('notice-ok').onclick = () => finish(onAck);
+  modal.hidden = false;
+  document.addEventListener('keydown', onKey, true);
+  modal.addEventListener('mousedown', onOutside);
+  $('notice-ok').focus();
+}
 
 async function start() {
   scan = await api.scan();
   const rows = [['Sistema', scan.hwText.system], ['Memória RAM', scan.hwText.ram], ['Espaço livre', scan.hwText.disk], ['Núcleos', scan.hwText.cores]];
   $('hw').replaceChildren(...rows.map(([k, v]) => el('div', { className: 'row' }, el('span', { textContent: k }), el('strong', { textContent: v }))));
+  $('quip-row').hidden = !scan.quip;
+  if (scan.quip) {
+    $('quip').textContent = scan.quip.text;
+    if (!face) { face = window.Robot.create($('quip-face')); face.svg.setAttribute('viewBox', '26 4 42 54'); }   // only his head, tiny
+    face.setMood(scan.quip.tone === 'praise' ? 'happy' : 'idle');
+  }
   $('verdict').textContent = scan.levelText;
   $('verdict').dataset.level = scan.verdict.level;
   items($('reasons'), [...scan.verdict.reasons, ...scan.verdict.notes]);
@@ -34,7 +58,14 @@ function renderOptions() {
   $('model-line').textContent = `Modelo de conversa para este computador: ${scan.model.label} (${scan.model.id}, ${scan.model.sizeText}). Sempre instalado.`;
   $('options').replaceChildren(...scan.options.map((o) => {
     const box = el('input', { type: 'checkbox', id: `opt-${o.id}` });
-    box.addEventListener('change', () => (box.checked ? chosen.add(o.id) : chosen.delete(o.id)));
+    box.addEventListener('change', () => {
+      if (box.checked && o.id === 'whatsapp') {
+        box.checked = false;  // ticked only after the notice was acknowledged
+        waGate.run(showWhatsAppNotice, () => { box.checked = true; chosen.add(o.id); });
+        return;
+      }
+      if (box.checked) chosen.add(o.id); else chosen.delete(o.id);
+    });
     const title = el('span', { className: 'name', textContent: o.label });
     if (scan.suggested[o.id]) title.append(el('span', { className: 'badge', textContent: 'Recomendado para este PC' }));
     const text = el('span', {}, title, el('br'), el('span', { textContent: o.description }), el('br'), el('span', { className: 'cost', textContent: o.costText }));

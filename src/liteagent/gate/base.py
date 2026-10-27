@@ -12,6 +12,7 @@ class Route(str, Enum):
     AUTOMATION = "automation"
     HOME = "home"
     COMPUTER = "computer"
+    BROWSER = "browser"
 
     @property
     def is_slow(self) -> bool:

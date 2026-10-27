@@ -1,10 +1,12 @@
 import asyncio
+import re
 import time
 from datetime import datetime
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 
 from .automations.confirm import verdict
+from . import patriot
 from .canned import canned_answer
 from .persona import AWAKE_SECONDS, PERSONA, wake_reply
 from .timeguard import calendar_facts, needs_today, needs_web, today_line
@@ -14,7 +16,7 @@ from .llm import ChatClient
 from .research.tool import ResearchTool
 
 _ROUTE_PROMPTS: dict[Route, str] = {
-    Route.CHAT: "You are a concise, friendly assistant. Answer in the user's language.",
+    Route.CHAT: "You are a concise, friendly assistant. Answer in the user's language. Never invent rules, permissions or security policies (you do not have a policy against visiting sites or using accounts): if a request needs a tool you do not have in this chat, say what you would need.",
     Route.RESEARCH: (
         "You are a research assistant. Answer in the user's language. "
         "You have no web access yet: say what you know and what you could not verify."
@@ -27,6 +29,7 @@ _ROUTE_PROMPTS: dict[Route, str] = {
         "You are a WhatsApp assistant, but WhatsApp is not connected. Say so briefly in the user's language."
     ),
     Route.COMPUTER: "You can act on the computer, but that is not available. Say so briefly in the user's language.",
+    Route.BROWSER: "You can use a web browser, but it is not available. Say so briefly in the user's language.",
     Route.HOME: "You control a smart home, but it is not connected. Say so briefly in the user's language.",
     Route.AUTOMATION: "You help create automations, but they are not available. Say so briefly in the user's language.",
     Route.TASK: (
@@ -41,18 +44,19 @@ SYSTEM_PROMPTS: dict[Route, str] = {route: f"{PERSONA} {text}" for route, text i
 
 CONFIRM_SECONDS = 30.0
 COMPUTER_OFF = "As ações no computador estão desativadas neste motor."
-HOME_OFF = "A casa inteligente está desativada. Configure o Home Assistant (LITEAGENT_HOME_BACKEND=homeassistant, URL e token)."
+HOME_OFF = "A casa inteligente está desativada. Configure o Home Assistant (CHAKMATI_HOME_BACKEND=homeassistant, URL e token)."
+BROWSER_OFF = "O navegador está desativado neste motor. Ligue com CHAKMATI_BROWSER_BACKEND=chrome e instale: uv sync --extra browser."
 AUTOMATION_OFF = "As automações estão desativadas neste motor."
 
 CALENDAR_OFF = (
     "A integração com a agenda está desativada. No robô, ligue em Ajustes > Integrações; "
-    "ou use LITEAGENT_CALENDAR_BACKEND=auto (ou macos / ics) e reinicie."
+    "ou use CHAKMATI_CALENDAR_BACKEND=auto (ou macos / ics) e reinicie."
 )
 
 
 WHATSAPP_OFF = (
     "A integração com o WhatsApp está desativada. No robô, ligue em Ajustes > Integrações; "
-    "ou use LITEAGENT_WHATSAPP_BACKEND=openwa (com o OpenWA em execução) e reinicie."
+    "ou use CHAKMATI_WHATSAPP_BACKEND=openwa (com o OpenWA em execução) e reinicie."
 )
 
 
@@ -96,9 +100,12 @@ class Engine:
         home_service=None,
         computer_assistant=None,
         computer_service=None,
+        browser_agent=None,
+        typing_delay: float = 0.012,
         now: Callable[[], float] = time.time,
         clock: Callable[[], datetime] = lambda: datetime.now().astimezone(),
     ):
+        self._typing_delay = typing_delay  # seconds between the pieces of a fixed answer: it is typed out, not dropped whole
         self._now = now
         self._clock = clock
         self._awake_until = 0.0
@@ -115,6 +122,7 @@ class Engine:
         self._home_service = home_service
         self._computer = computer_assistant
         self._computer_service = computer_service
+        self._browser = browser_agent
 
     def _notify_job(self) -> None:
         if self._on_job_created is not None:
@@ -160,6 +168,21 @@ class Engine:
             return getattr(service, "cancel_text", "Certo, não criei a automação.")
         return None
 
+    async def _plan_text(self, job: Job) -> str:
+        """The steps of this job, shown first ("Plano: 1. ... 2. ..."), or "" when the job is too simple to need one. Never stops the job."""
+        try:
+            if job.route == Route.COMPUTER.value and self._computer is not None and hasattr(self._computer, "plan"):
+                steps = await self._computer.plan(job.prompt)
+            elif job.route == Route.BROWSER.value and self._browser is not None:
+                steps = self._browser.plan(job.prompt)
+            else:
+                steps = None
+        except Exception:
+            steps = None
+        if not steps:
+            return ""
+        return "Plano:\n" + "\n".join(f"{i}. {step}" for i, step in enumerate(steps, 1)) + "\n\n"
+
     async def _computer_job(self, job: Job) -> str:
         if self._computer is None:
             return COMPUTER_OFF
@@ -203,10 +226,27 @@ class Engine:
                 today = " ".join([today_line(now), *calendar_facts(text, now)])
         return route, today, offline
 
+    async def _patriotic(self, text: str, answer: patriot.Patriotic) -> AsyncIterator[str]:
+        """The pieces of a patriotic answer as they are typed: the fixed parts word by word, the model's part as the model writes it."""
+        for part in answer.parts:
+            if part == patriot.MODEL:
+                if hasattr(self._llm, "stream_chat"):
+                    async for delta in self._llm.stream_chat(_messages(Route.CHAT, text)):  # type: ignore[attr-defined]
+                        yield delta
+                else:
+                    yield await self._llm.chat(_messages(Route.CHAT, text))
+                continue
+            for piece in re.findall(r"\S+\s*|\s+", part):
+                yield piece
+                if self._typing_delay:
+                    await asyncio.sleep(self._typing_delay)
+
     async def handle(self, text: str) -> Reply:
         fixed = self._wake(text) or await self._confirmation(text) or canned_answer(text)
         if fixed is not None:
             return Reply("answer", Route.CHAT, text=fixed)
+        if (patriotic := patriot.match(text)) is not None:
+            return Reply("answer", Route.CHAT, text="".join([piece async for piece in self._patriotic(text, patriotic)]).strip())
         route, today, offline = await self._plan(text)
         if not route.is_slow:
             answer = await self._llm.chat(_messages(route, text, today, offline))
@@ -234,8 +274,8 @@ class Engine:
             return await self._automation_job(job)
         if job.route == Route.HOME.value:
             return await self._home_job(job)
-        if job.route == Route.COMPUTER.value:
-            return await self._computer_job(job)
+        if job.route in (Route.COMPUTER.value, Route.BROWSER.value):
+            return "".join([piece async for piece in self.run_job_stream(job)])
         now = self._clock()
         today = today_line(now)  # research answers are about "now": they always know what day it is
         if self._researcher is not None and job.route == Route.RESEARCH.value:
@@ -251,6 +291,14 @@ class Engine:
             yield {"type": "route", "route": Route.CHAT.value}
             yield {"type": "delta", "text": fixed}
             yield {"type": "done", "result": fixed}
+            return
+        if (patriotic := patriot.match(text)) is not None:
+            yield {"type": "route", "route": Route.CHAT.value}
+            parts: list[str] = []
+            async for piece in self._patriotic(text, patriotic):
+                parts.append(piece)
+                yield {"type": "delta", "text": piece}
+            yield {"type": "done", "result": "".join(parts).strip()}
             return
         route, today, offline = await self._plan(text)
         yield {"type": "route", "route": route.value}
@@ -280,7 +328,18 @@ class Engine:
             yield await self._home_job(job)
             return
         if job.route == Route.COMPUTER.value:
+            if plan := await self._plan_text(job):
+                yield plan  # first thing the person sees: what is about to be done, and with which tool or model
             yield await self._computer_job(job)
+            return
+        if job.route == Route.BROWSER.value:
+            if self._browser is None:
+                yield BROWSER_OFF
+                return
+            if plan := await self._plan_text(job):
+                yield plan
+            async for piece in self._browser.run(job.id, job.prompt):
+                yield piece
             return
         now = self._clock()
         today = today_line(now)

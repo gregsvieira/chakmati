@@ -117,6 +117,23 @@ class ResearchTool:
         usable = reply and "\n" not in reply and len(reply) <= 100 and not re.search(r"[\[\]{}<>]", reply) and str(now.year) in reply
         return reply if usable else fallback
 
+    async def gather(self, query: str, max_chars: int = 4000) -> tuple[str, list[str]]:
+        """The text of the best pages for `query`, for something other than an answer (a document the person asked to make):
+        (text, source urls), or ("", []) when nothing usable was found. The text is third-party DATA: callers fence it."""
+        results = await self._search.search(query, limit=10)
+        results = await asyncio.to_thread(filter_results, query, results, self._scorer, self._cutoff)
+        chosen = results[: self._max_pages]
+        bodies = await self._fetch_all(chosen)
+        parts, urls = [], []
+        for result, body in zip(chosen, bodies, strict=True):
+            if body is None:
+                continue
+            text = neutralize(extract_text(body, result.url))
+            if text.strip():
+                parts.append(text.strip())
+                urls.append(result.url)
+        return "\n\n".join(parts)[:max_chars], urls
+
     async def _prepare(self, query: str, today: str | None = None, now: datetime | None = None) -> tuple[list[dict[str, str]] | None, list[str]]:
         """Search, filter, fetch and rank. Returns (chat messages, source urls), or (None, [])
         when no usable page was found. For "the latest"-style questions (`now` given) it also searches with the month and

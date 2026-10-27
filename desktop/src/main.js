@@ -1,14 +1,16 @@
 'use strict';
-// Floating robot assistant for lite-agent. This process owns the windows and is the only one that talks to the engine.
+// Floating robot assistant for Chakmati. This process owns the windows and is the only one that talks to the engine.
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
-const { app, BrowserWindow, Tray, Menu, ipcMain, screen, globalShortcut, nativeImage, nativeTheme, systemPreferences } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, screen, globalShortcut, nativeImage, nativeTheme, systemPreferences, shell } = require('electron');
 
 const { EngineClient, EngineError } = require('./lib/engine-client');
 const settingsLib = require('./lib/settings');
-const { chooseSide, layoutWidget, clampIcon, panelBounds } = require('./lib/placement');
+const links = require('./lib/links');
+const { bellState, moodWithBell, countsAsNotice } = require('./lib/bell');
+const { chooseSide, layoutWidget, clampIcon, panelBounds, expandedBounds, MIN_WIDE } = require('./lib/placement');
 const { NoticeQueue, present, bubbleDuration } = require('./lib/notice-queue');
 const { describe } = require('./lib/describe');
 const { brief } = require('./lib/brief');
@@ -23,9 +25,9 @@ const BUBBLE = { w: 320, h: 120 };
 const PANEL = { w: 400, h: 640 };
 const HOTKEYS = { toggle: 'CommandOrControl+Shift+Space', panic: 'CommandOrControl+Shift+H' };
 const MAX_TEXT = 2000;
-const SNAPSHOT = process.env.LITEAGENT_DESKTOP_SNAPSHOT;
-const PROTECT_TEST = process.env.LITEAGENT_DESKTOP_PROTECT_TEST;
-const SETUP = process.argv.includes('--setup') || process.env.LITEAGENT_DESKTOP_SETUP === '1';
+const SNAPSHOT = process.env.CHAKMATI_DESKTOP_SNAPSHOT;
+const PROTECT_TEST = process.env.CHAKMATI_DESKTOP_PROTECT_TEST;
+const SETUP = process.argv.includes('--setup') || process.env.CHAKMATI_DESKTOP_SETUP === '1';
 const isMac = process.platform === 'darwin';
 const isLinux = process.platform === 'linux';
 
@@ -46,7 +48,9 @@ let quitting = false;
 let happyUntil = 0;
 const queue = new NoticeQueue();
 const streams = new Map();
-const state = { voice: null, engineUp: false, overview: null, notices: [], busy: 0, hidden: false, panelOpen: false, bubbleVisible: false, warnedDown: false };
+const jobOf = new Map();   // stream id -> the engine's job id, once the engine says it queued one
+const stopped = new Set(); // streams the person stopped with Parar
+const state = { voice: null, engineUp: false, overview: null, notices: [], busy: 0, hidden: false, panelOpen: false, bubbleVisible: false, warnedDown: false, unread: 0, asking: false };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const alive = (w) => w && !w.isDestroyed();
@@ -72,9 +76,9 @@ const webPreferences = () => ({
   spellcheck: false,
 });
 
-// Debugging aid (LITEAGENT_DEBUG_WINDOWS=1): every time a window changes size or place, write who did it to a log file.
+// Debugging aid (CHAKMATI_DEBUG_WINDOWS=1): every time a window changes size or place, write who did it to a log file.
 function traceWindow(name, win) {
-  if (process.env.LITEAGENT_DEBUG_WINDOWS !== '1' || !win) return;
+  if (process.env.CHAKMATI_DEBUG_WINDOWS !== '1' || !win) return;
   const file = path.join(app.getPath('userData'), 'window-debug.log');
   const log = (what, extra = '') => {
     try { fs.appendFileSync(file, `${new Date().toISOString()} ${name} ${what} ${JSON.stringify(win.getBounds())} ${extra}\n`); } catch { /* debugging only */ }
@@ -141,14 +145,22 @@ function applyOverview(o) {
   if (state.awakeUntil) awakeTimer = setTimeout(() => { sendPanelState(); syncListening(); }, state.awakeUntil - Date.now() + 300);
   syncListening();
 }
-// The approval icon on the character: filled orange while something waits for the person, an outline otherwise.
-let pendingShown = null;
-function syncPending() {
-  const n = (state.overview && Array.isArray(state.overview.pending)) ? state.overview.pending.length : 0;
-  if (n === pendingShown) return;
-  pendingShown = n;
-  sendTo(widgetWin, 'widget:pending', n);
+// The bell behind the character's head: yellow while something waits for the person (an approval, a question), red while there is news
+// they have not seen (it clears when the panel is opened), a plain outline otherwise. The face follows it (see refreshMood).
+let bellShown = '';
+function currentBell() {
+  const pending = (state.overview && Array.isArray(state.overview.pending)) ? state.overview.pending.length : 0;
+  return bellState({ pending, asking: state.asking === true, unread: state.unread || 0 });
 }
+function syncBell() {
+  const bell = currentBell();
+  const key = `${bell.state}|${bell.label}`;
+  if (key === bellShown) return;
+  bellShown = key;
+  sendTo(widgetWin, 'widget:bell', bell);
+  sendPanelState();
+}
+const syncPending = syncBell;
 // The blinking microphone beside the character: shown while the microphone waits for a command, gone as soon as it stops.
 let listeningShown = null;
 function syncListening() {
@@ -173,9 +185,12 @@ function effectiveMood(base) {
 function refreshMood() {
   let mood = currentDescription().mood;
   if (settings.mood !== 'auto') mood = effectiveMood(mood);
-  else if (mood !== 'offline' && mood !== 'thinking') {
-    if (Date.now() < happyUntil) mood = 'happy';
-    else if (state.bubbleVisible) mood = 'alert';
+  else {
+    mood = moodWithBell(mood, currentBell());
+    if (mood !== 'offline' && mood !== 'thinking' && mood !== 'alert' && mood !== 'happy') {
+      if (Date.now() < happyUntil) mood = 'happy';
+      else if (state.bubbleVisible) mood = 'alert';
+    }
   }
   sendTo(widgetWin, 'widget:mood', mood);
 }
@@ -207,6 +222,7 @@ function nextBubble() {
 
 function pushNotice(notice) {
   state.notices.push(notice);
+  if (!state.panelOpen && countsAsNotice(notice)) { state.unread = (state.unread || 0) + 1; syncBell(); refreshMood(); }
   if (state.notices.length > 50) state.notices.shift();
   if (state.panelOpen) { sendPanelState(); return; } // the panel is open: the notice shows up in its list instead of a bubble
   if (state.hidden) return;
@@ -234,10 +250,33 @@ function createPanel() {
   panelWin.on('closed', () => { panelWin = null; state.panelOpen = false; });
 }
 
+// "compact" is the small card beside the robot; "wide" is a big window in the middle of the screen; "full" fills the usable area.
+// In the big ones the window can be resized by its edges (the page lays itself out from its width).
+let panelMode = 'compact';
+
 function positionPanel() {
   if (!alive(panelWin)) return;
   const wa = nearestWorkArea({ x: icon.x + ICON / 2, y: icon.y + ICON / 2 });
-  panelWin.setBounds(panelBounds({ icon, size: ICON, workArea: wa, panel: PANEL }));
+  if (panelMode === 'compact') panelWin.setBounds(panelBounds({ icon, size: ICON, workArea: wa, panel: PANEL }));
+  else panelWin.setBounds(expandedBounds({ workArea: wa, mode: panelMode }));
+}
+
+// In the big window the character stands in the conversation (the page draws it), so the little one on the desktop steps aside.
+function syncWidget() {
+  if (!alive(widgetWin) || state.hidden) return;
+  if (state.panelOpen && panelMode !== 'compact') widgetWin.hide(); else widgetWin.showInactive();
+}
+
+function setPanelMode(mode) {
+  if (!['compact', 'wide', 'full'].includes(mode) || mode === panelMode) return;
+  panelMode = mode;
+  if (alive(panelWin)) {
+    panelWin.setResizable(mode !== 'compact');
+    panelWin.setMinimumSize(mode === 'compact' ? 0 : MIN_WIDE.w, mode === 'compact' ? 0 : MIN_WIDE.h);
+    positionPanel();
+  }
+  syncWidget();
+  sendPanelState();
 }
 
 function prettyHotkey(accel) {
@@ -250,13 +289,15 @@ function panelState() {
     engineUp: state.engineUp,
     overview: overviewNow(),
     busy: state.busy > 0,
-    describe: { ...currentDescription(), mood: effectiveMood(currentDescription().mood) },
+    describe: { ...currentDescription(), mood: settings.mood === 'auto' ? moodWithBell(currentDescription().mood, currentBell()) : effectiveMood(currentDescription().mood) },
+    bell: currentBell(),
     notices: state.notices.slice(-20),
     settings: { protect: settings.protect, masked: settings.masked, autoSend: settings.autoSend, autoRunSafe: settings.autoRunSafe, hear: settings.hear, talk: settings.talk, enhancedVoice: settings.enhancedVoice, voiceSpeed: settings.voiceSpeed, speakEmojis: settings.speakEmojis, micSource: settings.micSource, still: settings.still, bubbleSide: settings.bubbleSide, mood: settings.mood, whatsapp: settings.whatsapp, calendar: settings.calendar, research: settings.research },
     voice: state.voice,
     ownsEngine: !!engineProcess,
     canOpenWa: !!projectRoot(),
     panelOpen: state.panelOpen,
+    panelMode,
     hotkeys: { toggle: prettyHotkey(HOTKEYS.toggle), panic: prettyHotkey(HOTKEYS.panic) },
   };
 }
@@ -268,9 +309,13 @@ function openPanel() {
   if (!alive(panelWin)) createPanel();
   hideBubble();
   state.panelOpen = true;
+  state.unread = 0;  // opening the panel is seeing the news
+  syncBell();
+  refreshMood();
   positionPanel();
   panelWin.show();
   panelWin.focus();
+  syncWidget();
   sendPanelState();
   refreshOverview();
   clearInterval(panelTimer);
@@ -282,6 +327,7 @@ function closePanel() {
   state.panelOpen = false;
   clearInterval(panelTimer);
   if (alive(panelWin)) panelWin.hide();
+  syncWidget();
   sendPanelState(); // the panel window keeps running (and listening): it must know it is closed
   rebuildMenu();
 }
@@ -364,7 +410,7 @@ async function healthLoop() {
     if (up) sayHello();
     // a real problem, not the normal start-up: it was running and stopped, or it never came up
     if (!up && !state.warnedDown && ((wasUp === true) || (wasUp === false && Date.now() - startedAt > 90000))) {
-      localNotice(wasUp === true ? 'Perdi a conexão com o motor do lite-agent.' : 'O motor do lite-agent não iniciou. Veja o engine.log.');
+      localNotice(wasUp === true ? 'Perdi a conexão com o motor do Chakmati.' : 'O motor do Chakmati não iniciou. Veja o engine.log.');
       state.warnedDown = true;
     }
     if (up) state.warnedDown = false;
@@ -440,7 +486,7 @@ async function restartEngine() {
 
 // ---- OpenWA (the WhatsApp bridge). Its browser window is only needed once, to scan the QR code; closing that window
 // stops the session, so after the link is made the app restarts OpenWA without a window (the login stays saved).
-const OPENWA_URL = process.env.LITEAGENT_OPENWA_URL || 'http://127.0.0.1:8081';
+const OPENWA_URL = process.env.CHAKMATI_OPENWA_URL || 'http://127.0.0.1:8081';
 let owaWatch = null; // { abort: AbortController } while a link attempt is being watched
 
 async function owaHealth() {
@@ -522,7 +568,7 @@ async function watchOwaLink() {
 
 async function openWaSetup() {
   const root = projectRoot();
-  if (!root) return { ok: false, error: 'Não encontrei a pasta do lite-agent.' };
+  if (!root) return { ok: false, error: 'Não encontrei a pasta do Chakmati.' };
   const health = await owaHealth();
   if (health && health.connected) { refreshOverview(); return { ok: true, message: 'O WhatsApp já está conectado.' }; }
   // Not connected: always start again with a fresh visible window. An old one may be minimized, hidden or stuck, and
@@ -633,7 +679,7 @@ async function downloadVoice() {
 }
 
 function updateSetting(key, value) {
-  if (process.env.LITEAGENT_DEBUG_WINDOWS === '1') { try { fs.appendFileSync(path.join(app.getPath('userData'), 'window-debug.log'), `${new Date().toISOString()} SETTING ${key}=${JSON.stringify(value)}\n`); } catch { /* debugging only */ } }
+  if (process.env.CHAKMATI_DEBUG_WINDOWS === '1') { try { fs.appendFileSync(path.join(app.getPath('userData'), 'window-debug.log'), `${new Date().toISOString()} SETTING ${key}=${JSON.stringify(value)}\n`); } catch { /* debugging only */ } }
   if (key === 'protect' && typeof value === 'boolean') settings.protect = value;
   else if (key === 'masked' && typeof value === 'boolean') settings.masked = value;
   else if (key === 'bubbleSide' && settingsLib.SIDES.includes(value)) settings.bubbleSide = value;
@@ -692,7 +738,7 @@ function friendlyError(e) {
 function registerIpc() {
   // The floating widget reads notices aloud; tell the panel's microphone so it does not hear (and transcribe) them.
   ipcMain.on('widget:speaking', (_e, on) => sendTo(panelWin, 'panel:other-speaking', on === true));
-  ipcMain.on('widget:ready', () => { applyLayout(); refreshMood(); sendTo(widgetWin, 'widget:still', settings.still); sendVoice(); listeningShown = null; syncListening(); pendingShown = null; syncPending(); });
+  ipcMain.on('widget:ready', () => { applyLayout(); refreshMood(); sendTo(widgetWin, 'widget:still', settings.still); sendVoice(); listeningShown = null; syncListening(); bellShown = ''; syncBell(); });
   ipcMain.on('widget:hover', (_e, inside) => { if (!isLinux && alive(widgetWin)) widgetWin.setIgnoreMouseEvents(!inside, { forward: true }); });
   ipcMain.on('widget:drag-start', () => { dragStart = { ...icon }; });
   ipcMain.on('widget:drag-move', (_e, d) => {
@@ -710,6 +756,7 @@ function registerIpc() {
 
   ipcMain.on('panel:ready', sendPanelState);
   ipcMain.on('panel:close', closePanel);
+ipcMain.on('panel:layout', (_e, mode) => setPanelMode(mode));
   // With the panel closed, what Chakmati answers appears the way notices do: a bubble by the character (and spoken, if on).
   ipcMain.on('panel:reply', (_e, p) => {
     if (state.panelOpen || state.hidden || !p || typeof p.text !== 'string' || !p.text.trim()) return;
@@ -717,10 +764,20 @@ function registerIpc() {
     if (!text) return;
     pushNotice({ id: -Date.now(), kind: 'reply', text, masked: 'O Chakmati respondeu.', ts: Date.now() / 1000, key: `reply:${Date.now()}` });
   });
+  // A link icon in a message: opened in the person's own browser, only http(s) and only what was in the conversation's text
+  ipcMain.on('panel:open-link', (_e, url) => { const safe = links.safeLink(url); if (safe) shell.openExternal(safe); });
   ipcMain.on('panel:refresh', refreshOverview);
   ipcMain.on('panel:panic', () => setHidden(true));
   ipcMain.on('panel:restart', restartApp);
-  ipcMain.on('panel:cancel', (_e, id) => { const ac = streams.get(id); if (ac) ac.abort(); });
+  // Parar: a job (browser, files) is stopped in the engine and its own stream says so; a plain answer is simply no longer waited for.
+  ipcMain.on('panel:cancel', async (_e, id) => {
+    const ac = streams.get(id);
+    if (!ac) return;
+    stopped.add(id);
+    const jobId = jobOf.get(id);
+    if (jobId) { try { await engine.cancelJob(jobId); return; } catch { /* the engine could not be asked: stop waiting for it instead */ } }
+    ac.abort();
+  });
 
   // Reading a conversation. Names and texts are hidden in discreet mode, so these refuse to run then.
   const guard = () => (settings.masked ? 'Modo discreto ligado: desligue em Ajustes para ver as conversas.' : state.engineUp ? null : 'O motor não está rodando.');
@@ -775,9 +832,12 @@ function registerIpc() {
   ipcMain.handle('panel:openwa', () => openWaSetup());
   ipcMain.handle('panel:set-setting', (_e, payload) => (payload && updateSetting(payload.key, payload.value) ? { ok: true } : { ok: false }));
 
-  ipcMain.handle('panel:send', async (_e, text) => {
+  ipcMain.handle('panel:input', async (_e, jobId, requestId, value) => {
+  try { return await engine.sendInput(jobId, requestId, value); } catch { return { ok: false, error: 'Não consegui enviar a resposta. Tente de novo.' }; }
+});
+ipcMain.handle('panel:send', async (_e, text) => {
     if (typeof text !== 'string' || !text.trim() || text.length > MAX_TEXT) return { error: 'Pedido inválido.' };
-    if (!state.engineUp) return { error: 'O motor não está rodando. Inicie o lite-agent.' };
+    if (!state.engineUp) return { error: 'O motor não está rodando. Inicie o Chakmati.' };
     // a command arrived: the microphone stops waiting for one (the wake phrase itself starts the wait again once answered)
     state.awakeUntil = 0;
     syncListening();
@@ -791,14 +851,22 @@ function registerIpc() {
     (async () => {
       let failed = false;
       try {
-        for await (const event of engine.streamMessage(text, ac.signal)) sendTo(panelWin, 'panel:message', { id, event });
+        for await (const event of engine.streamMessage(text, ac.signal)) {
+          if (event.type === 'job' && event.job_id) jobOf.set(id, event.job_id);
+          if (event.type === 'input') { state.asking = true; syncBell(); refreshMood(); } else if (event.type === 'input_done') { state.asking = false; syncBell(); refreshMood(); }
+          sendTo(panelWin, 'panel:message', { id, event });
+        }
       } catch (e) {
-        failed = true;
-        sendTo(panelWin, 'panel:message', { id, event: { type: 'error', error: timedOut ? 'Demorei demais e parei de esperar. Pode pedir de novo.' : friendlyError(e) } });
+        failed = !stopped.has(id);
+        if (stopped.has(id)) sendTo(panelWin, 'panel:message', { id, event: { type: 'cancelled', text: 'Interrompido por você.' } });
+        else sendTo(panelWin, 'panel:message', { id, event: { type: 'error', error: timedOut ? 'Demorei demais e parei de esperar. Pode pedir de novo.' : friendlyError(e) } });
       } finally {
+        if (state.asking) { state.asking = false; syncBell(); refreshMood(); }
         sendTo(panelWin, 'panel:message', { id, event: { type: 'end' } });
         clearTimeout(timeout);
         streams.delete(id);
+        jobOf.delete(id);
+        stopped.delete(id);
         state.busy = Math.max(0, state.busy - 1);
         if (!failed) happyUntil = Date.now() + 3000;
         clearTimeout(moodTimer);

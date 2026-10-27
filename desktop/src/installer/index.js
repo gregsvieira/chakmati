@@ -3,7 +3,7 @@
 const path = require('node:path');
 const { BrowserWindow, dialog, shell } = require('electron');
 const { readHardware } = require('./hardware');
-const { verdict: judge, suggestions } = require('./tiers');
+const { verdict: judge, suggestions, reasoningFor } = require('./tiers');
 const { MODELS, optionsFor } = require('./catalog');
 const { buildPlan } = require('./plan');
 const { runPlan } = require('./run-plan');
@@ -12,6 +12,7 @@ const { makeSync } = require('./engine-sync');
 const { writeSetupDone } = require('./first-run');
 const { extrasFromSettings } = require('../lib/engine-launch');
 const { formatSize, levelText } = require('./format');
+const { quip } = require('./quips');
 const settingsLib = require('../lib/settings');
 
 const OLLAMA_DOWNLOAD = 'https://ollama.com/download';
@@ -37,15 +38,16 @@ function openSetup({ ipcMain, webPreferences, settingsFile, engine = null, onClo
     let ollamaUp = false;
     try { await runners.checkOllama(); ollamaUp = true; } catch { /* the page explains how to get it */ }
     return {
-      hw, verdict: v, levelText: levelText(v.level), suggested: suggestions(hw, v.level), ollamaUp,
+      hw, verdict: v, levelText: levelText(v.level), suggested: suggestions(hw, v.level), ollamaUp, quip: quip(hw, v),
       hwText: {
         system: `${hw.platform} ${hw.arch} (${hw.osRelease})`, ram: `${hw.ramGb} GB`, cores: String(hw.cores),
         disk: hw.freeDiskGb === null ? 'não consegui medir' : `${hw.freeDiskGb} GB livres`,
       },
       model: model && { id: model.id, label: model.label, sizeText: formatSize(model.diskMb) },
-      options: optionsFor(hw.platform, { packaged: !!engine }).map((o) => ({
-        id: o.id, label: o.label, description: o.description,
-        costText: o.diskMb || o.ramMb ? `cerca de ${formatSize(o.diskMb)} em disco e ${formatSize(o.ramMb)} de memória` : 'não ocupa espaço nem memória extra',
+      options: optionsFor(hw.platform, { packaged: !!engine }).filter((o) => o.id !== 'reasoning' || reasoningFor(hw)).map((o) => ({
+        id: o.id, label: o.id === 'reasoning' ? `${o.label}: ${reasoningFor(hw).id}` : o.label, description: o.description,
+        costText: o.id === 'reasoning' ? `cerca de ${formatSize(reasoningFor(hw).diskMb)} em disco e ${formatSize(reasoningFor(hw).ramMb)} de memória (não ao mesmo tempo que o modelo de conversa)`
+          : o.diskMb || o.ramMb ? `cerca de ${formatSize(o.diskMb)} em disco e ${formatSize(o.ramMb)} de memória` : 'não ocupa espaço nem memória extra',
       })),
     };
   }

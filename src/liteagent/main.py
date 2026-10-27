@@ -1,6 +1,11 @@
+import logging
 import uvicorn
 from fastapi import FastAPI
 
+from .browser.agent import BrowserAgent
+from .browser.frames import FrameStore
+from .browser.inputs import InputBroker
+from .browser.session import PlaywrightSession
 from .agenda.assistant import CalendarAssistant
 from .agenda.factory import build_calendar
 from .api import create_app
@@ -16,6 +21,7 @@ from .engine import Engine
 from .gate import build_gate
 from .jobs import JobStore, Worker
 from .llm import OllamaClient
+from .models import ModelCatalog
 from .loop.scorer import KeepAllScorer
 from .loop.twostage import LayaRelevanceScorer
 from .research.fetch import PageFetcher
@@ -39,12 +45,14 @@ def build_app(settings: Settings | None = None) -> FastAPI:
     keep_alive = s.keep_alive or None
     llm = OllamaClient(s.ollama_url, s.chat_model, think=s.think, keep_alive=keep_alive)
     researcher = None
+    search_backend = None
     if s.research_backend in {"ddg", "searxng"}:
         search = (
             SearxngBackend(s.searxng_url)
             if s.research_backend == "searxng"
             else DuckDuckGoHtmlBackend(user_agent=build_user_agent(s.contact))
         )
+        search_backend = search
         research_llm = OllamaClient(
             s.ollama_url,
             s.chat_model,
@@ -83,6 +91,13 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         if token:
             home_service = HomeService(HomeAssistantClient(s.home_url, token), actions)
             home_bot = HomeAssistantBot(llm, home_service)
+    frames = browser_agent = inputs = None
+    if s.browser_backend == "chrome":
+        frames = FrameStore(s.browser_frames_dir)
+        inputs = InputBroker()
+        browser_agent = BrowserAgent(llm, frames, lambda: PlaywrightSession(s.browser_profile, headless=s.browser_headless), max_steps=s.browser_max_steps,
+                                    search=search_backend, ask=inputs.ask)
+    catalog = ModelCatalog(s.ollama_url, configured=s.explain_model)  # which stronger model is installed (or named in CHAKMATI_EXPLAIN_MODEL), and fits
     worker_ref: list[Worker] = []
     engine = Engine(
         build_gate(s),
@@ -96,8 +111,9 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         automation_service=automation_service,
         home_assistant=home_bot,
         home_service=home_service,
-        computer_assistant=ComputerAssistant(llm, computer_service),
+        computer_assistant=ComputerAssistant(llm, computer_service, gather=researcher.gather if researcher is not None else None, models=catalog, reasoning_for=lambda name: OllamaClient(s.ollama_url, name, think=True, keep_alive="5m", timeout=900)),
         computer_service=computer_service,
+        browser_agent=browser_agent,
     )
     worker = Worker(store, engine.run_job, stream_handler=engine.run_job_stream)
     worker_ref.append(worker)
@@ -126,6 +142,8 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         automations=automation_service,
         home=home_service,
         computer=computer_service,
+        frames=frames,
+        inputs=inputs,
         on_startup=llm.preload if s.preload_model else None,
         calendar=calendar,
         whatsapp=whatsapp,
@@ -134,6 +152,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
 
 def main() -> None:
     # Loopback only: the engine is unauthenticated and must not be network-reachable.
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")  # the engine's own notes (the browser's human check, ...) reach the log, not only uvicorn's
     uvicorn.run(build_app(), host="127.0.0.1", port=8765)
 
 

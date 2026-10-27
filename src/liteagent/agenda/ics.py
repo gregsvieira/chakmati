@@ -12,7 +12,7 @@ import recurring_ical_events
 
 from .models import CalendarEvent, NewEvent
 
-PRODID = "-//lite-agent//agenda//PT"
+PRODID = "-//chakmati//agenda//PT"
 
 
 def _as_aware(value: date | datetime) -> tuple[datetime, bool]:
@@ -87,7 +87,7 @@ class IcsCalendarProvider:
         with self._lock:
             cal = self._load()
             event = icalendar.Event()
-            uid = f"{uuid.uuid4()}@lite-agent"
+            uid = f"{uuid.uuid4()}@chakmati"
             event.add("uid", uid)
             event.add("dtstamp", datetime.now(timezone.utc))
             event.add("summary", new.title)

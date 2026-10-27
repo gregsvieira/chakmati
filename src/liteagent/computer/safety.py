@@ -26,7 +26,7 @@ def plain(text: str) -> str:
     return " ".join("".join(c for c in unicodedata.normalize("NFKD", text.lower()) if not unicodedata.combining(c) and (c.isalnum() or c.isspace())).split())
 
 
-def resolve_new_file(workspace: str | Path, relative: str) -> Path:
+def resolve_new_file(workspace: str | Path, relative: str, extensions: set[str] = TEXT_EXTENSIONS) -> Path:
     """The absolute path for a new file named `relative` inside the workspace, or ComputerError."""
     root = Path(workspace).expanduser().resolve()
     name = (relative or "").strip().replace("\\", "/")
@@ -43,8 +43,8 @@ def resolve_new_file(workspace: str | Path, relative: str) -> Path:
         raise ComputerError("não crio arquivos ocultos nem fora da pasta de trabalho")
     if len(parts) > 4 or any(len(p) > MAX_NAME for p in parts):
         raise ComputerError("caminho longo demais")
-    if candidate.suffix.lower() not in TEXT_EXTENSIONS:
-        raise ComputerError(f"só crio arquivos de texto ({', '.join(sorted(TEXT_EXTENSIONS)[:8])}…)")
+    if candidate.suffix.lower() not in extensions:
+        raise ComputerError(f"só crio arquivos de texto ({', '.join(sorted(extensions)[:8])}…)")
     target = (root / candidate).resolve()
     try:
         target.relative_to(root)

@@ -46,7 +46,7 @@ def test_a_command_runs_only_after_approval_with_the_exact_argv_and_no_shell(tmp
     service, runner, _, work = make(tmp_path)
     action, ran = service.propose_command("mkdir proj")
     assert ran is None and runner.calls == []  # proposed, not run
-    assert "Executar: mkdir" in action.summary and "Verificado:" in action.summary
+    assert action.summary.startswith("Criar a pasta proj") and "Comando: mkdir" in action.summary and "Verificado:" in action.summary
     done = service.approve(action.id)
     assert done.status == "executed"
     argv, cwd, timeout = runner.calls[0]
@@ -168,7 +168,7 @@ def test_a_plan_is_shown_numbered_and_each_step_still_asks(tmp_path):
         {"type": "create_file", "path": "site/index.html", "content": "<h1>oi</h1>"},
         {"type": "command", "command": "python3 ola.py"},
     ])
-    for line in ("1. mkdir", "2. Criar o arquivo index.html", "3. python3", "[seguro]", "pede aprovação", "diga o que quer mudar"):
+    for line in ("1. Criar a pasta", "(mkdir", "2. Criar o arquivo index.html", "3. Rodar o script ola.py", "[seguro]", "pede aprovação", "diga o que quer mudar"):
         assert line in plan.summary
     assert runner.calls == [] and plan.payload["risk"] == "plan"
     done = service.approve(plan.id)
@@ -327,13 +327,13 @@ async def test_a_multi_step_request_becomes_a_numbered_plan_to_approve(tmp_path)
     service, runner, _, _ = make(tmp_path)
     bot = ComputerAssistant(LLM({"action": "steps", "goal": "montar site", "steps": [{"type": "command", "command": "mkdir site"}, {"type": "create_file", "path": "site/a.txt", "content": "oi"}]}), service)
     out = await bot.handle("monte uma pasta site com um a.txt")
-    assert "Plano (2 passos)" in out and "1. mkdir" in out and "2. Criar" in out and "[[action:" in out and runner.calls == []
+    assert "Plano (2 passos)" in out and "1. Criar a pasta" in out and "2. Criar" in out and "[[action:" in out and runner.calls == []
 
 
 async def test_a_single_command_is_proposed_with_its_exact_text(tmp_path):
     service, runner, _, _ = make(tmp_path)
     out = await ComputerAssistant(LLM({"action": "steps", "steps": [{"type": "command", "command": "mkdir projetos"}]}), service).handle("crie a pasta projetos")
-    assert out.startswith("Executar: mkdir") and "[[action:" in out and runner.calls == []
+    assert out.startswith("Criar a pasta") and "[[action:" in out and runner.calls == []
 
 
 async def test_assistant_edit_flow_fences_the_file_and_proposes_a_diff(tmp_path):
@@ -360,7 +360,7 @@ async def test_hostile_text_cannot_turn_into_a_command_the_model_only_sees_the_u
     llm = LLM({"action": "steps", "steps": [{"type": "command", "command": "cat a.txt"}]})
     out = await ComputerAssistant(llm, service).handle("mostre o a.txt")
     assert "rm -rf" not in json.dumps(llm.prompts)  # file text is never in the prompt for this action
-    assert out.startswith("Executar: cat")
+    assert out.startswith("Mostrar o conteúdo de")
     action = service.pending_confirmation()
     service.approve(action.id)
     assert [c[0][0] for c in runner.calls] == ["cat"]  # only what the person asked ran
@@ -446,7 +446,7 @@ def test_the_workspace_is_created_on_first_use_and_grep_without_matches_is_not_a
 async def test_one_unparseable_reply_is_retried_once(tmp_path):
     service, runner, _, _ = make(tmp_path)
     llm = LLM("não sei", {"action": "steps", "steps": [{"type": "command", "command": "mkdir a"}]})
-    out = await ComputerAssistant(llm, service).handle("crie a pasta a")
-    assert out.startswith("Executar: mkdir") and len(llm.prompts) == 2 and runner.calls == []
+    out = await ComputerAssistant(llm, service).handle("preciso de uma pasta chamada a")
+    assert out.startswith("Criar a pasta") and len(llm.prompts) == 2 and runner.calls == []
     llm2 = LLM("não sei", "continuo sem saber")
     assert "Não entendi" in await ComputerAssistant(llm2, service).handle("blá") and len(llm2.prompts) == 2

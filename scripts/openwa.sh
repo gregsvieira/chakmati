@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sets up and runs the local OpenWA server (https://openwa.dev) that lite-agent uses to talk to WhatsApp Web.
+# Sets up and runs the local OpenWA server (https://openwa.dev) that Chakmati uses to talk to WhatsApp Web.
 #
 #   scripts/openwa.sh setup      install OpenWA (+ its own Node.js) into ~/.lite-agent/openwa and create an API key
 #   scripts/openwa.sh start      start it with a VISIBLE browser window: scan the QR on first use
@@ -17,9 +17,9 @@
 #    (other projects may pin an exact Node version).
 set -euo pipefail
 
-DIR="${LITEAGENT_OPENWA_HOME:-$HOME/.lite-agent/openwa}"
-PORT="${LITEAGENT_OPENWA_PORT:-8081}"
-SESSION="${LITEAGENT_OPENWA_SESSION:-lite-agent}"
+DIR="${CHAKMATI_OPENWA_HOME:-${LITEAGENT_OPENWA_HOME:-$HOME/.lite-agent/openwa}}"
+PORT="${CHAKMATI_OPENWA_PORT:-${LITEAGENT_OPENWA_PORT:-8081}}"
+SESSION="${CHAKMATI_OPENWA_SESSION:-${LITEAGENT_OPENWA_SESSION:-lite-agent}}"
 OPENWA_VERSION="5.1.0"
 EFFECT_VERSION="4.0.0-beta.100"
 BIN="$DIR/node_modules/.bin"

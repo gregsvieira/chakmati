@@ -5,6 +5,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'self'; script-src 'self'">
   <title>Instalar o Chakmati</title>
   <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="robot.css">
   <link rel="stylesheet" href="installer.css">
 </head>
 <body>
@@ -14,6 +15,10 @@
     <section id="s-check" aria-live="polite">
       <h2>Seu computador</h2>
       <div id="hw" class="card"></div>
+      <div id="quip-row" class="quip-row" hidden>
+        <div id="quip-face" class="quip-face" aria-hidden="true"></div>
+        <p id="quip" class="quip-bubble"></p>
+      </div>
       <p id="verdict" class="verdict"></p>
       <ul id="reasons"></ul>
       <div id="ollama-help" class="card" hidden>
@@ -55,6 +60,25 @@
       <div class="actions"><button id="finish" type="button" class="primary" hidden>Concluir</button></div>
     </section>
   </main>
+
+  <div id="notice-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="notice-title" aria-describedby="notice-body" hidden>
+    <div class="modal-card">
+      <h2 id="notice-title">Atenção: proteja o seu número</h2>
+      <div id="notice-body">
+        <p>Colocamos algumas regras para evitar que o seu número seja bloqueado pela Meta, dona do WhatsApp: toda mensagem só sai com a sua aprovação, e o envio é limitado a 20 por hora, com um intervalo entre uma mensagem e outra.</p>
+        <p>Mesmo assim, o maior cuidado é seu. Recomendamos:</p>
+        <ul>
+          <li>não abusar de automações para o WhatsApp (nada de envios em massa ou repetitivos);</li>
+          <li>não enviar mensagens para contatos desconhecidos;</li>
+          <li>usar, de preferência, um número secundário.</li>
+        </ul>
+      </div>
+      <button id="notice-ok" class="primary" type="button">Compreendi e estou ciente!</button>
+    </div>
+  </div>
+
+  <script src="../lib/notice-gate.js"></script>
+  <script src="robot.js"></script>
   <script src="installer.js"></script>
 </body>
 </html>

@@ -149,3 +149,41 @@ async def test_wake_makes_the_worker_pick_up_a_job_without_waiting_for_the_poll(
     worker.wake()
     await asyncio.wait_for(done.wait(), timeout=2)
     task.cancel()
+
+
+# ------------------------------------------------------------------------------------------------ stopping a job
+async def test_a_running_job_can_be_stopped_and_the_next_one_still_runs():
+    import asyncio
+    from liteagent.jobs import CANCELLED
+    store = JobStore(":memory:")
+    started, ran = asyncio.Event(), []
+
+    async def handler(job):
+        if job.prompt == "slow":
+            started.set()
+            try:
+                await asyncio.sleep(30)
+            finally:
+                ran.append("cleaned up")   # what the browser agent does: close the browser
+        return job.prompt
+
+    worker = Worker(store, handler)
+    slow, quick = store.create("task", "slow"), store.create("task", "quick")
+    first = asyncio.create_task(worker.run_once())
+    await started.wait()
+    assert worker.cancel(slow) is True
+    await first
+    assert store.get(slow).status == "failed" and store.get(slow).error == CANCELLED and ran == ["cleaned up"]
+    await worker.run_once()
+    assert store.get(quick).status == "done" and store.get(quick).result == "quick"
+
+
+async def test_a_waiting_job_that_is_stopped_never_runs():
+    from liteagent.jobs import CANCELLED
+    store = JobStore(":memory:")
+    waiting = store.create("task", "later")
+    worker = Worker(store, lambda job: (_ for _ in ()).throw(AssertionError("must not run")))
+    assert worker.cancel(waiting) is True
+    assert store.get(waiting).error == CANCELLED
+    assert await worker.run_once() is False
+    assert worker.cancel("0" * 32) is False

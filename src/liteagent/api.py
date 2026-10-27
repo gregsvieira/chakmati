@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager, suppress
 
@@ -16,8 +17,10 @@ from . import extras
 from .automations.audio import wav_to_ogg_opus_timed
 from .automations.models import describe, parse_spec
 from .automations.service import AutomationError, AutomationService
+from .browser.frames import FrameStore
+from .browser.inputs import InputBroker, MAX_ANSWER
 from .engine import Engine
-from .jobs import DONE, FAILED, JobStore, Worker
+from .jobs import CANCELLED, DONE, FAILED, JobStore, Worker
 from .notices import NoticeBoard, Notifier
 from .persona import wake_reply
 from .stt import SpeechToText, TranscribeError
@@ -79,6 +82,8 @@ def create_app(
     automations: AutomationService | None = None,
     home: ApprovalService | None = None,
     computer: ApprovalService | None = None,
+    frames: FrameStore | None = None,
+    inputs: InputBroker | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -111,6 +116,8 @@ def create_app(
         The text comes from the job row (`partial`, then `result`), so a client that connects
         late, or reconnects, still receives everything from the beginning."""
         sent = 0
+        frames_sent = 0
+        asked = None  # the question of the browser agent that the client has been told about
         last_status = None
         waited = 0.0
         while waited <= STREAM_MAX_SECONDS:
@@ -121,6 +128,18 @@ def create_app(
             if job.status != last_status:
                 last_status = job.status
                 yield {"type": "status", "status": job.status}
+            if frames is not None:  # the browser's screenshots, one event per step, as they are taken
+                for frame in frames.list(job_id)[frames_sent:]:
+                    yield {"type": "screenshot", "job_id": job_id, **frame}
+                    frames_sent += 1
+            if inputs is not None:  # the agent is waiting for something only the person can say (a user name, a password)
+                waiting = inputs.pending(job_id)
+                if waiting is not None and waiting.id != asked:
+                    asked = waiting.id
+                    yield {"type": "input", "job_id": job_id, "request_id": waiting.id, "key": waiting.key, "prompt": waiting.prompt, "secret": waiting.secret, "confirm": waiting.confirm}
+                elif waiting is None and asked is not None:
+                    yield {"type": "input_done", "request_id": asked}
+                    asked = None
             text = job.result if job.status == DONE and job.result is not None else job.partial
             if len(text) > sent:
                 yield {"type": "delta", "text": text[sent:]}
@@ -129,7 +148,10 @@ def create_app(
                 yield {"type": "done", "result": job.result or ""}
                 return
             if job.status == FAILED:
-                yield {"type": "error", "error": job.error or "failed"}
+                if job.error == CANCELLED:
+                    yield {"type": "cancelled", "text": CANCELLED}
+                else:
+                    yield {"type": "error", "error": job.error or "failed"}
                 return
             await asyncio.sleep(STREAM_POLL_SECONDS)
             waited += STREAM_POLL_SECONDS
@@ -163,6 +185,38 @@ def create_app(
             "partial": job.partial,
         }
 
+    @app.get("/jobs/{job_id}/frames/{step}")
+    async def get_frame(job_id: str, step: int):
+        path = frames.path(job_id, step) if frames is not None and re.fullmatch(r"[0-9a-f]{32}", job_id) else None
+        if path is None:
+            raise HTTPException(status_code=404, detail="frame not found")
+        return Response(path.read_bytes(), media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+    def ui_only(x_liteagent_ui: str | None = Header(default=None)) -> None:
+        # Writes are decided by the user's own UI. A custom header cannot be sent by a web page on another
+        # origin without a CORS preflight, which this server never grants, so a random site cannot approve.
+        if x_liteagent_ui != "1":
+            raise HTTPException(status_code=403, detail="approval must come from the user interface (X-LiteAgent-UI: 1)")
+
+    class InputIn(BaseModel):
+        request_id: str = Field(min_length=32, max_length=32, pattern=r"^[0-9a-f]{32}$")
+        value: str = Field(max_length=MAX_ANSWER)
+
+    @app.post("/jobs/{job_id}/input", dependencies=[Depends(ui_only)])
+    async def answer_input(job_id: str, body: InputIn):
+        """The person's answer to a question of the browser agent. Only the app's own window may send it; the value is not stored or logged."""
+        if inputs is None or not re.fullmatch(r"[0-9a-f]{32}", job_id) or not inputs.answer(job_id, body.request_id, body.value):
+            raise HTTPException(status_code=404, detail="nothing is waiting for an answer")
+        return {"ok": True}
+
+    @app.post("/jobs/{job_id}/cancel", dependencies=[Depends(ui_only)])
+    async def cancel_job(job_id: str):
+        """The person pressed Parar: the job stops where it is. Only the app's own window may ask."""
+        if not re.fullmatch(r"[0-9a-f]{32}", job_id) or store.get(job_id) is None:
+            raise HTTPException(status_code=404, detail="job not found")
+        stopped = worker.cancel(job_id) if worker is not None else False
+        return {"ok": stopped}
+
     @app.get("/jobs/{job_id}/stream")
     async def stream_job(job_id: str):
         if store.get(job_id) is None:
@@ -188,14 +242,8 @@ def create_app(
     # ------------------------------------------------------------------ calendar
     def need_calendar() -> CalendarService:
         if calendar is None:
-            raise HTTPException(status_code=503, detail="calendar integration is disabled (LITEAGENT_CALENDAR_BACKEND)")
+            raise HTTPException(status_code=503, detail="calendar integration is disabled (CHAKMATI_CALENDAR_BACKEND)")
         return calendar
-
-    def ui_only(x_liteagent_ui: str | None = Header(default=None)) -> None:
-        # Writes are decided by the user's own UI. A custom header cannot be sent by a web page on another
-        # origin without a CORS preflight, which this server never grants, so a random site cannot approve.
-        if x_liteagent_ui != "1":
-            raise HTTPException(status_code=403, detail="approval must come from the user interface (X-LiteAgent-UI: 1)")
 
     @app.get("/agenda/events")
     async def agenda_events(start: datetime, end: datetime):
@@ -243,7 +291,7 @@ def create_app(
     # ---- whatsapp (reading; sending goes through /actions)
     def need_whatsapp() -> WhatsAppService:
         if whatsapp is None:
-            raise HTTPException(status_code=503, detail="WhatsApp integration is disabled (LITEAGENT_WHATSAPP_BACKEND)")
+            raise HTTPException(status_code=503, detail="WhatsApp integration is disabled (CHAKMATI_WHATSAPP_BACKEND)")
         return whatsapp
 
     @app.get("/whatsapp/status")
@@ -293,7 +341,7 @@ def create_app(
     @app.post("/transcribe", dependencies=[Depends(ui_only)])
     async def transcribe(request: Request):
         if stt is None:
-            detail = "speech recognition is off (LITEAGENT_STT_MODEL)" if extras.available("listen") else extras.missing_message("listen", "speech recognition")
+            detail = "speech recognition is off (CHAKMATI_STT_MODEL)" if extras.available("listen") else extras.missing_message("listen", "speech recognition")
             raise HTTPException(status_code=503, detail=detail)
         if not (request.headers.get("content-type") or "").lower().startswith("audio/"):
             raise HTTPException(status_code=415, detail="send the recording with an audio/* content type")

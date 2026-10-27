@@ -76,6 +76,22 @@ class Checked:
 class Roots:
     workspace: Path
     read_only: tuple[Path, ...]
+    # Only when checking a plan: what the EARLIER steps of the plan will have created (so "create a.txt, then copy a.txt" is not refused
+    # for a file that does not exist yet), and which of those are folders.
+    planned: frozenset = frozenset()
+    planned_dirs: frozenset = frozenset()
+
+    def after(self, writes, dirs=()) -> "Roots":
+        """The same roots as they will be once a step that writes `writes` (and creates the folders `dirs`) has run."""
+        created = set(self.planned) | {Path(p) for p in writes} | {Path(p) for p in dirs}
+        folders = set(self.planned_dirs) | {Path(p) for p in dirs}
+        for path in list(created):  # the folders in between exist too
+            for parent in path.parents:
+                if parent == self.workspace or self.workspace not in parent.parents:
+                    break
+                created.add(parent)
+                folders.add(parent)
+        return Roots(self.workspace, self.read_only, frozenset(created), frozenset(folders))
 
     @classmethod
     def make(cls, workspace: str | Path, home: str | Path | None = None) -> "Roots":
@@ -85,6 +101,18 @@ class Roots:
     @property
     def readable(self) -> tuple[Path, ...]:
         return (self.workspace, *self.read_only)
+
+
+def exists_in(path: Path, roots: "Roots") -> bool:
+    return path.exists() or path.is_symlink() or path in roots.planned
+
+
+def is_dir_in(path: Path, roots: "Roots") -> bool:
+    return path.is_dir() or path in roots.planned_dirs
+
+
+def is_file_in(path: Path, roots: "Roots") -> bool:
+    return path.is_file() or (path in roots.planned and path not in roots.planned_dirs)
 
 
 def _inside(path: Path, root: Path) -> bool:
@@ -118,7 +146,7 @@ def resolve(word: str, roots: Roots, *, write: bool = False, must_exist: bool | 
         raise PolicyError(f"{what}: só posso {'escrever em' if write else 'usar'} {where}")
     if path != root:
         _clean(path, root, what)
-    exists = path.exists() or path.is_symlink()
+    exists = exists_in(path, roots)
     if must_exist is True and not exists:
         raise PolicyError(f"{what}: não existe")
     if must_exist is False and exists:
@@ -186,7 +214,7 @@ def _read_paths(name: str, args: list[str], roots: Roots, flag_set: set[str], *,
     if not (min_paths <= len(rest) <= max_paths):
         raise PolicyError(f"{name}: informe {min_paths}{'' if min_paths == max_paths else ' a ' + str(max_paths)} caminho(s)")
     paths = [resolve(w, roots, must_exist=True, what=name) for w in rest]
-    if not dirs_ok and any(p.is_dir() for p in paths):
+    if not dirs_ok and any(is_dir_in(p, roots) for p in paths):
         raise PolicyError(f"{name}: só funciona com arquivos")
     return [f"-{f}" for f in sorted(flags)], paths
 
@@ -236,9 +264,9 @@ def _mkdir(name, args, roots):
         path = resolve(w, roots, write=True, what="mkdir")
         if path == roots.workspace:
             raise PolicyError("mkdir: a pasta de trabalho já existe")
-        if path.exists() and "p" not in flags:
+        if exists_in(path, roots) and "p" not in flags:
             raise PolicyError("mkdir: já existe")
-        if path.exists() and not path.is_dir():
+        if exists_in(path, roots) and not is_dir_in(path, roots):
             raise PolicyError("mkdir: já existe um arquivo com esse nome")
         if len(path.relative_to(roots.workspace).parts) > 6:
             raise PolicyError("mkdir: caminho fundo demais")
@@ -254,7 +282,7 @@ def _touch(name, args, roots):
     for p in paths:
         if p.suffix.lower() not in _TEXT_EXT:
             raise PolicyError("touch: só crio arquivos de texto (.txt, .md, .csv, .json ...)")
-        if not p.parent.is_dir():
+        if not is_dir_in(p.parent, roots):
             raise PolicyError("touch: a pasta não existe (crie com mkdir antes)")
     return Checked(["touch", *map(str, paths)], SAFE, "criar arquivo vazio", ["dentro da pasta de trabalho", "arquivo novo"], writes=tuple(paths))
 
@@ -264,16 +292,19 @@ def _cp_mv(name, args, roots):
     if len(rest) != 2:
         raise PolicyError(f"{name}: use {name} origem destino")
     src = resolve(rest[0], roots, write=(name == "mv"), must_exist=True, what=f"{name} (origem)")
-    dst = resolve(rest[1], roots, write=True, must_exist=False, what=f"{name} (destino)")
-    if src.is_dir() and not (name == "mv" or "r" in flags):
+    into = resolve(rest[1], roots, write=True, what=f"{name} (destino)")
+    if is_dir_in(into, roots) and into != roots.workspace and (is_file_in(src, roots) or name == "mv"):
+        into = into / src.name  # "mv lista.txt arquivos" when arquivos is a folder: it goes inside, with its own name
+    dst = resolve(str(into), roots, write=True, must_exist=False, what=f"{name} (destino)")
+    if is_dir_in(src, roots) and not (name == "mv" or "r" in flags):
         raise PolicyError("cp: para pastas use -r")
-    if src.is_file() and src.suffix.lower() != dst.suffix.lower():
+    if is_file_in(src, roots) and src.suffix.lower() != dst.suffix.lower():
         raise PolicyError(f"{name}: não mudo o formato do arquivo (a extensão tem que continuar {src.suffix or 'sem extensão'})")
     if src == roots.workspace or _inside(roots.workspace, src):
         raise PolicyError(f"{name}: não movo nem copio a pasta de trabalho inteira")
-    if not dst.parent.is_dir():
+    if not is_dir_in(dst.parent, roots):
         raise PolicyError(f"{name}: a pasta de destino não existe")
-    if src.is_dir() and _inside(dst, src):
+    if is_dir_in(src, roots) and _inside(dst, src):
         raise PolicyError(f"{name}: não copio uma pasta para dentro dela mesma")
     if name == "mv" and src.name.startswith("backup_"):
         raise PolicyError("mv: backups só mudam por \"reverter\"")
@@ -329,7 +360,7 @@ def _download(name: str, args: list[str], roots: Roots) -> Checked:
     out = resolve(out_word, roots, write=True, must_exist=False, what=f"{name} (destino)")
     if out.suffix.lower() in EXECUTABLE_EXT or out.suffix.lower() in {".sh", ".py", ".js", ".bash", ".zsh"}:
         raise PolicyError(f"{name}: não baixo programas nem scripts")
-    if not out.parent.is_dir():
+    if not is_dir_in(out.parent, roots):
         raise PolicyError(f"{name}: a pasta de destino não existe")
     if name == "curl":
         argv = ["curl", "--proto", "=https", "--max-filesize", "52428800", "--max-time", "120", *[f"-{f}" for f in sorted(flags)], "-o", str(out), urls[0]]

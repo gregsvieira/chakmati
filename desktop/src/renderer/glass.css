@@ -3,8 +3,8 @@
    Loaded after panel.css so it only restyles; layout is untouched. On systems that cannot blur what is behind a window the tint
    is more opaque, so text stays readable. */
 #panel {
-  --g-tint: rgba(150, 165, 195, 0.30);
-  --g-tint-2: rgba(120, 138, 172, 0.2);
+  --g-tint: rgba(232, 238, 248, 0.80);   /* light and fairly solid: the grey-blue text on it keeps a contrast of 4.5:1 or more over any wallpaper */
+  --g-tint-2: rgba(214, 223, 240, 0.72);
   --surface: rgba(255, 255, 255, 0.16);
   --surface-2: rgba(255, 255, 255, 0.34);
   --rule: rgba(30, 45, 80, 0.13);
@@ -21,8 +21,8 @@
 }
 @media (prefers-color-scheme: dark) {
   #panel {
-    --g-tint: rgba(5, 8, 18, 0.5);
-    --g-tint-2: rgba(10, 16, 34, 0.34);
+    --g-tint: rgba(8, 12, 24, 0.66);
+    --g-tint-2: rgba(12, 19, 38, 0.54);
     --surface: rgba(255, 255, 255, 0.045);
     --surface-2: rgba(255, 255, 255, 0.1);
     --rule: rgba(255, 255, 255, 0.13);

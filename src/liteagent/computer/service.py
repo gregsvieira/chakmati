@@ -11,6 +11,7 @@
 
 import difflib
 import json
+import shlex
 import os
 import shutil
 import subprocess
@@ -22,8 +23,10 @@ from collections.abc import Callable
 from pathlib import Path
 
 from ..approvals import Action, ActionStore, ApprovalService
-from .policy import DOWNLOAD, EXECUTABLE_EXT, RUN, SAFE, Checked, PolicyError, Roots, check, clean_env, resolve
-from .safety import ComputerError, check_content, check_url, find_app, installed_apps, resolve_new_file
+from .policy import exists_in, is_dir_in, DOWNLOAD, EXECUTABLE_EXT, RUN, SAFE, Checked, PolicyError, Roots, check, clean_env, resolve
+from . import documents, grading
+from .describe import friendly
+from .safety import ComputerError, check_content, check_url, find_app, installed_apps, plain, resolve_new_file
 from .secrets import has_secret, looks_secret, redact
 
 MAX_OUTPUT = 4000
@@ -90,16 +93,16 @@ class ComputerService(ApprovalService):
     # ------------------------------------------------------------------------------------------ describing a proposal
     def _risk_text(self, checked: Checked) -> str:
         label = {SAFE: "seguro", RUN: "roda um programa: sempre pede aprovação", DOWNLOAD: "baixa da internet: sempre pede aprovação"}[checked.cls]
-        body = f"Executar: {checked.shown}\n({checked.label}; {label})\nVerificado: " + "; ".join(checked.checks)
+        body = f"{friendly(checked.argv, self.workspace.resolve())}\nComando: {checked.shown}\n({checked.label}; {label})\nVerificado: " + "; ".join(checked.checks)
         if checked.preview is not None:
             lines = checked.preview.read_text(encoding="utf-8", errors="replace").splitlines()
             body += f"\nScript {checked.preview.name} ({len(lines)} linhas):\n" + "\n".join(lines[:40]) + ("\n…" if len(lines) > 40 else "")
         return body
 
     # ------------------------------------------------------------------------------------------ commands
-    def validate(self, command: str) -> Checked:
+    def validate(self, command: str, roots: Roots | None = None) -> Checked:
         try:
-            return check(command, self.roots)
+            return check(command, roots or self.roots)
         except PolicyError as exc:
             raise ComputerError(str(exc)) from None
 
@@ -137,6 +140,49 @@ class ComputerService(ApprovalService):
         shown = "\n".join(lines[: self.PREVIEW_LINES]) + (f"\n… (+{len(lines) - self.PREVIEW_LINES} linhas)" if len(lines) > self.PREVIEW_LINES else "")
         payload = {"path": str(target), "content": content, "auto_ok": True, "risk": SAFE, "plan": plan}
         return self._propose("computer.create_file", f"Criar o arquivo {target}\n{shown}", payload), None
+
+    def propose_create_document(self, relative: str, kind: str, raw_spec: object) -> Action:
+        """A Word/Excel/PowerPoint file. Always asks, even when "manter aprovado" is on: it is a binary file the person cannot read here."""
+        if kind not in documents.KINDS:
+            raise ComputerError("tipo de documento inválido")
+        name = relative.strip()
+        if not name.lower().endswith(f".{kind}"):
+            name = f"{Path(name).stem or 'documento'}.{kind}"
+        target = resolve_new_file(self.workspace, name, {f".{kind}"})
+        spec = documents.check_spec(kind, raw_spec)
+        if has_secret(json.dumps(spec.data, ensure_ascii=False)):
+            raise ComputerError("o texto parece conter senhas, chaves ou dados pessoais, então não gravo")
+        if target.exists():
+            raise ComputerError(f"já existe um arquivo {target.name} em {target.parent}")
+        payload = {"path": str(target), "kind": kind, "spec": spec.data, "auto_ok": False, "risk": "edit"}
+        return self._propose("computer.create_document", f"Criar {target} (abre no {documents.KINDS[kind]})\n{documents.preview(spec)}", payload)
+
+    def read_exam_folder(self, folder: str) -> tuple[Path, list, list[str]]:
+        """(the folder, the exams read, the files that could not be read) for a folder of exams (PDF with text, scanned PDF, or photo) in the workspace."""
+        try:
+            target = resolve(folder, self.roots, must_exist=True, what="ler")
+        except PolicyError as exc:
+            raise ComputerError(str(exc)) from None
+        if not target.is_dir():
+            raise ComputerError(f"{folder} não é uma pasta")
+        exams, unreadable = grading.read_folder(target)
+        return target, exams, unreadable
+
+    def _write_document(self, p: dict) -> str:
+        target = resolve_new_file(self.workspace, p["path"], {f".{p['kind']}"})  # checked again at the moment of writing
+        spec = documents.check_spec(p["kind"], p["spec"])
+        if target.exists() or target.is_symlink():
+            raise ComputerError("o arquivo passou a existir; nada foi escrito")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        documents.write(spec, target)
+        app = documents.KINDS[p["kind"]]
+        try:  # the file is ours and was just written: showing it in the app is part of the job (a failure here is not a failure to write)
+            if sys.platform == "darwin" and app in self._apps().values():
+                self._open(["open", "-a", app, str(target)])
+                return f"Arquivo criado e aberto no {app}: {target}"
+        except Exception:
+            pass
+        return f"Arquivo criado: {target}"
 
     def _write_new(self, target: Path, content: str) -> str:
         target = resolve_new_file(self.workspace, str(target))  # checked again at the moment of writing
@@ -275,26 +321,108 @@ class ComputerService(ApprovalService):
         return f"Abri {safe}."
 
     # ------------------------------------------------------------------------------------------ plans
+    def preview_steps(self, steps: list[dict]) -> list[tuple[str, str | None, dict | None]]:
+        """Checks every step of a plan WITHOUT proposing anything: (a line for the person, the problem or None, the clean step or None).
+        The steps are checked in order against what the earlier ones will have made, so "create a.txt, then copy a.txt" is fine and
+        "copy x.txt into a folder that nobody creates" is a problem found now, not after the person has approved."""
+        roots = self.roots
+        out: list[tuple[str, str | None, dict | None]] = []
+        for step in steps:
+            try:
+                if step.get("type") == "create_file":
+                    target = resolve_new_file(self.workspace, step.get("path", ""))
+                    check_content(step.get("content", ""))
+                    if has_secret(step.get("content", "")) or target.exists() or target in roots.planned:
+                        raise ComputerError(f"não posso criar {target.name} (já existe ou o texto tem dados sensíveis)")
+                    out.append((f"Criar o arquivo {target.name}  [seguro]", None, {"type": "create_file", "path": str(target), "content": step["content"]}))
+                    roots = roots.after([target])
+                else:
+                    command, fixed, ask = self.fix_names(step.get("command", ""), roots)
+                    if ask:
+                        out.append((command[:80], ask, None))
+                        break
+                    step = {**step, "command": command}
+                    checked = self.validate(command, roots)
+                    tag = {SAFE: "seguro", RUN: "roda programa: pede aprovação", DOWNLOAD: "baixa da internet: pede aprovação"}[checked.cls]
+                    shown = checked.shown.replace(str(self.workspace.resolve()) + os.sep, "")
+                    out.append((f"{friendly(checked.argv, self.workspace.resolve())} ({shown})  [{tag}]" + (f"  (nome ajustado: {fixed})" if fixed else ""), None, {"type": "command", "command": step["command"]}))
+                    dirs = checked.writes if checked.argv[0] == "mkdir" else [w for w in checked.writes if any(is_dir_in(r, roots) for r in checked.reads)]
+                    roots = roots.after(checked.writes, dirs)
+            except ComputerError as exc:
+                shown = step.get("command") or step.get("path") or "?"
+                out.append((str(shown)[:80], str(exc), None))
+                break  # what comes after depends on this step: it cannot be judged
+        return out
+
     def propose_plan(self, goal: str, steps: list[dict]) -> Action:
         """Several steps: the person approves the numbered plan first; each step then still asks for its own approval."""
         if not 2 <= len(steps) <= 12:
             raise ComputerError("um plano tem de 2 a 12 passos")
         lines, clean = [], []
-        for i, step in enumerate(steps, 1):  # every step is validated now, so nothing invalid is ever shown as part of a plan
-            if step.get("type") == "create_file":
-                target = resolve_new_file(self.workspace, step.get("path", ""))
-                check_content(step.get("content", ""))
-                if has_secret(step.get("content", "")) or target.exists():
-                    raise ComputerError(f"passo {i}: não posso criar {target.name} (já existe ou o texto tem dados sensíveis)")
-                lines.append(f"{i}. Criar o arquivo {target.name}  [seguro]")
-                clean.append({"type": "create_file", "path": str(target), "content": step["content"]})
-            else:
-                checked = self.validate(step.get("command", ""))
-                tag = {SAFE: "seguro", RUN: "roda programa: pede aprovação", DOWNLOAD: "baixa da internet: pede aprovação"}[checked.cls]
-                lines.append(f"{i}. {checked.shown}  [{tag}]")
-                clean.append({"type": "command", "command": step["command"]})
+        for i, (line, problem, step) in enumerate(self.preview_steps(steps), 1):  # every step is validated now, so nothing invalid is ever shown as part of a plan
+            if problem:
+                raise ComputerError(f"passo {i}: {problem}")
+            lines.append(f"{i}. {line}")
+            clean.append(step)
         text = f"Plano ({len(clean)} passos): {goal[:120]}\n" + "\n".join(lines) + "\nAprove o plano, ou diga o que quer mudar. Cada passo ainda pede a sua aprovação."
         return self._propose("computer.plan", text, {"goal": goal[:120], "steps": clean, "risk": "plan", "auto_ok": False})
+
+    _SOURCES = {"cat": "all", "head": "all", "tail": "all", "wc": "all", "stat": "all", "file": "all", "ls": "all", "du": "all", "grep": "after-first", "cp": "first", "mv": "first"}
+
+    def fix_names(self, command: str, roots: Roots | None = None) -> tuple[str, str | None, str | None]:
+        """(the command with the file names it READS made exact, a note about what was changed, a question when a name fits several files).
+        The model writes "cat lista" for lista.txt, or "cp Rascunho.md" in the wrong case: the name is looked up in the workspace, by code. Only
+        the files a command reads are touched (never where it writes), and only when the name does not exist as written."""
+        try:
+            argv = shlex.split(command)
+        except ValueError:
+            return command, None, None
+        mode = self._SOURCES.get(argv[0]) if argv else None
+        if mode is None:
+            return command, None, None
+        roots = roots or self.roots
+        positions = [i for i, a in enumerate(argv[1:], 1) if not a.startswith("-") and not a.isdigit() and "://" not in a]
+        if mode == "first":
+            positions = positions[:1]
+        elif mode == "after-first":
+            positions = positions[1:]
+        changed = []
+        for i in positions:
+            word = argv[i]
+            path = Path(word) if Path(word).is_absolute() else self.workspace.resolve() / word
+            if exists_in(path.resolve() if path.exists() else path, roots) and (path.exists() or path in roots.planned):
+                continue
+            found = self.find_candidates(word)
+            if len(found) > 1:
+                return command, None, "Qual destes? " + ", ".join(p.relative_to(self.workspace).as_posix() for p in found)
+            if len(found) == 1:
+                new = found[0].relative_to(self.workspace).as_posix()
+                changed.append(f"{word} → {new}")
+                argv[i] = new
+        return (shlex.join(argv), "; ".join(changed), None) if changed else (command, None, None)
+
+    def find_candidates(self, word: str, limit: int = 6) -> list[Path]:
+        """Files and folders of the workspace whose name is `word` (with or without the extension, ignoring case and accents): for "o rascunho"
+        when the file is rascunho.txt. Hidden things and backups are left out."""
+        wanted = plain(Path(word).stem if Path(word).suffix else word)
+        if not wanted:
+            return []
+        found: list[Path] = []
+        root = self.workspace
+        if not root.is_dir():
+            return []
+        for path in sorted(root.rglob("*")):
+            rel = path.relative_to(root)
+            if len(rel.parts) > 4 or any(part.startswith(".") for part in rel.parts) or path.name.startswith("backup_"):
+                continue
+            if plain(path.stem) == wanted or plain(path.name) == plain(word):
+                found.append(path)
+            if len(found) >= limit:
+                break
+        if "/" in word:  # "ideias/rascunho.md": the ones whose path ends like that are the real candidates
+            narrowed = [p for p in found if plain(p.relative_to(root).as_posix()).endswith(plain(word))]
+            found = narrowed or found
+        return found
 
     def _plan_row(self, plan_id: str) -> tuple[list[dict], int, str] | None:
         with self._lock:
@@ -366,6 +494,8 @@ class ComputerService(ApprovalService):
                 result = self._run_checked(checked)
             elif kind == "computer.create_file":
                 result = self._write_new(Path(p["path"]), p["content"])
+            elif kind == "computer.create_document":
+                result = self._write_document(p)
             elif kind == "computer.edit":
                 result = self._do_edit(p)
             elif kind == "computer.revert":

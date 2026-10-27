@@ -9,6 +9,7 @@
   // `emojis`: say what the emojis are ("rosto sorrindo"). Off by default: they are simply skipped.
   function speakable(text, { emojis = false } = {}) {
     let t = String(text || '');
+    t = t.replace(/^\s*Plano:\s*\n(?:\s*\d+\.[^\n]*\n?)+\s*/i, ''); // the list of steps shown before a job is for reading: only the answer is said
     if (!emojis) t = t.replace(EMOJI, ' ');
     t = t.replace(/(^|\n+)\s*(Fontes?|Sources?)\s*:[\s\S]*$/i, '$1'); // the list of links that follows an answer
     t = t.replace(/\[\s*\d+(?:\s*[-–—,;]\s*\d+)*\s*\]/g, ' '); // citation marks such as [2], [1-4] or [1, 3]: they are for reading, not for hearing

@@ -62,9 +62,9 @@ body[data-still] #chips.open { animation: none; }
   background: var(--surface-2); color: var(--text); font: inherit; user-select: text;
 }
 #input::placeholder { color: var(--muted); }
-#send { width: 38px; height: 38px; flex: none; border: 0; border-radius: 50%; background: var(--petrol); cursor: pointer; position: relative; }
+#send { width: 38px; height: 38px; flex: none; border: 0; border-radius: 50%; background: var(--petrol); color: #fff; cursor: pointer; display: grid; place-items: center; }
+#send svg { margin-left: 2px; }   /* the plane's weight sits to the left: nudged so it looks centred */
 #send:disabled { opacity: 0.45; cursor: default; }
-#send span { position: absolute; left: 14px; top: 11px; border-left: 12px solid #fff; border-top: 8px solid transparent; border-bottom: 8px solid transparent; }
 
 details { margin-top: 10px; }
 summary { cursor: pointer; color: var(--muted); font-size: 13px; width: max-content; }
@@ -147,9 +147,8 @@ body[data-still] #mic.recording { transform: none; }
 #detail { margin: 3px 0 0; color: var(--muted); font-size: 13.5px; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 #head-robot { flex: none; width: 46px; height: 50px; position: relative; }
 /* pending approvals, on the upper left of the character: outline when none, filled orange when something waits */
-#head-approval { position: absolute; left: -6px; top: -4px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); z-index: 2; }
-#head-approval svg { width: 15px; height: 15px; }
-#head-approval.pending { background: #f28c28; color: #fff; box-shadow: 0 1px 5px rgba(20, 33, 61, 0.35); }
+#head-approval { position: absolute; left: -16px; top: 4px; width: 24px; height: 24px; display: grid; place-items: center; z-index: 0; }
+#head-robot .robot { position: relative; z-index: 1; }
 #recent-body .row > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .icon-btn { flex: none; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); display: grid; place-items: center; cursor: pointer; }
 .icon-btn:hover { background: var(--surface-2); color: var(--text); }
@@ -183,3 +182,196 @@ button.small { height: 30px; padding: 0 14px; font-size: 13px; }
 .subgroup:last-child { margin-bottom: 0; }
 .subgroup h3 { margin: 0 0 6px; font-family: var(--font-rounded); font-size: 12.5px; font-weight: 600; color: var(--muted); }
 .chip:disabled { color: var(--muted); cursor: default; background: none; }
+
+/* the browser at work: the latest screenshot, with the step and the address under it */
+.turn.assistant figure.shot { margin: 0 0 8px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line, rgba(0,0,0,0.12)); background: var(--surface-1, #fff); }
+.turn.assistant figure.shot img { display: block; width: 100%; height: auto; }
+.turn.assistant figure.shot figcaption { padding: 5px 9px; font-size: 12px; color: var(--muted); white-space: normal; }
+.turn.assistant figure.shot figcaption span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.7; }
+
+/* ---------------------------------------------------------------------------------------------------------------- topics that fold
+   Each topic of the home page folds by its title. In "focus" the conversation takes the card and every other topic is folded. */
+#topics { display: block; }
+#content section > h2 { display: flex; align-items: center; gap: 6px; }
+#topics section > h2[role="button"] { cursor: pointer; user-select: none; }
+#topics section > h2[role="button"]::before { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); margin: 0 4px 3px 2px; transition: transform 0.15s; }
+#topics section[data-collapsed] > h2[role="button"]::before { transform: rotate(-45deg); }
+#topics section[data-collapsed] > :not(h2) { display: none; }
+#topics section > h2[role="button"]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+.link-btn { margin-left: auto; padding: 2px 10px; border: 1px solid var(--rule); border-radius: 999px; background: none; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.link-btn:hover { background: var(--surface-2); color: var(--text); }
+.link-btn[aria-pressed="true"] { background: var(--surface-2); color: var(--text); }
+#thread-empty { display: none; }
+#thread:empty ~ #thread-empty { display: block; }
+
+#panel[data-focus="thread"][data-layout="compact"] #topics section > :not(h2) { display: none; }
+#panel[data-focus="thread"][data-layout="compact"] #topics section > h2[role="button"]::before { transform: rotate(-45deg); }
+#panel[data-focus="thread"][data-layout="compact"] #content { display: flex; flex-direction: column; }
+#panel[data-focus="thread"][data-layout="compact"] #thread-section { flex: 1; display: flex !important; flex-direction: column; min-height: 0; }
+#panel[data-focus="thread"][data-layout="compact"] #thread { max-height: none; flex: 1; }
+
+/* ---------------------------------------------------------------------------------------------------------------- the right-hand screen */
+#screen { display: none; }
+#screen h2 { margin: 0 0 8px; }
+.live { padding: 1px 8px; border-radius: 999px; background: var(--wine); color: #fff; font-family: var(--font-rounded); font-size: 11px; font-weight: 700; letter-spacing: 0.02em; }
+.live[hidden] { display: none; }
+/* the browser as the person would see it: an address bar and the page; no counters, no strip of pictures */
+.browser { border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; background: var(--surface-2); }
+.browser[hidden], #screen-empty[hidden] { display: none; }
+.browser-bar { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--rule); background: var(--surface); }
+.browser-bar .dots { flex: none; width: 46px; height: 10px; background: radial-gradient(circle 5px at 5px 5px, #ed6a5e 98%, transparent) 0 0 / 16px 10px repeat-x; }
+.browser-bar .addr { flex: 1; min-width: 0; padding: 3px 10px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.viewport { position: relative; aspect-ratio: 1280 / 800; background: #fff; }
+.viewport .frame { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; opacity: 0; transition: opacity 0.25s ease; }
+.viewport .frame.on { opacity: 1; }
+.status { margin: 0; padding: 8px 12px; min-height: 2.2em; color: var(--muted); font-size: 13px; }
+body[data-still] .viewport .frame { transition: none; }
+@media (prefers-reduced-motion: reduce) { .viewport .frame { transition: none; } }
+
+#hero { display: none; }
+
+/* ---------------------------------------------------------------------------------------------------------------- the wide window
+   Three columns, each with its own scroll: topics on the left, the whole conversation in the middle, what the Chakmati is doing on the right. */
+#panel[data-layout="wide"] { border-radius: 16px; }
+#panel[data-layout="wide"] #page { overflow: hidden; }
+#panel[data-layout="wide"] { --left: 300px; --right: 420px; }
+#panel[data-layout="wide"][data-left="folded"] { --left: 52px; }
+#panel[data-layout="wide"][data-right="folded"] { --right: 52px; }
+#panel[data-layout="wide"] #content { display: grid; grid-template-columns: var(--left) minmax(0, 1fr) var(--right); padding: 0; overflow: hidden; height: 100%; transition: grid-template-columns 0.18s ease; }
+#panel[data-layout="wide"] #topics { grid-column: 1; min-height: 0; overflow-y: auto; padding: 4px 16px 16px; border-right: 1px solid var(--rule); }
+#panel[data-layout="wide"] #thread-section { grid-column: 2; display: flex !important; flex-direction: column; min-height: 0; padding: 12px 20px 0; border-top: 0; }
+#panel[data-layout="wide"] #thread { max-height: none; flex: 1; min-height: 0; }
+#panel[data-layout="wide"] #focus-thread { display: none; }
+#panel[data-layout="wide"] #screen { grid-column: 3; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; padding: 12px 16px; border-left: 1px solid var(--rule); }
+#panel[data-layout="wide"] .turn.assistant figure.shot { display: none; }
+#panel[data-layout="wide"] #hero { display: flex; justify-content: center; align-items: flex-end; flex: none; height: 104px; padding: 4px 0 0; }
+#panel[data-layout="wide"] #hero #head-robot { width: 48px; height: 104px; }
+#panel[data-layout="wide"] #hero #head-approval { left: -18px; top: 8px; }
+#panel[data-layout="wide"] #hero #head-robot svg { width: 100%; height: 100%; }
+#panel[data-layout="wide"] #bar #head-robot { display: none; }   /* the picture is on the right: not twice */
+#panel[data-layout="wide"] #foot { margin: 0 var(--right) 0 var(--left); transition: margin 0.18s ease; }
+#panel[data-layout="wide"] .turn.user { max-width: 70%; }
+#panel[data-layout="wide"] .turn.assistant { max-width: 88%; }
+#panel[data-layout="wide"] #settings-view, #panel[data-layout="wide"] #chats-view, #panel[data-layout="wide"] #chat-view { width: 100%; max-width: 780px; margin: 0 auto; }
+#panel[data-layout="wide"] #foot-settings { justify-content: center; }
+#panel[data-layout="wide"][data-screen]:not([data-screen="main"]) #foot { margin: 0; }
+#panel[data-layout="wide"] #bar { -webkit-app-region: drag; }
+#panel[data-layout="wide"] #bar button { -webkit-app-region: no-drag; }
+#panel[data-layout="wide"] #content[hidden] { display: none; }
+
+/* the browser asks for something only the person knows */
+.ask { display: grid; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--rule); }
+.ask-label { font-weight: 650; }
+.ask-row { display: flex; gap: 8px; }
+.ask-input { flex: 1; min-width: 0; height: 34px; padding: 0 12px; border: 1px solid var(--rule); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; user-select: text; }
+.ask-input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+/* ---------------------------------------------------------------------------------------------------------------- minimizing the sides */
+.fold { display: none; }
+#panel[data-layout="wide"] .fold { display: flex; align-items: center; gap: 8px; }
+#panel[data-layout="wide"] .fold-left { justify-content: flex-end; padding: 8px 0 0; }
+#panel[data-layout="wide"] .fold-right { justify-content: flex-start; flex-direction: row-reverse; margin-bottom: 4px; }
+#panel[data-layout="wide"] .fold-right h2 { margin: 0 auto 0 0; }
+.fold .icon-btn { width: 30px; height: 30px; transition: transform 0.18s ease; }
+.fold-right .icon-btn { transform: rotate(180deg); }                              /* open: the arrow points to the right edge, where it goes */
+#panel[data-left="folded"] .fold-left .icon-btn { transform: rotate(180deg); }    /* folded: points back into the window */
+#panel[data-right="folded"] .fold-right .icon-btn { transform: none; }
+.live-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--wine); box-shadow: 0 0 0 3px rgba(181, 35, 60, 0.25); }
+.live-dot[hidden], #fold-left-badge[hidden] { display: none; }
+
+#panel[data-layout="wide"][data-left="folded"] #topics { padding: 4px 8px 16px; overflow: hidden; }
+#panel[data-layout="wide"][data-left="folded"] #topics > :not(.fold) { display: none; }
+#panel[data-layout="wide"][data-left="folded"] .fold-left { flex-direction: column-reverse; align-items: center; gap: 8px; }
+#panel[data-layout="wide"][data-right="folded"] #screen { padding: 12px 8px; overflow: hidden; }
+#panel[data-layout="wide"][data-right="folded"] #screen > :not(.fold) { display: none; }
+#panel[data-layout="wide"][data-right="folded"] .fold-right { flex-direction: column; align-items: center; }
+#panel[data-layout="wide"][data-right="folded"] .fold-right h2 { display: none; }
+@media (prefers-reduced-motion: reduce) { #panel[data-layout="wide"] #content, #panel[data-layout="wide"] #foot, .fold .icon-btn { transition: none; } }
+body[data-still] #panel[data-layout="wide"] #content, body[data-still] #panel[data-layout="wide"] #foot { transition: none; }
+
+/* the small card: the conversation is a strip of two lines showing the latest words (it grows when it is opened: "Ampliar" or a click on it) */
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread { max-height: 62px; overflow-y: auto; cursor: pointer; scrollbar-width: none; gap: 4px; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread::-webkit-scrollbar { display: none; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread .turn { padding: 4px 11px; font-size: 14px; line-height: 1.35; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread figure.shot,
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread .turn-actions { display: none; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread:hover .turn.assistant { background: var(--surface-2); filter: brightness(0.98); }
+
+/* a notice that has to be read before going on (WhatsApp and automations) */
+#panel { position: relative; }
+.modal { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; padding: 18px; background: rgba(20, 33, 61, 0.45); backdrop-filter: blur(3px); }
+.modal[hidden] { display: none; }
+.modal-card { width: min(100%, 440px); max-height: 100%; overflow-y: auto; padding: 22px 22px 18px; border-radius: 18px; background: #f7f8fb; color: #14213d; border: 1px solid var(--rule); box-shadow: 0 18px 50px rgba(8, 14, 30, 0.45); user-select: text; }   /* solid: the text is read over a busy page */
+@media (prefers-color-scheme: dark) { .modal-card { background: #1f2635; color: #eef1f7; } }
+.modal-card h2 { margin: 0 0 10px; font-size: 18px; }
+.modal-card p { margin: 0 0 10px; line-height: 1.45; }
+.modal-card ul { margin: 0 0 16px; padding-left: 20px; line-height: 1.5; }
+.modal-card li { margin-bottom: 4px; }
+.modal-card .primary { display: block; width: 100%; height: 40px; font-size: 15px; }
+
+/* the browser can make mistakes: said under the screen, always */
+.warning { margin: 10px 0 0; padding: 8px 12px; border-left: 3px solid var(--amber); border-radius: 6px; background: var(--surface-2); color: var(--text); font-size: 12.5px; line-height: 1.4; }
+#panel[data-layout="wide"][data-right="folded"] #screen > .warning { display: none; }
+
+/* the small card sits beside the big character on the desktop (with its bell): the header does not repeat them */
+#panel[data-layout="compact"] #bar #head-robot { display: none; }
+#panel[data-layout="compact"] #bar { padding-left: 18px; }
+
+/* small card: the conversation sits at the bottom, right above the command line, and "Ampliar" grows it upward (the topics fold above it) */
+#panel[data-layout="compact"] #content { display: flex; flex-direction: column; }
+#panel[data-layout="compact"] #topics { flex: none; }
+#panel[data-layout="compact"] #thread-section { margin-top: auto; position: sticky; bottom: 0; padding-bottom: 4px; backdrop-filter: blur(14px); }   /* (blurred, not painted: it only hides what scrolls under it) */
+#panel[data-layout="compact"][data-focus="thread"] #thread-section { flex: 1; margin-top: 0; }
+#panel[data-layout="compact"] #content[hidden] { display: none; }
+/* when the conversation is open the messages stand at its bottom, like in any chat (margin, not justify-content: a long one still scrolls from its top) */
+#panel[data-layout="compact"][data-focus="thread"] #thread > :first-child, #panel[data-layout="wide"] #thread > :first-child { margin-top: auto; }
+
+/* while the Chakmati is working the send button becomes "Parar" (a square), so the person can always interrupt */
+#send .icon-stop { display: none; }
+#send[data-mode="stop"] .icon-send { display: none; }
+#send[data-mode="stop"] .icon-stop { display: block; }
+#send[data-mode="stop"] { background: var(--wine); }
+#send[data-mode="stop"] svg { margin-left: 0; }
+.link-btn { min-height: 28px; }
+
+/* the plan of a job: a quiet card, folded when the job is done */
+.turn.assistant details.plan { margin: 0 0 8px; padding: 6px 10px; border-left: 3px solid var(--petrol); border-radius: 6px; background: var(--surface-2); white-space: normal; }
+.turn.assistant details.plan summary { cursor: pointer; font-weight: 650; font-size: 13px; color: var(--muted); list-style-position: inside; width: auto; }
+.turn.assistant details.plan summary:hover { color: var(--text); }
+.turn.assistant details.plan ol { margin: 6px 0 2px; padding-left: 20px; font-size: 13px; line-height: 1.45; }
+.turn.assistant details.plan li { margin-bottom: 3px; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread details.plan { display: none; }
+
+/* ---------------------------------------------------------------------------------------------------------------- the small card, redone
+   Closed, the conversation is the preview of a chat: only the latest message, two lines, with a small "Ampliar" pill; no scrolling box
+   that cuts a bubble in half. The topics are one line each, with a hint of what is inside. */
+.h-title { font: inherit; }
+.topic-hint { margin-left: auto; padding-left: 10px; font-family: var(--font-text); font-size: 12.5px; font-weight: 500; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#topics section:not([data-collapsed]) .topic-hint { display: none; }
+#panel[data-layout="wide"] .topic-hint { display: none; }
+
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread-section { padding: 34px 0 2px; border-top: 0; backdrop-filter: none; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread-section > h2 { position: absolute; right: 0; top: 2px; margin: 0; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) .h-title { display: none; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread { max-height: none; overflow: hidden; gap: 0; padding: 0; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread > .turn:not(:last-child) { display: none; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread > .turn:last-child { max-width: 100%; padding: 8px 12px; font-size: 14px; line-height: 1.4; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread > .turn:last-child .turn-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }   /* (the clamp is on the text, not on the padded bubble: otherwise a third line peeks out) */
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread:hover > .turn:last-child { filter: brightness(0.97); }
+
+/* the open conversation is a rounded card like the rest of the window: soft against the glass (no light square), with room between its edge and the messages */
+#panel[data-layout="compact"] #thread-section { backdrop-filter: none; }
+#panel[data-layout="compact"][data-focus="thread"] #thread-section {
+  margin: 4px 0 10px; padding: 12px 14px 14px; border: 1px solid var(--rule); border-radius: 22px;
+  background: rgba(255, 255, 255, 0.07); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+@media (prefers-color-scheme: dark) { #panel[data-layout="compact"][data-focus="thread"] #thread-section { background: rgba(255, 255, 255, 0.03); } }
+#panel[data-layout="compact"][data-focus="thread"] #thread-section > h2 { margin-bottom: 10px; }
+#panel[data-layout="compact"][data-focus="thread"] #thread { padding: 0 2px; }
+#panel[data-layout="wide"] #thread-section { background: transparent; }
+
+/* an address in a message, with its small "open in the browser" icon at the end */
+.link { overflow-wrap: anywhere; }
+.link-open { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-left: 4px; padding: 0; vertical-align: middle; border: 1px solid currentColor; border-radius: 50%; background: transparent; color: inherit; opacity: .8; cursor: pointer; }
+.link-open:hover { opacity: 1; background: color-mix(in srgb, currentColor 18%, transparent); }
+.link-open:focus-visible { outline: 2px solid var(--petrol); outline-offset: 2px; }

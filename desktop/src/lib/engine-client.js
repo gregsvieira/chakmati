@@ -1,5 +1,5 @@
 'use strict';
-// HTTP client for the local lite-agent engine. Used only by the main process: the renderer windows have no network access
+// HTTP client for the local Chakmati engine. Used only by the main process: the renderer windows have no network access
 // at all (their CSP forbids it), so every call to the engine goes through here, and here it can only reach loopback.
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]']);
@@ -167,6 +167,22 @@ class EngineClient {
   approve(id) { return this._decide(id, 'approve'); }
   reject(id) { return this._decide(id, 'reject'); }
 
+  // The person's answer to something the browser asked ("qual é o seu usuário?", a password). Not stored here and not logged.
+  async sendInput(jobId, requestId, value) {
+    if (!ACTION_ID.test(String(jobId)) || !ACTION_ID.test(String(requestId))) throw new Error('invalid request');
+    const text = String(value ?? '');
+    if (!text || text.length > 500) throw new Error('invalid answer');
+    await this._request(`/jobs/${jobId}/input`, { method: 'POST', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify({ request_id: requestId, value: text }) });
+    return { ok: true };
+  }
+
+  // Parar: stops a job in the engine (the browser closes, nothing more is done).
+  async cancelJob(jobId) {
+    if (!ACTION_ID.test(String(jobId))) throw new Error('invalid request');
+    await this._request(`/jobs/${jobId}/cancel`, { method: 'POST', headers: UI });
+    return { ok: true };
+  }
+
   async* streamMessage(text, signal) {
     const clean = String(text ?? '').trim();
     if (!clean) throw new Error('empty message');
@@ -174,7 +190,16 @@ class EngineClient {
     const res = await this._request('/message/stream', {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: clean }), signal,
     });
-    yield* parseSse(res.body);
+    for await (const event of parseSse(res.body)) yield event.type === 'screenshot' ? await this._withImage(event, signal) : event;
+  }
+
+  // A browser step: the renderer has no network, so the screenshot is fetched here and handed over as a data URL.
+  async _withImage(event, signal) {
+    if (!ACTION_ID.test(String(event.job_id)) || !Number.isInteger(event.step) || event.step < 1) return event;
+    try {
+      const res = await this._request(`/jobs/${event.job_id}/frames/${event.step}`, { signal });
+      return { ...event, image: `data:image/jpeg;base64,${Buffer.from(await res.arrayBuffer()).toString('base64')}` };
+    } catch { return event; } // a missing picture must not end the conversation: the note still shows what happened
   }
 }
 

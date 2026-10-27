@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from .mac import MacEventKitProvider
 from .models import NewEvent
 
-TITLE = "lite-agent TESTE (pode apagar)"
+TITLE = "Chakmati TESTE (pode apagar)"
 
 
 def main() -> None:
@@ -21,7 +21,7 @@ def main() -> None:
     print(f"events in the next 7 days: {len(provider.list_events(now, now + timedelta(days=7)))}")
 
     start = (now + timedelta(days=1)).replace(hour=3, minute=0, second=0, microsecond=0)
-    created = provider.create_event(NewEvent(TITLE, start, start + timedelta(minutes=15), location="teste", notes="criado pelo lite-agent"))
+    created = provider.create_event(NewEvent(TITLE, start, start + timedelta(minutes=15), location="teste", notes="criado pelo Chakmati"))
     try:
         found = [e for e in provider.list_events(start - timedelta(minutes=1), start + timedelta(minutes=20)) if e.id == created.id]
         print(f"created and found again: {bool(found)} (title ok: {found[0].title == TITLE if found else False})")
