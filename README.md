@@ -65,7 +65,7 @@ banned. Use a secondary number, keep volumes low, never expose OpenWA beyond 127
 Then, in natural language: "tenho mensagens novas?", "o que o João disse?", "resuma a conversa com a Maria",
 "manda pro João: chego em 10 min". After the first login the session is kept; later use `scripts/openwa.sh start-bg`.
 
-The first time you press **Criar** (automations), turn WhatsApp on in Ajustes or press **Conectar WhatsApp**, a notice asks you to read how the number is protected against a block by Meta (every send is approved by you, 20 an hour with a gap, no mass or repeated sends, no unknown contacts, a secondary number) and to press **Compreendi e estou ciente!**. Esc or a click outside closes it without doing the action; once acknowledged it never shows again in that window.
+The first time you press **Criar** (automations), turn WhatsApp on in Ajustes press **Conectar WhatsApp** or tick WhatsApp in the install wizard, a notice asks you to read how the number is protected against a block by Meta (every send is approved by you, 20 an hour with a gap, no mass or repeated sends, no unknown contacts, a secondary number) and to press **Compreendi e estou ciente!**. Esc or a click outside closes it without doing the action; once acknowledged it never shows again in that window.
 
 Safety model (same as the calendar): reading is free, **sending is always a proposal you approve** in the same inbox
 (`GET /actions`, `POST /actions/<id>/approve` with `X-LiteAgent-UI: 1`). The recipient is matched by code against your chat

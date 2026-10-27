@@ -16,6 +16,23 @@ const show = (name) => { for (const s of document.querySelectorAll('main > secti
 let scan;
 const chosen = new Set();
 
+// WhatsApp: the first time it is ticked, a notice about not getting the number blocked has to be read ("Compreendi e estou ciente!").
+// Esc or a click outside closes it without ticking the box.
+const waGate = window.NoticeGate.createGate((() => { try { return window.localStorage; } catch { return { getItem: () => null, setItem: () => {} }; } })(), 'chakmati.whatsapp-notice');
+function showWhatsAppNotice(onAck, onCancel) {
+  const modal = $('notice-modal');
+  const finish = (fn) => { modal.hidden = true; document.removeEventListener('keydown', onKey, true); modal.removeEventListener('mousedown', onOutside); fn(); };
+  const onKey = (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); finish(onCancel); } else if (e.key === 'Tab') { e.preventDefault(); $('notice-ok').focus(); }
+  };
+  const onOutside = (e) => { if (e.target === modal) finish(onCancel); };
+  $('notice-ok').onclick = () => finish(onAck);
+  modal.hidden = false;
+  document.addEventListener('keydown', onKey, true);
+  modal.addEventListener('mousedown', onOutside);
+  $('notice-ok').focus();
+}
+
 async function start() {
   scan = await api.scan();
   const rows = [['Sistema', scan.hwText.system], ['Memória RAM', scan.hwText.ram], ['Espaço livre', scan.hwText.disk], ['Núcleos', scan.hwText.cores]];
@@ -34,7 +51,14 @@ function renderOptions() {
   $('model-line').textContent = `Modelo de conversa para este computador: ${scan.model.label} (${scan.model.id}, ${scan.model.sizeText}). Sempre instalado.`;
   $('options').replaceChildren(...scan.options.map((o) => {
     const box = el('input', { type: 'checkbox', id: `opt-${o.id}` });
-    box.addEventListener('change', () => (box.checked ? chosen.add(o.id) : chosen.delete(o.id)));
+    box.addEventListener('change', () => {
+      if (box.checked && o.id === 'whatsapp') {
+        box.checked = false;  // ticked only after the notice was acknowledged
+        waGate.run(showWhatsAppNotice, () => { box.checked = true; chosen.add(o.id); });
+        return;
+      }
+      if (box.checked) chosen.add(o.id); else chosen.delete(o.id);
+    });
     const title = el('span', { className: 'name', textContent: o.label });
     if (scan.suggested[o.id]) title.append(el('span', { className: 'badge', textContent: 'Recomendado para este PC' }));
     const text = el('span', {}, title, el('br'), el('span', { textContent: o.description }), el('br'), el('span', { className: 'cost', textContent: o.costText }));

@@ -55,6 +55,24 @@
       <div class="actions"><button id="finish" type="button" class="primary" hidden>Concluir</button></div>
     </section>
   </main>
+
+  <div id="notice-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="notice-title" aria-describedby="notice-body" hidden>
+    <div class="modal-card">
+      <h2 id="notice-title">Atenção: proteja o seu número</h2>
+      <div id="notice-body">
+        <p>Colocamos algumas regras para evitar que o seu número seja bloqueado pela Meta, dona do WhatsApp: toda mensagem só sai com a sua aprovação, e o envio é limitado a 20 por hora, com um intervalo entre uma mensagem e outra.</p>
+        <p>Mesmo assim, o maior cuidado é seu. Recomendamos:</p>
+        <ul>
+          <li>não abusar de automações para o WhatsApp (nada de envios em massa ou repetitivos);</li>
+          <li>não enviar mensagens para contatos desconhecidos;</li>
+          <li>usar, de preferência, um número secundário.</li>
+        </ul>
+      </div>
+      <button id="notice-ok" class="primary" type="button">Compreendi e estou ciente!</button>
+    </div>
+  </div>
+
+  <script src="../lib/notice-gate.js"></script>
   <script src="installer.js"></script>
 </body>
 </html>

@@ -16,7 +16,11 @@ test('the wizard page keeps the strict CSP and loads only its own files', () => 
 test('the wizard script never writes data as HTML and nothing starts ticked', () => {
   const js = read('renderer', 'installer.js');
   assert.equal(/innerHTML|outerHTML|insertAdjacentHTML|eval\(|new Function/.test(js), false);
-  assert.equal(/\bchecked\s*=\s*true|setAttribute\(\s*['"]checked/.test(js), false);
+  assert.equal(/setAttribute\(\s*['"]checked/.test(js), false);
+  // the only place a box is ticked by the script: after the person ticked WhatsApp AND acknowledged the notice about the number being blocked
+  const ticks = js.match(/\bchecked\s*=\s*true/g) || [];
+  assert.ok(ticks.length <= 1);
+  if (ticks.length) assert.ok(js.includes('waGate.run(showWhatsAppNotice, () => { box.checked = true;'));
   assert.equal(/\bchecked\b/.test(read('renderer', 'installer.html')), false);
 });
 
