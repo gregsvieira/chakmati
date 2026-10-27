@@ -355,3 +355,8 @@ async def test_the_login_action_reuses_what_the_model_already_asked(tmp_path):
     await run(agent(llm, tmp_path, session, ask))
     assert asked == ["username", "senha"]                       # the user name was not asked a second time
     assert session.typed[0] == (1, "gregory.v", False, False)
+
+
+def test_the_plan_of_a_browser_task_warns_that_it_can_make_mistakes():
+    plan = BrowserAgent(LLM(), None, None).plan("pesquise o protocolo MCP")
+    assert plan[-1].startswith("Atenção: posso cometer erros ao navegar") and "enviar, comprar ou apagar" in plan[-1]

@@ -169,7 +169,8 @@ class BrowserAgent:
                 *(["Se pedir usuário, senha ou código, perguntar a você aqui na conversa: a senha fica oculta e só é usada para entrar."] if needs_login else []),
                 "Abrir o primeiro resultado no navegador, mostrando a tela ao lado." if url == DEFAULT_START else "Navegar pela página, mostrando a tela ao lado.",
                 f"Ler a página e, se faltar algo, seguir outro link (até {self._max_steps} passos); parar e avisar se um site pedir verificação humana.",
-                "Responder no idioma do pedido, com o que está na página."]
+                "Responder no idioma do pedido, com o que está na página.",
+                "Atenção: posso cometer erros ao navegar. Confira o que eu fizer, principalmente antes de enviar, comprar ou apagar algo."]
 
     async def _frame(self, job_id: str, session: Session, note: str) -> Snapshot:
         snap = await session.snapshot()
