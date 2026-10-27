@@ -3,6 +3,23 @@
 Local assistant engine: simple messages answer inline in seconds; slow work
 (research, multi-step tasks) runs as background jobs.
 
+## Architecture (feature slices)
+
+```
+src/chakmati/
+  main.py            composition root: builds every service from the settings and starts the server
+  app/               what composes the features: engine (routes a message), api (mounts the routers), chat_api, overview, bench
+  shared/            what several features need: config, llm, approvals (+ approvals_api), guard, jobs, notices, persona, timeguard,
+                     models, extras, http (SSE + the "only the app's window" guard), gate/ (routing), voice/ (stt, tts + their routes)
+  features/          one vertical slice per capability, each with its own domain code and its own HTTP router (api.py)
+    agenda/  automations/  browser/  chat/ (canned and patriotic answers)  computer/  home/  research/ (+ loop/)  whatsapp/
+tests/               mirrors the same layout; tests/test_architecture.py enforces the rules below
+```
+
+Rules (checked by `tests/test_architecture.py`): a feature imports `shared` and itself, never another feature (the single reasoned exception is
+listed in the test and should only shrink); `shared` never imports a feature or `app`; imports are absolute. A new capability is a new folder under
+`features/` with a `router(...)` in its `api.py` that `app/api.py` mounts.
+
 ## Run
 
     uv sync
@@ -168,7 +185,7 @@ the browser and opens directly.
 
 ### Patriotic answers
 
-A few questions are answered with pride in Brazil (`src/chakmati/patriot.py`), typed out word by word like any reply: *quem inventou o avião* (Santos Dumont, then "Mas costumam dizer que foi os irmãos Wright..."),
+A few questions are answered with pride in Brazil (`src/chakmati/features/chat/patriot.py`), typed out word by word like any reply: *quem inventou o avião* (Santos Dumont, then "Mas costumam dizer que foi os irmãos Wright..."),
 *qual é a águia mais imponente / de que país é a águia mais imponente* (the Harpia Brasileira, with real facts), and *Pelé ou Maradona* ("É o Pelé!", then "Mas costumam responder assim:" and the model's own answer, as it would
 normally give it). Nothing else is changed; the texts are constants in that file.
 
