@@ -2,41 +2,41 @@ import logging
 import uvicorn
 from fastapi import FastAPI
 
-from chakmati.browser.agent import BrowserAgent
-from chakmati.browser.frames import FrameStore
-from chakmati.browser.inputs import InputBroker
-from chakmati.browser.session import PlaywrightSession
-from chakmati.agenda.assistant import CalendarAssistant
-from chakmati.agenda.factory import build_calendar
-from chakmati.api import create_app
-from chakmati.approvals import ActionStore
-from chakmati.automations.assistant import AutomationAssistant
-from chakmati.automations.runner import AutomationRunner
-from chakmati.automations.service import AutomationService
-from chakmati.automations.store import AutomationStore
-from chakmati.notices import AutomationTicker, ApprovalWatcher, CalendarWatcher, NoticeBoard, Notifier, WhatsAppWatcher
-from chakmati.config import Settings
-from chakmati import extras
-from chakmati.engine import Engine
-from chakmati.gate import build_gate
-from chakmati.jobs import JobStore, Worker
-from chakmati.llm import OllamaClient
-from chakmati.models import ModelCatalog
-from chakmati.loop.scorer import KeepAllScorer
-from chakmati.loop.twostage import LayaRelevanceScorer
-from chakmati.research.fetch import PageFetcher
-from chakmati.research.search import DuckDuckGoHtmlBackend, build_user_agent
-from chakmati.research.searxng import SearxngBackend
-from chakmati.research.tool import ResearchTool
-from chakmati.computer.assistant import ComputerAssistant
-from chakmati.computer.service import ComputerService
-from chakmati.home.assistant import HomeAssistantBot
-from chakmati.home.client import HomeAssistantClient
-from chakmati.home.service import HomeService
-from chakmati.whatsapp.assistant import WhatsAppAssistant
-from chakmati.stt import SpeechToText
-from chakmati.tts import VoiceStore, VoiceSynth
-from chakmati.whatsapp.factory import build_whatsapp, build_whatsapp_events
+from chakmati.features.browser.agent import BrowserAgent
+from chakmati.features.browser.frames import FrameStore
+from chakmati.features.browser.inputs import InputBroker
+from chakmati.features.browser.session import PlaywrightSession
+from chakmati.features.agenda.assistant import CalendarAssistant
+from chakmati.features.agenda.factory import build_calendar
+from chakmati.app.api import create_app
+from chakmati.shared.approvals import ActionStore
+from chakmati.features.automations.assistant import AutomationAssistant
+from chakmati.features.automations.runner import AutomationRunner
+from chakmati.features.automations.service import AutomationService
+from chakmati.features.automations.store import AutomationStore
+from chakmati.shared.notices import AutomationTicker, ApprovalWatcher, CalendarWatcher, NoticeBoard, Notifier, WhatsAppWatcher
+from chakmati.shared.config import Settings
+from chakmati.shared import extras
+from chakmati.app.engine import Engine
+from chakmati.shared.gate import build_gate
+from chakmati.shared.jobs import JobStore, Worker
+from chakmati.shared.llm import OllamaClient
+from chakmati.shared.models import ModelCatalog
+from chakmati.features.research.loop.scorer import KeepAllScorer
+from chakmati.features.research.loop.twostage import LayaRelevanceScorer
+from chakmati.features.research.fetch import PageFetcher
+from chakmati.features.research.search import DuckDuckGoHtmlBackend, build_user_agent
+from chakmati.features.research.searxng import SearxngBackend
+from chakmati.features.research.tool import ResearchTool
+from chakmati.features.computer.assistant import ComputerAssistant
+from chakmati.features.computer.service import ComputerService
+from chakmati.features.home.assistant import HomeAssistantBot
+from chakmati.features.home.client import HomeAssistantClient
+from chakmati.features.home.service import HomeService
+from chakmati.features.whatsapp.assistant import WhatsAppAssistant
+from chakmati.shared.voice.stt import SpeechToText
+from chakmati.shared.voice.tts import VoiceStore, VoiceSynth
+from chakmati.features.whatsapp.factory import build_whatsapp, build_whatsapp_events
 
 
 def build_app(settings: Settings | None = None) -> FastAPI:
