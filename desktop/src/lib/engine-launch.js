@@ -50,7 +50,7 @@ function engineLaunch({ packaged, dataDir, repoRoot, platform = process.platform
     command: venvPython({ dataDir, platform }),
     args: ['-m', 'liteagent.main'],
     cwd,
-    env: { LITEAGENT_DB_PATH: p.join(cwd, 'liteagent.db'), LITEAGENT_CALENDAR_ICS_PATH: p.join(cwd, 'agenda.ics') },
+    env: { CHAKMATI_DB_PATH: p.join(cwd, 'liteagent.db'), CHAKMATI_CALENDAR_ICS_PATH: p.join(cwd, 'agenda.ics') },
   };
 }
 

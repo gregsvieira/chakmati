@@ -242,7 +242,7 @@ def create_app(
     # ------------------------------------------------------------------ calendar
     def need_calendar() -> CalendarService:
         if calendar is None:
-            raise HTTPException(status_code=503, detail="calendar integration is disabled (LITEAGENT_CALENDAR_BACKEND)")
+            raise HTTPException(status_code=503, detail="calendar integration is disabled (CHAKMATI_CALENDAR_BACKEND)")
         return calendar
 
     @app.get("/agenda/events")
@@ -291,7 +291,7 @@ def create_app(
     # ---- whatsapp (reading; sending goes through /actions)
     def need_whatsapp() -> WhatsAppService:
         if whatsapp is None:
-            raise HTTPException(status_code=503, detail="WhatsApp integration is disabled (LITEAGENT_WHATSAPP_BACKEND)")
+            raise HTTPException(status_code=503, detail="WhatsApp integration is disabled (CHAKMATI_WHATSAPP_BACKEND)")
         return whatsapp
 
     @app.get("/whatsapp/status")
@@ -341,7 +341,7 @@ def create_app(
     @app.post("/transcribe", dependencies=[Depends(ui_only)])
     async def transcribe(request: Request):
         if stt is None:
-            detail = "speech recognition is off (LITEAGENT_STT_MODEL)" if extras.available("listen") else extras.missing_message("listen", "speech recognition")
+            detail = "speech recognition is off (CHAKMATI_STT_MODEL)" if extras.available("listen") else extras.missing_message("listen", "speech recognition")
             raise HTTPException(status_code=503, detail=detail)
         if not (request.headers.get("content-type") or "").lower().startswith("audio/"):
             raise HTTPException(status_code=415, detail="send the recording with an audio/* content type")

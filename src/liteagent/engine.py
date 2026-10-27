@@ -44,19 +44,19 @@ SYSTEM_PROMPTS: dict[Route, str] = {route: f"{PERSONA} {text}" for route, text i
 
 CONFIRM_SECONDS = 30.0
 COMPUTER_OFF = "As ações no computador estão desativadas neste motor."
-HOME_OFF = "A casa inteligente está desativada. Configure o Home Assistant (LITEAGENT_HOME_BACKEND=homeassistant, URL e token)."
-BROWSER_OFF = "O navegador está desativado neste motor. Ligue com LITEAGENT_BROWSER_BACKEND=chrome e instale: uv sync --extra browser."
+HOME_OFF = "A casa inteligente está desativada. Configure o Home Assistant (CHAKMATI_HOME_BACKEND=homeassistant, URL e token)."
+BROWSER_OFF = "O navegador está desativado neste motor. Ligue com CHAKMATI_BROWSER_BACKEND=chrome e instale: uv sync --extra browser."
 AUTOMATION_OFF = "As automações estão desativadas neste motor."
 
 CALENDAR_OFF = (
     "A integração com a agenda está desativada. No robô, ligue em Ajustes > Integrações; "
-    "ou use LITEAGENT_CALENDAR_BACKEND=auto (ou macos / ics) e reinicie."
+    "ou use CHAKMATI_CALENDAR_BACKEND=auto (ou macos / ics) e reinicie."
 )
 
 
 WHATSAPP_OFF = (
     "A integração com o WhatsApp está desativada. No robô, ligue em Ajustes > Integrações; "
-    "ou use LITEAGENT_WHATSAPP_BACKEND=openwa (com o OpenWA em execução) e reinicie."
+    "ou use CHAKMATI_WHATSAPP_BACKEND=openwa (com o OpenWA em execução) e reinicie."
 )
 
 

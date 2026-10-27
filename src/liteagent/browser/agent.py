@@ -49,7 +49,7 @@ MAX_REPEATS = 2
 # A site asking whether this is a robot. It is never solved here (no CAPTCHA solving, no tricks): the person is told instead.
 _HUMAN_CHECK = re.compile(r"bots use duckduckgo|confirm (?:this|that) .{0,40}human|verify (?:that )?you(?:'| a)re (?:a )?human|are you a robot|unusual traffic|captcha|n[ãa]o sou um rob[ôo]|tr[áa]fego incomum", re.IGNORECASE)
 BLOCKED = ("O site pediu uma verificação de que sou uma pessoa e eu não resolvo isso. Tente de novo daqui a pouco, ou ligue "
-           "LITEAGENT_BROWSER_HEADLESS=0 para ver a janela e fazer a verificação você mesmo.")
+           "CHAKMATI_BROWSER_HEADLESS=0 para ver a janela e fazer a verificação você mesmo.")
 
 PROMPT = """You drive a web browser to do the user's task. Answer with ONE JSON object and nothing else.
 Actions:

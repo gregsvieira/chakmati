@@ -65,13 +65,13 @@ function save(file, settings) {
   fs.renameSync(tmp, file); // atomic: a crash never leaves a half-written file
 }
 
-// Environment the engine is started with, so the person never has to type LITEAGENT_* variables.
+// Environment the engine is started with, so the person never has to type CHAKMATI_* variables.
 function engineEnv(settings, { searxng = false } = {}) {
   return {
-    LITEAGENT_CHAT_MODEL: settings.chatModel,
-    LITEAGENT_RESEARCH_BACKEND: !settings.research ? 'off' : searxng ? 'searxng' : 'ddg',
-    LITEAGENT_WHATSAPP_BACKEND: settings.whatsapp ? 'openwa' : 'off',
-    LITEAGENT_CALENDAR_BACKEND: settings.calendar ? 'auto' : 'off',
+    CHAKMATI_CHAT_MODEL: settings.chatModel,
+    CHAKMATI_RESEARCH_BACKEND: !settings.research ? 'off' : searxng ? 'searxng' : 'ddg',
+    CHAKMATI_WHATSAPP_BACKEND: settings.whatsapp ? 'openwa' : 'off',
+    CHAKMATI_CALENDAR_BACKEND: settings.calendar ? 'auto' : 'off',
   };
 }
 

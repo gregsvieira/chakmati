@@ -6,7 +6,7 @@ Local assistant engine: simple messages answer inline in seconds; slow work
 ## Run
 
     uv sync
-    ollama pull qwen3.5:latest        # or set LITEAGENT_CHAT_MODEL
+    ollama pull qwen3.5:latest        # or set CHAKMATI_CHAT_MODEL
     uv run python -m liteagent.main   # http://127.0.0.1:8765
 
     curl -s localhost:8765/message -H 'content-type: application/json' \
@@ -39,8 +39,8 @@ Chat replies stream directly; research/task replies stream as the worker produce
 
 ## Calendar (agenda)
 
-Off by default. Turn it on with `LITEAGENT_CALENDAR_BACKEND=auto` (macOS Calendar.app on a Mac, an `.ics` file elsewhere),
-`macos`, or `ics` (file at `LITEAGENT_CALENDAR_ICS_PATH`, default `agenda.ics`). On the first use macOS asks you to allow access.
+Off by default. Turn it on with `CHAKMATI_CALENDAR_BACKEND=auto` (macOS Calendar.app on a Mac, an `.ics` file elsewhere),
+`macos`, or `ics` (file at `CHAKMATI_CALENDAR_ICS_PATH`, default `agenda.ics`). On the first use macOS asks you to allow access.
 
 Ask in natural language ("o que tenho amanhã?", "marque dentista dia 30 às 9h", "cancele a reunião de sexta").
 Reading is immediate. **Writing is always a proposal that you approve**: nothing is created or deleted until the UI calls
@@ -60,7 +60,7 @@ banned. Use a secondary number, keep volumes low, never expose OpenWA beyond 127
 
     scripts/openwa.sh setup      # once: installs OpenWA and its own Node.js under ~/.lite-agent/openwa (system Node untouched)
     scripts/openwa.sh start      # opens a window with a QR code: WhatsApp > Linked devices > Link a device
-    LITEAGENT_WHATSAPP_BACKEND=openwa uv run python -m liteagent.main
+    CHAKMATI_WHATSAPP_BACKEND=openwa uv run python -m liteagent.main
 
 Then, in natural language: "tenho mensagens novas?", "o que o João disse?", "resuma a conversa com a Maria",
 "manda pro João: chego em 10 min". After the first login the session is kept; later use `scripts/openwa.sh start-bg`.
@@ -78,13 +78,13 @@ are the only place where other people's text reaches the local model; it is quot
 
 ## Browser agent (live screenshots)
 
-Off by default. Needs Chrome installed and `uv sync --extra browser`; turn it on with `LITEAGENT_BROWSER_BACKEND=chrome`.
+Off by default. Needs Chrome installed and `uv sync --extra browser`; turn it on with `CHAKMATI_BROWSER_BACKEND=chrome`.
 
     uv run python -m liteagent.main
     curl -N localhost:8765/message/stream -H 'content-type: application/json' \
          -d '{"text":"use o navegador para pesquisar a capital da Austrália"}'
 
-Ask for it by name ("use o navegador...", "pelo Chrome...", "navegue até..."). A headless Chrome (no window opens; `LITEAGENT_BROWSER_HEADLESS=0` shows it; its own profile in
+Ask for it by name ("use o navegador...", "pelo Chrome...", "navegue até..."). A headless Chrome (no window opens; `CHAKMATI_BROWSER_HEADLESS=0` shows it; its own profile in
 `~/.lite-agent/browser`, never yours) opens and works one step at a time; each step emits a `screenshot` event
 (`job_id`, `step`, `url`, `title`, `note`) and the picture is at `GET /jobs/<id>/frames/<step>` (JPEG; the last 20 jobs are kept in
 `~/.lite-agent/frames`). The desktop panel shows the latest screenshot with what it was doing, replaced at each step.
@@ -115,7 +115,7 @@ A box with only a little ink is flagged "marca duvidosa", never decided. A handw
 wrong option chosen (reused for every student who chose it), and "Não respondeu" for blanks. It is written by the local model, so it is a draft for you to check: an explanation that
 names another option as correct, or that corrects itself in the middle, is replaced by "confira à mão". Small models get ENEM maths wrong, so the questions are worked out by a **reasoning model** when one is there: the engine asks Ollama what is installed
 (`deepseek-r1:14b`, then `:8b`, then `:7b`) and uses the best one **that fits this computer's memory** (file size x 1.4 + 1.5 GB must be under the RAM: the 14B needs about 16 GB,
-the 8B about 12 GB). With none installed, or too little memory, it uses the chat model and the plan says so. `LITEAGENT_EXPLAIN_MODEL` names one yourself. The installer offers it
+the 8B about 12 GB). With none installed, or too little memory, it uses the chat model and the plan says so. `CHAKMATI_EXPLAIN_MODEL` names one yourself. The installer offers it
 (only on computers that can run it, with its own approval for the download). About 2.5 minutes for 20 exams on a 24 GB Mac.
 
 ### The plan comes first
@@ -215,33 +215,37 @@ Only the macOS arm64 build was checked by hand; the Windows and Ubuntu builds ar
 
 | Variable | Default |
 |---|---|
-| `LITEAGENT_OLLAMA_URL` | `http://127.0.0.1:11434` |
-| `LITEAGENT_CHAT_MODEL` | `qwen3.5:latest` |
-| `LITEAGENT_THINK` | `0` |
-| `LITEAGENT_GATE_BACKEND` | `heuristic` (`laya` needs `uv sync --extra laya`) |
-| `LITEAGENT_GATE_MIN_CONFIDENCE` | `0.6` |
-| `LITEAGENT_DB_PATH` | `liteagent.db` |
-| `LITEAGENT_RESEARCH_BACKEND` | `off` (`ddg` = DuckDuckGo HTML, `searxng` = a SearXNG instance) |
-| `LITEAGENT_SEARXNG_URL` | `http://localhost:8080` |
-| `LITEAGENT_RESEARCH_SCORER` | `keepall` (`laya` is opt-in) |
-| `LITEAGENT_RESULT_CUTOFF` | `0.2` |
-| `LITEAGENT_KEEP_ALIVE` | `30m` (empty = Ollama default, which unloads the model after 5 min idle) |
-| `LITEAGENT_PRELOAD_MODEL` | `1`; loads the model at startup (first request ~4 s faster, ~6 GB RAM resident with the default model). `0` turns it off |
-| `LITEAGENT_RESEARCH_MAX_TOKENS` | `200` (`0` = no cap) |
-| `LITEAGENT_RESEARCH_CONCISE` | `1` (answers in at most 3 short sentences) |
-| `LITEAGENT_FETCH_DEADLINE` | `2.0` seconds to wait for page downloads (`0` = wait for all); a site that hangs is dropped |
-| `LITEAGENT_RESEARCH_MAX_PAGES` | `4` candidate pages downloaded per question |
-| `LITEAGENT_RESEARCH_TARGET_PAGES` | `2`: stop waiting as soon as 2 pages downloaded successfully (`0` = wait for all) |
-| `LITEAGENT_CALENDAR_BACKEND` | `off` (`auto` \| `macos` \| `ics`) |
-| `LITEAGENT_CALENDAR_ICS_PATH` | `agenda.ics` |
-| `LITEAGENT_CALENDAR_NAME` | empty = the system's default calendar for new events |
-| `LITEAGENT_BROWSER_BACKEND` | `off` (`chrome`; needs `uv sync --extra browser`), plus `LITEAGENT_BROWSER_HEADLESS` (`1`), `LITEAGENT_BROWSER_PROFILE`, `LITEAGENT_BROWSER_FRAMES_DIR`, `LITEAGENT_BROWSER_MAX_STEPS` (`12`) |
-| `LITEAGENT_EXPLAIN_MODEL` | empty = the chat model; a stronger model for working out exam questions, e.g. `deepseek-r1:14b` |
-| `LITEAGENT_WHATSAPP_BACKEND` | `off` (`openwa`) |
-| `LITEAGENT_OPENWA_URL` | `http://127.0.0.1:8081` |
-| `LITEAGENT_OPENWA_API_KEY` | empty = read `~/.lite-agent/openwa/api_key.txt` (`LITEAGENT_OPENWA_API_KEY_FILE`) |
-| `LITEAGENT_WHATSAPP_MAX_SENDS_PER_HOUR` | `20` |
-| `LITEAGENT_CONTACT` | `https://github.com/gregsvieira`: added to the User-Agent (Wikipedia rejects anonymous bots); empty = none |
+| `CHAKMATI_OLLAMA_URL` | `http://127.0.0.1:11434` |
+| `CHAKMATI_CHAT_MODEL` | `qwen3.5:latest` |
+| `CHAKMATI_THINK` | `0` |
+| `CHAKMATI_GATE_BACKEND` | `heuristic` (`laya` needs `uv sync --extra laya`) |
+| `CHAKMATI_GATE_MIN_CONFIDENCE` | `0.6` |
+| `CHAKMATI_DB_PATH` | `liteagent.db` |
+| `CHAKMATI_RESEARCH_BACKEND` | `off` (`ddg` = DuckDuckGo HTML, `searxng` = a SearXNG instance) |
+| `CHAKMATI_SEARXNG_URL` | `http://localhost:8080` |
+| `CHAKMATI_RESEARCH_SCORER` | `keepall` (`laya` is opt-in) |
+| `CHAKMATI_RESULT_CUTOFF` | `0.2` |
+| `CHAKMATI_KEEP_ALIVE` | `30m` (empty = Ollama default, which unloads the model after 5 min idle) |
+| `CHAKMATI_PRELOAD_MODEL` | `1`; loads the model at startup (first request ~4 s faster, ~6 GB RAM resident with the default model). `0` turns it off |
+| `CHAKMATI_RESEARCH_MAX_TOKENS` | `200` (`0` = no cap) |
+| `CHAKMATI_RESEARCH_CONCISE` | `1` (answers in at most 3 short sentences) |
+| `CHAKMATI_FETCH_DEADLINE` | `2.0` seconds to wait for page downloads (`0` = wait for all); a site that hangs is dropped |
+| `CHAKMATI_RESEARCH_MAX_PAGES` | `4` candidate pages downloaded per question |
+| `CHAKMATI_RESEARCH_TARGET_PAGES` | `2`: stop waiting as soon as 2 pages downloaded successfully (`0` = wait for all) |
+| `CHAKMATI_CALENDAR_BACKEND` | `off` (`auto` \| `macos` \| `ics`) |
+| `CHAKMATI_CALENDAR_ICS_PATH` | `agenda.ics` |
+| `CHAKMATI_CALENDAR_NAME` | empty = the system's default calendar for new events |
+| `CHAKMATI_BROWSER_BACKEND` | `off` (`chrome`; needs `uv sync --extra browser`), plus `CHAKMATI_BROWSER_HEADLESS` (`1`), `CHAKMATI_BROWSER_PROFILE`, `CHAKMATI_BROWSER_FRAMES_DIR`, `CHAKMATI_BROWSER_MAX_STEPS` (`12`) |
+| `CHAKMATI_EXPLAIN_MODEL` | empty = the chat model; a stronger model for working out exam questions, e.g. `deepseek-r1:14b` |
+| `CHAKMATI_WHATSAPP_BACKEND` | `off` (`openwa`) |
+| `CHAKMATI_OPENWA_URL` | `http://127.0.0.1:8081` |
+| `CHAKMATI_OPENWA_API_KEY` | empty = read `~/.lite-agent/openwa/api_key.txt` (`CHAKMATI_OPENWA_API_KEY_FILE`) |
+| `CHAKMATI_WHATSAPP_MAX_SENDS_PER_HOUR` | `20` |
+| `CHAKMATI_CONTACT` | `https://github.com/gregsvieira`: added to the User-Agent (Wikipedia rejects anonymous bots); empty = none |
+
+## Environment variables
+
+All start with `CHAKMATI_` (`CHAKMATI_CHAT_MODEL`, `CHAKMATI_BROWSER_BACKEND`, ...). The old `LITEAGENT_` names still work when the new one is not set (an engine started before the rename keeps working); the new name wins when both are set.
 
 ## Test
 
@@ -279,8 +283,8 @@ Windows funciona; macOS depende do app de captura (apps que usam ScreenCaptureKi
 Linux não tem suporte. Teste antes de depender disso:
 
 ```bash
-cd desktop && LITEAGENT_DESKTOP_PROTECT_TEST=/tmp/prot ./node_modules/.bin/electron .
+cd desktop && CHAKMATI_DESKTOP_PROTECT_TEST=/tmp/prot ./node_modules/.bin/electron .
 # gera unprotected.png e protected.png (exige permissão de Gravação de Tela ao terminal)
 ```
 
-Também há o modo discreto (balões sem nomes) e `LITEAGENT_DESKTOP_SNAPSHOT=/pasta` para gerar imagens do visual.
+Também há o modo discreto (balões sem nomes) e `CHAKMATI_DESKTOP_SNAPSHOT=/pasta` para gerar imagens do visual.

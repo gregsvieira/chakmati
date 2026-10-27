@@ -24,9 +24,9 @@ const BUBBLE = { w: 320, h: 120 };
 const PANEL = { w: 400, h: 640 };
 const HOTKEYS = { toggle: 'CommandOrControl+Shift+Space', panic: 'CommandOrControl+Shift+H' };
 const MAX_TEXT = 2000;
-const SNAPSHOT = process.env.LITEAGENT_DESKTOP_SNAPSHOT;
-const PROTECT_TEST = process.env.LITEAGENT_DESKTOP_PROTECT_TEST;
-const SETUP = process.argv.includes('--setup') || process.env.LITEAGENT_DESKTOP_SETUP === '1';
+const SNAPSHOT = process.env.CHAKMATI_DESKTOP_SNAPSHOT;
+const PROTECT_TEST = process.env.CHAKMATI_DESKTOP_PROTECT_TEST;
+const SETUP = process.argv.includes('--setup') || process.env.CHAKMATI_DESKTOP_SETUP === '1';
 const isMac = process.platform === 'darwin';
 const isLinux = process.platform === 'linux';
 
@@ -75,9 +75,9 @@ const webPreferences = () => ({
   spellcheck: false,
 });
 
-// Debugging aid (LITEAGENT_DEBUG_WINDOWS=1): every time a window changes size or place, write who did it to a log file.
+// Debugging aid (CHAKMATI_DEBUG_WINDOWS=1): every time a window changes size or place, write who did it to a log file.
 function traceWindow(name, win) {
-  if (process.env.LITEAGENT_DEBUG_WINDOWS !== '1' || !win) return;
+  if (process.env.CHAKMATI_DEBUG_WINDOWS !== '1' || !win) return;
   const file = path.join(app.getPath('userData'), 'window-debug.log');
   const log = (what, extra = '') => {
     try { fs.appendFileSync(file, `${new Date().toISOString()} ${name} ${what} ${JSON.stringify(win.getBounds())} ${extra}\n`); } catch { /* debugging only */ }
@@ -485,7 +485,7 @@ async function restartEngine() {
 
 // ---- OpenWA (the WhatsApp bridge). Its browser window is only needed once, to scan the QR code; closing that window
 // stops the session, so after the link is made the app restarts OpenWA without a window (the login stays saved).
-const OPENWA_URL = process.env.LITEAGENT_OPENWA_URL || 'http://127.0.0.1:8081';
+const OPENWA_URL = process.env.CHAKMATI_OPENWA_URL || 'http://127.0.0.1:8081';
 let owaWatch = null; // { abort: AbortController } while a link attempt is being watched
 
 async function owaHealth() {
@@ -678,7 +678,7 @@ async function downloadVoice() {
 }
 
 function updateSetting(key, value) {
-  if (process.env.LITEAGENT_DEBUG_WINDOWS === '1') { try { fs.appendFileSync(path.join(app.getPath('userData'), 'window-debug.log'), `${new Date().toISOString()} SETTING ${key}=${JSON.stringify(value)}\n`); } catch { /* debugging only */ } }
+  if (process.env.CHAKMATI_DEBUG_WINDOWS === '1') { try { fs.appendFileSync(path.join(app.getPath('userData'), 'window-debug.log'), `${new Date().toISOString()} SETTING ${key}=${JSON.stringify(value)}\n`); } catch { /* debugging only */ } }
   if (key === 'protect' && typeof value === 'boolean') settings.protect = value;
   else if (key === 'masked' && typeof value === 'boolean') settings.masked = value;
   else if (key === 'bubbleSide' && settingsLib.SIDES.includes(value)) settings.bubbleSide = value;

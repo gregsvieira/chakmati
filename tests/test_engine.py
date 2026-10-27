@@ -153,7 +153,7 @@ async def test_calendar_job_without_an_assistant_says_the_feature_is_off(store):
     engine = Engine(FakeGate(Route.CALENDAR), llm, store)
     job = store.get((await engine.handle("marque reunião")).job_id)
     text = await engine.run_job(job)
-    assert "desativ" in text.lower() and "LITEAGENT_CALENDAR_BACKEND" in text and llm.calls == []
+    assert "desativ" in text.lower() and "CHAKMATI_CALENDAR_BACKEND" in text and llm.calls == []
     assert "".join(await collect(engine.run_job_stream(job))) == text
 
 
@@ -170,7 +170,7 @@ async def test_whatsapp_job_without_an_assistant_says_the_feature_is_off(store):
     engine = Engine(FakeGate(Route.WHATSAPP), StreamingLLM(), store)
     job = store.get((await engine.handle("manda oi pro João")).job_id)
     text = await engine.run_job(job)
-    assert "desativ" in text.lower() and "LITEAGENT_WHATSAPP_BACKEND" in text
+    assert "desativ" in text.lower() and "CHAKMATI_WHATSAPP_BACKEND" in text
     assert "".join(await collect(engine.run_job_stream(job))) == text
 
 

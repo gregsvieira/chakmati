@@ -36,11 +36,11 @@ test('installed, the engine runs from the data folder with its files kept out of
   assert.equal(l.command, '/data/engine-venv/bin/python');
   assert.deepEqual(l.args, ['-m', 'liteagent.main']);
   assert.equal(l.cwd, '/data/engine-data');
-  assert.deepEqual(l.env, { LITEAGENT_DB_PATH: '/data/engine-data/liteagent.db', LITEAGENT_CALENDAR_ICS_PATH: '/data/engine-data/agenda.ics' });
+  assert.deepEqual(l.env, { CHAKMATI_DB_PATH: '/data/engine-data/liteagent.db', CHAKMATI_CALENDAR_ICS_PATH: '/data/engine-data/agenda.ics' });
   const w = engineLaunch({ packaged: true, resourcesPath: 'C:\\app\\resources', dataDir: 'C:\\data', platform: 'win32' });
   assert.equal(w.command, 'C:\\data\\engine-venv\\Scripts\\python.exe');
   assert.equal(w.cwd, 'C:\\data\\engine-data');
-  assert.equal(w.env.LITEAGENT_DB_PATH, 'C:\\data\\engine-data\\liteagent.db');
+  assert.equal(w.env.CHAKMATI_DB_PATH, 'C:\\data\\engine-data\\liteagent.db');
 });
 
 test('the sync command installs the engine as a copy, with the managed Python, inside the data folder', () => {

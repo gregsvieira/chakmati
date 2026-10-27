@@ -10,7 +10,7 @@ USER_AGENT = "chakmati/0.1 (+local research assistant; low volume)"
 
 def build_user_agent(contact: str | None) -> str:
     """Some sites (Wikipedia) reject user agents that do not say who runs the bot. When the user
-    configures a contact (LITEAGENT_CONTACT: a URL or an e-mail) it is appended; otherwise the
+    configures a contact (CHAKMATI_CONTACT: a URL or an e-mail) it is appended; otherwise the
     plain agent is used. Nothing is invented or taken from the machine."""
     if not contact:
         return USER_AGENT

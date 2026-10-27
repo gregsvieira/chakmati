@@ -174,7 +174,7 @@ async def test_with_the_browser_off_the_engine_says_so():
     engine = Engine(BrowserGate(), ScriptedLLM(), store)
     job_id = store.create("browser", "use o navegador")
     answer = await engine.run_job(store.get(job_id))
-    assert "LITEAGENT_BROWSER_BACKEND=chrome" in answer
+    assert "CHAKMATI_BROWSER_BACKEND=chrome" in answer
 
 
 async def test_a_human_check_is_reported_not_solved(tmp_path):

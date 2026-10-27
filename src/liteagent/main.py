@@ -96,7 +96,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         inputs = InputBroker()
         browser_agent = BrowserAgent(llm, frames, lambda: PlaywrightSession(s.browser_profile, headless=s.browser_headless), max_steps=s.browser_max_steps,
                                     search=search_backend, ask=inputs.ask)
-    catalog = ModelCatalog(s.ollama_url, configured=s.explain_model)  # which stronger model is installed (or named in LITEAGENT_EXPLAIN_MODEL), and fits
+    catalog = ModelCatalog(s.ollama_url, configured=s.explain_model)  # which stronger model is installed (or named in CHAKMATI_EXPLAIN_MODEL), and fits
     worker_ref: list[Worker] = []
     engine = Engine(
         build_gate(s),
