@@ -156,7 +156,8 @@ async def test_a_calendar_trigger_without_a_calendar_does_nothing(tmp_path):
 
 
 async def test_the_whatsapp_watcher_hands_fresh_messages_to_automations_but_not_the_baseline():
-    from chakmati.shared.notices import NoticeBoard, WhatsAppWatcher
+    from chakmati.features.whatsapp.watcher import WhatsAppWatcher
+    from chakmati.shared.notices import NoticeBoard
 
     class Service:
         def __init__(self):

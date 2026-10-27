@@ -5,13 +5,9 @@ import pytest
 
 from chakmati.features.agenda.models import CalendarEvent
 from chakmati.shared.approvals import Action
-from chakmati.shared.notices import (
-    ApprovalWatcher,
-    CalendarWatcher,
-    NoticeBoard,
-    Notifier,
-    WhatsAppWatcher,
-)
+from chakmati.features.agenda.watcher import CalendarWatcher
+from chakmati.features.whatsapp.watcher import WhatsAppWatcher
+from chakmati.shared.notices import ApprovalWatcher, NoticeBoard, Notifier
 from chakmati.features.whatsapp.models import Chat
 from chakmati.features.whatsapp.openwa import WhatsAppError
 

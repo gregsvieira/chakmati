@@ -135,7 +135,10 @@ def test_the_notifier_runs_with_the_app_and_stops_with_it(tmp_path):
 
 
 def test_build_app_starts_the_watchers_that_match_the_enabled_integrations(tmp_path):
-    from chakmati.shared.notices import ApprovalWatcher, AutomationTicker, CalendarWatcher, WhatsAppWatcher
+    from chakmati.features.agenda.watcher import CalendarWatcher
+    from chakmati.features.automations.ticker import AutomationTicker
+    from chakmati.features.whatsapp.watcher import WhatsAppWatcher
+    from chakmati.shared.notices import ApprovalWatcher
 
     app = build_app(Settings(db_path=":memory:", calendar_backend="ics", calendar_ics_path=str(tmp_path / "a.ics"),
                              whatsapp_backend="openwa", openwa_url="http://127.0.0.1:1"))

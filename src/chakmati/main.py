@@ -14,7 +14,10 @@ from chakmati.features.automations.assistant import AutomationAssistant
 from chakmati.features.automations.runner import AutomationRunner
 from chakmati.features.automations.service import AutomationService
 from chakmati.features.automations.store import AutomationStore
-from chakmati.shared.notices import AutomationTicker, ApprovalWatcher, CalendarWatcher, NoticeBoard, Notifier, WhatsAppWatcher
+from chakmati.features.agenda.watcher import CalendarWatcher
+from chakmati.features.automations.ticker import AutomationTicker
+from chakmati.features.whatsapp.watcher import WhatsAppWatcher
+from chakmati.shared.notices import ApprovalWatcher, NoticeBoard, Notifier
 from chakmati.shared.config import Settings
 from chakmati.shared import extras
 from chakmati.app.engine import Engine
