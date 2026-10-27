@@ -14,6 +14,7 @@ const items = (list, texts) => list.replaceChildren(...texts.map((t) => el('li',
 const show = (name) => { for (const s of document.querySelectorAll('main > section')) s.hidden = s.id !== `s-${name}`; };
 
 let scan;
+let face = null;   // the tiny Chakmati that says the remark about the computer
 const chosen = new Set();
 
 // WhatsApp: the first time it is ticked, a notice about not getting the number blocked has to be read ("Compreendi e estou ciente!").
@@ -37,8 +38,12 @@ async function start() {
   scan = await api.scan();
   const rows = [['Sistema', scan.hwText.system], ['Memória RAM', scan.hwText.ram], ['Espaço livre', scan.hwText.disk], ['Núcleos', scan.hwText.cores]];
   $('hw').replaceChildren(...rows.map(([k, v]) => el('div', { className: 'row' }, el('span', { textContent: k }), el('strong', { textContent: v }))));
-  $('quip').hidden = !scan.quip;
-  if (scan.quip) { $('quip').textContent = scan.quip.text; $('quip').dataset.tone = scan.quip.tone; }
+  $('quip-row').hidden = !scan.quip;
+  if (scan.quip) {
+    $('quip').textContent = scan.quip.text;
+    if (!face) { face = window.Robot.create($('quip-face')); face.svg.setAttribute('viewBox', '26 4 42 54'); }   // only his head, tiny
+    face.setMood(scan.quip.tone === 'praise' ? 'happy' : 'idle');
+  }
   $('verdict').textContent = scan.levelText;
   $('verdict').dataset.level = scan.verdict.level;
   items($('reasons'), [...scan.verdict.reasons, ...scan.verdict.notes]);
