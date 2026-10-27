@@ -233,10 +233,13 @@ class BrowserAgent:
             await self._frame(job_id, session, "Esperando você resolver a verificação")
             answer = await self._ask(job_id, "verificacao", question, False, True)
             if answer is None:
+                log.info("human check %s: no answer in time", job_id[:8])
                 return None
             if answer == "nao":
+                log.info("human check %s: the person said they could not pass it", job_id[:8])
                 return DECLINED
             snap = await self._after_check(job_id, session)
+            log.info("human check %s: after 'Já resolvi' (try %d) the page is %s, blocked=%s", job_id[:8], attempt + 1, snap.url[:120], still_blocked(snap))
             if not still_blocked(snap):
                 return snap
             question = "Ainda vejo a verificação na página. Termine de resolver na janela do navegador e toque em “Já resolvi”, ou toque em “Não consegui”."

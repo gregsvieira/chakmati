@@ -1,3 +1,4 @@
+import logging
 import uvicorn
 from fastapi import FastAPI
 
@@ -151,6 +152,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
 
 def main() -> None:
     # Loopback only: the engine is unauthenticated and must not be network-reachable.
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")  # the engine's own notes (the browser's human check, ...) reach the log, not only uvicorn's
     uvicorn.run(build_app(), host="127.0.0.1", port=8765)
 
 
