@@ -369,3 +369,9 @@ body[data-still] #panel[data-layout="wide"] #content, body[data-still] #panel[da
 #panel[data-layout="compact"][data-focus="thread"] #thread-section > h2 { margin-bottom: 10px; }
 #panel[data-layout="compact"][data-focus="thread"] #thread { padding: 0 2px; }
 #panel[data-layout="wide"] #thread-section { background: transparent; }
+
+/* an address in a message, with its small "open in the browser" icon at the end */
+.link { overflow-wrap: anywhere; }
+.link-open { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-left: 4px; padding: 0; vertical-align: middle; border: 1px solid currentColor; border-radius: 50%; background: transparent; color: inherit; opacity: .8; cursor: pointer; }
+.link-open:hover { opacity: 1; background: color-mix(in srgb, currentColor 18%, transparent); }
+.link-open:focus-visible { outline: 2px solid var(--petrol); outline-offset: 2px; }

@@ -45,6 +45,7 @@ contextBridge.exposeInMainWorld('assistant', {
     onMessage: (cb) => listen('panel:message', cb),
     ready: () => send('panel:ready'),
     close: () => send('panel:close'),
+    openLink: (url) => send('panel:open-link', String(url).slice(0, 2000)),
     setLayout: (mode) => send('panel:layout', mode),
     removeVoice: () => ipcRenderer.invoke('panel:voice-remove'),
     reply: (text) => send('panel:reply', { text }),

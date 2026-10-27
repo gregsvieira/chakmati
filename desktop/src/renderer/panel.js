@@ -271,18 +271,35 @@
     return turn.askEl;
   }
 
+  // Addresses in a message: the text stays and a small link icon follows it; the icon opens the address in the person's own browser
+  function linkNodes(text) {
+    return window.Links.splitLinks(text).map((part) => part.url
+      ? h('span', { class: 'link' }, part.url, h('button', { type: 'button', class: 'link-open', title: 'Abrir o link no navegador', 'aria-label': `Abrir ${part.url} no navegador`,
+        onclick: (e) => { e.stopPropagation(); window.assistant.panel.openLink(part.url); } }, linkIcon()))
+      : part.text);
+  }
+  function linkIcon() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('width', '14'); svg.setAttribute('height', '14'); svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M14 3h7v7h-2V6.4l-8.3 8.3-1.4-1.4L17.6 5H14V3zM5 5h6v2H5v12h12v-6h2v8H3V5h2z');
+    path.setAttribute('fill', 'currentColor');
+    svg.appendChild(path);
+    return svg;
+  }
+
   // "Plano:\n1. ...\n2. ..." at the start of an answer is a card: open while the Chakmati works, folded when it is done (the person can open it again)
   const PLAN = /^Plano:\n((?:\d+\.[^\n]*\n?)+)\n*/;
   function bodyNodes(turn) {
     const text = turn.text || '…';
     const m = PLAN.exec(text);
-    if (!m) return [h('span', { class: 'turn-text' }, text)];
+    if (!m) return [h('span', { class: 'turn-text' }, linkNodes(text))];
     const steps = m[1].trim().split('\n').map((l) => l.replace(/^\d+\.\s*/, ''));
     const open = turn.planOpen !== undefined ? turn.planOpen : turn.status === 'pending';
     const card = h('details', { class: 'plan', open, ontoggle: (e) => { turn.planOpen = e.currentTarget.open; } },
       h('summary', {}, `Plano (${steps.length} ${steps.length === 1 ? 'passo' : 'passos'})`), h('ol', {}, steps.map((t) => h('li', {}, t))));
     const rest = text.slice(m[0].length).trim();
-    return rest ? [card, h('span', { class: 'turn-text' }, rest)] : [card];
+    return rest ? [card, h('span', { class: 'turn-text' }, linkNodes(rest))] : [card];
   }
 
   function renderThread(scroll = true) {

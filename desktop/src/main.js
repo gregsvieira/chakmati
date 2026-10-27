@@ -4,10 +4,11 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
-const { app, BrowserWindow, Tray, Menu, ipcMain, screen, globalShortcut, nativeImage, nativeTheme, systemPreferences } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, screen, globalShortcut, nativeImage, nativeTheme, systemPreferences, shell } = require('electron');
 
 const { EngineClient, EngineError } = require('./lib/engine-client');
 const settingsLib = require('./lib/settings');
+const links = require('./lib/links');
 const { bellState, moodWithBell, countsAsNotice } = require('./lib/bell');
 const { chooseSide, layoutWidget, clampIcon, panelBounds, expandedBounds, MIN_WIDE } = require('./lib/placement');
 const { NoticeQueue, present, bubbleDuration } = require('./lib/notice-queue');
@@ -763,6 +764,8 @@ ipcMain.on('panel:layout', (_e, mode) => setPanelMode(mode));
     if (!text) return;
     pushNotice({ id: -Date.now(), kind: 'reply', text, masked: 'O Chakmati respondeu.', ts: Date.now() / 1000, key: `reply:${Date.now()}` });
   });
+  // A link icon in a message: opened in the person's own browser, only http(s) and only what was in the conversation's text
+  ipcMain.on('panel:open-link', (_e, url) => { const safe = links.safeLink(url); if (safe) shell.openExternal(safe); });
   ipcMain.on('panel:refresh', refreshOverview);
   ipcMain.on('panel:panic', () => setHidden(true));
   ipcMain.on('panel:restart', restartApp);

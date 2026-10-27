@@ -232,3 +232,11 @@ def test_shopping_on_a_site_goes_to_the_browser_even_when_the_store_is_not_known
 
 def test_more_stores_open_straight_at_their_site():
     assert start_url("acesse a Renner e veja camisetas") == "https://www.lojasrenner.com.br/"
+
+
+def test_the_terms_checkbox_bar_is_ticked_to_clear_the_page():
+    snap = Snapshot("https://loja.test/p", "Produto", "Para sua segurança atualizamos os Termos de Uso", [
+        {"id": 1, "tag": "a", "type": "", "label": "Camiseta"},
+        {"id": 2, "tag": "input", "type": "checkbox", "label": "Li, aceito os Termos de Uso e estou ciente da Política de Privacidade", "overlay": True}])
+    element, note = BrowserAgent.obstacle(snap)
+    assert element["id"] == 2 and "termos" in note
