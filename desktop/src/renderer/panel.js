@@ -250,11 +250,11 @@
       const ask = turn.ask;
       const input = h('input', { type: ask.secret ? 'password' : 'text', class: 'ask-input', autocomplete: ask.secret ? 'new-password' : 'off', spellcheck: 'false',
         maxlength: 500, 'aria-label': ask.prompt, placeholder: ask.secret ? 'Digite a senha (ela fica oculta)' : 'Digite aqui' });
-      const send = h('button', { type: 'submit', class: 'primary small' }, 'Enviar');
+      const send = h('button', { type: 'submit', class: 'primary small' }, ask.confirm ? 'Já resolvi' : 'Enviar');
       const problem = h('p', { class: 'warn', hidden: true }, 'Não consegui enviar. Tente de novo.');
       turn.askEl = h('form', { class: 'ask', autocomplete: 'off', onsubmit: async (e) => {
         e.preventDefault();
-        const value = input.value;
+        const value = ask.confirm ? 'ok' : input.value;   // a confirmation has nothing to type
         if (!value) return;
         input.disabled = true; send.disabled = true;
         const res = await api.answerInput(ask.job_id, ask.request_id, value);
@@ -262,6 +262,7 @@
         if (res && res.ok) { turn.ask = null; turn.askEl = null; turn.askInput = null; turn.askSent = true; } else { input.disabled = false; send.disabled = false; problem.hidden = false; }
         renderThread(false);
       } }, h('label', { class: 'ask-label' }, ask.prompt), h('div', { class: 'ask-row' }, input, send), problem);
+      if (ask.confirm) input.hidden = true;
       turn.askInput = input;
     }
     return turn.askEl;
@@ -406,7 +407,7 @@
     if (!turn) return;
     if (event.type === 'screenshot') { Shots.addShot(turn, event); pickedStep = null; turn.text = turn.text || 'Usando o navegador…'; }
     else if (event.type === 'input') {
-      turn.ask = { job_id: event.job_id, request_id: event.request_id, prompt: event.prompt, secret: !!event.secret };
+      turn.ask = { job_id: event.job_id, request_id: event.request_id, prompt: event.prompt, secret: !!event.secret, confirm: !!event.confirm };
       turn.askEl = null; turn.askSent = false; turn.focusAsk = true;
       if ($('panel').dataset.layout === 'compact' && !store.get('chakmati.focus', false)) { store.set('chakmati.focus', true); applyLayout(); }
       if (state && !state.panelOpen) api.reply(`${event.prompt} (abra o painel para responder)`);

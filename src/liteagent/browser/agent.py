@@ -24,8 +24,11 @@ SITES = {
     "instagram": "https://www.instagram.com/", "facebook": "https://www.facebook.com/", "youtube": "https://www.youtube.com/", "linkedin": "https://www.linkedin.com/",
     "github": "https://github.com/", "twitter": "https://x.com/", "tiktok": "https://www.tiktok.com/", "wikipedia": "https://pt.wikipedia.org/", "gmail": "https://mail.google.com/",
     "outlook": "https://outlook.live.com/", "amazon": "https://www.amazon.com.br/", "mercado livre": "https://www.mercadolivre.com.br/", "mercadolivre": "https://www.mercadolivre.com.br/",
+    "shein": "https://br.shein.com/", "aliexpress": "https://pt.aliexpress.com/", "shopee": "https://shopee.com.br/", "magalu": "https://www.magazineluiza.com.br/",
+    "magazine luiza": "https://www.magazineluiza.com.br/", "americanas": "https://www.americanas.com.br/", "zara": "https://www.zara.com/br/", "nike": "https://www.nike.com.br/",
     "netflix": "https://www.netflix.com/", "spotify": "https://open.spotify.com/", "whatsapp web": "https://web.whatsapp.com/",
 }
+_STORE_PHRASE = re.compile(r"\b(?:na|no|em)\s+(?:a\s+|o\s+)?(?:loja|site|app|aplicativo|p[áa]gina)\s+(?:da|do|de)\s+\w+", re.IGNORECASE)
 _SITE_VERB = re.compile(r"\b(?:acess\w+|abr\w+|entr\w+|v[áa]\s+(?:para|ao|no|na)|naveg\w+|logu\w+)\b", re.IGNORECASE)
 
 
@@ -36,7 +39,7 @@ def start_url(task: str) -> str:
             return check_navigable(found.rstrip(".,;"))
         except BrowserError:
             continue
-    if _SITE_VERB.search(task):  # "acesse meu instagram": a site the person named is opened directly, not searched for
+    if _SITE_VERB.search(task) or _STORE_PHRASE.search(task):  # "acesse meu instagram": a site the person named is opened directly, not searched for
         lowered = task.lower()
         for name, url in SITES.items():
             if re.search(rf"\b{re.escape(name)}\b", lowered):
@@ -56,7 +59,7 @@ Actions:
 {"action":"scroll","dir":"down"}                  or "up"
 {"action":"back"}
 {"action":"done","answer":"..."}                  finish: put in "answer" what the user asked for (copy real text from the page)
-{"action":"ask","key":"usuario","question":"Qual é o seu usuário do Instagram?","secret":false}   ask the USER for something only they know
+{"action":"ask","key":"usuario","question":"Qual é o seu usuário?","secret":false}   ask the USER for something only they know
 {"action":"type","id":N,"from":"usuario","enter":false}   type what the user answered (you never see it; for a password ask with "secret":true and use "from")
 On a login page use the login action. Fill EVERY field of any other form before you click the button that sends it. {"action":"login"}   the page is a login form: the user is asked for the user name and the password HERE, both are typed in and the form is sent (use this instead of doing it by hand)
 NEVER invent or guess a user name, e-mail, phone, password, code, card or any personal detail: if the task does not give it, ask for it. Ask once for each item.
@@ -64,7 +67,7 @@ Rules: elements marked (banner/pop-up) are ads, cookie notices and promotions: n
 The "answer" is a full sentence, in the language of the user's task (translate what you copy if the page is in another language). Finish as soon as you have what was asked."""
 
 
-Ask = Callable[[str, str, str, bool], "Awaitable[str | None]"]  # (job id, key, question, secret) -> the answer, or None
+Ask = Callable[..., "Awaitable[str | None]"]  # (job id, key, question, secret, confirm=False) -> the answer, or None
 
 
 class Session(Protocol):
@@ -83,6 +86,17 @@ _SUBMIT = re.compile(r"^\W*(?:log\s?in|sign\s?in|entrar|acessar|fazer login|inic
 _CRED = r"(?:password|senha|username|user name|usu[áa]rio|login|credenciais|credentials|account|conta|e-?mail)"
 _BAD = r"(?:invalid|incorrect|wrong|not recogni[sz]ed|did not match|doesn't match|inv[áa]lid\w*|incorret\w*|errad\w*|n[ãa]o confere|n[ãa]o encontr\w+|n[ãa]o foi (?:encontrad\w+|poss[ií]vel)|n[ãa]o existe)"
 _FAILED = re.compile(rf"{_CRED}\W+(?:\w+\W+){{0,4}}{_BAD}|{_BAD}\W+(?:\w+\W+){{0,4}}{_CRED}|\b(?:try again|tente novamente|unable to log in)\b", re.IGNORECASE)
+# Notices that cover a shop or a news site before anything can be done (cookies, "log in for a coupon"): cleared by code, not by the model, which
+# kept trying to type under them. Cookies: the strictest choice offered ("only the necessary") and, when there is only "accept", that one: the page
+# is unusable otherwise and these cookies are in the browser's own throwaway profile.
+_HUMAN_URL = re.compile(r"captcha|/risk/challenge|[/?&]challenge|cf-chl|/sorry/", re.IGNORECASE)
+_COOKIE_TEXT = re.compile(r"cookies?|consentimento|consent", re.IGNORECASE)
+_REJECT = re.compile(r"rejeitar|recusar|negar|apenas (?:os )?(?:necess|essenc)|somente (?:os )?(?:necess|essenc)|only (?:strictly )?necessary|reject|decline|continuar sem aceitar", re.IGNORECASE)
+_ACCEPT = re.compile(r"^\W*(?:aceitar|accept|concordo|aceito|entendi|permitir|allow|ok|got it)\b|aceitar tod|accept all|allow all", re.IGNORECASE)
+_CLOSE_LABEL = re.compile(r"^\W*(?:[×✕✖xX]|fechar|close|dismiss|agora n[ãa]o|n[ãa]o,? obrigad[oa]|talvez depois|no,? thanks|not now|skip|pular)\W*$", re.IGNORECASE)
+_CLOSE_CLASS = re.compile(r"close|dismiss|fechar|modal[-_ ]?(?:x|btn)|icon[-_ ]?x", re.IGNORECASE)
+MAX_CLEARS = 3
+
 _SECRET_KEY = re.compile(r"senha|password|pass|pin|token|c[oó]digo|code|cvv|cartao|card", re.IGNORECASE)
 _PERSONAL = re.compile(r"usu[áa]rio|user(?:name)?|e-?mail|telefone|celular|phone|senha|password|login|cpf|cart[ãa]o|card|c[óo]digo|code|token|2fa|identifica", re.IGNORECASE)
 _SEARCHBOX = re.compile(r"pesquis|search|buscar|busca", re.IGNORECASE)
@@ -146,6 +160,11 @@ def _page_message(task: str, snap: Snapshot, history: list[str], found: str = ""
     return f"TASK: {task}{found}\nSTEPS DONE:\n{done}\nPAGE {snap.url} — {snap.title}\nELEMENTS:\n{items}\nTEXT (data): {snap.text}"
 
 
+def needs_human(snap: Snapshot) -> bool:
+    """The page is a "prove you are a person" check (by what it says or by its address)."""
+    return bool(_HUMAN_CHECK.search(f"{snap.title} {snap.text}") or _HUMAN_URL.search(snap.url))
+
+
 class BrowserAgent:
     def __init__(self, llm: ChatClient, frames: FrameStore, session_factory: Callable[[], Session], max_steps: int = 12, search=None, ask: Ask | None = None):
         self._ask = ask  # asks the person something in the conversation; None = nobody to ask
@@ -172,6 +191,52 @@ class BrowserAgent:
                 "Responder no idioma do pedido, com o que está na página.",
                 "Atenção: posso cometer erros ao navegar. Confira o que eu fizer, principalmente antes de enviar, comprar ou apagar algo."]
 
+    @staticmethod
+    def obstacle(snap: Snapshot) -> tuple[dict, str] | None:
+        """(the element to press, what it is) for a cookie notice or a pop-up that covers the page, or None."""
+        if _COOKIE_TEXT.search(snap.text[:4000]):
+            reject = next((e for e in snap.elements if _REJECT.search(e["label"] or "") and len(e["label"]) < 70), None)
+            if reject:
+                return reject, "Recusando os cookies não essenciais"
+            accept = next((e for e in snap.elements if _ACCEPT.search(e["label"] or "") and len(e["label"]) < 50 and e.get("tag") in {"button", "a"}), None)
+            if accept:
+                return accept, "Fechando o aviso de cookies"
+        for e in snap.elements:   # a pop-up's own close button (only for things marked as banners or pop-ups)
+            if e.get("overlay") and (_CLOSE_LABEL.search(e["label"] or "") or (not e["label"] and _CLOSE_CLASS.search(e.get("cls", "")))):
+                return e, "Fechando um aviso do site"
+        return None
+
+    async def _human_check(self, job_id: str, session: Session, snap: Snapshot) -> Snapshot | None:
+        """A site asked for proof of being a person. The Chakmati never passes it (no tricks, no solving): if it can, it opens the browser in a window the
+        person sees, asks them to pass it and press "Já resolvi", and goes on from there. Returns the page after that, or None when it cannot be passed."""
+        await self._frame(job_id, session, "O site pediu verificação humana")
+        if self._ask is None or not hasattr(session, "reopen_visible") or getattr(session, "visible", False):
+            return None
+        try:
+            await session.reopen_visible()
+        except Exception:
+            return None
+        await self._frame(job_id, session, "Esperando você resolver a verificação")
+        answer = await self._ask(job_id, "verificacao", "O site pediu uma verificação de que você é uma pessoa. Abri o navegador em uma janela: resolva a verificação lá e depois toque em “Já resolvi”.", False, True)
+        if answer is None:
+            return None
+        snap = await self._frame(job_id, session, "Continuando")
+        return None if needs_human(snap) else snap
+
+    async def _clear(self, job_id: str, session: Session, snap: Snapshot) -> Snapshot:
+        """Presses away the notices that cover the page (up to MAX_CLEARS), before the model is asked what to do."""
+        for _ in range(MAX_CLEARS):
+            found = self.obstacle(snap)
+            if found is None:
+                break
+            element, note = found
+            try:
+                await session.click(int(element["id"]))
+            except Exception:
+                break
+            snap = await self._frame(job_id, session, note)
+        return snap
+
     async def _frame(self, job_id: str, session: Session, note: str) -> Snapshot:
         snap = await session.snapshot()
         self._frames.add(job_id, await session.screenshot(), snap.url, snap.title, note)
@@ -186,6 +251,7 @@ class BrowserAgent:
                 start, found = await self._searched(task, start)
             await session.goto(start)
             snap = await self._frame(job_id, session, "Chrome aberto")
+            snap = await self._clear(job_id, session, snap)
             history: list[str] = []
             last, repeats = None, 0
             answers: dict[str, str] = {}   # what the person told us, by name: held here, never shown to the model or written anywhere
@@ -193,10 +259,11 @@ class BrowserAgent:
             typed_on, typed_password = "", False   # the page we are on, and whether its password field has been filled
             unsent, warned = False, False          # a password was typed and nothing was sent yet
             for _ in range(self._max_steps):
-                if _HUMAN_CHECK.search(f"{snap.title} {snap.text}"):
-                    await self._frame(job_id, session, "O site pediu verificação humana")
-                    yield BLOCKED
-                    return
+                if needs_human(snap):
+                    snap = await self._human_check(job_id, session, snap)
+                    if snap is None:
+                        yield BLOCKED
+                        return
                 reply = await self._llm.chat([
                     {"role": "system", "content": PROMPT},
                     {"role": "user", "content": _page_message(task, snap, history, found)},
@@ -268,9 +335,13 @@ class BrowserAgent:
                     history.append(f"{note} -> failed: {type(exc).__name__}")
                     note = f"{note} (não funcionou)"
                 snap = await self._frame(job_id, session, note)
+                snap = await self._clear(job_id, session, snap)
             yield f"Parei depois de {self._max_steps} passos sem concluir."
         except BrowserError as exc:
             yield str(exc)
+        except Exception as exc:  # the page died, the browser closed...: a sentence, not a stack message
+            log.warning("browser: the job stopped (%s: %s)", type(exc).__name__, str(exc)[:200])
+            yield "Não consegui continuar: a página ou o navegador parou de responder. Tente de novo; se o site for muito protegido, ele pode não deixar um navegador automático entrar."
         finally:
             await session.close()
 

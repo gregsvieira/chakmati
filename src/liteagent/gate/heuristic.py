@@ -30,8 +30,9 @@ _DOC_NOUN = re.compile(r"\b(?:slides?|apresenta[çc][ãa]o|apresenta[çc][õo]es
 _GRADE = re.compile(r"\b(?:corrij\w+|corrig\w+|corre[çc][ãa]o)\b.{0,60}\bprovas?\b|\bprovas?\b.{0,60}\b(?:corrij\w+|corrig\w+)", re.IGNORECASE)  # "corrija as provas..."
 
 # A site or social network named with something to do there ("acesse meu instagram e envie...", "entre no youtube"): the browser, not WhatsApp or the calendar.
-_SITE_NAME = re.compile(r"\b(?:instagram|facebook|youtube|linkedin|twitter|tiktok|github|gmail|outlook|netflix|amazon|mercado\s?livre|x\.com)\b", re.IGNORECASE)
-_SITE_ACT = re.compile(r"\b(?:acess\w+|entr\w+|abr\w+|logu\w+|naveg\w+|v[áa]\s+(?:para|ao|no|na)|envi\w+|mand\w+|post\w+|curt\w+|segu\w+)\b", re.IGNORECASE)
+_SITE_NAME = re.compile(r"\b(?:instagram|facebook|youtube|linkedin|twitter|tiktok|github|gmail|outlook|netflix|amazon|mercado\s?livre|x\.com|shein|aliexpress|shopee|magalu|magazine\s?luiza|americanas|zara|nike)\b", re.IGNORECASE)
+_STORE_PHRASE = re.compile(r"\b(?:na|no|em)\s+(?:a\s+|o\s+)?(?:loja|site|app|aplicativo|p[áa]gina)\s+(?:da|do|de)\s+\w+", re.IGNORECASE)
+_SITE_ACT = re.compile(r"\b(?:acess\w+|entr\w+|abr\w+|logu\w+|naveg\w+|v[áa]\s+(?:para|ao|no|na)|envi\w+|mand\w+|post\w+|curt\w+|segu\w+|pesquis\w+|busc\w+|procur\w+|compar\w+|ach\w+|encontr\w+|traga|liste)\b", re.IGNORECASE)
 
 # An address with something to DO on the page ("entre em https://... com o meu usuário", "abra https://... e me diga o título"): the browser agent.
 # A bare "abra https://..." is just opening the page in the person's own browser (the computer).
@@ -87,7 +88,7 @@ class HeuristicGate:
     source = "heuristic"
 
     def classify(self, text: str) -> GateResult:
-        if _BROWSER.search(text) or (_URL.search(text) and _URL_TASK.search(text) and not re.search(r"\bwhats\w*|\bzap", text, re.IGNORECASE)) or (_SITE_NAME.search(text) and _SITE_ACT.search(text) and not re.search(r"\bwhats\w*|\bzap", text, re.IGNORECASE)):
+        if _BROWSER.search(text) or (_URL.search(text) and _URL_TASK.search(text) and not re.search(r"\bwhats\w*|\bzap", text, re.IGNORECASE)) or ((_SITE_NAME.search(text) or _STORE_PHRASE.search(text)) and _SITE_ACT.search(text) and not re.search(r"\bwhats\w*|\bzap", text, re.IGNORECASE)):
             return GateResult(Route.BROWSER, 0.9, self.source)
         if (_HOME_NOUN.search(text) and _HOME_VERB.search(text) and not _WHATSAPP.search(text)) or _HOME_PHRASE.search(text):
             return GateResult(Route.HOME, 0.9, self.source)

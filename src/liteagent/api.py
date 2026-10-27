@@ -136,7 +136,7 @@ def create_app(
                 waiting = inputs.pending(job_id)
                 if waiting is not None and waiting.id != asked:
                     asked = waiting.id
-                    yield {"type": "input", "job_id": job_id, "request_id": waiting.id, "key": waiting.key, "prompt": waiting.prompt, "secret": waiting.secret}
+                    yield {"type": "input", "job_id": job_id, "request_id": waiting.id, "key": waiting.key, "prompt": waiting.prompt, "secret": waiting.secret, "confirm": waiting.confirm}
                 elif waiting is None and asked is not None:
                     yield {"type": "input_done", "request_id": asked}
                     asked = None

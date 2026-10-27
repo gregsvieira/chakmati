@@ -383,3 +383,11 @@ def test_stopping_a_job_over_the_api(tmp_path):
                     assert stop.status_code == 200 and stop.json() == {"ok": True}
     assert events[-1] == {"type": "cancelled", "text": "Interrompido por você."}
     assert client.post("/jobs/" + "0" * 32 + "/cancel", headers={"X-LiteAgent-UI": "1"}).status_code == 404
+
+
+async def test_a_confirmation_has_no_text_to_type():
+    broker = InputBroker(timeout=2)
+    waiting = asyncio.create_task(broker.ask(JOB, "verificacao", "Resolva a verificação", False, True))
+    await asyncio.sleep(0.01)
+    assert broker.pending(JOB).confirm is True
+    assert broker.answer(JOB, broker.pending(JOB).id, "ok") and await waiting == "ok"

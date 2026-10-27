@@ -41,7 +41,7 @@ _SNAPSHOT_JS = """
     }
     n += 1; el.setAttribute('data-ck', String(n));
     const label = (el.getAttribute('aria-label') || el.innerText || el.value || el.placeholder || el.getAttribute('title') || el.getAttribute('name') || '').trim().replace(/\\s+/g, ' ').slice(0, 80);
-    out.push({ id: n, tag: el.tagName.toLowerCase(), type: el.getAttribute('type') || '', label, overlay });
+    out.push({ id: n, tag: el.tagName.toLowerCase(), type: el.getAttribute('type') || '', label, overlay, cls: String((el.className && el.className.baseVal !== undefined ? el.className.baseVal : el.className) || '').slice(0, 80) });
     if (n >= max) break;
   }
   out.sort((x, y) => Number(x.overlay) - Number(y.overlay) || x.id - y.id);  // the page's own things first, banners last
@@ -99,6 +99,21 @@ class PlaywrightSession:
             raise BrowserError(f"não consegui abrir o Chrome (ele precisa estar instalado): {exc}") from exc
         self._page = self._context.pages[0] if self._context.pages else await self._context.new_page()
 
+    @property
+    def visible(self) -> bool:
+        return not self._headless
+
+    async def reopen_visible(self) -> None:
+        """Closes the browser and opens the same profile (cookies and all) in a window the person can see, at the same page: for a human check
+        that only a person can pass. The Chakmati does not try to pass it."""
+        url = self._page.url if self._page is not None else ""
+        await self.close()
+        self._headless = False
+        await self.start()
+        if url and url != "about:blank":
+            await self._page.goto(url, wait_until="domcontentloaded", timeout=30_000)
+            await self._settle()
+
     async def close(self) -> None:
         if self._context is not None:
             await self._context.close()
@@ -144,8 +159,15 @@ class PlaywrightSession:
         await self._page.wait_for_timeout(300)
 
     async def snapshot(self) -> Snapshot:
-        data = await self._page.evaluate(_SNAPSHOT_JS, MAX_ELEMENTS)
-        return Snapshot(self._page.url, await self._page.title(), data["text"][:MAX_TEXT], data["elements"])
+        # shops redirect and reload after the first load: a page that changes under our feet is waited for and read again
+        for attempt in range(4):
+            try:
+                data = await self._page.evaluate(_SNAPSHOT_JS, MAX_ELEMENTS)
+                return Snapshot(self._page.url, await self._page.title(), data["text"][:MAX_TEXT], data["elements"])
+            except Exception as exc:
+                if attempt == 3 or not any(m in str(exc) for m in ("context was destroyed", "navigat", "Target closed")):
+                    raise
+                await self._settle(navigating=True)
 
     async def screenshot(self) -> bytes:
         return await self._page.screenshot(type="jpeg", quality=60)

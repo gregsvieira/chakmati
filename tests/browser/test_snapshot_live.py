@@ -44,3 +44,18 @@ async def test_after_a_click_the_snapshot_waits_for_the_page_to_change(session):
     await session.click(link)
     snap = await session.snapshot()
     assert snap.title == "after" and snap.url.endswith("/next")
+
+
+async def test_a_page_that_redirects_while_it_is_read_is_waited_for(tmp_path):
+    s = PlaywrightSession(str(tmp_path / "profile2"), headless=True)
+    await s.start()
+    try:
+        async def route(r):
+            body = "<html><title>A</title><body><script>setTimeout(() => { location.href = 'https://example.test/b'; }, 5)</script>a</body></html>" if r.request.url.endswith("/a") else "<html><title>B</title><body><a href='#x'>link</a></body></html>"
+            await r.fulfill(body=body, content_type="text/html")
+        await s._page.route("https://example.test/**", route)
+        await s._page.goto("https://example.test/a", wait_until="commit")
+        snap = await s.snapshot()
+        assert snap.url.startswith("https://example.test/")   # (the point: no "Execution context was destroyed"; which of the two pages it caught is a matter of timing)
+    finally:
+        await s.close()

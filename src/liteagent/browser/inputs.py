@@ -20,6 +20,7 @@ class Request:
     key: str
     prompt: str
     secret: bool
+    confirm: bool  # no text to type: only "I did it" (a human check solved in the browser window)
     future: asyncio.Future = field(repr=False)
 
 
@@ -28,9 +29,9 @@ class InputBroker:
         self._timeout = timeout
         self._pending: dict[str, Request] = {}  # by job id: a job asks one thing at a time
 
-    async def ask(self, job_id: str, key: str, prompt: str, secret: bool = False) -> str | None:
+    async def ask(self, job_id: str, key: str, prompt: str, secret: bool = False, confirm: bool = False) -> str | None:
         """The person's answer, or None if none came in time (or the job was cancelled)."""
-        request = Request(uuid.uuid4().hex, job_id, key, prompt[:300], bool(secret), asyncio.get_running_loop().create_future())
+        request = Request(uuid.uuid4().hex, job_id, key, prompt[:300], bool(secret), bool(confirm), asyncio.get_running_loop().create_future())
         self._pending[job_id] = request
         try:
             return await asyncio.wait_for(request.future, self._timeout)
