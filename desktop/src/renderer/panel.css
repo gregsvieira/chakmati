@@ -270,8 +270,7 @@ body[data-still] .viewport .frame { transition: none; }
 /* ---------------------------------------------------------------------------------------------------------------- minimizing the sides */
 .fold { display: none; }
 #panel[data-layout="wide"] .fold { display: flex; align-items: center; gap: 8px; }
-#panel[data-layout="wide"] .fold-left { justify-content: space-between; padding: 8px 0 0; }
-.fold-title { font-family: var(--font-rounded); font-size: 12.5px; font-weight: 700; color: var(--muted); letter-spacing: 0.02em; text-transform: uppercase; margin-right: auto; }
+#panel[data-layout="wide"] .fold-left { justify-content: flex-end; padding: 8px 0 0; }
 #panel[data-layout="wide"] .fold-right { justify-content: flex-start; flex-direction: row-reverse; margin-bottom: 4px; }
 #panel[data-layout="wide"] .fold-right h2 { margin: 0 auto 0 0; }
 .fold .icon-btn { width: 30px; height: 30px; transition: transform 0.18s ease; }
@@ -284,10 +283,17 @@ body[data-still] .viewport .frame { transition: none; }
 #panel[data-layout="wide"][data-left="folded"] #topics { padding: 4px 8px 16px; overflow: hidden; }
 #panel[data-layout="wide"][data-left="folded"] #topics > :not(.fold) { display: none; }
 #panel[data-layout="wide"][data-left="folded"] .fold-left { flex-direction: column-reverse; align-items: center; gap: 8px; }
-#panel[data-layout="wide"][data-left="folded"] .fold-title { display: none; }
 #panel[data-layout="wide"][data-right="folded"] #screen { padding: 12px 8px; overflow: hidden; }
 #panel[data-layout="wide"][data-right="folded"] #screen > :not(.fold) { display: none; }
 #panel[data-layout="wide"][data-right="folded"] .fold-right { flex-direction: column; align-items: center; }
 #panel[data-layout="wide"][data-right="folded"] .fold-right h2 { display: none; }
 @media (prefers-reduced-motion: reduce) { #panel[data-layout="wide"] #content, #panel[data-layout="wide"] #foot, .fold .icon-btn { transition: none; } }
 body[data-still] #panel[data-layout="wide"] #content, body[data-still] #panel[data-layout="wide"] #foot { transition: none; }
+
+/* the small card: the conversation is a strip of two lines showing the latest words (it grows when it is opened: "Ampliar" or a click on it) */
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread { max-height: 62px; overflow-y: auto; cursor: pointer; scrollbar-width: none; gap: 4px; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread::-webkit-scrollbar { display: none; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread .turn { padding: 4px 11px; font-size: 14px; line-height: 1.35; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread figure.shot,
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread .turn-actions { display: none; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread:hover .turn.assistant { background: var(--surface-2); filter: brightness(0.98); }

@@ -370,6 +370,7 @@
     else if (event.type === 'input') {
       turn.ask = { job_id: event.job_id, request_id: event.request_id, prompt: event.prompt, secret: !!event.secret };
       turn.askEl = null; turn.askSent = false; turn.focusAsk = true;
+      if ($('panel').dataset.layout === 'compact' && !store.get('chakmati.focus', false)) { store.set('chakmati.focus', true); applyLayout(); }
       if (state && !state.panelOpen) api.reply(`${event.prompt} (abra o painel para responder)`);
     } else if (event.type === 'input_done') { turn.ask = null; turn.askEl = null; }
     else if (event.type === 'job') turn.text = turn.text || 'Trabalhando nisso…';
@@ -919,7 +920,10 @@
     sync();
   }
   // "Ampliar": the conversation takes the card and every other topic folds (their own choices come back when it is reduced)
-  $('focus-thread').addEventListener('click', () => { store.set('chakmati.focus', !store.get('chakmati.focus', false)); applyLayout(); });
+  function setFocus(on) { store.set('chakmati.focus', on); applyLayout(); renderThread(true); }
+  $('focus-thread').addEventListener('click', () => setFocus(!store.get('chakmati.focus', false)));
+  // the strip of two lines opens when it is clicked; a question for the person (the user name, a password) opens it by itself
+  $('thread').addEventListener('click', () => { if ($('panel').dataset.layout === 'compact' && !store.get('chakmati.focus', false)) setFocus(true); });
 
   // the screen: the browser as it is right now. Each new picture fades in over the last one: nothing says it is a sequence of pictures.
   let frontImg = $('screen-img-a');
