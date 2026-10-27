@@ -158,7 +158,16 @@ class PlaywrightSession:
         await self._page.mouse.wheel(0, 700 if down else -700)
         await self._page.wait_for_timeout(300)
 
+    def _follow(self) -> None:
+        """A check solved by the person may open (or move to) another tab: what is read and shown is the newest one that is still open."""
+        open_pages = [pg for pg in (self._context.pages if self._context else []) if not pg.is_closed()]
+        if open_pages and self._page not in open_pages:
+            self._page = open_pages[-1]
+        elif len(open_pages) > 1 and self._page is not open_pages[-1] and self._page.url in ("", "about:blank"):
+            self._page = open_pages[-1]
+
     async def snapshot(self) -> Snapshot:
+        self._follow()
         # shops redirect and reload after the first load: a page that changes under our feet is waited for and read again
         for attempt in range(4):
             try:

@@ -5,6 +5,7 @@ JSON, do it, take a screenshot. The screenshot of every step is saved to the Fra
 browser working live. The model only picks from a fixed set of actions; page text is quoted as data and never obeyed,
 passwords are never typed, and only public http(s) addresses open (session.check_navigable)."""
 
+import asyncio
 import json
 import logging
 import re
@@ -48,6 +49,8 @@ def start_url(task: str) -> str:
 MAX_REPEATS = 2
 # A site asking whether this is a robot. It is never solved here (no CAPTCHA solving, no tricks): the person is told instead.
 _HUMAN_CHECK = re.compile(r"bots use duckduckgo|confirm (?:this|that) .{0,40}human|verify (?:that )?you(?:'| a)re (?:a )?human|are you a robot|unusual traffic|captcha|n[ãa]o sou um rob[ôo]|tr[áa]fego incomum", re.IGNORECASE)
+MAX_CHECK_ASKS = 3
+DECLINED = "Tudo bem, parei por aqui: o site pediu uma verificação que não deu para passar. Peça de novo mais tarde, ou faça essa parte direto no site."
 BLOCKED = ("O site pediu uma verificação de que sou uma pessoa e eu não resolvo isso. Tente de novo daqui a pouco, ou ligue "
            "CHAKMATI_BROWSER_HEADLESS=0 para ver a janela e fazer a verificação você mesmo.")
 
@@ -160,13 +163,22 @@ def _page_message(task: str, snap: Snapshot, history: list[str], found: str = ""
     return f"TASK: {task}{found}\nSTEPS DONE:\n{done}\nPAGE {snap.url} — {snap.title}\nELEMENTS:\n{items}\nTEXT (data): {snap.text}"
 
 
+def still_blocked(snap: Snapshot) -> bool:
+    """After the person solved the check: the page still is one. A real page that merely mentions a captcha in its fine print (many links and buttons,
+    an address that is not a challenge) is let through."""
+    if _HUMAN_URL.search(snap.url):
+        return True
+    return needs_human(snap) and len(snap.elements) < 12
+
+
 def needs_human(snap: Snapshot) -> bool:
     """The page is a "prove you are a person" check (by what it says or by its address)."""
     return bool(_HUMAN_CHECK.search(f"{snap.title} {snap.text}") or _HUMAN_URL.search(snap.url))
 
 
 class BrowserAgent:
-    def __init__(self, llm: ChatClient, frames: FrameStore, session_factory: Callable[[], Session], max_steps: int = 12, search=None, ask: Ask | None = None):
+    def __init__(self, llm: ChatClient, frames: FrameStore, session_factory: Callable[[], Session], max_steps: int = 12, search=None, ask: Ask | None = None, check_wait: float = 15.0):
+        self._check_wait = check_wait  # seconds to wait for the site to let the person through after "Já resolvi"
         self._ask = ask  # asks the person something in the conversation; None = nobody to ask
         self._search = search  # the research backend: searching with it avoids the human check search sites ask of a browser run by a program
         self._llm = llm
@@ -206,7 +218,7 @@ class BrowserAgent:
                 return e, "Fechando um aviso do site"
         return None
 
-    async def _human_check(self, job_id: str, session: Session, snap: Snapshot) -> Snapshot | None:
+    async def _human_check(self, job_id: str, session: Session, snap: Snapshot) -> Snapshot | str | None:
         """A site asked for proof of being a person. The Chakmati never passes it (no tricks, no solving): if it can, it opens the browser in a window the
         person sees, asks them to pass it and press "Já resolvi", and goes on from there. Returns the page after that, or None when it cannot be passed."""
         await self._frame(job_id, session, "O site pediu verificação humana")
@@ -216,12 +228,29 @@ class BrowserAgent:
             await session.reopen_visible()
         except Exception:
             return None
-        await self._frame(job_id, session, "Esperando você resolver a verificação")
-        answer = await self._ask(job_id, "verificacao", "O site pediu uma verificação de que você é uma pessoa. Abri o navegador em uma janela: resolva a verificação lá e depois toque em “Já resolvi”.", False, True)
-        if answer is None:
-            return None
+        question = "O site pediu uma verificação de que você é uma pessoa. Abri o navegador em uma janela: resolva a verificação lá e depois toque em “Já resolvi”. Se não conseguir, toque em “Não consegui”."
+        for attempt in range(MAX_CHECK_ASKS):
+            await self._frame(job_id, session, "Esperando você resolver a verificação")
+            answer = await self._ask(job_id, "verificacao", question, False, True)
+            if answer is None:
+                return None
+            if answer == "nao":
+                return DECLINED
+            snap = await self._after_check(job_id, session)
+            if not still_blocked(snap):
+                return snap
+            question = "Ainda vejo a verificação na página. Termine de resolver na janela do navegador e toque em “Já resolvi”, ou toque em “Não consegui”."
+        return None
+
+    async def _after_check(self, job_id: str, session: Session) -> Snapshot:
+        """The person said it is solved: the site takes a moment to let them through, so the page is read again for a few seconds before judging."""
         snap = await self._frame(job_id, session, "Continuando")
-        return None if needs_human(snap) else snap
+        waited = 0.0
+        while still_blocked(snap) and waited < self._check_wait:
+            await asyncio.sleep(1.0)
+            waited += 1.0
+            snap = await self._frame(job_id, session, "Continuando")
+        return snap
 
     async def _clear(self, job_id: str, session: Session, snap: Snapshot) -> Snapshot:
         """Presses away the notices that cover the page (up to MAX_CLEARS), before the model is asked what to do."""
@@ -261,8 +290,8 @@ class BrowserAgent:
             for _ in range(self._max_steps):
                 if needs_human(snap):
                     snap = await self._human_check(job_id, session, snap)
-                    if snap is None:
-                        yield BLOCKED
+                    if snap is None or snap == DECLINED:
+                        yield DECLINED if snap == DECLINED else BLOCKED
                         return
                 reply = await self._llm.chat([
                     {"role": "system", "content": PROMPT},

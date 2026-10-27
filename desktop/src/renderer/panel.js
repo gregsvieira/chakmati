@@ -251,17 +251,20 @@
       const input = h('input', { type: ask.secret ? 'password' : 'text', class: 'ask-input', autocomplete: ask.secret ? 'new-password' : 'off', spellcheck: 'false',
         maxlength: 500, 'aria-label': ask.prompt, placeholder: ask.secret ? 'Digite a senha (ela fica oculta)' : 'Digite aqui' });
       const send = h('button', { type: 'submit', class: 'primary small' }, ask.confirm ? 'Já resolvi' : 'Enviar');
+      const fail = ask.confirm ? h('button', { type: 'button', class: 'small', onclick: () => { value = 'nao'; form.requestSubmit(); } }, 'Não consegui') : null;
+      let value = null;
       const problem = h('p', { class: 'warn', hidden: true }, 'Não consegui enviar. Tente de novo.');
-      turn.askEl = h('form', { class: 'ask', autocomplete: 'off', onsubmit: async (e) => {
+      const form = turn.askEl = h('form', { class: 'ask', autocomplete: 'off', onsubmit: async (e) => {
         e.preventDefault();
-        const value = ask.confirm ? 'ok' : input.value;   // a confirmation has nothing to type
-        if (!value) return;
-        input.disabled = true; send.disabled = true;
-        const res = await api.answerInput(ask.job_id, ask.request_id, value);
+        const answer = ask.confirm ? (value || 'ok') : input.value;   // a confirmation has nothing to type: "Já resolvi" is ok, "Não consegui" is nao
+        value = null;
+        if (!answer) return;
+        input.disabled = true; send.disabled = true; if (fail) fail.disabled = true;
+        const res = await api.answerInput(ask.job_id, ask.request_id, answer);
         input.value = '';
-        if (res && res.ok) { turn.ask = null; turn.askEl = null; turn.askInput = null; turn.askSent = true; } else { input.disabled = false; send.disabled = false; problem.hidden = false; }
+        if (res && res.ok) { turn.ask = null; turn.askEl = null; turn.askInput = null; turn.askSent = true; } else { input.disabled = false; send.disabled = false; if (fail) fail.disabled = false; problem.hidden = false; }
         renderThread(false);
-      } }, h('label', { class: 'ask-label' }, ask.prompt), h('div', { class: 'ask-row' }, input, send), problem);
+      } }, h('label', { class: 'ask-label' }, ask.prompt), h('div', { class: 'ask-row' }, input, send, fail), problem);
       if (ask.confirm) input.hidden = true;
       turn.askInput = input;
     }

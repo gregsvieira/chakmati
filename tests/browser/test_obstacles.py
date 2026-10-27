@@ -110,7 +110,7 @@ async def test_a_browser_that_dies_is_reported_in_a_sentence(tmp_path):
 
 
 # ------------------------------------------------------------------------------------------------ a human check: the person passes it, the Chakmati does not
-from liteagent.browser.agent import BLOCKED, needs_human
+from liteagent.browser.agent import BLOCKED, DECLINED, needs_human, still_blocked
 
 CHALLENGE = Snapshot("https://br.shein.com/risk/challenge?captcha_type=909&redirection=x", "", "", [])
 SHOP = Snapshot("https://br.shein.com/", "Shein", "Camisetas oversized R$ 59,90", [el(1, "Pesquisar", tag="input")])
@@ -153,7 +153,7 @@ async def test_a_human_check_opens_the_window_asks_the_person_and_goes_on(tmp_pa
 
 async def test_a_check_that_is_still_there_after_the_person_was_asked_stops(tmp_path):
     async def ask(*args, **kw): return "ok"
-    out = [p async for p in BrowserAgent(LLM(), FrameStore(tmp_path), lambda: Visible([CHALLENGE], passes=False), ask=ask).run(JOB, "abra https://br.shein.com/")]
+    out = [p async for p in BrowserAgent(LLM(), FrameStore(tmp_path), lambda: Visible([CHALLENGE], passes=False), ask=ask, check_wait=0).run(JOB, "abra https://br.shein.com/")]
     assert out == [BLOCKED]
 
 
@@ -172,3 +172,32 @@ async def test_the_second_check_in_a_visible_window_is_not_asked_again(tmp_path)
     session.visible = True                    # already a visible window
     out = [p async for p in BrowserAgent(LLM(), FrameStore(tmp_path), lambda: session, ask=ask).run(JOB, "abra https://br.shein.com/")]
     assert out == [BLOCKED] and asked == []
+
+
+async def test_nao_consegui_stops_at_once_with_its_own_message(tmp_path):
+    asked = []
+
+    async def ask(job_id, key, question, secret=False, confirm=False):
+        asked.append(question)
+        return "nao"
+    out = [p async for p in BrowserAgent(LLM(), FrameStore(tmp_path), lambda: Visible([CHALLENGE], passes=False), ask=ask, check_wait=0).run(JOB, "abra https://br.shein.com/")]
+    assert out == [DECLINED] and len(asked) == 1
+
+
+async def test_a_check_still_there_is_asked_again_and_then_passes(tmp_path):
+    session, answers = Visible([CHALLENGE], passes=False), []
+
+    async def ask(job_id, key, question, secret=False, confirm=False):
+        answers.append(question)
+        if len(answers) == 2:
+            session.passes = True      # the person finished on the second try
+        return "ok"
+    out = [p async for p in BrowserAgent(LLM(), FrameStore(tmp_path), lambda: session, ask=ask, check_wait=0).run(JOB, "abra https://br.shein.com/")]
+    assert out == ["pronto"] and len(answers) == 2 and "Ainda vejo" in answers[1]
+
+
+def test_a_real_page_that_only_mentions_captcha_in_its_fine_print_is_let_through():
+    many = [{"id": i, "tag": "a", "type": "", "label": f"item {i}"} for i in range(20)]
+    assert not still_blocked(Snapshot("https://br.shein.com/women", "Roupas", "texto protegido por captcha", many))
+    assert still_blocked(Snapshot("https://br.shein.com/risk/challenge?x=1", "Roupas", "ok", many))
+    assert still_blocked(CHALLENGE)
