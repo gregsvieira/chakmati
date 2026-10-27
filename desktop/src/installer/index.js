@@ -12,6 +12,7 @@ const { makeSync } = require('./engine-sync');
 const { writeSetupDone } = require('./first-run');
 const { extrasFromSettings } = require('../lib/engine-launch');
 const { formatSize, levelText } = require('./format');
+const { quip } = require('./quips');
 const settingsLib = require('../lib/settings');
 
 const OLLAMA_DOWNLOAD = 'https://ollama.com/download';
@@ -37,7 +38,7 @@ function openSetup({ ipcMain, webPreferences, settingsFile, engine = null, onClo
     let ollamaUp = false;
     try { await runners.checkOllama(); ollamaUp = true; } catch { /* the page explains how to get it */ }
     return {
-      hw, verdict: v, levelText: levelText(v.level), suggested: suggestions(hw, v.level), ollamaUp,
+      hw, verdict: v, levelText: levelText(v.level), suggested: suggestions(hw, v.level), ollamaUp, quip: quip(hw, v),
       hwText: {
         system: `${hw.platform} ${hw.arch} (${hw.osRelease})`, ram: `${hw.ramGb} GB`, cores: String(hw.cores),
         disk: hw.freeDiskGb === null ? 'não consegui medir' : `${hw.freeDiskGb} GB livres`,

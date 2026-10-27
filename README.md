@@ -146,7 +146,7 @@ when you ask for them and the model left them out). Anything with an "and then",
 
 ### The expanded window (desktop)
 
-The panel has two shapes. **Small** (the card beside the robot): the conversation is a strip of two lines showing the latest words, every topic folds by its title, and **Ampliar** (or a click on the strip) gives the conversation the whole card and folds all the other topics (the choice is remembered; a question for you, like a password, opens it by itself).
+The panel has two shapes. **Small** (the card beside the robot): the conversation is the preview of a chat, only the latest message in two lines with an "Ampliar" pill; the topics start folded, one line each with a hint of what is inside ("WhatsApp desligado", "nenhuma", "1 aviso"); every topic folds by its title, and **Ampliar** (or a click on the strip) gives the conversation the whole card and folds all the other topics (the choice is remembered; a question for you, like a password, opens it by itself).
 **Expanded** (the arrows button in the header; the square button next to it goes to full screen; drag the edges to resize): three columns, each with its own scroll. On the left the topics (decisions, messages, agenda,
 automations, recent notices); in the middle the whole conversation with the command line; on the right **Tela do Chakmati**: the live pictures of what the browser is doing (`ao vivo`), the current step with its caption and
 address, and a strip of every step to go back to one. Each side can be minimized with the arrow in its corner (the left one to the left edge, the Tela do Chakmati to the right edge) and the conversation takes the room; a minimized side leaves a narrow strip with its arrow, the number of pending approvals on the left one and a red dot on the right one while the browser is working; the choice is remembered. Below 1000 px wide the page goes back to one column by itself. The screen shows the page as it is now, in a browser frame with its address, and each new picture fades in over the last one (no counters, no strip: it looks like a live view). In this window the character stands, smaller and without the approvals mark, above the conversation and the little one on the desktop steps aside. The pictures are the browser's, not your screen: the Chakmati never captures your desktop.
@@ -179,6 +179,11 @@ approve, or a question from the browser (the user name, the password). **Red** a
 you open the panel. A plain outline when there is nothing. The face follows the bell only while the mood in Ajustes is on *Automático*; a mood you pinned stays pinned, and an engine that is down always shows as offline.
 
 ## Install wizard (desktop)
+
+Under the real figures of the computer the wizard may add one light remark, in reverse: a weak computer (under about 7.5 GB of memory) is praised absurdly ("Nossa, é uma honra ser convidado para essa máquina da NASA!"),
+a very strong one (16 GB and 8 cores or more) is teased as a relic ("Primeira vez que vou tentar rodar no laptop da Xuxa."), and one in between, or one that cannot run the app, gets nothing. The same computer always gets the same line
+(`desktop/src/installer/quips.js`, four lines each way).
+
 
     cd desktop && npm run setup        # or: electron . --setup
 

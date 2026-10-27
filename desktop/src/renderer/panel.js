@@ -273,13 +273,13 @@
   function bodyNodes(turn) {
     const text = turn.text || '…';
     const m = PLAN.exec(text);
-    if (!m) return [text];
+    if (!m) return [h('span', { class: 'turn-text' }, text)];
     const steps = m[1].trim().split('\n').map((l) => l.replace(/^\d+\.\s*/, ''));
     const open = turn.planOpen !== undefined ? turn.planOpen : turn.status === 'pending';
     const card = h('details', { class: 'plan', open, ontoggle: (e) => { turn.planOpen = e.currentTarget.open; } },
       h('summary', {}, `Plano (${steps.length} ${steps.length === 1 ? 'passo' : 'passos'})`), h('ol', {}, steps.map((t) => h('li', {}, t))));
     const rest = text.slice(m[0].length).trim();
-    return rest ? [card, rest] : [card];
+    return rest ? [card, h('span', { class: 'turn-text' }, rest)] : [card];
   }
 
   function renderThread(scroll = true) {
@@ -353,6 +353,7 @@
     renderRecent();
     renderAutomations();
     renderPendingMark();
+    renderTopicHints();
     renderSettings();
     syncSendButton();
   }
@@ -938,7 +939,14 @@
     set(key, value) { try { window.localStorage.setItem(key, JSON.stringify(value)); } catch { /* private window or storage off: the choice just is not remembered */ } },
   };
   const TOPICS = ['decisions', 'messages', 'agenda', 'automations', 'recent'];
-  const folded = new Set(store.get('chakmati.folded', []));
+  // Which topics are folded: in the small card they start folded (one line each, with a hint of what is inside), in the big window open (there is room).
+  // Each layout remembers its own choices.
+  const foldedBy = {
+    compact: new Set(store.get('chakmati.folded-compact', TOPICS.filter((t) => t !== 'decisions'))),
+    wide: new Set(store.get('chakmati.folded-wide', [])),
+  };
+  const layoutNow = () => ($('panel').dataset.layout === 'wide' ? 'wide' : 'compact');
+  const folded = { has: (id) => foldedBy[layoutNow()].has(id) };
   let pickedStep = null;
 
   const folds = { left: store.get('chakmati.left', false) === true, right: store.get('chakmati.right', false) === true };
@@ -960,6 +968,8 @@
     const layout = Shots.layoutFor(window.innerWidth);
     $('panel').dataset.layout = layout;
     placeRobot(layout);
+    syncTopics();
+    renderTopicHints();
     applyFolds();
     $('panel').dataset.focus = store.get('chakmati.focus', false) ? 'thread' : '';
     $('focus-thread').setAttribute('aria-pressed', String(!!store.get('chakmati.focus', false)));
@@ -977,16 +987,39 @@
   $('maximize').addEventListener('click', () => api.setLayout(((state && state.panelMode) || 'compact') === 'full' ? 'wide' : 'full'));
 
   // each topic folds by its title (Enter or Space too); the choice is remembered
+  const topicSyncs = [];
   for (const id of TOPICS) {
     const section = $(id);
     const title = section.querySelector('h2');
     title.setAttribute('role', 'button');
     title.tabIndex = 0;
+    const hint = h('small', { class: 'topic-hint', id: `hint-${id}` });
+    title.append(hint);
     const sync = () => { if (folded.has(id)) section.dataset.collapsed = '1'; else delete section.dataset.collapsed; title.setAttribute('aria-expanded', String(!folded.has(id))); };
-    const toggle = () => { if (folded.has(id)) folded.delete(id); else folded.add(id); store.set('chakmati.folded', [...folded]); sync(); };
+    const toggle = () => {
+      const set = foldedBy[layoutNow()];
+      if (set.has(id)) set.delete(id); else set.add(id);
+      store.set(`chakmati.folded-${layoutNow()}`, [...set]);
+      sync();
+    };
     title.addEventListener('click', toggle);
     title.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+    topicSyncs.push(sync);
     sync();
+  }
+  const syncTopics = () => topicSyncs.forEach((f) => f());
+
+  // what is inside a folded topic, in a few words (so folding it does not hide whether anything is there)
+  function renderTopicHints() {
+    if (!state) return;
+    const o = state.overview || {};
+    const wa = o.whatsapp || {};
+    const unread = (wa.unread || []).length;
+    const set = (id, text) => { const e = $(`hint-${id}`); if (e) e.textContent = text; };
+    set('messages', !wa.enabled ? 'WhatsApp desligado' : (wa.error || wa.connected === false) ? 'WhatsApp desconectado' : unread ? plural(unread, 'conversa com novidade', 'conversas com novidade') : 'nada novo');
+    set('automations', (o.automations || []).length ? plural(o.automations.length, 'automação', 'automações') : 'nenhuma');
+    set('agenda', (((o.calendar || {}).today) || []).length ? plural(o.calendar.today.length, 'compromisso hoje', 'compromissos hoje') : 'livre hoje');
+    set('recent', (state.notices || []).length ? plural(state.notices.length, 'aviso', 'avisos') : 'nenhum');
   }
   // "Ampliar": the conversation takes the card and every other topic folds (their own choices come back when it is reduced)
   function setFocus(on) { store.set('chakmati.focus', on); applyLayout(); renderThread(true); }

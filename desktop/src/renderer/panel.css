@@ -341,3 +341,20 @@ body[data-still] #panel[data-layout="wide"] #content, body[data-still] #panel[da
 .turn.assistant details.plan ol { margin: 6px 0 2px; padding-left: 20px; font-size: 13px; line-height: 1.45; }
 .turn.assistant details.plan li { margin-bottom: 3px; }
 #panel[data-layout="compact"]:not([data-focus="thread"]) #thread details.plan { display: none; }
+
+/* ---------------------------------------------------------------------------------------------------------------- the small card, redone
+   Closed, the conversation is the preview of a chat: only the latest message, two lines, with a small "Ampliar" pill; no scrolling box
+   that cuts a bubble in half. The topics are one line each, with a hint of what is inside. */
+.h-title { font: inherit; }
+.topic-hint { margin-left: auto; padding-left: 10px; font-family: var(--font-text); font-size: 12.5px; font-weight: 500; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#topics section:not([data-collapsed]) .topic-hint { display: none; }
+#panel[data-layout="wide"] .topic-hint { display: none; }
+
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread-section { padding: 34px 0 2px; border-top: 0; backdrop-filter: none; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread-section > h2 { position: absolute; right: 0; top: 2px; margin: 0; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) .h-title { display: none; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread { max-height: none; overflow: hidden; gap: 0; padding: 0; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread > .turn:not(:last-child) { display: none; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread > .turn:last-child { max-width: 100%; padding: 8px 12px; font-size: 14px; line-height: 1.4; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread > .turn:last-child .turn-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }   /* (the clamp is on the text, not on the padded bubble: otherwise a third line peeks out) */
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread:hover > .turn:last-child { filter: brightness(0.97); }

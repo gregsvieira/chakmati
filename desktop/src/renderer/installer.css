@@ -33,3 +33,8 @@ progress { width: 100%; height: 14px; }
 .modal-card p { margin: 0 0 10px; line-height: 1.45; }
 .modal-card ul { margin: 0 0 16px; line-height: 1.5; }
 .modal-card .primary { display: block; width: 100%; height: 40px; font-size: 15px; }
+
+/* a light remark about the computer, under the real figures */
+.quip { margin: 6px 0 10px; font-style: italic; color: var(--muted); }
+.quip[data-tone="praise"]::before { content: "🏆 "; font-style: normal; }
+.quip[data-tone="tease"]::before { content: "😏 "; font-style: normal; }

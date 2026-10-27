@@ -37,6 +37,8 @@ async function start() {
   scan = await api.scan();
   const rows = [['Sistema', scan.hwText.system], ['Memória RAM', scan.hwText.ram], ['Espaço livre', scan.hwText.disk], ['Núcleos', scan.hwText.cores]];
   $('hw').replaceChildren(...rows.map(([k, v]) => el('div', { className: 'row' }, el('span', { textContent: k }), el('strong', { textContent: v }))));
+  $('quip').hidden = !scan.quip;
+  if (scan.quip) { $('quip').textContent = scan.quip.text; $('quip').dataset.tone = scan.quip.tone; }
   $('verdict').textContent = scan.levelText;
   $('verdict').dataset.level = scan.verdict.level;
   items($('reasons'), [...scan.verdict.reasons, ...scan.verdict.notes]);
