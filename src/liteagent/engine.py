@@ -1,10 +1,12 @@
 import asyncio
+import re
 import time
 from datetime import datetime
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 
 from .automations.confirm import verdict
+from . import patriot
 from .canned import canned_answer
 from .persona import AWAKE_SECONDS, PERSONA, wake_reply
 from .timeguard import calendar_facts, needs_today, needs_web, today_line
@@ -99,9 +101,11 @@ class Engine:
         computer_assistant=None,
         computer_service=None,
         browser_agent=None,
+        typing_delay: float = 0.012,
         now: Callable[[], float] = time.time,
         clock: Callable[[], datetime] = lambda: datetime.now().astimezone(),
     ):
+        self._typing_delay = typing_delay  # seconds between the pieces of a fixed answer: it is typed out, not dropped whole
         self._now = now
         self._clock = clock
         self._awake_until = 0.0
@@ -222,10 +226,27 @@ class Engine:
                 today = " ".join([today_line(now), *calendar_facts(text, now)])
         return route, today, offline
 
+    async def _patriotic(self, text: str, answer: patriot.Patriotic) -> AsyncIterator[str]:
+        """The pieces of a patriotic answer as they are typed: the fixed parts word by word, the model's part as the model writes it."""
+        for part in answer.parts:
+            if part == patriot.MODEL:
+                if hasattr(self._llm, "stream_chat"):
+                    async for delta in self._llm.stream_chat(_messages(Route.CHAT, text)):  # type: ignore[attr-defined]
+                        yield delta
+                else:
+                    yield await self._llm.chat(_messages(Route.CHAT, text))
+                continue
+            for piece in re.findall(r"\S+\s*|\s+", part):
+                yield piece
+                if self._typing_delay:
+                    await asyncio.sleep(self._typing_delay)
+
     async def handle(self, text: str) -> Reply:
         fixed = self._wake(text) or await self._confirmation(text) or canned_answer(text)
         if fixed is not None:
             return Reply("answer", Route.CHAT, text=fixed)
+        if (patriotic := patriot.match(text)) is not None:
+            return Reply("answer", Route.CHAT, text="".join([piece async for piece in self._patriotic(text, patriotic)]).strip())
         route, today, offline = await self._plan(text)
         if not route.is_slow:
             answer = await self._llm.chat(_messages(route, text, today, offline))
@@ -270,6 +291,14 @@ class Engine:
             yield {"type": "route", "route": Route.CHAT.value}
             yield {"type": "delta", "text": fixed}
             yield {"type": "done", "result": fixed}
+            return
+        if (patriotic := patriot.match(text)) is not None:
+            yield {"type": "route", "route": Route.CHAT.value}
+            parts: list[str] = []
+            async for piece in self._patriotic(text, patriotic):
+                parts.append(piece)
+                yield {"type": "delta", "text": piece}
+            yield {"type": "done", "result": "".join(parts).strip()}
             return
         route, today, offline = await self._plan(text)
         yield {"type": "route", "route": route.value}
