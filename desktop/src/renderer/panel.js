@@ -28,6 +28,26 @@
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
   // ------------------------------------------------------------------ rendering
+  // The notice before WhatsApp and automations: read once ("Compreendi e estou ciente!"), then never again. Esc or a click outside closes it
+  // without doing the action. Remembered in this window's storage.
+  const waGate = window.NoticeGate.createGate((() => { try { return window.localStorage; } catch { return { getItem: () => null, setItem: () => {} }; } })(), 'chakmati.whatsapp-notice');
+  let closeNotice = null;
+  function showWhatsAppNotice(onAck, onCancel) {
+    const modal = $('notice-modal');
+    const finish = (fn) => { modal.hidden = true; closeNotice = null; document.removeEventListener('keydown', onKey, true); modal.removeEventListener('mousedown', onOutside); fn(); };
+    const onKey = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); finish(onCancel); }
+      else if (e.key === 'Tab') { e.preventDefault(); $('notice-ok').focus(); }   // the only thing to press is the button
+    };
+    const onOutside = (e) => { if (e.target === modal) finish(onCancel); };
+    $('notice-ok').onclick = () => finish(onAck);
+    modal.hidden = false;
+    closeNotice = () => finish(onCancel);
+    document.addEventListener('keydown', onKey, true);
+    modal.addEventListener('mousedown', onOutside);
+    $('notice-ok').focus();
+  }
+
   function renderHeader() {
     const d = state.describe;
     if (screen === 'main') {
@@ -73,6 +93,9 @@
 
   let waNote = '';
   async function connectWhatsApp() {
+    return waGate.run(showWhatsAppNotice, doConnectWhatsApp);
+  }
+  async function doConnectWhatsApp() {
     waNote = 'Abrindo o OpenWA…';
     renderMessages();
     const res = await api.openWa();
@@ -833,7 +856,7 @@
   }
 
   // Automações: nothing to show yet; the button only says what is coming
-  $('create-automation').addEventListener('click', () => { $('automation-note').hidden = false; $('input').value = ''; renderChips(AUTOMATION_CHIPS); $('input').focus(); showSuggestions2(); });
+  $('create-automation').addEventListener('click', () => waGate.run(showWhatsAppNotice, () => { $('automation-note').hidden = false; $('input').value = ''; renderChips(AUTOMATION_CHIPS); $('input').focus(); showSuggestions2(); }));
 
   $('close').addEventListener('click', () => { showView('main'); api.close(); });
   document.addEventListener('keydown', (e) => {
@@ -845,7 +868,12 @@
   $('restart').addEventListener('click', () => api.restart());
   $('set-protect').addEventListener('change', (e) => api.setSetting('protect', e.target.checked));
   $('set-masked').addEventListener('change', (e) => api.setSetting('masked', e.target.checked));
-  $('set-whatsapp').addEventListener('change', (e) => api.setSetting('whatsapp', e.target.checked));
+  $('set-whatsapp').addEventListener('change', (e) => {
+    const box = e.target;
+    if (!box.checked) { api.setSetting('whatsapp', false); return; }
+    box.checked = false;  // it only turns on after the notice was acknowledged
+    waGate.run(showWhatsAppNotice, () => { box.checked = true; api.setSetting('whatsapp', true); });
+  });
   $('set-research').addEventListener('change', (e) => api.setSetting('research', e.target.checked));
   $('set-calendar').addEventListener('change', (e) => api.setSetting('calendar', e.target.checked));
   $('wa-connect').addEventListener('click', connectWhatsApp);
