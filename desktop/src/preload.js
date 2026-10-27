@@ -25,7 +25,7 @@ contextBridge.exposeInMainWorld('assistant', {
     onBubble: (cb) => listen('widget:bubble', cb),
     onMood: (cb) => listen('widget:mood', cb),
     onListening: (cb) => listen('widget:listening', cb),
-    onPending: (cb) => listen('widget:pending', cb),
+    onBell: (cb) => listen('widget:bell', cb),
     onVoice: (cb) => listen('widget:voice', cb),
     onStill: (cb) => listen('widget:still', cb),
     onBackdrop: (cb) => listen('widget:backdrop', cb),

@@ -8,6 +8,7 @@ const { app, BrowserWindow, Tray, Menu, ipcMain, screen, globalShortcut, nativeI
 
 const { EngineClient, EngineError } = require('./lib/engine-client');
 const settingsLib = require('./lib/settings');
+const { bellState, moodWithBell, countsAsNotice } = require('./lib/bell');
 const { chooseSide, layoutWidget, clampIcon, panelBounds, expandedBounds, MIN_WIDE } = require('./lib/placement');
 const { NoticeQueue, present, bubbleDuration } = require('./lib/notice-queue');
 const { describe } = require('./lib/describe');
@@ -46,7 +47,7 @@ let quitting = false;
 let happyUntil = 0;
 const queue = new NoticeQueue();
 const streams = new Map();
-const state = { voice: null, engineUp: false, overview: null, notices: [], busy: 0, hidden: false, panelOpen: false, bubbleVisible: false, warnedDown: false };
+const state = { voice: null, engineUp: false, overview: null, notices: [], busy: 0, hidden: false, panelOpen: false, bubbleVisible: false, warnedDown: false, unread: 0, asking: false };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const alive = (w) => w && !w.isDestroyed();
@@ -141,14 +142,22 @@ function applyOverview(o) {
   if (state.awakeUntil) awakeTimer = setTimeout(() => { sendPanelState(); syncListening(); }, state.awakeUntil - Date.now() + 300);
   syncListening();
 }
-// The approval icon on the character: filled orange while something waits for the person, an outline otherwise.
-let pendingShown = null;
-function syncPending() {
-  const n = (state.overview && Array.isArray(state.overview.pending)) ? state.overview.pending.length : 0;
-  if (n === pendingShown) return;
-  pendingShown = n;
-  sendTo(widgetWin, 'widget:pending', n);
+// The bell behind the character's head: yellow while something waits for the person (an approval, a question), red while there is news
+// they have not seen (it clears when the panel is opened), a plain outline otherwise. The face follows it (see refreshMood).
+let bellShown = '';
+function currentBell() {
+  const pending = (state.overview && Array.isArray(state.overview.pending)) ? state.overview.pending.length : 0;
+  return bellState({ pending, asking: state.asking === true, unread: state.unread || 0 });
 }
+function syncBell() {
+  const bell = currentBell();
+  const key = `${bell.state}|${bell.label}`;
+  if (key === bellShown) return;
+  bellShown = key;
+  sendTo(widgetWin, 'widget:bell', bell);
+  sendPanelState();
+}
+const syncPending = syncBell;
 // The blinking microphone beside the character: shown while the microphone waits for a command, gone as soon as it stops.
 let listeningShown = null;
 function syncListening() {
@@ -173,9 +182,12 @@ function effectiveMood(base) {
 function refreshMood() {
   let mood = currentDescription().mood;
   if (settings.mood !== 'auto') mood = effectiveMood(mood);
-  else if (mood !== 'offline' && mood !== 'thinking') {
-    if (Date.now() < happyUntil) mood = 'happy';
-    else if (state.bubbleVisible) mood = 'alert';
+  else {
+    mood = moodWithBell(mood, currentBell());
+    if (mood !== 'offline' && mood !== 'thinking' && mood !== 'alert' && mood !== 'happy') {
+      if (Date.now() < happyUntil) mood = 'happy';
+      else if (state.bubbleVisible) mood = 'alert';
+    }
   }
   sendTo(widgetWin, 'widget:mood', mood);
 }
@@ -207,6 +219,7 @@ function nextBubble() {
 
 function pushNotice(notice) {
   state.notices.push(notice);
+  if (!state.panelOpen && countsAsNotice(notice)) { state.unread = (state.unread || 0) + 1; syncBell(); refreshMood(); }
   if (state.notices.length > 50) state.notices.shift();
   if (state.panelOpen) { sendPanelState(); return; } // the panel is open: the notice shows up in its list instead of a bubble
   if (state.hidden) return;
@@ -273,7 +286,8 @@ function panelState() {
     engineUp: state.engineUp,
     overview: overviewNow(),
     busy: state.busy > 0,
-    describe: { ...currentDescription(), mood: effectiveMood(currentDescription().mood) },
+    describe: { ...currentDescription(), mood: settings.mood === 'auto' ? moodWithBell(currentDescription().mood, currentBell()) : effectiveMood(currentDescription().mood) },
+    bell: currentBell(),
     notices: state.notices.slice(-20),
     settings: { protect: settings.protect, masked: settings.masked, autoSend: settings.autoSend, autoRunSafe: settings.autoRunSafe, hear: settings.hear, talk: settings.talk, enhancedVoice: settings.enhancedVoice, voiceSpeed: settings.voiceSpeed, speakEmojis: settings.speakEmojis, micSource: settings.micSource, still: settings.still, bubbleSide: settings.bubbleSide, mood: settings.mood, whatsapp: settings.whatsapp, calendar: settings.calendar, research: settings.research },
     voice: state.voice,
@@ -292,6 +306,9 @@ function openPanel() {
   if (!alive(panelWin)) createPanel();
   hideBubble();
   state.panelOpen = true;
+  state.unread = 0;  // opening the panel is seeing the news
+  syncBell();
+  refreshMood();
   positionPanel();
   panelWin.show();
   panelWin.focus();
@@ -718,7 +735,7 @@ function friendlyError(e) {
 function registerIpc() {
   // The floating widget reads notices aloud; tell the panel's microphone so it does not hear (and transcribe) them.
   ipcMain.on('widget:speaking', (_e, on) => sendTo(panelWin, 'panel:other-speaking', on === true));
-  ipcMain.on('widget:ready', () => { applyLayout(); refreshMood(); sendTo(widgetWin, 'widget:still', settings.still); sendVoice(); listeningShown = null; syncListening(); pendingShown = null; syncPending(); });
+  ipcMain.on('widget:ready', () => { applyLayout(); refreshMood(); sendTo(widgetWin, 'widget:still', settings.still); sendVoice(); listeningShown = null; syncListening(); bellShown = ''; syncBell(); });
   ipcMain.on('widget:hover', (_e, inside) => { if (!isLinux && alive(widgetWin)) widgetWin.setIgnoreMouseEvents(!inside, { forward: true }); });
   ipcMain.on('widget:drag-start', () => { dragStart = { ...icon }; });
   ipcMain.on('widget:drag-move', (_e, d) => {
@@ -821,11 +838,15 @@ ipcMain.handle('panel:send', async (_e, text) => {
     (async () => {
       let failed = false;
       try {
-        for await (const event of engine.streamMessage(text, ac.signal)) sendTo(panelWin, 'panel:message', { id, event });
+        for await (const event of engine.streamMessage(text, ac.signal)) {
+          if (event.type === 'input') { state.asking = true; syncBell(); refreshMood(); } else if (event.type === 'input_done') { state.asking = false; syncBell(); refreshMood(); }
+          sendTo(panelWin, 'panel:message', { id, event });
+        }
       } catch (e) {
         failed = true;
         sendTo(panelWin, 'panel:message', { id, event: { type: 'error', error: timedOut ? 'Demorei demais e parei de esperar. Pode pedir de novo.' : friendlyError(e) } });
       } finally {
+        if (state.asking) { state.asking = false; syncBell(); refreshMood(); }
         sendTo(panelWin, 'panel:message', { id, event: { type: 'end' } });
         clearTimeout(timeout);
         streams.delete(id);

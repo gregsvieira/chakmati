@@ -8,9 +8,10 @@
   const badge = document.getElementById('mic-badge');
   api.onListening((on) => badge.classList.toggle('hidden', !on));
   const approval = document.getElementById('approval-badge');
-  api.onPending((n) => {
-    approval.classList.toggle('pending', n > 0);
-    approval.setAttribute('aria-label', n > 0 ? `${n} aprovação(ões) pendente(s)` : 'Nenhuma aprovação pendente');
+  api.onBell((bell) => {
+    approval.dataset.state = bell.state;
+    approval.setAttribute('aria-label', bell.label);
+    approval.title = bell.label;
   });
   let layout = null;
 
@@ -19,8 +20,8 @@
     const { side, alignRight, size, iconOffset: o, gap } = layout;
     const W = window.innerWidth;
     const H = window.innerHeight;
-    approval.style.left = `${o.x + size / 2 - 58}px`; // on the left of the head, which is narrow and centred in its box
-    approval.style.top = `${o.y + 6}px`;
+    approval.style.left = `${o.x + size / 2 - 38}px`; // almost behind the head, which is narrow and centred in its box: it peeks out on the left
+    approval.style.top = `${o.y + 12}px`;
     badge.style.left = `${o.x + size / 2 + 28}px`; // the microphone blinks on the right
     badge.style.top = `${o.y + 6}px`;
     robotButton.style.left = `${o.x}px`;

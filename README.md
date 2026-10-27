@@ -151,6 +151,12 @@ address, and a strip of every step to go back to one. Each side can be minimized
 
 **It asks, it does not make things up.** When a page wants a user name, a password, a code or any detail the request did not give, the browser agent asks you in the conversation: an input appears under the answer (a masked one for the password) and what you type goes straight to the page. The answer is kept in memory only until it is typed, is never given to the language model, never written in the database, the captions or the pictures' notes, and the API accepts it only from the app's own window. A made-up value is refused by code, a password is never typed from text, the login button is not clicked with the password empty, and a login is never reported as done when the page says it failed. `{"action":"login"}` does the whole classic form by code (asks, fills both fields, sends). A site you name ("acesse meu instagram") is opened directly.
 
+### The bell and the face
+
+A bell sits almost behind the character's head (on the desktop, in the panel header and above the conversation in the big window). **Yellow** and the face on *alert* when something waits for you: an action to
+approve, or a question from the browser (the user name, the password). **Red** and the face *happy* when there is news you have not seen (a message, a reminder, an answer that came while the panel was closed); it clears when
+you open the panel. A plain outline when there is nothing. The face follows the bell only while the mood in Ajustes is on *Automático*; a mood you pinned stays pinned, and an engine that is down always shows as offline.
+
 ## Install wizard (desktop)
 
     cd desktop && npm run setup        # or: electron . --setup

@@ -113,15 +113,15 @@
 
   function renderPendingMark() {
     const n = ((state && state.overview && state.overview.pending) || []).length;
+    const bell = (state && state.bell) || { state: 'idle', label: 'Nenhuma novidade' };
     const mark = $('head-approval');
-    mark.classList.toggle('pending', n > 0);
-    const label = n > 0 ? `${plural(n, 'aprovação pendente', 'aprovações pendentes')}` : 'Nenhuma aprovação pendente';
-    mark.setAttribute('aria-label', label);
-    mark.title = label;
+    mark.dataset.state = bell.state;                  // idle (outline) | notice (red) | request (yellow)
+    mark.setAttribute('aria-label', bell.label);
+    mark.title = bell.label;
     const badge = $('fold-left-badge');  // the list of decisions is on the left: when it is minimized the number stays on its button
     badge.hidden = !(n > 0);
     badge.textContent = String(n);
-    badge.setAttribute('aria-label', label);
+    badge.setAttribute('aria-label', plural(n, 'aprovação pendente', 'aprovações pendentes'));
   }
 
   function renderAutomations() {
