@@ -12,14 +12,10 @@ from collections.abc import Awaitable, Callable
 
 import httpx
 
-from chakmati.shared.approvals import Action, ActionStore, ApprovalService
+from chakmati.shared.approvals import RateLimited, Action, ActionStore, ApprovalService
 from chakmati.features.whatsapp.media import fetch_audio
 from chakmati.features.whatsapp.models import Chat, Message, MessagingProvider, Outgoing, Status
 from chakmati.features.whatsapp.openwa import WhatsAppError
-
-
-class RateLimited(Exception):
-    """Too many sends in the last hour. The proposal stays pending and can be approved later."""
 
 
 class WhatsAppService(ApprovalService):

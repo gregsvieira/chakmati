@@ -23,6 +23,10 @@ class ActionNotPending(Exception):
     """The action was already approved, rejected, executed or has failed."""
 
 
+class RateLimited(Exception):
+    """An integration refuses to act now (too many sends per hour): the proposal stays pending and can be approved later."""
+
+
 class ActionExpired(Exception):
     """The proposal sat unanswered for too long and can no longer be approved."""
 

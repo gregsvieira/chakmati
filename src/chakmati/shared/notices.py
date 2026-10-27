@@ -8,12 +8,10 @@ the engine anything.
 
 import asyncio
 import logging
-import math
 import time
 from collections import deque
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 from typing import Protocol
 
 log = logging.getLogger(__name__)
