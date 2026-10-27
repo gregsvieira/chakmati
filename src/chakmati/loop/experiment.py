@@ -1,6 +1,6 @@
-from .evalset import ITEMS, pairwise_accuracy, strategy_report
-from .prune import PruneConfig, prune, prune_by_rank, prune_relative_to_best
-from .scorer import LayaPartScorer
+from chakmati.loop.evalset import ITEMS, pairwise_accuracy, strategy_report
+from chakmati.loop.prune import PruneConfig, prune, prune_by_rank, prune_relative_to_best
+from chakmati.loop.scorer import LayaPartScorer
 
 
 def main() -> None:

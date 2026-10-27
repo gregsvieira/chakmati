@@ -22,12 +22,12 @@ import uuid
 from collections.abc import Callable
 from pathlib import Path
 
-from ..approvals import Action, ActionStore, ApprovalService
-from .policy import exists_in, is_dir_in, DOWNLOAD, EXECUTABLE_EXT, RUN, SAFE, Checked, PolicyError, Roots, check, clean_env, resolve
-from . import documents, grading
-from .describe import friendly
-from .safety import ComputerError, check_content, check_url, find_app, installed_apps, plain, resolve_new_file
-from .secrets import has_secret, looks_secret, redact
+from chakmati.approvals import Action, ActionStore, ApprovalService
+from chakmati.computer.policy import exists_in, is_dir_in, DOWNLOAD, EXECUTABLE_EXT, RUN, SAFE, Checked, PolicyError, Roots, check, clean_env, resolve
+from chakmati.computer import documents, grading
+from chakmati.computer.describe import friendly
+from chakmati.computer.safety import ComputerError, check_content, check_url, find_app, installed_apps, plain, resolve_new_file
+from chakmati.computer.secrets import has_secret, looks_secret, redact
 
 MAX_OUTPUT = 4000
 MAX_EDIT_BYTES = 100_000

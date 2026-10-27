@@ -17,7 +17,7 @@ from typing import Any
 
 import httpx
 
-from .models import Chat, MediaRef, Message, Outgoing, Status
+from chakmati.whatsapp.models import Chat, MediaRef, Message, Outgoing, Status
 
 _KNOWN_SUFFIXES = {"c.us", "lid", "g.us"}
 

@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
-from ..extras import missing_message
+from chakmati.extras import missing_message
 
 VIEWPORT = {"width": 1280, "height": 800}
 MAX_TEXT = 4500

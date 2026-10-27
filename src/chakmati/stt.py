@@ -8,7 +8,7 @@ import io
 import threading
 from collections.abc import Callable
 
-from .extras import missing_message
+from chakmati.extras import missing_message
 
 MAX_AUDIO_BYTES = 20 * 1024 * 1024
 # Words the recogniser would otherwise get wrong: the assistant's name and its wake phrases.

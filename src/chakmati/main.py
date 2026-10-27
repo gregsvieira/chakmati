@@ -2,41 +2,41 @@ import logging
 import uvicorn
 from fastapi import FastAPI
 
-from .browser.agent import BrowserAgent
-from .browser.frames import FrameStore
-from .browser.inputs import InputBroker
-from .browser.session import PlaywrightSession
-from .agenda.assistant import CalendarAssistant
-from .agenda.factory import build_calendar
-from .api import create_app
-from .approvals import ActionStore
-from .automations.assistant import AutomationAssistant
-from .automations.runner import AutomationRunner
-from .automations.service import AutomationService
-from .automations.store import AutomationStore
-from .notices import AutomationTicker, ApprovalWatcher, CalendarWatcher, NoticeBoard, Notifier, WhatsAppWatcher
-from .config import Settings
-from . import extras
-from .engine import Engine
-from .gate import build_gate
-from .jobs import JobStore, Worker
-from .llm import OllamaClient
-from .models import ModelCatalog
-from .loop.scorer import KeepAllScorer
-from .loop.twostage import LayaRelevanceScorer
-from .research.fetch import PageFetcher
-from .research.search import DuckDuckGoHtmlBackend, build_user_agent
-from .research.searxng import SearxngBackend
-from .research.tool import ResearchTool
-from .computer.assistant import ComputerAssistant
-from .computer.service import ComputerService
-from .home.assistant import HomeAssistantBot
-from .home.client import HomeAssistantClient
-from .home.service import HomeService
-from .whatsapp.assistant import WhatsAppAssistant
-from .stt import SpeechToText
-from .tts import VoiceStore, VoiceSynth
-from .whatsapp.factory import build_whatsapp, build_whatsapp_events
+from chakmati.browser.agent import BrowserAgent
+from chakmati.browser.frames import FrameStore
+from chakmati.browser.inputs import InputBroker
+from chakmati.browser.session import PlaywrightSession
+from chakmati.agenda.assistant import CalendarAssistant
+from chakmati.agenda.factory import build_calendar
+from chakmati.api import create_app
+from chakmati.approvals import ActionStore
+from chakmati.automations.assistant import AutomationAssistant
+from chakmati.automations.runner import AutomationRunner
+from chakmati.automations.service import AutomationService
+from chakmati.automations.store import AutomationStore
+from chakmati.notices import AutomationTicker, ApprovalWatcher, CalendarWatcher, NoticeBoard, Notifier, WhatsAppWatcher
+from chakmati.config import Settings
+from chakmati import extras
+from chakmati.engine import Engine
+from chakmati.gate import build_gate
+from chakmati.jobs import JobStore, Worker
+from chakmati.llm import OllamaClient
+from chakmati.models import ModelCatalog
+from chakmati.loop.scorer import KeepAllScorer
+from chakmati.loop.twostage import LayaRelevanceScorer
+from chakmati.research.fetch import PageFetcher
+from chakmati.research.search import DuckDuckGoHtmlBackend, build_user_agent
+from chakmati.research.searxng import SearxngBackend
+from chakmati.research.tool import ResearchTool
+from chakmati.computer.assistant import ComputerAssistant
+from chakmati.computer.service import ComputerService
+from chakmati.home.assistant import HomeAssistantBot
+from chakmati.home.client import HomeAssistantClient
+from chakmati.home.service import HomeService
+from chakmati.whatsapp.assistant import WhatsAppAssistant
+from chakmati.stt import SpeechToText
+from chakmati.tts import VoiceStore, VoiceSynth
+from chakmati.whatsapp.factory import build_whatsapp, build_whatsapp_events
 
 
 def build_app(settings: Settings | None = None) -> FastAPI:

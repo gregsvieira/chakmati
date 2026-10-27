@@ -10,7 +10,7 @@ from datetime import date, datetime, timedelta, timezone
 import icalendar
 import recurring_ical_events
 
-from .models import CalendarEvent, NewEvent
+from chakmati.agenda.models import CalendarEvent, NewEvent
 
 PRODID = "-//chakmati//agenda//PT"
 

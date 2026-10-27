@@ -4,14 +4,14 @@ import sys
 import threading
 from datetime import datetime
 
-from ..config import Settings
-from .ics import IcsCalendarProvider
-from .models import CalendarEvent, CalendarProvider, NewEvent
-from .service import ActionStore, CalendarService
+from chakmati.config import Settings
+from chakmati.agenda.ics import IcsCalendarProvider
+from chakmati.agenda.models import CalendarEvent, CalendarProvider, NewEvent
+from chakmati.agenda.service import ActionStore, CalendarService
 
 
 def _make_mac(default_calendar: str):
-    from .mac import MacEventKitProvider
+    from chakmati.agenda.mac import MacEventKitProvider
 
     return MacEventKitProvider(default_calendar or None)
 

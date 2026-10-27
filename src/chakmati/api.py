@@ -10,24 +10,24 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
-from .agenda.models import CalendarEvent
-from .agenda.service import Action, ActionExpired, ActionNotPending, CalendarService
-from .approvals import ApprovalService
-from . import extras
-from .automations.audio import wav_to_ogg_opus_timed
-from .automations.models import describe, parse_spec
-from .automations.service import AutomationError, AutomationService
-from .browser.frames import FrameStore
-from .browser.inputs import InputBroker, MAX_ANSWER
-from .engine import Engine
-from .jobs import CANCELLED, DONE, FAILED, JobStore, Worker
-from .notices import NoticeBoard, Notifier
-from .persona import wake_reply
-from .stt import SpeechToText, TranscribeError
-from .tts import VoiceError, VoiceSynth
-from .whatsapp.media import MediaError
-from .whatsapp.openwa import WhatsAppError
-from .whatsapp.service import RateLimited, WhatsAppService
+from chakmati.agenda.models import CalendarEvent
+from chakmati.agenda.service import Action, ActionExpired, ActionNotPending, CalendarService
+from chakmati.approvals import ApprovalService
+from chakmati import extras
+from chakmati.automations.audio import wav_to_ogg_opus_timed
+from chakmati.automations.models import describe, parse_spec
+from chakmati.automations.service import AutomationError, AutomationService
+from chakmati.browser.frames import FrameStore
+from chakmati.browser.inputs import InputBroker, MAX_ANSWER
+from chakmati.engine import Engine
+from chakmati.jobs import CANCELLED, DONE, FAILED, JobStore, Worker
+from chakmati.notices import NoticeBoard, Notifier
+from chakmati.persona import wake_reply
+from chakmati.stt import SpeechToText, TranscribeError
+from chakmati.tts import VoiceError, VoiceSynth
+from chakmati.whatsapp.media import MediaError
+from chakmati.whatsapp.openwa import WhatsAppError
+from chakmati.whatsapp.service import RateLimited, WhatsAppService
 
 
 class MessageIn(BaseModel):

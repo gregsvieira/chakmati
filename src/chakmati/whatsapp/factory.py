@@ -2,13 +2,13 @@
 
 import os
 
-from ..approvals import ActionStore
-from ..config import Settings
-from ..notices import NoticeBoard
-from .events import WhatsAppEvents
-from .openwa import OpenWAClient
-from .webvoice import WebVoiceSender
-from .service import WhatsAppService
+from chakmati.approvals import ActionStore
+from chakmati.config import Settings
+from chakmati.notices import NoticeBoard
+from chakmati.whatsapp.events import WhatsAppEvents
+from chakmati.whatsapp.openwa import OpenWAClient
+from chakmati.whatsapp.webvoice import WebVoiceSender
+from chakmati.whatsapp.service import WhatsAppService
 
 
 def _api_key(settings: Settings) -> str:

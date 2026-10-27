@@ -3,7 +3,7 @@ including Alexa-compatible devices, which have no public API of their own for co
 
 import httpx
 
-from .models import ALLOWED_DOMAINS, Entity, HomeError, valid_entity_id
+from chakmati.home.models import ALLOWED_DOMAINS, Entity, HomeError, valid_entity_id
 
 
 class HomeAssistantClient:

@@ -15,7 +15,7 @@ from collections.abc import Callable, Iterable, Iterator
 
 import httpx
 
-from ..notices import NoticeBoard
+from chakmati.notices import NoticeBoard
 
 log = logging.getLogger(__name__)
 

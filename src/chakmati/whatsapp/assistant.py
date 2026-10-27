@@ -16,12 +16,12 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from typing import Protocol
 
-from ..approvals import awaiting_approval
-from ..guard import NOTE, UNTRUSTED_RULE, neutralize, strip_markers, suspicious
-from ..llm import ChatClient
-from ..persona import PERSONA
-from .models import Chat, Message, Status
-from .openwa import WhatsAppError
+from chakmati.approvals import awaiting_approval
+from chakmati.guard import NOTE, UNTRUSTED_RULE, neutralize, strip_markers, suspicious
+from chakmati.llm import ChatClient
+from chakmati.persona import PERSONA
+from chakmati.whatsapp.models import Chat, Message, Status
+from chakmati.whatsapp.openwa import WhatsAppError
 
 SYSTEM = """You turn a WhatsApp request into JSON. Reply with ONLY one JSON object, no prose.
 Keys:

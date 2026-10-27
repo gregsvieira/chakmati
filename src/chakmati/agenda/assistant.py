@@ -14,9 +14,9 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, tzinfo
 from typing import Protocol
 
-from ..approvals import awaiting_approval
-from ..llm import ChatClient
-from .models import CalendarEvent, NewEvent
+from chakmati.approvals import awaiting_approval
+from chakmati.llm import ChatClient
+from chakmati.agenda.models import CalendarEvent, NewEvent
 
 _WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 MAX_LISTED = 30

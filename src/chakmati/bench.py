@@ -1,9 +1,9 @@
 import importlib.util
 import time
 
-from .gate.base import Gate, Route
-from .gate.heuristic import HeuristicGate
-from .gate.laya_gate import LayaGate
+from chakmati.gate.base import Gate, Route
+from chakmati.gate.heuristic import HeuristicGate
+from chakmati.gate.laya_gate import LayaGate
 
 CASES: list[tuple[str, Route]] = [
     ("olá", Route.CHAT),

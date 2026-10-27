@@ -4,7 +4,7 @@ import time
 from collections.abc import Callable
 from datetime import datetime
 
-from ..approvals import (  # noqa: F401  (re-exported: other modules and tests import these from here)
+from chakmati.approvals import (  # noqa: F401  (re-exported: other modules and tests import these from here)
     EXECUTED,
     EXECUTING,
     EXPIRED,
@@ -17,7 +17,7 @@ from ..approvals import (  # noqa: F401  (re-exported: other modules and tests i
     ActionStore,
     ApprovalService,
 )
-from .models import CalendarEvent, CalendarProvider, NewEvent
+from chakmati.agenda.models import CalendarEvent, CalendarProvider, NewEvent
 
 def _new_event_payload(new: NewEvent) -> dict:
     return {

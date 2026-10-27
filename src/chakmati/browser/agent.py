@@ -12,9 +12,9 @@ import re
 from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Protocol
 
-from ..llm import ChatClient
-from .frames import FrameStore
-from .session import BrowserError, Snapshot, check_navigable
+from chakmati.llm import ChatClient
+from chakmati.browser.frames import FrameStore
+from chakmati.browser.session import BrowserError, Snapshot, check_navigable
 
 log = logging.getLogger(__name__)
 DEFAULT_START = "https://duckduckgo.com/"

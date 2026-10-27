@@ -2,7 +2,7 @@ import logging
 from collections.abc import Callable, Mapping
 from typing import Any
 
-from .base import Gate, GateResult, Route
+from chakmati.gate.base import Gate, GateResult, Route
 
 log = logging.getLogger(__name__)
 

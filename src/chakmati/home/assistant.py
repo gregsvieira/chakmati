@@ -4,9 +4,9 @@ approval. Nothing read from messages or the web ever reaches this."""
 
 import json
 
-from ..llm import ChatClient
-from .models import ACTIONS, HomeError
-from .service import HomeService
+from chakmati.llm import ChatClient
+from chakmati.home.models import ACTIONS, HomeError
+from chakmati.home.service import HomeService
 
 SYSTEM = """You turn a smart-home request into JSON. Reply with ONLY one JSON object, no prose. Keys:
   "action": one of on, off, toggle, lock, unlock, open, close, set_temperature, brightness, scene, status, list, other

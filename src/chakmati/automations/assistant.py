@@ -12,12 +12,12 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from ..approvals import Action
-from ..llm import ChatClient
-from ..whatsapp.assistant import pick_candidate, resolve_chat
-from ..whatsapp.models import Chat
-from .models import SpecError, describe, parse_spec
-from .service import AutomationError, AutomationService
+from chakmati.approvals import Action
+from chakmati.llm import ChatClient
+from chakmati.whatsapp.assistant import pick_candidate, resolve_chat
+from chakmati.whatsapp.models import Chat
+from chakmati.automations.models import SpecError, describe, parse_spec
+from chakmati.automations.service import AutomationError, AutomationService
 
 SYSTEM = """You turn a request to create or list automations into JSON. Reply with ONLY one JSON object, no prose.
 Keys:

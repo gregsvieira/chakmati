@@ -8,7 +8,7 @@ checked with `python -m chakmati.agenda.mac_check`.
 import threading
 from datetime import datetime, timedelta
 
-from .models import CalendarEvent, NewEvent
+from chakmati.agenda.models import CalendarEvent, NewEvent
 
 # EKAuthorizationStatus
 NOT_DETERMINED, RESTRICTED, DENIED, FULL_ACCESS, WRITE_ONLY = 0, 1, 2, 3, 4

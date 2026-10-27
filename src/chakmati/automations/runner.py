@@ -13,9 +13,9 @@ from collections.abc import Callable, Sequence
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from ..whatsapp.models import Chat
-from .cron import cron_matches
-from .store import Automation, AutomationStore
+from chakmati.whatsapp.models import Chat
+from chakmati.automations.cron import cron_matches
+from chakmati.automations.store import Automation, AutomationStore
 
 log = logging.getLogger(__name__)
 PREFIX = "Resposta automática Chakmati: "  # every automatic text says what it is, so nobody mistakes it for the person

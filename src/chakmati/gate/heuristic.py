@@ -1,6 +1,6 @@
 import re
 
-from .base import GateResult, Route
+from chakmati.gate.base import GateResult, Route
 
 # Research is checked before task: "search and write a summary" is research.
 _RESEARCH = re.compile(

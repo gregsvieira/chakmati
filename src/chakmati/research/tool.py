@@ -4,14 +4,14 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import datetime
 
-from ..llm import ChatClient
-from ..loop.scorer import PartScorer
-from ..persona import PERSONA
-from ..guard import NOTE, UNTRUSTED_RULE, StreamScrubber, neutralize, strip_markers, suspicious
-from ..timeguard import is_recency_question, order_by_date, recency_fallback_query, today_line
-from .fetch import PageFetcher, chunk_text, extract_text
-from .filter import filter_results, rank_passages
-from .search import SearchBackend
+from chakmati.llm import ChatClient
+from chakmati.loop.scorer import PartScorer
+from chakmati.persona import PERSONA
+from chakmati.guard import NOTE, UNTRUSTED_RULE, StreamScrubber, neutralize, strip_markers, suspicious
+from chakmati.timeguard import is_recency_question, order_by_date, recency_fallback_query, today_line
+from chakmati.research.fetch import PageFetcher, chunk_text, extract_text
+from chakmati.research.filter import filter_results, rank_passages
+from chakmati.research.search import SearchBackend
 
 COMPOSE_SYSTEM = PERSONA + " " + (
     "Answer the question in the user's language using ONLY the numbered passages below. "

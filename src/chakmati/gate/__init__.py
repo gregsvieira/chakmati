@@ -1,7 +1,7 @@
-from ..config import Settings
-from .base import Gate, GateResult, Route
-from .heuristic import HeuristicGate
-from .laya_gate import LayaGate
+from chakmati.config import Settings
+from chakmati.gate.base import Gate, GateResult, Route
+from chakmati.gate.heuristic import HeuristicGate
+from chakmati.gate.laya_gate import LayaGate
 
 
 def build_gate(settings: Settings) -> Gate:

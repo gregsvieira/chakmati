@@ -3,7 +3,7 @@ import re
 import httpx
 import trafilatura
 
-from .search import USER_AGENT
+from chakmati.research.search import USER_AGENT
 
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
 

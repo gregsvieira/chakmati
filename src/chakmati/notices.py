@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Protocol
 
-from .whatsapp.openwa import WhatsAppError
+from chakmati.whatsapp.openwa import WhatsAppError
 
 log = logging.getLogger(__name__)
 

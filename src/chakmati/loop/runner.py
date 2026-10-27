@@ -1,10 +1,10 @@
 import asyncio
 from dataclasses import dataclass
 
-from ..llm import ChatClient
-from .parts import compose_messages, draft_messages, parse_parts
-from .prune import PruneConfig, prune
-from .scorer import PartScorer
+from chakmati.llm import ChatClient
+from chakmati.loop.parts import compose_messages, draft_messages, parse_parts
+from chakmati.loop.prune import PruneConfig, prune
+from chakmati.loop.scorer import PartScorer
 
 
 @dataclass(frozen=True)

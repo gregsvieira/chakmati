@@ -12,10 +12,10 @@ from collections.abc import Awaitable, Callable
 
 import httpx
 
-from ..approvals import Action, ActionStore, ApprovalService
-from .media import fetch_audio
-from .models import Chat, Message, MessagingProvider, Outgoing, Status
-from .openwa import WhatsAppError
+from chakmati.approvals import Action, ActionStore, ApprovalService
+from chakmati.whatsapp.media import fetch_audio
+from chakmati.whatsapp.models import Chat, Message, MessagingProvider, Outgoing, Status
+from chakmati.whatsapp.openwa import WhatsAppError
 
 
 class RateLimited(Exception):

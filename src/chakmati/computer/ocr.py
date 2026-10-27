@@ -15,9 +15,9 @@ import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..extras import missing_message
-from .grading import Exam, MAX_BYTES, Question
-from .safety import ComputerError
+from chakmati.extras import missing_message
+from chakmati.computer.grading import Exam, MAX_BYTES, Question
+from chakmati.computer.safety import ComputerError
 
 IMAGE_EXT = {".jpg", ".jpeg", ".png"}
 MAX_PAGES = 3

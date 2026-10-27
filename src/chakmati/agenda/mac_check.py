@@ -7,8 +7,8 @@ It prints only counts, creates one clearly named test event for tomorrow at 03:0
 
 from datetime import datetime, timedelta
 
-from .mac import MacEventKitProvider
-from .models import NewEvent
+from chakmati.agenda.mac import MacEventKitProvider
+from chakmati.agenda.models import NewEvent
 
 TITLE = "Chakmati TESTE (pode apagar)"
 

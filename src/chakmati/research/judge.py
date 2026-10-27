@@ -2,7 +2,7 @@ from collections.abc import Callable
 
 import httpx
 
-from .evalset import LabelledResult
+from chakmati.research.evalset import LabelledResult
 
 SYSTEM = (
     "Decide if the search result is relevant to the query, meaning the page would help "

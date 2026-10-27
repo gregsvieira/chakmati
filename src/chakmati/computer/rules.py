@@ -64,7 +64,7 @@ def by_rule(text: str, service) -> dict | None:
     if m := _OPEN_APP.search(t):
         name = m.group(1).strip()
         if name and not re.search(r"\b(?:site|p[áa]gina|https?|www|\.com|\.br)\b", name, re.IGNORECASE):
-            from .safety import find_app
+            from chakmati.computer.safety import find_app
             app, candidates = find_app(name, service._apps())
             if app or candidates:
                 return {"action": "open_app", "app": name}

@@ -1,4 +1,4 @@
-from ..llm import ChatClient
+from chakmati.llm import ChatClient
 
 
 class MeteredLLM:

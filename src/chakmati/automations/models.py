@@ -7,7 +7,7 @@ message. Defaults are cautious: groups are skipped, and a person gets at most on
 import re
 from dataclasses import dataclass
 
-from .cron import CronError, describe_cron, fires_per_day, validate_cron
+from chakmati.automations.cron import CronError, describe_cron, fires_per_day, validate_cron
 
 MAX_NAME = 60
 MAX_TEXT = 1000

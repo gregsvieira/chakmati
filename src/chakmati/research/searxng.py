@@ -20,7 +20,7 @@ from urllib.parse import urlencode
 import httpx
 from lxml import html as lxml_html
 
-from .search import SearchResult
+from chakmati.research.search import SearchResult
 
 USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "

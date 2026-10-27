@@ -9,8 +9,8 @@ import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..extras import missing_message
-from .safety import ComputerError
+from chakmati.extras import missing_message
+from chakmati.computer.safety import ComputerError
 
 MAX_FILES, MAX_BYTES, MAX_QUESTIONS = 100, 8_000_000, 100
 _QUESTION = re.compile(r"^\s*(\d{1,3})\s*[.)]\s+\S")
@@ -84,7 +84,7 @@ def read_folder(folder: Path) -> tuple[list[Exam], list[str]]:
                 parsed = parse_text(path.name, text)
                 exam = parsed if parsed.marks else None
             if exam is None:
-                from . import ocr
+                from chakmati.computer import ocr
                 exam = ocr.read_scan(path)
             exams.append(exam)
         except ComputerError as exc:

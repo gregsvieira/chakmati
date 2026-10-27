@@ -11,13 +11,13 @@ import sys
 from pathlib import Path
 from collections.abc import Awaitable, Callable
 
-from ..guard import UNTRUSTED_RULE, fence, strip_markers
-from ..llm import ChatClient
-from . import documents, grading, rules
-from .policy import PolicyError, resolve
-from .describe import plain_error
-from .safety import ComputerError, check_url, find_app, plain as plain_name
-from .service import ComputerService
+from chakmati.guard import UNTRUSTED_RULE, fence, strip_markers
+from chakmati.llm import ChatClient
+from chakmati.computer import documents, grading, rules
+from chakmati.computer.policy import PolicyError, resolve
+from chakmati.computer.describe import plain_error
+from chakmati.computer.safety import ComputerError, check_url, find_app, plain as plain_name
+from chakmati.computer.service import ComputerService
 
 SYSTEM = """You turn a request to do something on the user's computer into JSON. Reply with ONLY one JSON object, no prose.
 "action" is one of:
@@ -407,7 +407,7 @@ class ComputerAssistant:
             if direct:
                 how.append(f"{direct} PDF com texto: leitura direta pelos caracteres")
             if ocr_n:
-                from .. import extras
+                from chakmati import extras
                 how.append(f"{ocr_n} escaneados ou fotos: leitura por OCR" + ("" if extras.available("ocr") else " (⚠ o OCR não está instalado: `uv sync --extra ocr`)"))
             steps.append("Verificar como ler cada prova: " + "; ".join(how) + ".")
         else:

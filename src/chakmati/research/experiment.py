@@ -12,9 +12,9 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
-from ..config import Settings
-from .evalset import LabelledResult, ranking_metrics, with_injected_negatives
-from .search import DuckDuckGoHtmlBackend
+from chakmati.config import Settings
+from chakmati.research.evalset import LabelledResult, ranking_metrics, with_injected_negatives
+from chakmati.research.search import DuckDuckGoHtmlBackend
 
 RESULTS_DIR = Path("docs/superpowers/results")
 RESULTS_FILE = RESULTS_DIR / "2026-10-23-search_results.json"
@@ -65,7 +65,7 @@ def load_items() -> list[LabelledResult]:
 def scorers(settings: Settings) -> dict[str, Callable[[LabelledResult], float]]:
     from laya import Router
 
-    from .judge import llm_relevance_scorer
+    from chakmati.research.judge import llm_relevance_scorer
 
     router = Router(max_loaded=3)
     state = lambda i: {"body": f"Query: {i.query}\nSearch result: {i.text}"}  # noqa: E731

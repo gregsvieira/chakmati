@@ -2,7 +2,7 @@
 
 import io
 
-from ..extras import missing_message
+from chakmati.extras import missing_message
 
 
 def wav_to_ogg_opus(wav: bytes) -> bytes:

@@ -14,7 +14,7 @@ from typing import Any
 
 import httpx
 
-from .evalset import ALL_ITEMS, LabelledPart, pairwise_accuracy
+from chakmati.loop.evalset import ALL_ITEMS, LabelledPart, pairwise_accuracy
 
 THRESHOLDS = (0.5, 0.89)
 KINDS = ("good", "irrelevant", "wrong")
@@ -141,7 +141,7 @@ def llm_scorers(base: str, model: str) -> dict[str, Callable[[LabelledPart], flo
 def main() -> None:
     from laya import Router
 
-    from ..config import Settings
+    from chakmati.config import Settings
 
     s = Settings.from_env()
     router = Router(max_loaded=3)

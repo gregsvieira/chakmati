@@ -17,7 +17,7 @@ import httpx
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-from .models import MediaRef
+from chakmati.whatsapp.models import MediaRef
 
 MAX_AUDIO_BYTES = 16 * 1024 * 1024
 _MAC_BYTES = 10

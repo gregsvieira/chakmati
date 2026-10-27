@@ -6,8 +6,8 @@ import time
 from collections import deque
 from collections.abc import Callable
 
-from ..approvals import Action, ActionStore, ApprovalService
-from .models import Command, Entity, HomeError, plan, plain
+from chakmati.approvals import Action, ActionStore, ApprovalService
+from chakmati.home.models import Command, Entity, HomeError, plan, plain
 
 
 class HomeService(ApprovalService):
@@ -67,7 +67,7 @@ class HomeService(ApprovalService):
 
     async def _aexecute(self, action: Action) -> str:
         p = action.payload
-        from .models import valid_entity_id
+        from chakmati.home.models import valid_entity_id
 
         if action.kind != "home.call" or not valid_entity_id(p.get("entity", "")) or p.get("data", {}).get("entity_id") != p["entity"]:
             raise HomeError("pedido inválido")

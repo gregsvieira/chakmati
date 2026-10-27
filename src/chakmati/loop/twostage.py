@@ -11,8 +11,8 @@ from typing import Any
 
 import httpx
 
-from ..gate.laya_gate import Predictor
-from .scorer import PartScorer
+from chakmati.gate.laya_gate import Predictor
+from chakmati.loop.scorer import PartScorer
 
 log = logging.getLogger(__name__)
 

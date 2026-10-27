@@ -5,15 +5,15 @@ from datetime import datetime
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 
-from .automations.confirm import verdict
-from . import patriot
-from .canned import canned_answer
-from .persona import AWAKE_SECONDS, PERSONA, wake_reply
-from .timeguard import calendar_facts, needs_today, needs_web, today_line
-from .gate.base import Gate, Route
-from .jobs import Job, JobStore
-from .llm import ChatClient
-from .research.tool import ResearchTool
+from chakmati.automations.confirm import verdict
+from chakmati import patriot
+from chakmati.canned import canned_answer
+from chakmati.persona import AWAKE_SECONDS, PERSONA, wake_reply
+from chakmati.timeguard import calendar_facts, needs_today, needs_web, today_line
+from chakmati.gate.base import Gate, Route
+from chakmati.jobs import Job, JobStore
+from chakmati.llm import ChatClient
+from chakmati.research.tool import ResearchTool
 
 _ROUTE_PROMPTS: dict[Route, str] = {
     Route.CHAT: "You are a concise, friendly assistant. Answer in the user's language. Never invent rules, permissions or security policies (you do not have a policy against visiting sites or using accounts): if a request needs a tool you do not have in this chat, say what you would need.",

@@ -19,13 +19,13 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from ..config import Settings
-from ..llm import OllamaClient
-from .metered import MeteredLLM
-from .prune import PruneConfig
-from .runner import ThinkLoop
-from .scorer import KeepAllScorer
-from .twostage import LayaRelevanceScorer, LLMVerifier, TwoStageScorer
+from chakmati.config import Settings
+from chakmati.llm import OllamaClient
+from chakmati.loop.metered import MeteredLLM
+from chakmati.loop.prune import PruneConfig
+from chakmati.loop.runner import ThinkLoop
+from chakmati.loop.scorer import KeepAllScorer
+from chakmati.loop.twostage import LayaRelevanceScorer, LLMVerifier, TwoStageScorer
 
 QUESTIONS = [
     "Explique por que o céu é azul.",

@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
-from ..loop.scorer import PartScorer
-from .search import SearchResult
+from chakmati.loop.scorer import PartScorer
+from chakmati.research.search import SearchResult
 
 
 def filter_results(

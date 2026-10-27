@@ -2,8 +2,8 @@ import logging
 from collections.abc import Sequence
 from typing import Any, Protocol
 
-from ..gate import laya_gate
-from ..gate.laya_gate import Predictor
+from chakmati.gate import laya_gate
+from chakmati.gate.laya_gate import Predictor
 
 log = logging.getLogger(__name__)
 

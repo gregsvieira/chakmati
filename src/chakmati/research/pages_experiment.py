@@ -18,14 +18,14 @@ from pathlib import Path
 
 import httpx
 
-from ..config import Settings
-from ..llm import OllamaClient
-from ..loop.scorer import KeepAllScorer
-from .fetch import PageFetcher
-from .rankers import EmbeddingScorer
-from .search import SearchResult, build_user_agent
-from .searxng import SearxngBackend
-from .tool import ResearchTool
+from chakmati.config import Settings
+from chakmati.llm import OllamaClient
+from chakmati.loop.scorer import KeepAllScorer
+from chakmati.research.fetch import PageFetcher
+from chakmati.research.rankers import EmbeddingScorer
+from chakmati.research.search import SearchResult, build_user_agent
+from chakmati.research.searxng import SearxngBackend
+from chakmati.research.tool import ResearchTool
 
 DEADLINE = 2.0
 PAGES = (1, 2, 4)

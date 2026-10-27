@@ -8,7 +8,7 @@ import threading
 import uuid
 from dataclasses import dataclass
 
-from .models import Spec, parse_spec
+from chakmati.automations.models import Spec, parse_spec
 
 
 @dataclass(frozen=True)

@@ -11,8 +11,8 @@ import shutil
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 
-from .models import Outgoing
-from .openwa import WhatsAppError
+from chakmati.whatsapp.models import Outgoing
+from chakmati.whatsapp.openwa import WhatsAppError
 
 SCRIPT = Path(__file__).with_name("wa_voice.js")
 Runner = Callable[[list[str], bytes], Awaitable[tuple[int, bytes]]]

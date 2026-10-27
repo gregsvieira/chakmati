@@ -7,11 +7,11 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
-from ..approvals import Action, ActionStore, ApprovalService
-from ..tts import VoiceError
-from .audio import wav_to_ogg_opus
-from .models import Spec, describe, parse_spec
-from .store import AutomationStore
+from chakmati.approvals import Action, ActionStore, ApprovalService
+from chakmati.tts import VoiceError
+from chakmati.automations.audio import wav_to_ogg_opus
+from chakmati.automations.models import Spec, describe, parse_spec
+from chakmati.automations.store import AutomationStore
 
 
 class AutomationError(Exception):

@@ -8,8 +8,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..extras import missing_message
-from .safety import ComputerError
+from chakmati.extras import missing_message
+from chakmati.computer.safety import ComputerError
 
 KINDS = {"docx": "Pages", "xlsx": "Numbers", "pptx": "Keynote"}
 MAX_PARAGRAPHS, MAX_ROWS, MAX_COLS, MAX_SLIDES, MAX_BULLETS, MAX_TEXT = 60, 200, 26, 30, 8, 4000

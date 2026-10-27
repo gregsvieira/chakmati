@@ -16,10 +16,10 @@ from pathlib import Path
 
 import httpx
 
-from ..config import Settings
-from ..loop.scorer import KeepAllScorer
-from .rankers import Bm25Scorer, EmbeddingScorer
-from .tool import COMPOSE_SYSTEM
+from chakmati.config import Settings
+from chakmati.loop.scorer import KeepAllScorer
+from chakmati.research.rankers import Bm25Scorer, EmbeddingScorer
+from chakmati.research.tool import COMPOSE_SYSTEM
 
 CORPUS_FILE = Path("docs/superpowers/results/2026-10-23-passages_corpus.json")
 

@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlparse
 
-from .secrets import looks_secret
+from chakmati.computer.secrets import looks_secret
 
 SAFE, RUN, DOWNLOAD = "safe", "run", "download"
 EXECUTABLE_EXT = {".exe", ".bat", ".cmd", ".com", ".msi", ".scr", ".ps1", ".psm1", ".vbs", ".vbe", ".wsf", ".hta", ".jar", ".app", ".dmg", ".pkg",
