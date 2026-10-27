@@ -964,7 +964,7 @@ async function runProtectTest() {
 }
 
 async function runSnapshots() {
-  const out = SNAPSHOT === '1' ? path.join(app.getPath('temp'), 'liteagent-desktop-snapshots') : SNAPSHOT;
+  const out = SNAPSHOT === '1' ? path.join(app.getPath('temp'), 'chakmati-desktop-snapshots') : SNAPSHOT;
   fs.mkdirSync(out, { recursive: true });
   settings = { ...settingsLib.DEFAULTS, protect: false, hear: true, talk: true };
   const SAMPLE_CHATS = [

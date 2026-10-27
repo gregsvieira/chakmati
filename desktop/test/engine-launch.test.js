@@ -3,7 +3,8 @@ const assert = require('node:assert/strict');
 const { EXTRA_NAMES, extrasFromSettings, venvPython, uvPath, toolPath, engineLaunch, syncCommand } = require('../src/lib/engine-launch');
 
 test('extras follow the settings that need them', () => {
-  assert.deepEqual(EXTRA_NAMES, ['voice', 'listen']);
+  assert.deepEqual(EXTRA_NAMES, ['voice', 'listen', 'laya']);
+  assert.deepEqual(extrasFromSettings({ laya: true }), ['laya']);
   assert.deepEqual(extrasFromSettings({ enhancedVoice: false, talk: false }), []);
   assert.deepEqual(extrasFromSettings({ enhancedVoice: true, talk: false }), ['voice']);
   assert.deepEqual(extrasFromSettings({ enhancedVoice: true, talk: true }), ['voice', 'listen']);
@@ -27,14 +28,14 @@ test('the tool PATH uses the separator of the system and keeps what was there fi
 
 test('in development the engine starts as before, in the checkout', () => {
   assert.deepEqual(engineLaunch({ packaged: false, repoRoot: '/repo', platform: 'darwin' }),
-    { command: 'uv', args: ['run', 'python', '-m', 'liteagent.main'], cwd: '/repo', env: {} });
+    { command: 'uv', args: ['run', 'python', '-m', 'chakmati.main'], cwd: '/repo', env: {} });
   assert.equal(engineLaunch({ packaged: false, repoRoot: null, platform: 'darwin' }), null);
 });
 
 test('installed, the engine runs from the data folder with its files kept out of the read-only app', () => {
   const l = engineLaunch({ packaged: true, resourcesPath: '/app/resources', dataDir: '/data', platform: 'darwin' });
   assert.equal(l.command, '/data/engine-venv/bin/python');
-  assert.deepEqual(l.args, ['-m', 'liteagent.main']);
+  assert.deepEqual(l.args, ['-m', 'chakmati.main']);
   assert.equal(l.cwd, '/data/engine-data');
   assert.deepEqual(l.env, { CHAKMATI_DB_PATH: '/data/engine-data/liteagent.db', CHAKMATI_CALENDAR_ICS_PATH: '/data/engine-data/agenda.ics' });
   const w = engineLaunch({ packaged: true, resourcesPath: 'C:\\app\\resources', dataDir: 'C:\\data', platform: 'win32' });

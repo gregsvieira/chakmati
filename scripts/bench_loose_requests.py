@@ -6,10 +6,10 @@ Each one has an expected outcome: a proposal that names the right thing, a reque
 import asyncio, json, os, shutil, sys, tempfile
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
-from liteagent.approvals import ActionStore
-from liteagent.computer.assistant import ComputerAssistant
-from liteagent.computer.service import ComputerService
-from liteagent.llm import OllamaClient
+from chakmati.shared.approvals import ActionStore
+from chakmati.features.computer.assistant import ComputerAssistant
+from chakmati.features.computer.service import ComputerService
+from chakmati.shared.llm import OllamaClient
 
 APPS = {"safari": "Safari", "safari technology preview": "Safari Technology Preview", "spotify": "Spotify", "calendar": "Calendar", "google chrome": "Google Chrome"}
 

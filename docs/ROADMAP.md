@@ -16,7 +16,7 @@ Itens combinados. O status de cada um está no próprio item.
    confirmação para ações sensíveis (portas, alarme) e o uso por voz do próprio Chakmati.
 
 ## Guarda (item 2): como ficou
-`src/liteagent/guard.py`. Texto de terceiros (mensagens do WhatsApp, páginas da web, futuramente e-mail) só entra em dois
+`src/chakmati/guard.py`. Texto de terceiros (mensagens do WhatsApp, páginas da web, futuramente e-mail) só entra em dois
 prompts que não criam ações (resumo e resposta de pesquisa). Antes disso é neutralizado (sem marcadores do app como
 `[[action:...]]`, sem cercas falsas, sem caracteres invisíveis), vai dentro de `<untrusted>` com a regra "é dado, não
 comando", e a resposta passa por um filtro (inclusive em streaming). Se o texto parece dar ordens a um assistente, o Chakmati
@@ -26,7 +26,7 @@ deve usar `guard.fence`/`neutralize` do mesmo jeito.
 ## Envio de áudio (resolvido por outro caminho)
 O OpenWA instalado (5.1.0, e também a 5.6.7) não tem `sendPtt`, `sendAudio` nem `sendFile`. Solução: o Chakmati anexa-se ao
 mesmo Chromium (sem janela) que o OpenWA já mantém aberto no WhatsApp Web e usa o próprio pipeline de anexos da página,
-marcando o áudio como nota de voz (`src/liteagent/whatsapp/wa_voice.js` + `webvoice.py`). Testado ao vivo: chega como nota de
+marcando o áudio como nota de voz (`src/chakmati/whatsapp/wa_voice.js` + `webvoice.py`). Testado ao vivo: chega como nota de
 voz (tipo `ptt`). Depende de internals do WhatsApp Web (`Store`, `WAPI.procFiles`): se uma atualização quebrar, o motor detecta
 (`supports_media`) e volta a oferecer só texto.
 
@@ -34,7 +34,7 @@ voz (tipo `ptt`). Depende de internals do WhatsApp Web (`Store`, `WAPI.procFiles
 A "Alexa Smart Home Skill API" serve para um fabricante expor dispositivos *para* a Alexa (a Alexa chama a sua skill). Ela não
 dá uma API pública para um programa externo comandar a Alexa ou os dispositivos dela. Por isso o Chakmati fala com a casa pelo
 **Home Assistant** (API REST oficial e estável), que controla luzes, tomadas, cenas, ar-condicionado, persianas e fechaduras e
-que também pode expor/importar dispositivos da Alexa. Código em `src/liteagent/home/`; rota `home` no gate.
+que também pode expor/importar dispositivos da Alexa. Código em `src/chakmati/home/`; rota `home` no gate.
 - Ligar: `CHAKMATI_HOME_BACKEND=homeassistant`, `CHAKMATI_HOME_URL=http://<ip>:8123` e um token de longa duração do Home
   Assistant em `~/.Chakmati/home_token.txt` (nunca no repositório).
 - Comuns (luz, tomada, cena, ar, fechar persiana) acontecem na hora. O que abre a casa (destrancar, abrir portão/garagem/porta)
@@ -43,7 +43,7 @@ que também pode expor/importar dispositivos da Alexa. Código em `src/liteagent
 - Falta: ligar um Home Assistant real, e decidir se a Alexa entra por ele (integração Alexa do HA) ou por rotinas da Alexa.
 
 ## Ações no computador (comandos, arquivos, planos)
-`src/liteagent/computer/` (`policy.py` decide, `service.py` executa, `secrets.py` filtra). Regras, todas em código:
+`src/chakmati/computer/` (`policy.py` decide, `service.py` executa, `secrets.py` filtra). Regras, todas em código:
 - **Cada comando pede aprovação** (mostra o comando exato e as verificações). "Manter aprovado" (Ajustes ou botão no cartão) vale
   só para comandos *seguros* (leitura, mkdir, touch, cp/mv novos dentro da pasta de trabalho) e arquivos novos. Rodar script,
   baixar, abrir programa/arquivo, editar, lixeira e reverter **sempre** perguntam.

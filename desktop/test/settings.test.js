@@ -25,7 +25,7 @@ test('the engine address can never be moved off the local machine through the se
 });
 
 test('save then load round-trips, and a missing or corrupt file gives the defaults', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'liteagent-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'chakmati-'));
   const file = path.join(dir, 'settings.json');
   assert.deepEqual(load(file), DEFAULTS);
   save(file, { ...DEFAULTS, masked: true, icon: { x: 5, y: 6 } });
@@ -49,10 +49,11 @@ test('animations are on by default and can be switched off', () => {
 });
 
 test('integrations map to the engine environment: web search on by default, the rest off', () => {
-  assert.deepEqual(engineEnv(DEFAULTS), { CHAKMATI_CHAT_MODEL: 'qwen3.5:latest', CHAKMATI_RESEARCH_BACKEND: 'ddg', CHAKMATI_WHATSAPP_BACKEND: 'off', CHAKMATI_CALENDAR_BACKEND: 'off' });
+  assert.deepEqual(engineEnv(DEFAULTS), { CHAKMATI_CHAT_MODEL: 'qwen3.5:latest', CHAKMATI_RESEARCH_BACKEND: 'ddg', CHAKMATI_WHATSAPP_BACKEND: 'off', CHAKMATI_CALENDAR_BACKEND: 'off', CHAKMATI_RESEARCH_SCORER: 'keepall' });
   assert.equal(engineEnv(DEFAULTS, { searxng: true }).CHAKMATI_RESEARCH_BACKEND, 'searxng');
   assert.equal(engineEnv({ ...DEFAULTS, research: false }).CHAKMATI_RESEARCH_BACKEND, 'off');
-  assert.deepEqual(engineEnv({ ...DEFAULTS, whatsapp: true, calendar: true }), { CHAKMATI_CHAT_MODEL: 'qwen3.5:latest', CHAKMATI_RESEARCH_BACKEND: 'ddg', CHAKMATI_WHATSAPP_BACKEND: 'openwa', CHAKMATI_CALENDAR_BACKEND: 'auto' });
+  assert.deepEqual(engineEnv({ ...DEFAULTS, whatsapp: true, calendar: true }), { CHAKMATI_CHAT_MODEL: 'qwen3.5:latest', CHAKMATI_RESEARCH_BACKEND: 'ddg', CHAKMATI_WHATSAPP_BACKEND: 'openwa', CHAKMATI_CALENDAR_BACKEND: 'auto', CHAKMATI_RESEARCH_SCORER: 'keepall' });
+  assert.equal(engineEnv({ ...DEFAULTS, laya: true }).CHAKMATI_RESEARCH_SCORER, 'laya');
   assert.equal(normalize({ whatsapp: 'yes' }).whatsapp, false);
 });
 
