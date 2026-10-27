@@ -118,6 +118,10 @@
     const label = n > 0 ? `${plural(n, 'aprovação pendente', 'aprovações pendentes')}` : 'Nenhuma aprovação pendente';
     mark.setAttribute('aria-label', label);
     mark.title = label;
+    const badge = $('fold-left-badge');  // the list of decisions is on the left: when it is minimized the number stays on its button
+    badge.hidden = !(n > 0);
+    badge.textContent = String(n);
+    badge.setAttribute('aria-label', label);
   }
 
   function renderAutomations() {
@@ -867,10 +871,26 @@
   const folded = new Set(store.get('chakmati.folded', []));
   let pickedStep = null;
 
+  const folds = { left: store.get('chakmati.left', false) === true, right: store.get('chakmati.right', false) === true };
+  function applyFolds() {
+    $('panel').dataset.left = folds.left ? 'folded' : '';
+    $('panel').dataset.right = folds.right ? 'folded' : '';
+    for (const side of ['left', 'right']) {
+      const btn = $(`fold-${side}`);
+      const name = side === 'left' ? 'a lateral esquerda' : 'a Tela do Chakmati';
+      btn.setAttribute('aria-expanded', String(!folds[side]));
+      btn.setAttribute('aria-label', `${folds[side] ? 'Mostrar' : 'Minimizar'} ${name}`);
+      btn.title = `${folds[side] ? 'Mostrar' : 'Minimizar'} ${name}`;
+    }
+    renderPendingMark();
+  }
+  for (const side of ['left', 'right']) $(`fold-${side}`).addEventListener('click', () => { folds[side] = !folds[side]; store.set(`chakmati.${side}`, folds[side]); applyFolds(); });
+
   function applyLayout() {
     const layout = Shots.layoutFor(window.innerWidth);
     $('panel').dataset.layout = layout;
     placeRobot(layout);
+    applyFolds();
     $('panel').dataset.focus = store.get('chakmati.focus', false) ? 'thread' : '';
     $('focus-thread').setAttribute('aria-pressed', String(!!store.get('chakmati.focus', false)));
     $('focus-thread').textContent = store.get('chakmati.focus', false) ? 'Reduzir' : 'Ampliar';
@@ -910,6 +930,7 @@
     $('screen-empty').hidden = !!view;
     $('screen-view').hidden = !view;
     $('screen-live').hidden = !(view && view.live);
+    $('fold-right-live').hidden = !(view && view.live);
     if (!view) { shownSrc = ''; return; }
     const cur = view.current;
     $('screen-url').textContent = cur.url;

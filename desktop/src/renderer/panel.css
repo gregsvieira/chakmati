@@ -235,18 +235,22 @@ body[data-still] .viewport .frame { transition: none; }
    Three columns, each with its own scroll: topics on the left, the whole conversation in the middle, what the Chakmati is doing on the right. */
 #panel[data-layout="wide"] { border-radius: 16px; }
 #panel[data-layout="wide"] #page { overflow: hidden; }
-#panel[data-layout="wide"] #content { display: grid; grid-template-columns: 300px minmax(0, 1fr) 420px; padding: 0; overflow: hidden; height: 100%; }
+#panel[data-layout="wide"] { --left: 300px; --right: 420px; }
+#panel[data-layout="wide"][data-left="folded"] { --left: 52px; }
+#panel[data-layout="wide"][data-right="folded"] { --right: 52px; }
+#panel[data-layout="wide"] #content { display: grid; grid-template-columns: var(--left) minmax(0, 1fr) var(--right); padding: 0; overflow: hidden; height: 100%; transition: grid-template-columns 0.18s ease; }
 #panel[data-layout="wide"] #topics { grid-column: 1; min-height: 0; overflow-y: auto; padding: 4px 16px 16px; border-right: 1px solid var(--rule); }
 #panel[data-layout="wide"] #thread-section { grid-column: 2; display: flex !important; flex-direction: column; min-height: 0; padding: 12px 20px 0; border-top: 0; }
 #panel[data-layout="wide"] #thread { max-height: none; flex: 1; min-height: 0; }
 #panel[data-layout="wide"] #focus-thread { display: none; }
 #panel[data-layout="wide"] #screen { grid-column: 3; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; padding: 12px 16px; border-left: 1px solid var(--rule); }
 #panel[data-layout="wide"] .turn.assistant figure.shot { display: none; }
-#panel[data-layout="wide"] #hero { display: flex; justify-content: center; align-items: flex-end; flex: none; height: 168px; padding: 4px 0 0; }
-#panel[data-layout="wide"] #hero #head-robot { width: 78px; height: 168px; }
+#panel[data-layout="wide"] #hero { display: flex; justify-content: center; align-items: flex-end; flex: none; height: 104px; padding: 4px 0 0; }
+#panel[data-layout="wide"] #hero #head-robot { width: 48px; height: 104px; }
+#panel[data-layout="wide"] #hero #head-approval { display: none; }   /* the pending approvals are in the list on the left (and a badge when it is minimized) */
 #panel[data-layout="wide"] #hero #head-robot svg { width: 100%; height: 100%; }
 #panel[data-layout="wide"] #bar #head-robot { display: none; }   /* the picture is on the right: not twice */
-#panel[data-layout="wide"] #foot { margin: 0 420px 0 300px; }
+#panel[data-layout="wide"] #foot { margin: 0 var(--right) 0 var(--left); transition: margin 0.18s ease; }
 #panel[data-layout="wide"] .turn.user { max-width: 70%; }
 #panel[data-layout="wide"] .turn.assistant { max-width: 88%; }
 #panel[data-layout="wide"] #settings-view, #panel[data-layout="wide"] #chats-view, #panel[data-layout="wide"] #chat-view { width: 100%; max-width: 780px; margin: 0 auto; }
@@ -262,3 +266,28 @@ body[data-still] .viewport .frame { transition: none; }
 .ask-row { display: flex; gap: 8px; }
 .ask-input { flex: 1; min-width: 0; height: 34px; padding: 0 12px; border: 1px solid var(--rule); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; user-select: text; }
 .ask-input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+/* ---------------------------------------------------------------------------------------------------------------- minimizing the sides */
+.fold { display: none; }
+#panel[data-layout="wide"] .fold { display: flex; align-items: center; gap: 8px; }
+#panel[data-layout="wide"] .fold-left { justify-content: space-between; padding: 8px 0 0; }
+.fold-title { font-family: var(--font-rounded); font-size: 12.5px; font-weight: 700; color: var(--muted); letter-spacing: 0.02em; text-transform: uppercase; margin-right: auto; }
+#panel[data-layout="wide"] .fold-right { justify-content: flex-start; flex-direction: row-reverse; margin-bottom: 4px; }
+#panel[data-layout="wide"] .fold-right h2 { margin: 0 auto 0 0; }
+.fold .icon-btn { width: 30px; height: 30px; transition: transform 0.18s ease; }
+.fold-right .icon-btn { transform: rotate(180deg); }                              /* open: the arrow points to the right edge, where it goes */
+#panel[data-left="folded"] .fold-left .icon-btn { transform: rotate(180deg); }    /* folded: points back into the window */
+#panel[data-right="folded"] .fold-right .icon-btn { transform: none; }
+.live-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--wine); box-shadow: 0 0 0 3px rgba(181, 35, 60, 0.25); }
+.live-dot[hidden], #fold-left-badge[hidden] { display: none; }
+
+#panel[data-layout="wide"][data-left="folded"] #topics { padding: 4px 8px 16px; overflow: hidden; }
+#panel[data-layout="wide"][data-left="folded"] #topics > :not(.fold) { display: none; }
+#panel[data-layout="wide"][data-left="folded"] .fold-left { flex-direction: column-reverse; align-items: center; gap: 8px; }
+#panel[data-layout="wide"][data-left="folded"] .fold-title { display: none; }
+#panel[data-layout="wide"][data-right="folded"] #screen { padding: 12px 8px; overflow: hidden; }
+#panel[data-layout="wide"][data-right="folded"] #screen > :not(.fold) { display: none; }
+#panel[data-layout="wide"][data-right="folded"] .fold-right { flex-direction: column; align-items: center; }
+#panel[data-layout="wide"][data-right="folded"] .fold-right h2 { display: none; }
+@media (prefers-reduced-motion: reduce) { #panel[data-layout="wide"] #content, #panel[data-layout="wide"] #foot, .fold .icon-btn { transition: none; } }
+body[data-still] #panel[data-layout="wide"] #content, body[data-still] #panel[data-layout="wide"] #foot { transition: none; }

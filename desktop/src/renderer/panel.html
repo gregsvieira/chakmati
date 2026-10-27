@@ -39,6 +39,11 @@
     <main id="page">
       <div id="content" class="page">
         <div id="topics">
+        <div class="fold fold-left">
+          <span class="fold-title">Tópicos</span>
+          <span id="fold-left-badge" class="badge" hidden></span>
+          <button id="fold-left" class="icon-btn" type="button" aria-expanded="true" aria-label="Minimizar a lateral esquerda" title="Minimizar a lateral esquerda"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
         <section id="decisions" hidden>
           <h2>Para você decidir</h2>
           <div id="decision-list"></div>
@@ -72,7 +77,11 @@
           <p id="thread-empty" class="empty">Peça algo ao Chakmati na linha de baixo: a conversa aparece aqui.</p>
         </section>
         <aside id="screen" aria-label="Tela do Chakmati">
-          <h2>Tela do Chakmati <span id="screen-live" class="live" hidden>ao vivo</span></h2>
+          <div class="fold fold-right">
+            <button id="fold-right" class="icon-btn" type="button" aria-expanded="true" aria-label="Minimizar a Tela do Chakmati" title="Minimizar a Tela do Chakmati"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <span id="fold-right-live" class="live-dot" hidden title="O Chakmati está usando o navegador"></span>
+            <h2>Tela do Chakmati <span id="screen-live" class="live" hidden>ao vivo</span></h2>
+          </div>
           <p id="screen-empty" class="empty">Quando o Chakmati usar o navegador, a tela dele aparece aqui.</p>
           <div id="screen-view" class="browser" hidden>
             <div class="browser-bar"><span class="dots" aria-hidden="true"></span><span id="screen-url" class="addr"></span></div>
