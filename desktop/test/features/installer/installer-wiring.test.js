@@ -42,17 +42,18 @@ test('the download dialog defaults to "Pular" and the only external page is the 
 });
 
 test('the app starts the wizard only on --setup, and downloads the chosen voice at the next start', () => {
-  const main = read('main.js');
-  assert.match(main, /process\.argv\.includes\('--setup'\)/);
-  assert.match(main, /settings\.enhancedVoice && state\.voice && !state\.voice\.installed/);
+  const start = read('app', 'start.js');
+  assert.match(read('app', 'constants.js'), /process\.argv\.includes\('--setup'\)/);
+  assert.match(start, /ctx\.settings\.enhancedVoice && ctx\.state\.voice && !ctx\.state\.voice\.installed/);
 });
 
 test('the installed app opens the wizard on its own, and starts the engine from the data folder', () => {
-  const main = read('main.js');
-  assert.match(main, /needsSetup\(\{ packaged: app\.isPackaged/);
-  assert.match(main, /engineLaunch\(\{ packaged: app\.isPackaged/);
-  assert.match(main, /windowsHide: true/);
-  assert.equal(/spawn\('uv'/.test(main), false, 'the engine is no longer started with a hard-coded uv');
+  const start = read('app', 'start.js');
+  const service = read('features', 'engine', 'service.js');
+  assert.match(start, /needsSetup\(\{ packaged: app\.isPackaged/);
+  assert.match(service, /engineLaunch\(\{ packaged: app\.isPackaged/);
+  assert.match(service, /windowsHide: true/);
+  assert.equal(/spawn\('uv'/.test(start + service), false, 'the engine is no longer started with a hard-coded uv');
 });
 
 test('the wizard writes the marker only after a finished install, and runs uv without a shell', () => {
