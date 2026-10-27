@@ -1,9 +1,9 @@
 'use strict';
 // IPC of WhatsApp: conversations, messages and audio (refused in discreet mode) and the link setup.
 const { ipcMain } = require('electron');
-const { EngineError } = require('../engine/client');
-const ctx = require('../../app/context');
-const { friendlyError } = require('../../app/util');
+const { EngineError } = require('../engine').client;
+const ctx = require('../../shared/context');
+const { friendlyError } = require('../engine').errors;
 const openwa = require('./openwa');
 
 function register() {

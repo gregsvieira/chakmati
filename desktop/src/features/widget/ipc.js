@@ -1,15 +1,15 @@
 'use strict';
 // IPC of the floating robot (drag, hover, bubble, menu).
 const { ipcMain } = require('electron');
-const ctx = require('../../app/context');
-const { isLinux } = require('../../app/constants');
-const { sendTo, alive, isNum } = require('../../app/util');
+const ctx = require('../../shared/context');
+const { isLinux } = require('../../shared/constants');
+const { sendTo, alive, isNum } = require('../../shared/util');
 const widgetWindow = require('./window');
 const widgetMood = require('./mood');
-const voiceService = require('../voice/service');
-const settingsService = require('../settings/service');
-const panelWindow = require('../panel/window');
-const trayMenu = require('../../app/tray');
+const voiceService = require('../voice').service;
+const settingsService = require('../settings').service;
+const panelWindow = require('../panel').window;
+const trayMenu = require('../tray').menu;
 
 function register() {
     // The floating widget reads notices aloud; tell the panel's microphone so it does not hear (and transcribe) them.

@@ -33,7 +33,7 @@ test('the preload exposes exactly the installer calls, each as invoke/send of a 
 });
 
 test('the download dialog defaults to "Pular" and the only external page is the Ollama download', () => {
-  const src = read('features', 'installer', 'index.js');
+  const src = read('features', 'installer', 'wizard.js');
   assert.match(src, /buttons: \['Aprovar', 'Pular'\]/);
   assert.match(src, /defaultId: 1/);
   assert.match(src, /cancelId: 1/);
@@ -43,7 +43,7 @@ test('the download dialog defaults to "Pular" and the only external page is the 
 
 test('the app starts the wizard only on --setup, and downloads the chosen voice at the next start', () => {
   const start = read('app', 'start.js');
-  assert.match(read('app', 'constants.js'), /process\.argv\.includes\('--setup'\)/);
+  assert.match(read('shared', 'constants.js'), /process\.argv\.includes\('--setup'\)/);
   assert.match(start, /ctx\.settings\.enhancedVoice && ctx\.state\.voice && !ctx\.state\.voice\.installed/);
 });
 
@@ -57,7 +57,7 @@ test('the installed app opens the wizard on its own, and starts the engine from 
 });
 
 test('the wizard writes the marker only after a finished install, and runs uv without a shell', () => {
-  const index = read('features', 'installer', 'index.js');
+  const index = read('features', 'installer', 'wizard.js');
   assert.match(index, /writeSetupDone\(/);
   assert.match(index, /result\.status === 'done'/);
   assert.match(index, /optionsFor\(hw\.platform, \{ packaged: !!engine \}\)/);

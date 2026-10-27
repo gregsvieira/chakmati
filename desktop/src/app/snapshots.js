@@ -4,14 +4,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { app, ipcMain, screen, nativeTheme } = require('electron');
-const settingsLib = require('../features/settings/settings');
-const { brief } = require('../features/notices/brief');
-const ctx = require('./context');
-const { PROTECT_TEST, SNAPSHOT } = require('./constants');
-const { sleep, sendTo } = require('./util');
-const widgetWindow = require('../features/widget/window');
-const panelWindow = require('../features/panel/window');
-const widgetMood = require('../features/widget/mood');
+const settingsLib = require('../features/settings').settings;
+const { brief } = require('../features/notices').brief;
+const ctx = require('../shared/context');
+const { PROTECT_TEST, SNAPSHOT } = require('../shared/constants');
+const { sleep, sendTo } = require('../shared/util');
+const widgetWindow = require('../features/widget').window;
+const panelWindow = require('../features/panel').window;
+const widgetMood = require('../features/widget').mood;
 
 const SAMPLE_OVERVIEW = {
   whatsapp: { enabled: true, connected: true, state: 'READY', unread: [

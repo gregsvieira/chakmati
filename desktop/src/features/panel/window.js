@@ -2,16 +2,16 @@
 // The panel window (compact, wide, full), what it is told about the world, opening, closing and hiding everything.
 const path = require('node:path');
 const { BrowserWindow } = require('electron');
-const { panelBounds, expandedBounds, MIN_WIDE } = require('../widget/placement');
-const { moodWithBell } = require('../widget/bell');
-const ctx = require('../../app/context');
-const { PANEL, isMac, ICON, HOTKEYS } = require('../../app/constants');
-const { alive, sendTo } = require('../../app/util');
-const hardening = require('../../app/hardening');
-const widgetWindow = require('../widget/window');
-const widgetMood = require('../widget/mood');
-const engineService = require('../engine/service');
-const trayMenu = require('../../app/tray');
+const { panelBounds, expandedBounds, MIN_WIDE } = require('../widget').placement;
+const { moodWithBell } = require('../widget').bell;
+const ctx = require('../../shared/context');
+const { PANEL, isMac, ICON, HOTKEYS } = require('../../shared/constants');
+const { alive, sendTo } = require('../../shared/util');
+const { webPreferences, traceWindow } = require('../../shared/web-preferences');
+const widgetWindow = require('../widget').window;
+const widgetMood = require('../widget').mood;
+const engineService = require('../engine').service;
+const trayMenu = require('../tray').menu;
 
 let panelTimer = null;
 
@@ -20,12 +20,12 @@ function createPanel() {
     width: PANEL.w, height: PANEL.h, show: false, frame: false, transparent: true, resizable: false, hasShadow: true, alwaysOnTop: true,
     skipTaskbar: true, fullscreenable: false,
     ...(isMac ? { vibrancy: 'under-window', visualEffectState: 'active', backgroundColor: '#00000000' } : {}), // macOS: the real blur of what is behind the glass
-    webPreferences: { ...hardening.webPreferences(), backgroundThrottling: false }, // a hidden panel must keep listening at full speed
+    webPreferences: { ...webPreferences(), backgroundThrottling: false }, // a hidden panel must keep listening at full speed
   });
   ctx.panelWin.setAlwaysOnTop(true, 'floating');
   ctx.panelWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   widgetWindow.protect(ctx.panelWin);
-  hardening.traceWindow('painel', ctx.panelWin);
+  traceWindow('painel', ctx.panelWin);
   ctx.panelWin.loadFile(path.join(__dirname, 'renderer', 'panel.html'));
   ctx.panelWin.on('closed', () => { ctx.panelWin = null; ctx.state.panelOpen = false; });
 }

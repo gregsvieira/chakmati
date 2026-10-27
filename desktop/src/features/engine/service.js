@@ -1,17 +1,18 @@
 'use strict';
 // Talking to the engine: its state, notices, health, starting and restarting it.
-const { pickGreeting } = require('../notices/greetings');
+const { pickGreeting } = require('../notices').greetings;
 const { app } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { engineLaunch, toolPath: engineToolPath } = require('./launch');
 const { spawn } = require('node:child_process');
-const settingsLib = require('../settings/settings');
-const ctx = require('../../app/context');
-const { friendlyError, sleep } = require('../../app/util');
-const widgetMood = require('../widget/mood');
-const panelWindow = require('../panel/window');
-const voiceService = require('../voice/service');
+const settingsLib = require('../settings').settings;
+const ctx = require('../../shared/context');
+const { sleep } = require('../../shared/util');
+const { friendlyError } = require('./errors');
+const widgetMood = require('../widget').mood;
+const panelWindow = require('../panel').window;
+const voiceService = require('../voice').service;
 
 const autoTried = new Set();
 let greeted = false;

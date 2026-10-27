@@ -1,12 +1,13 @@
 'use strict';
 // The enhanced voice: status, download, warm-up and what the widget is told to say.
-const { EngineError } = require('../engine/client');
-const ctx = require('../../app/context');
-const { sendTo, sleep, friendlyError } = require('../../app/util');
-const panelWindow = require('../panel/window');
-const settingsService = require('../settings/service');
-const widgetMood = require('../widget/mood');
-const trayMenu = require('../../app/tray');
+const { EngineError } = require('../engine').client;
+const ctx = require('../../shared/context');
+const { sendTo, sleep } = require('../../shared/util');
+const { friendlyError } = require('../engine').errors;
+const panelWindow = require('../panel').window;
+const settingsService = require('../settings').service;
+const widgetMood = require('../widget').mood;
+const trayMenu = require('../tray').menu;
 
 let voiceDownloading = false;
 

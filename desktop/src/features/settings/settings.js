@@ -1,7 +1,7 @@
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
-const { assertLoopback } = require('../engine/client');
+const { assertLoopback } = require('../engine').client;
 
 const SIDES = ['auto', 'top', 'bottom', 'left', 'right'];
 const MOODS = ['auto', 'idle', 'alert', 'thinking', 'happy'];

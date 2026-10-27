@@ -1,12 +1,12 @@
 'use strict';
 // IPC of speech: recognition, the enhanced voice and removing it.
 const { ipcMain } = require('electron');
-const { EngineError } = require('../engine/client');
-const ctx = require('../../app/context');
-const { friendlyError } = require('../../app/util');
+const { EngineError } = require('../engine').client;
+const ctx = require('../../shared/context');
+const { friendlyError } = require('../engine').errors;
 const voiceService = require('./service');
-const settingsService = require('../settings/service');
-const panelWindow = require('../panel/window');
+const settingsService = require('../settings').service;
+const panelWindow = require('../panel').window;
 
 function register() {
   ipcMain.handle('panel:transcribe', async (_e, bytes, mime) => {

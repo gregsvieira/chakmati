@@ -1,9 +1,10 @@
 'use strict';
 // IPC of approvals and automations: approve, reject, enable, delete, preview, record.
 const { ipcMain } = require('electron');
-const ctx = require('../../app/context');
-const { isId, friendlyError } = require('../../app/util');
-const engineService = require('../engine/service');
+const ctx = require('../../shared/context');
+const { isId } = require('../../shared/util');
+const { friendlyError } = require('../engine').errors;
+const engineService = require('../engine').service;
 
 function register() {
   const decide = (verb) => async (_e, id) => {

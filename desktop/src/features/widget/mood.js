@@ -2,10 +2,10 @@
 // The robot's face, the bell behind its head, the speech bubble and the queue of notices.
 const { bellState, moodWithBell, countsAsNotice } = require('./bell');
 const { describe } = require('./describe');
-const { present, bubbleDuration } = require('../notices/queue');
-const ctx = require('../../app/context');
-const { sendTo } = require('../../app/util');
-const panelWindow = require('../panel/window');
+const { present, bubbleDuration } = require('../notices').queue;
+const ctx = require('../../shared/context');
+const { sendTo } = require('../../shared/util');
+const panelWindow = require('../panel').window;
 
 let awakeTimer = null;
 

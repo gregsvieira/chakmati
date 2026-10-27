@@ -31,3 +31,15 @@ test('the project folder the app finds is the one with pyproject.toml', () => {
   const parts = [...service.match(/path\.resolve\(__dirname((?:\s*,\s*'[^']*')+)\)/)[1].matchAll(/'([^']*)'/g)].map((x) => x[1]);
   assert.ok(fs.existsSync(path.join(path.resolve(SRC, 'features', 'engine', ...parts), 'pyproject.toml')));
 });
+
+test('every relative require in the main process resolves to a file', () => {
+  const missing = [];
+  for (const file of sources) {
+    const text = fs.readFileSync(file, 'utf8');
+    for (const m of text.matchAll(/require\(\s*'(\.[^']*)'\s*\)/g)) {
+      const base = path.resolve(path.dirname(file), m[1]);
+      if (![base, base + '.js', path.join(base, 'index.js')].some((c) => fs.existsSync(c) && fs.statSync(c).isFile())) missing.push(`${path.relative(SRC, file)} -> ${m[1]}`);
+    }
+  }
+  assert.deepEqual(missing, []);
+});

@@ -1,7 +1,6 @@
 'use strict';
 // The mutable state the parts of the main process share (windows, settings, the engine client, what is happening). One object, so every part
 // sees the same values; a value used by a single part lives in that part instead.
-const { NoticeQueue } = require('../features/notices/queue');
 const ctx = {
   settings: undefined,
   settingsFile: undefined,
@@ -17,7 +16,7 @@ const ctx = {
   moodTimer: null,
   quitting: false,
   happyUntil: 0,
-  queue: new NoticeQueue(),
+  queue: null, // the NoticeQueue, created at start
   streams: new Map(),
   jobOf: new Map(),
   stopped: new Set(),

@@ -1,7 +1,7 @@
 'use strict';
 // Runs `uv sync` for the installed app. No shell: a fixed argument list built by engine-launch, with extras checked against the list.
 const { spawn } = require('node:child_process');
-const { syncCommand } = require('../engine/launch');
+const { syncCommand } = require('../engine').launch;
 
 function makeSync({ spawnFn = spawn, resourcesPath, dataDir, platform = process.platform, env = process.env }) {
   return (extras, onProgress = () => {}) => new Promise((resolve, reject) => {

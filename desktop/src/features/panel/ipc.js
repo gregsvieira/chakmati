@@ -1,17 +1,18 @@
 'use strict';
 // IPC of the panel: messages, Parar, replies, links and settings.
 const { ipcMain, shell } = require('electron');
-const { brief } = require('../notices/brief');
+const { brief } = require('../notices').brief;
 const links = require('./links');
 const crypto = require('node:crypto');
-const ctx = require('../../app/context');
-const { MAX_TEXT } = require('../../app/constants');
-const { sendTo, friendlyError } = require('../../app/util');
+const ctx = require('../../shared/context');
+const { MAX_TEXT } = require('../../shared/constants');
+const { sendTo } = require('../../shared/util');
+const { friendlyError } = require('../engine').errors;
 const panelWindow = require('./window');
-const widgetMood = require('../widget/mood');
-const engineService = require('../engine/service');
-const trayMenu = require('../../app/tray');
-const settingsService = require('../settings/service');
+const widgetMood = require('../widget').mood;
+const engineService = require('../engine').service;
+const trayMenu = require('../tray').menu;
+const settingsService = require('../settings').service;
 
 function register() {
   ipcMain.on('panel:ready', panelWindow.sendPanelState);

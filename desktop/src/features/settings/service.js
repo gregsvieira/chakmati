@@ -4,14 +4,14 @@ const settingsLib = require('./settings');
 const fs = require('node:fs');
 const path = require('node:path');
 const { app, systemPreferences } = require('electron');
-const ctx = require('../../app/context');
-const { alive, sendTo } = require('../../app/util');
-const widgetWindow = require('../widget/window');
-const widgetMood = require('../widget/mood');
-const panelWindow = require('../panel/window');
-const engineService = require('../engine/service');
-const trayMenu = require('../../app/tray');
-const voiceService = require('../voice/service');
+const ctx = require('../../shared/context');
+const { alive, sendTo } = require('../../shared/util');
+const widgetWindow = require('../widget').window;
+const widgetMood = require('../widget').mood;
+const panelWindow = require('../panel').window;
+const engineService = require('../engine').service;
+const trayMenu = require('../tray').menu;
+const voiceService = require('../voice').service;
 
 // Saves the settings file; a no-op when there is none (design-snapshot mode), so a stray click can never crash the app.
 function persistSettings() {

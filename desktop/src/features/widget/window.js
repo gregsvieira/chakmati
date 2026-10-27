@@ -3,11 +3,11 @@
 const { BrowserWindow, screen } = require('electron');
 const path = require('node:path');
 const { chooseSide, layoutWidget, clampIcon } = require('./placement');
-const ctx = require('../../app/context');
-const { ICON, isLinux, BUBBLE } = require('../../app/constants');
-const { alive, sendTo } = require('../../app/util');
-const hardening = require('../../app/hardening');
-const panelWindow = require('../panel/window');
+const ctx = require('../../shared/context');
+const { ICON, isLinux, BUBBLE } = require('../../shared/constants');
+const { alive, sendTo } = require('../../shared/util');
+const { webPreferences, traceWindow } = require('../../shared/web-preferences');
+const panelWindow = require('../panel').window;
 
 function nearestWorkArea(point) { return screen.getDisplayNearestPoint(point).workArea; }
 
@@ -23,13 +23,13 @@ function protect(win) {
 function createWidget() {
   ctx.widgetWin = new BrowserWindow({
     width: ICON, height: ICON, show: false, frame: false, transparent: true, resizable: false, movable: false,
-    hasShadow: false, alwaysOnTop: true, skipTaskbar: true, focusable: false, fullscreenable: false, webPreferences: hardening.webPreferences(),
+    hasShadow: false, alwaysOnTop: true, skipTaskbar: true, focusable: false, fullscreenable: false, webPreferences: webPreferences(),
   });
   ctx.widgetWin.setAlwaysOnTop(true, 'screen-saver');
   ctx.widgetWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   if (!isLinux) ctx.widgetWin.setIgnoreMouseEvents(true, { forward: true });
   protect(ctx.widgetWin);
-  hardening.traceWindow('robô', ctx.widgetWin);
+  traceWindow('robô', ctx.widgetWin);
   ctx.widgetWin.loadFile(path.join(__dirname, 'renderer', 'widget.html'));
   ctx.widgetWin.on('closed', () => { ctx.widgetWin = null; });
 }

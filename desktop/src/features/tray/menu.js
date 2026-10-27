@@ -1,11 +1,11 @@
 'use strict';
 // The menu-bar / tray icon, its menu, the global shortcuts and restarting the app.
 const { app, Tray, Menu, globalShortcut, nativeImage } = require('electron');
-const { robotPng } = require('./trayicon');
-const ctx = require('./context');
-const { isMac, HOTKEYS } = require('./constants');
-const panelWindow = require('../features/panel/window');
-const settingsService = require('../features/settings/service');
+const { robotPng } = require('./icon');
+const ctx = require('../../shared/context');
+const { isMac, HOTKEYS } = require('../../shared/constants');
+const panelWindow = require('../panel').window;
+const settingsService = require('../settings').service;
 
 // Quits and starts again (the engine started by the app is stopped and started with it).
 function restartApp() {

@@ -1,6 +1,6 @@
 'use strict';
 // The two things the installer asks Ollama for, over its local HTTP API (no shell, no command line built from text).
-const { assertLoopback } = require('../engine/client');
+const { assertLoopback } = require('../engine').client;
 const { MODELS, REASONING } = require('./catalog');
 
 const OLLAMA_URL = 'http://127.0.0.1:11434';

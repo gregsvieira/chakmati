@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const zlib = require('node:zlib');
-const { robotPng } = require('../../src/app/trayicon');
+const { robotPng } = require('../../../src/features/tray/icon');
 
 function decode(png) {
   assert.deepEqual([...png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);

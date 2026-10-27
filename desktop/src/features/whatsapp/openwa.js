@@ -4,9 +4,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { app } = require('electron');
-const ctx = require('../../app/context');
-const { sleep } = require('../../app/util');
-const engineService = require('../engine/service');
+const ctx = require('../../shared/context');
+const { sleep } = require('../../shared/util');
+const engineService = require('../engine').service;
 
 let owaWatch = null;
 

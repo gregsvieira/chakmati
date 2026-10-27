@@ -2,7 +2,7 @@
 // Decides when an installed app must run the setup wizard: no finished marker, or the Python environment is gone.
 const nodeFs = require('node:fs');
 const path = require('node:path');
-const { venvPython } = require('../engine/launch');
+const { venvPython } = require('../engine').launch;
 
 const markerPath = (dataDir) => path.join(dataDir, 'setup.json');
 

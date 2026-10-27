@@ -2,21 +2,24 @@
 // The start of the app: single instance, the install wizard or the floating robot, the loops that keep it alive.
 const path = require('node:path');
 const { app, ipcMain, screen, globalShortcut } = require('electron');
-const { EngineClient } = require('../features/engine/client');
-const settingsLib = require('../features/settings/settings');
+const { EngineClient } = require('../features/engine').client;
+const settingsLib = require('../features/settings').settings;
 const { openSetup } = require('../features/installer');
-const { needsSetup } = require('../features/installer/first-run');
-const ctx = require('./context');
-const { SNAPSHOT, PROTECT_TEST, SETUP, isMac } = require('./constants');
-const { alive } = require('./util');
-const hardening = require('./hardening');
-const widgetWindow = require('../features/widget/window');
-const panelWindow = require('../features/panel/window');
-const engineService = require('../features/engine/service');
-const trayMenu = require('./tray');
-const voiceService = require('../features/voice/service');
+const { needsSetup } = require('../features/installer').firstRun;
+const ctx = require('../shared/context');
+const { NoticeQueue } = require('../features/notices').queue;
+const { SNAPSHOT, PROTECT_TEST, SETUP, isMac } = require('../shared/constants');
+const { alive } = require('../shared/util');
+const { webPreferences } = require('../shared/web-preferences');
+const widgetWindow = require('../features/widget').window;
+const panelWindow = require('../features/panel').window;
+const engineService = require('../features/engine').service;
+const trayMenu = require('../features/tray').menu;
+const voiceService = require('../features/voice').service;
 const ipc = require('./ipc');
 const snapshots = require('./snapshots');
+
+ctx.queue = new NoticeQueue();
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -31,7 +34,7 @@ if (!app.requestSingleInstanceLock()) {
       ctx.settingsFile = path.join(app.getPath('userData'), 'settings.json');
       if (isMac) { app.setActivationPolicy?.('regular'); app.dock?.show(); }
       openSetup({
-        ipcMain, webPreferences: hardening.webPreferences, settingsFile: ctx.settingsFile,
+        ipcMain, webPreferences: webPreferences, settingsFile: ctx.settingsFile,
         engine: app.isPackaged ? { resourcesPath: process.resourcesPath, dataDir: app.getPath('userData') } : null,
         onClosed: () => app.quit(),
         onFinish: () => { app.relaunch({ args: process.argv.slice(1).filter((a) => a !== '--setup') }); app.exit(0); },
