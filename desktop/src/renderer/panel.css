@@ -62,9 +62,9 @@ body[data-still] #chips.open { animation: none; }
   background: var(--surface-2); color: var(--text); font: inherit; user-select: text;
 }
 #input::placeholder { color: var(--muted); }
-#send { width: 38px; height: 38px; flex: none; border: 0; border-radius: 50%; background: var(--petrol); cursor: pointer; position: relative; }
+#send { width: 38px; height: 38px; flex: none; border: 0; border-radius: 50%; background: var(--petrol); color: #fff; cursor: pointer; display: grid; place-items: center; }
+#send svg { margin-left: 2px; }   /* the plane's weight sits to the left: nudged so it looks centred */
 #send:disabled { opacity: 0.45; cursor: default; }
-#send span { position: absolute; left: 14px; top: 11px; border-left: 12px solid #fff; border-top: 8px solid transparent; border-bottom: 8px solid transparent; }
 
 details { margin-top: 10px; }
 summary { cursor: pointer; color: var(--muted); font-size: 13px; width: max-content; }
