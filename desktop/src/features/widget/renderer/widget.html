@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; media-src data:; style-src 'self'; script-src 'self'">
+  <title>Chakmati</title>
+  <link rel="stylesheet" href="../../../shared/ui/theme.css">
+  <link rel="stylesheet" href="../../../shared/ui/robot.css">
+  <link rel="stylesheet" href="widget.css">
+</head>
+<body>
+  <div id="stage">
+    <div id="bubble" class="hidden" role="status" aria-live="polite" data-kind="system">
+      <span class="rule"></span>
+      <p id="bubble-text"></p>
+      <i class="tail"></i>
+    </div>
+    <button id="robot" type="button" aria-label="Abrir o painel do Chakmati"></button>
+    <div id="approval-badge" class="bell" data-state="idle" role="status" aria-label="Nenhuma novidade"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path class="bell-body" d="M12 3a6 6 0 00-6 6v3.6l-1.6 2.6a1 1 0 00.9 1.5h13.4a1 1 0 00.9-1.5L18 12.6V9a6 6 0 00-6-6z"/><path class="bell-clapper" d="M9.8 19a2.4 2.4 0 004.4 0"/></svg></div>
+    <div id="mic-badge" class="hidden" role="status" aria-label="Chakmati está ouvindo o seu comando"><span></span></div>
+  </div>
+  <script src="../../voice/speech-text.js"></script>
+  <script src="../../voice/renderer/voice.js"></script>
+  <script src="../../../shared/ui/robot.js"></script>
+  <script src="widget.js"></script>
+</body>
+</html>

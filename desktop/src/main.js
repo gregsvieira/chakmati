@@ -6,19 +6,19 @@ const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { app, BrowserWindow, Tray, Menu, ipcMain, screen, globalShortcut, nativeImage, nativeTheme, systemPreferences, shell } = require('electron');
 
-const { EngineClient, EngineError } = require('./lib/engine-client');
-const settingsLib = require('./lib/settings');
-const links = require('./lib/links');
-const { bellState, moodWithBell, countsAsNotice } = require('./lib/bell');
-const { chooseSide, layoutWidget, clampIcon, panelBounds, expandedBounds, MIN_WIDE } = require('./lib/placement');
-const { NoticeQueue, present, bubbleDuration } = require('./lib/notice-queue');
-const { describe } = require('./lib/describe');
-const { brief } = require('./lib/brief');
-const { pickGreeting } = require('./lib/greetings');
-const { robotPng } = require('./lib/trayicon');
-const { openSetup } = require('./installer');
-const { engineLaunch, toolPath: engineToolPath } = require('./lib/engine-launch');
-const { needsSetup } = require('./installer/first-run');
+const { EngineClient, EngineError } = require('./features/engine/client');
+const settingsLib = require('./features/settings/settings');
+const links = require('./features/panel/links');
+const { bellState, moodWithBell, countsAsNotice } = require('./features/widget/bell');
+const { chooseSide, layoutWidget, clampIcon, panelBounds, expandedBounds, MIN_WIDE } = require('./features/widget/placement');
+const { NoticeQueue, present, bubbleDuration } = require('./features/notices/queue');
+const { describe } = require('./features/widget/describe');
+const { brief } = require('./features/notices/brief');
+const { pickGreeting } = require('./features/notices/greetings');
+const { robotPng } = require('./app/trayicon');
+const { openSetup } = require('./features/installer');
+const { engineLaunch, toolPath: engineToolPath } = require('./features/engine/launch');
+const { needsSetup } = require('./features/installer/first-run');
 
 const ICON = 124;
 const BUBBLE = { w: 320, h: 120 };
@@ -118,7 +118,7 @@ function createWidget() {
   if (!isLinux) widgetWin.setIgnoreMouseEvents(true, { forward: true });
   protect(widgetWin);
   traceWindow('robô', widgetWin);
-  widgetWin.loadFile(path.join(__dirname, 'renderer', 'widget.html'));
+  widgetWin.loadFile(path.join(__dirname, 'features', 'widget', 'renderer', 'widget.html'));
   widgetWin.on('closed', () => { widgetWin = null; });
 }
 
@@ -246,7 +246,7 @@ function createPanel() {
   panelWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   protect(panelWin);
   traceWindow('painel', panelWin);
-  panelWin.loadFile(path.join(__dirname, 'renderer', 'panel.html'));
+  panelWin.loadFile(path.join(__dirname, 'features', 'panel', 'renderer', 'panel.html'));
   panelWin.on('closed', () => { panelWin = null; state.panelOpen = false; });
 }
 
