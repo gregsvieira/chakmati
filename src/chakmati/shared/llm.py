@@ -18,6 +18,9 @@ async def chat_json(client: ChatClient, messages: list[dict[str, str]], schema: 
     return await client.chat(messages)
 
 
+SCHEMA_MAX_TOKENS = 1536
+
+
 def is_small_model(name: str) -> bool:
     """A chat model of about 4B parameters or less (qwen3.5:0.8b, granite4:3b, lfm3...): it gets the shorter prompt with examples and a
     request in several parts read one part at a time. A name with no size in it (qwen3.5:latest) is treated as big."""
@@ -66,6 +69,7 @@ class OllamaClient:
         if schema is not None:
             payload["format"] = schema  # the reply can only be a JSON object of this shape (grammar-constrained decoding)
             options["temperature"] = 0  # reading a request is not creative: the same request gets the same steps
+            options.setdefault("num_predict", SCHEMA_MAX_TOKENS)  # a small model under a grammar can write one string forever; a cut reply is just an invalid one (and is asked again)
         if options:
             payload["options"] = options
         return payload

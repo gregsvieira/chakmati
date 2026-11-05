@@ -100,8 +100,8 @@ INTENT_SCHEMA = {
             "type": "object",
             "properties": {
                 "type": {"type": "string", "enum": list(STEP_TYPES + TYPED_STEPS)},
-                "command": {"type": "string"}, "path": {"type": "string"}, "content": {"type": "string"},
-                "source": {"type": "string"}, "destination": {"type": "string"},
+                "command": {"type": "string", "maxLength": 500}, "path": {"type": "string", "maxLength": 300}, "content": {"type": "string", "maxLength": 4000},
+                "source": {"type": "string", "maxLength": 300}, "destination": {"type": "string", "maxLength": 300},
             },
             "required": ["type"],
         }},

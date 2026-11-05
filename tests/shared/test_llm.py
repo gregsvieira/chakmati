@@ -158,7 +158,7 @@ async def test_schema_is_sent_as_format_only_when_given():
     await client.chat([{"role": "user", "content": "hi"}], schema=schema)
     await client.aclose()
     assert "format" not in bodies[0] and "options" not in bodies[0]
-    assert bodies[1]["format"] == schema and bodies[1]["options"] == {"temperature": 0}
+    assert bodies[1]["format"] == schema and bodies[1]["options"] == {"temperature": 0, "num_predict": 1536}  # bounded: a grammar-constrained small model can otherwise write forever
 
 
 async def test_chat_json_uses_schema_only_with_a_capable_client():
@@ -176,3 +176,16 @@ async def test_chat_json_uses_schema_only_with_a_capable_client():
 
     assert await chat_json(Plain(), [], {"type": "object"}) == "plain"
     assert await chat_json(Capable(), [], {"type": "object"}) == "schema:['type']"
+
+
+async def test_an_explicit_num_predict_wins_over_the_schema_bound():
+    seen = {}
+
+    def handler(request):
+        seen.update(json.loads(request.content))
+        return httpx.Response(200, json={"message": {"content": "{}"}})
+
+    client = OllamaClient("http://ollama.test", "m", num_predict=200, transport=httpx.MockTransport(handler))
+    await client.chat([{"role": "user", "content": "hi"}], schema={"type": "object"})
+    await client.aclose()
+    assert seen["options"] == {"num_predict": 200, "temperature": 0}
