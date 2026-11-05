@@ -9,7 +9,7 @@ h2 { font-size: 17px; margin: 0 0 10px; }
 .verdict { font-weight: 600; font-size: 16px; }
 .verdict[data-level="unsupported"] { color: var(--wine); }
 .verdict[data-level="light"] { color: var(--amber); }
-.verdict[data-level="standard"], .verdict[data-level="full"] { color: var(--leaf); }
+.verdict[data-level="compact"], .verdict[data-level="standard"], .verdict[data-level="full"] { color: var(--leaf); }
 ul { padding-left: 18px; }
 .options { list-style: none; padding: 0; }
 .options li { background: var(--surface-2); border: 1px solid var(--rule); border-radius: 12px; padding: 10px 12px; margin: 8px 0; }

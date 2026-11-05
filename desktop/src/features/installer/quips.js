@@ -28,7 +28,7 @@ function pick(list, hw) {
 // -> { tone: 'praise' | 'tease', text } | null
 function quip(hw, verdict) {
   if (!hw || !verdict || verdict.level === 'unsupported') return null;
-  if (verdict.level === 'light') return { tone: 'praise', text: pick(PRAISE, hw) };
+  if (verdict.level === 'light' || verdict.level === 'compact') return { tone: 'praise', text: pick(PRAISE, hw) }; // under about 7.5 GB: the weak computers
   if (hw.ramGb >= STRONG.ramGb && hw.cores >= STRONG.cores) return { tone: 'tease', text: pick(TEASE, hw) };
   return null;
 }

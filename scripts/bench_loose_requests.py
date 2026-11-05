@@ -1,8 +1,8 @@
 """24 loose requests against a prepared workspace (files, a folder, a name that fits two files), with the real chat model (Ollama must be running).
 Each one has an expected outcome: a proposal that names the right thing, a request that is refused with a reason, or a question back.
 
-    uv run python scripts/bench_loose_requests.py src bench.json [model]   # src = the code to test; point it at another checkout to compare
-                                                                           # model = the Ollama chat model (default qwen3.5:latest); a small one gets the compact harness
+    uv run python scripts/bench_loose_requests.py src bench.json [model,...] # src = the code to test; point it at another checkout to compare
+                                                                           # model = Ollama chat model(s), comma separated (default qwen3.5:latest); "ladder" = the installer's models; a small one gets the compact harness
 
 Compare models (and the harness before/after) by running it once per model/checkout and reading the SCORE lines.
 """
@@ -69,8 +69,7 @@ def judge(expect, token, answer, pending, plan_flag):
         return (not has_action) and (answer.startswith("Não consegui") or "não" in answer.lower()), "flag"
     return (not has_action) and ("Qual" in answer or answer.startswith("Não") or "não" in answer.lower()), "flag_or_ask"
 
-async def main():
-    model = sys.argv[3] if len(sys.argv) > 3 else "qwen3.5:latest"
+async def main(model, out):
     llm = OllamaClient("http://127.0.0.1:11434", model, think=False, keep_alive="30m")
     rows = []
     for request, expect, token in CASES:
@@ -86,7 +85,20 @@ async def main():
         ok, kind = judge(expect, token, answer, service.pending(), bool(plan and any("⚠" in l for l in plan)))
         rows.append({"request": request, "expect": expect, "ok": ok, "answer": answer[:160].replace("\n", " | "), "plan": plan})
         print(("OK  " if ok else "FAIL"), request, "->", answer[:90].replace("\n", " | "), flush=True)
-    json.dump(rows, open(sys.argv[2], "w"), ensure_ascii=False, indent=1)
+    json.dump(rows, open(out, "w"), ensure_ascii=False, indent=1)
     print("SCORE", model, sum(r["ok"] for r in rows), "/", len(rows))
+    return sum(r["ok"] for r in rows)
 
-asyncio.run(main())
+LADDER = ["qwen3.5:0.8b", "granite4:3b", "qwen3.5:4b", "qwen3.5:latest"]  # MODEL_BY_LEVEL in desktop/src/features/installer/tiers.js (light, compact, standard, full)
+
+async def run_all():
+    arg = sys.argv[3] if len(sys.argv) > 3 else "qwen3.5:latest"
+    models = LADDER if arg == "ladder" else arg.split(",")
+    scores = {}
+    for model in models:
+        out = Path(sys.argv[2]).with_name(f"{Path(sys.argv[2]).stem}_{model.replace(':', '_').replace('.', '_')}.json") if len(models) > 1 else sys.argv[2]
+        scores[model] = await main(model, out)
+    if len(models) > 1:
+        print("LADDER", " | ".join(f"{m} {n}/{len(CASES)}" for m, n in scores.items()))
+
+asyncio.run(run_all())

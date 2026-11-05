@@ -161,7 +161,7 @@ the reply is **grammar-constrained** by a JSON Schema (Ollama's `format`), so it
 a reply that gave nothing to do is asked again **with the reason**, and a step that policy refused for how it was written (a pipe, a program not on the list) is sent back once
 with the refusal (one that is about the disk, "não existe", is never retried: the person must hear it, the model cannot invent the file). A chat model of about 4B or less
 (`is_small_model`: `qwen3.5:0.8b`, `granite4:3b`, `lfm3`...) also gets a shorter prompt with worked examples, and a request with "depois", "então", "em seguida" or ";" is
-read **one part at a time** and the steps are joined (a plain "e" never splits). `scripts/bench_loose_requests.py src out.json <model>` scores a model (and a checkout) on the 24 requests.
+read **one part at a time** and the steps are joined (a plain "e" never splits). `scripts/bench_loose_requests.py src out.json <model>` scores a model (and a checkout) on the 24 requests; `ladder` runs the installer's four models (0.8b 22/24, granite4:3b 24/24, 4b 24/24, latest 24/24).
 
 **What is read by rules, not by the model** (exact, instant, and the model gets these wrong now and then): the file names a command reads (`cat lista` finds `lista.txt`; a name that fits two files asks which);
 "crie a pasta X", "liste os arquivos", "mostre o conteúdo de X", "renomeie X para Y", "copie X para Y", "baixe URL como Z", "abre o <app instalado>", "mande X para a lixeira", "faça uma cópia do X", "apague tudo" (refused);
@@ -213,7 +213,7 @@ a very strong one (16 GB and 8 cores or more) is teased as a relic ("Primeira ve
     cd desktop && npm run setup        # or: electron . --setup
 
 Reads the computer (RAM, free disk, cores, system), says whether it meets the minimum, picks the chat model that fits
-(`qwen3.5:0.8b` under ~8 GB, `qwen3.5:4b` up to ~16 GB, `qwen3.5:latest` above) and offers the optional pieces (better voice,
+(`qwen3.5:0.8b` under ~6 GB, `granite4:3b` up to ~8 GB, `qwen3.5:4b` up to ~16 GB, `qwen3.5:latest` above) and offers the optional pieces (better voice,
 microphone, WhatsApp, animations, hiding from screen sharing). Nothing optional is ticked. Every download shows its source and
 size and asks first; "Pular" (skip) is the default button. Needs Ollama running. WhatsApp is only recorded here: connect it later in
 Settings > Integrations. The native installers (`.exe`, `.pkg`, `.deb`) will start this wizard with `--setup`.
