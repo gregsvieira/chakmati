@@ -155,6 +155,14 @@ policy, in order ("create a.txt, then copy it" is fine; "copy x.txt into a folde
 fits two files, or the request does not say which file, which app or which site, it asks instead of guessing; "apague tudo" is refused; "... para a lixeira" and "faça uma cópia do X" are read by rule, not by the model.
 `scripts/bench_loose_requests.py` runs 24 such requests against the real model.
 
+**Around a small model** (the harness that makes a 0.8B–4B chat model err less; the model is told what shape the reply must have, and code does the rest):
+the reply is **grammar-constrained** by a JSON Schema (Ollama's `format`), so it cannot be prose or an unknown action; the model picks from a **typed menu of steps**
+(`mkdir`, `copy`, `move`, `list`, `show`, `create_file`, `command`) and code spells the command, quoted, so a misspelled `cp` or a stray `&&` is not possible;
+a reply that gave nothing to do is asked again **with the reason**, and a step that policy refused for how it was written (a pipe, a program not on the list) is sent back once
+with the refusal (one that is about the disk, "não existe", is never retried: the person must hear it, the model cannot invent the file). A chat model of about 4B or less
+(`is_small_model`: `qwen3.5:0.8b`, `granite4:3b`, `lfm3`...) also gets a shorter prompt with worked examples, and a request with "depois", "então", "em seguida" or ";" is
+read **one part at a time** and the steps are joined (a plain "e" never splits). `scripts/bench_loose_requests.py src out.json <model>` scores a model (and a checkout) on the 24 requests.
+
 **What is read by rules, not by the model** (exact, instant, and the model gets these wrong now and then): the file names a command reads (`cat lista` finds `lista.txt`; a name that fits two files asks which);
 "crie a pasta X", "liste os arquivos", "mostre o conteúdo de X", "renomeie X para Y", "copie X para Y", "baixe URL como Z", "abre o <app instalado>", "mande X para a lixeira", "faça uma cópia do X", "apague tudo" (refused);
 the title and the topic of a document ("com o título ...", "sobre ..."); the search query of a browser task ("pesquise ..."); the key and the folder of an exam; and the sums, averages and totals row of a spreadsheet (written by code

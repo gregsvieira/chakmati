@@ -143,3 +143,36 @@ async def test_stream_chat_http_error_raises():
     with pytest.raises(httpx.HTTPStatusError):
         async for _ in client.stream_chat([{"role": "user", "content": "oi"}]):
             pass
+
+
+async def test_schema_is_sent_as_format_only_when_given():
+    bodies = []
+
+    def handler(request):
+        bodies.append(json.loads(request.content))
+        return httpx.Response(200, json={"message": {"content": "{}"}})
+
+    client = make_client(handler)
+    schema = {"type": "object", "properties": {"a": {"type": "string"}}}
+    await client.chat([{"role": "user", "content": "hi"}])
+    await client.chat([{"role": "user", "content": "hi"}], schema=schema)
+    await client.aclose()
+    assert "format" not in bodies[0] and "options" not in bodies[0]
+    assert bodies[1]["format"] == schema and bodies[1]["options"] == {"temperature": 0}
+
+
+async def test_chat_json_uses_schema_only_with_a_capable_client():
+    from chakmati.shared.llm import chat_json
+
+    class Plain:
+        async def chat(self, messages):
+            return "plain"
+
+    class Capable:
+        supports_schema = True
+
+        async def chat(self, messages, schema=None):
+            return f"schema:{sorted(schema)}"
+
+    assert await chat_json(Plain(), [], {"type": "object"}) == "plain"
+    assert await chat_json(Capable(), [], {"type": "object"}) == "schema:['type']"

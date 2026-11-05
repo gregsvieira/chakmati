@@ -23,7 +23,7 @@ from chakmati.shared import extras
 from chakmati.app.engine import Engine
 from chakmati.shared.gate import build_gate
 from chakmati.shared.jobs import JobStore, Worker
-from chakmati.shared.llm import OllamaClient
+from chakmati.shared.llm import OllamaClient, is_small_model
 from chakmati.shared.models import ModelCatalog
 from chakmati.features.research.loop.scorer import KeepAllScorer
 from chakmati.features.research.loop.twostage import LayaRelevanceScorer
@@ -114,7 +114,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         automation_service=automation_service,
         home_assistant=home_bot,
         home_service=home_service,
-        computer_assistant=ComputerAssistant(llm, computer_service, gather=researcher.gather if researcher is not None else None, models=catalog, reasoning_for=lambda name: OllamaClient(s.ollama_url, name, think=True, keep_alive="5m", timeout=900)),
+        computer_assistant=ComputerAssistant(llm, computer_service, gather=researcher.gather if researcher is not None else None, models=catalog, reasoning_for=lambda name: OllamaClient(s.ollama_url, name, think=True, keep_alive="5m", timeout=900), compact=is_small_model(s.chat_model)),
         computer_service=computer_service,
         browser_agent=browser_agent,
     )

@@ -6,13 +6,14 @@ text reaches the model only for an edit the person asked for (fenced as untruste
 
 import json
 import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
 from collections.abc import Awaitable, Callable
 
 from chakmati.shared.guard import UNTRUSTED_RULE, fence, strip_markers
-from chakmati.shared.llm import ChatClient
+from chakmati.shared.llm import ChatClient, chat_json
 from chakmati.features.computer import documents, grading, rules
 from chakmati.features.computer.policy import PolicyError, resolve
 from chakmati.features.computer.describe import plain_error
@@ -29,13 +30,33 @@ SYSTEM = """You turn a request to do something on the user's computer into JSON.
   "revert"     undo your earlier edit of a file: "path"
   "trash"      the user wants a file or folder removed: "path" (it only goes to the Trash, never deleted)
   "other"      anything else
-Each step is {"type":"command","command":"..."} or {"type":"create_file","path":"name.txt","content":"full text"}.
+Each step is one of these (prefer the first ones, they cannot be misspelled):
+  {"type":"mkdir","path":"folder"}                          make a folder
+  {"type":"copy","source":"a.txt","destination":"b.txt"}   copy a file
+  {"type":"move","source":"a.txt","destination":"b.txt"}   move or rename a file
+  {"type":"list","path":"folder"}                           list files ("path" optional)
+  {"type":"show","path":"a.txt"}                            show what a file says
+  {"type":"create_file","path":"name.txt","content":"full text"}   a new text file
+  {"type":"command","command":"..."}                        anything else that is allowed below
 Commands are ONE program with plain words: no pipes, no >, no &&, no ;, no $, no wildcards, no ~. Allowed programs:
   pwd, date, ls [-la] [path], cat/head/tail/wc/stat/file <file>, grep [-nir] text file, du -sh path, mkdir [-p] folder, touch file.txt,
   cp [-r] source destination, mv source destination (new destinations only), echo text,
   python3/node/bash <script> (runs a script the user named), curl -L -o <file> https://... (download, https only).
 Paths are inside the workspace folder (relative paths are fine). Use create_file to write text into a new file; never use echo for that.
 For a task with several parts, give all the steps in order. Never invent files or contents the user did not ask for. Never output anything else."""
+
+# For small models (about 4B parameters or less): a shorter prompt and worked examples teach the shape better than rules do.
+SYSTEM_COMPACT = """Turn the user's request into ONE JSON object. No prose.
+Actions: steps, open_app, open_url, open_path, edit, revert, trash, other.
+Steps: mkdir{path}, copy{source,destination}, move{source,destination}, list{path}, show{path}, create_file{path,content}, command{command}.
+Never invent files or contents the user did not ask for.
+Examples:
+"crie a pasta fotos" -> {"action":"steps","steps":[{"type":"mkdir","path":"fotos"}]}
+"crie notas.txt com oi" -> {"action":"steps","steps":[{"type":"create_file","path":"notas.txt","content":"oi"}]}
+"copie a.txt para b.txt" -> {"action":"steps","steps":[{"type":"copy","source":"a.txt","destination":"b.txt"}]}
+"abre o Spotify" -> {"action":"open_app","app":"Spotify"}
+"mande a lista.txt para a lixeira" -> {"action":"trash","path":"lista.txt"}
+"edite a lista.txt trocando leite por café" -> {"action":"edit","path":"lista.txt","instruction":"trocar leite por café"}"""
 
 EDIT_SYSTEM = ("You edit a text file following the user's instruction. Reply with ONLY the complete new text of the file, nothing else, "
                "no explanations and no code fences." + UNTRUSTED_RULE)
@@ -67,6 +88,56 @@ Use 4 to 7 slides with 2 to 4 short bullets each (the first slide is the introdu
 
 ACTIONS = {"steps", "open_app", "open_url", "open_path", "edit", "revert", "trash"}
 STEP_TYPES = ("command", "create_file")
+TYPED_STEPS = ("mkdir", "copy", "move", "list", "show")  # the menu the model picks from; code spells the command (shlex-quoted), policy.py still judges it
+
+# What Ollama is told the reply must look like (grammar-constrained): the model cannot answer with prose or an unknown action.
+INTENT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "action": {"type": "string", "enum": sorted(ACTIONS | {"other"})},
+        "app": {"type": "string"}, "url": {"type": "string"}, "path": {"type": "string"}, "instruction": {"type": "string"},
+        "steps": {"type": "array", "maxItems": 12, "items": {
+            "type": "object",
+            "properties": {
+                "type": {"type": "string", "enum": list(STEP_TYPES + TYPED_STEPS)},
+                "command": {"type": "string"}, "path": {"type": "string"}, "content": {"type": "string"},
+                "source": {"type": "string"}, "destination": {"type": "string"},
+            },
+            "required": ["type"],
+        }},
+    },
+    "required": ["action"],
+}
+META_SCHEMA = {"type": "object", "properties": {"name": {"type": "string"}, "topic": {"type": "string"}}, "required": ["name", "topic"]}
+
+
+def _typed_command(step: dict) -> dict | None:
+    """{"type":"copy","source":"a","destination":"b"} -> the command step `cp a b`; None when a field it needs is missing."""
+    def text(key: str) -> str:
+        value = step.get(key)
+        return value.strip() if isinstance(value, str) else ""
+    kind = step["type"]
+    if kind == "mkdir" and text("path"):
+        argv = ["mkdir", "-p", text("path")]
+    elif kind in ("copy", "move") and text("source") and text("destination"):
+        argv = ["cp" if kind == "copy" else "mv", text("source"), text("destination")]
+    elif kind == "list":
+        argv = ["ls", "-la"] + ([text("path")] if text("path") else [])
+    elif kind == "show" and text("path"):
+        argv = ["cat", text("path")]
+    else:
+        return None
+    return {"type": "command", "command": shlex.join(argv)}
+
+
+def _compile_steps(steps: list) -> list:
+    out = []
+    for step in steps:
+        if isinstance(step, dict) and step.get("type") in TYPED_STEPS:
+            step = _typed_command(step)
+        if isinstance(step, dict) and step.get("type") in STEP_TYPES:
+            out.append(step)
+    return out
 
 
 def _shape(data: dict) -> dict:
@@ -82,7 +153,7 @@ def _shape(data: dict) -> dict:
             out[key] = data[key].strip()
     steps = data.get("steps")
     if isinstance(steps, list):
-        out["steps"] = [s for s in steps if isinstance(s, dict) and s.get("type") in STEP_TYPES][:12]
+        out["steps"] = _compile_steps(steps)[:12]
     return out
 
 
@@ -92,7 +163,7 @@ def _usable(intent: dict) -> bool:
 
 def _fix_step(step: object) -> object:
     """A step missing its "type" (or with an invented one) gets it from the fields it carries."""
-    if not isinstance(step, dict) or step.get("type") in STEP_TYPES:
+    if not isinstance(step, dict) or step.get("type") in STEP_TYPES + TYPED_STEPS:
         return step
     if isinstance(step.get("command"), str):
         return {**step, "type": "command"}
@@ -144,6 +215,27 @@ def parse_intent(reply: str) -> dict:
             return repaired
     return intent
 
+
+def diagnose(reply: str) -> str:
+    """Why a reply gave nothing to do, in a line the model can act on (it is sent back with the second try)."""
+    first, last = reply.find("{"), reply.rfind("}")
+    if first == -1 or last <= first:
+        return "it was not a JSON object"
+    try:
+        data = json.loads(reply[first : last + 1])
+    except json.JSONDecodeError:
+        return "the JSON was not valid"
+    if not isinstance(data, dict):
+        return "it was not a JSON object"
+    if data.get("action") == "steps" or isinstance(data.get("steps"), list):
+        return "it had no usable steps"
+    if data.get("action") not in ACTIONS | {"other"}:
+        return f"\"action\" must be one of {', '.join(sorted(ACTIONS | {'other'}))}"
+    return "it said \"other\""
+
+
+# A policy refusal that is about how the step was WRITTEN (the model can fix it), not about what is on the disk (the person must hear it).
+_FIXABLE = re.compile(r"encadeamento|não está na lista|opção .* não permitida|origem destino|informe|aspas|comando vazio|nada de caminho|para pastas use -r|só funciona com arquivos|não aceita argumentos|falta o nome")
 
 Gather = Callable[[str], Awaitable[tuple[str, list[str]]]]
 
@@ -246,8 +338,9 @@ def _json_object(reply: str) -> dict | None:
 
 
 class ComputerAssistant:
-    def __init__(self, llm: ChatClient, service: ComputerService, gather: Gather | None = None, solver: ChatClient | None = None, models=None, reasoning_for=None):
+    def __init__(self, llm: ChatClient, service: ComputerService, gather: Gather | None = None, solver: ChatClient | None = None, models=None, reasoning_for=None, compact: bool = False):
         self._llm = llm
+        self._compact = compact  # a small chat model: shorter prompt with examples, and a request with several parts is read one part at a time
         self._solver = solver  # works out the questions of an exam: a stronger model when one is given...
         self._models = models  # ...or the one the catalog finds installed (chakmati.shared.models.ModelCatalog)
         self._reasoning_for = reasoning_for  # (model name) -> a chat client for it
@@ -258,7 +351,7 @@ class ComputerAssistant:
     async def _document(self, kind: str, request: str) -> str:
         title, topic = document_meta(request)
         if topic is None:  # the words did not say what it is about: the model reads the request
-            meta = _json_object(await self._llm.chat([{"role": "system", "content": META_SYSTEM}, {"role": "user", "content": request}])) or {}
+            meta = _json_object(await chat_json(self._llm, [{"role": "system", "content": META_SYSTEM}, {"role": "user", "content": request}], META_SCHEMA)) or {}
             topic = str(meta.get("topic") or request)[:120]
             title = title or str(meta.get("name") or "")
         topic = topic[:120]
@@ -280,7 +373,7 @@ class ComputerAssistant:
         system = SPEC_SYSTEMS[kind] + " Write in the language of the user's request, even if the source text is in another language (translate it)." + (UNTRUSTED_RULE if source else "")
         spec = None
         for _ in range(2):  # a small model sometimes slips on the JSON: ask once more
-            spec = _json_object(await self._llm.chat([{"role": "system", "content": system}, {"role": "user", "content": user}]))
+            spec = _json_object(await chat_json(self._llm, [{"role": "system", "content": system}, {"role": "user", "content": user}], {"type": "object"}))
             if spec:
                 break
         if not spec:
@@ -509,17 +602,52 @@ class ComputerAssistant:
         ruled = self._by_rule(text)
         if ruled is not None:
             return self._prepare(ruled)[0]
-        reply = await self._llm.chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": text}])
+        if self._compact and len(parts := rules.split_compound(text)) >= 2:
+            intent = await self._parse_parts(parts)
+            if intent is not None:
+                return self._prepare(intent)[0]
+        return self._prepare(await self._ask(text))[0]
+
+    async def _parse_parts(self, parts: list[str]) -> dict | None:
+        """"crie a pasta x e depois copie a para b": each part is a simple request the small model (or a rule) reads alone; the steps join in order.
+        If any part is not a plain list of steps the whole request goes to the model as it is."""
+        steps: list[dict] = []
+        for part in parts:
+            intent = self._by_rule(part) or await self._ask(part)
+            if intent["action"] != "steps" or not intent.get("steps"):
+                return None
+            steps += intent["steps"]
+        return {"action": "steps", "steps": steps[:12]} if steps else None
+
+    async def _ask(self, text: str) -> dict:
+        """The model's reading of one request, with the second chances that cost nothing to the person: a reply that gave nothing to do is asked
+        again with the reason, and so is a step that policy refused for how it was written (not for what is on the disk)."""
+        system = SYSTEM_COMPACT if self._compact else SYSTEM
+        messages = [{"role": "system", "content": system}, {"role": "user", "content": text}]
+        reply = await chat_json(self._llm, messages, INTENT_SCHEMA)
         intent = parse_intent(reply)
-        if intent["action"] == "other" or (intent["action"] == "steps" and not intent.get("steps")):  # a small model sometimes slips: ask once more
-            reply = await self._llm.chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": text + "\n\nReply with the JSON object only."}])
+        if intent["action"] == "other" or (intent["action"] == "steps" and not intent.get("steps")):  # a small model sometimes slips: ask once more, saying why
+            messages += [{"role": "assistant", "content": reply}, {"role": "user", "content": f"That did not work: {diagnose(reply)}. Reply with the JSON object only."}]
+            reply = await chat_json(self._llm, messages, INTENT_SCHEMA)
             intent = parse_intent(reply)
+        elif intent["action"] == "steps" and (problem := self._fixable_problem(intent)):
+            retry = await chat_json(self._llm, messages + [{"role": "assistant", "content": reply}, {"role": "user", "content": f"One step was refused: {problem}. Fix only that step and reply with the full JSON object again."}], INTENT_SCHEMA)
+            fixed = parse_intent(retry)
+            if fixed["action"] == "steps" and fixed.get("steps") and self._fixable_problem(fixed) is None:
+                intent = fixed
         if intent["action"] in {"trash", "edit", "revert", "open_path"} and not intent.get("path"):  # the model forgot the name that the request has
             if named := re.search(r"\b[\w-]+\.[A-Za-z0-9]{1,5}\b", text):
                 intent = {**intent, "path": named.group(0)}
         if intent["action"] == "other":
             intent = self._fallback(text)
-        return self._prepare(intent)[0]
+        return intent
+
+    def _fixable_problem(self, intent: dict) -> str | None:
+        """The first policy refusal of a plan that is about how a step is written, or None (also None when the refusal is about the disk)."""
+        for _, problem, _ in self._service.preview_steps(intent.get("steps") or []):
+            if problem:
+                return problem if _FIXABLE.search(problem) else None
+        return None
 
     @staticmethod
     def _fallback(text: str) -> dict:

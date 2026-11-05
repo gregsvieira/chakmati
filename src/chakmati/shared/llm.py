@@ -1,4 +1,5 @@
 import json
+import re
 from collections.abc import AsyncIterator
 from typing import Protocol
 
@@ -9,11 +10,30 @@ class ChatClient(Protocol):
     async def chat(self, messages: list[dict[str, str]]) -> str: ...
 
 
+async def chat_json(client: ChatClient, messages: list[dict[str, str]], schema: dict) -> str:
+    """Ask for a JSON reply that follows `schema`. A client that can constrain the output (Ollama's `format`) is made to; any other
+    client (a test double, another backend) just gets the plain call, so callers keep parsing the reply defensively either way."""
+    if getattr(client, "supports_schema", False):
+        return await client.chat(messages, schema=schema)  # type: ignore[call-arg]
+    return await client.chat(messages)
+
+
+def is_small_model(name: str) -> bool:
+    """A chat model of about 4B parameters or less (qwen3.5:0.8b, granite4:3b, lfm3...): it gets the shorter prompt with examples and a
+    request in several parts read one part at a time. A name with no size in it (qwen3.5:latest) is treated as big."""
+    if re.search(r"lfm\d|micro", name.lower()):
+        return True
+    m = re.search(r"(?<![\w.])(\d+(?:\.\d+)?)b\b", name.lower())
+    return bool(m) and float(m.group(1)) <= 4
+
+
 class StreamingChatClient(ChatClient, Protocol):
     def stream_chat(self, messages: list[dict[str, str]]) -> AsyncIterator[str]: ...
 
 
 class OllamaClient:
+    supports_schema = True
+
     def __init__(
         self,
         base_url: str,
@@ -33,7 +53,7 @@ class OllamaClient:
         )
         self.last_usage: dict[str, int] = {}
 
-    def _payload(self, messages: list[dict[str, str]], stream: bool) -> dict:
+    def _payload(self, messages: list[dict[str, str]], stream: bool, schema: dict | None = None) -> dict:
         payload: dict = {
             "model": self._model,
             "messages": messages,
@@ -42,8 +62,12 @@ class OllamaClient:
         }
         if self._keep_alive:
             payload["keep_alive"] = self._keep_alive
-        if self._num_predict:
-            payload["options"] = {"num_predict": self._num_predict}
+        options: dict = {"num_predict": self._num_predict} if self._num_predict else {}
+        if schema is not None:
+            payload["format"] = schema  # the reply can only be a JSON object of this shape (grammar-constrained decoding)
+            options["temperature"] = 0  # reading a request is not creative: the same request gets the same steps
+        if options:
+            payload["options"] = options
         return payload
 
     async def stream_chat(self, messages: list[dict[str, str]]) -> AsyncIterator[str]:
@@ -60,8 +84,8 @@ class OllamaClient:
                 if content:
                     yield content
 
-    async def chat(self, messages: list[dict[str, str]]) -> str:
-        payload = self._payload(messages, False)
+    async def chat(self, messages: list[dict[str, str]], schema: dict | None = None) -> str:
+        payload = self._payload(messages, False, schema)
         response = await self._http.post("/api/chat", json=payload)
         response.raise_for_status()
         data = response.json()

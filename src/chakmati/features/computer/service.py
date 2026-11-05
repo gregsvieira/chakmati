@@ -334,7 +334,7 @@ class ComputerService(ApprovalService):
                     check_content(step.get("content", ""))
                     if has_secret(step.get("content", "")) or target.exists() or target in roots.planned:
                         raise ComputerError(f"não posso criar {target.name} (já existe ou o texto tem dados sensíveis)")
-                    out.append((f"Criar o arquivo {target.name}  [seguro]", None, {"type": "create_file", "path": str(target), "content": step["content"]}))
+                    out.append((f"Criar o arquivo {target.name}  [seguro]", None, {"type": "create_file", "path": str(target), "content": step.get("content", "")}))  # a small model leaves "content" out for an empty file
                     roots = roots.after([target])
                 else:
                     command, fixed, ask = self.fix_names(step.get("command", ""), roots)
@@ -452,7 +452,7 @@ class ComputerService(ApprovalService):
             step, link = steps[idx], {"id": plan_id, "index": idx + 1, "of": len(steps)}
             try:
                 if step["type"] == "create_file":
-                    action, ran = self.propose_create_file(step["path"], step["content"], plan=None if self.standing else link)
+                    action, ran = self.propose_create_file(step["path"], step.get("content", ""), plan=None if self.standing else link)
                 else:
                     action, ran = self.propose_command(step["command"], plan=None if self._is_auto(step["command"]) else link)
             except ComputerError as exc:

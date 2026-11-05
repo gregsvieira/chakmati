@@ -78,3 +78,14 @@ def _with_extension(source: str, target: str, service) -> str:
         return target
     folder = service.workspace / target
     return target if folder.is_dir() else target + src_ext
+
+
+_JOINER = re.compile(r"\s*(?:,\s*(?:e\s+)?(?:depois|ent[ãa]o|em seguida)|\s+(?:e\s+)?(?:depois|ent[ãa]o|em seguida)|;)\s+", re.IGNORECASE)
+
+
+def split_compound(text: str) -> list[str]:
+    """"crie a pasta x e depois copie a para b" -> two requests, in order. Only the clear joiners split ("depois", "então", "em seguida", ";"):
+    a plain "e" is part of lists ("crie as pastas a e b") and of names, so it never splits. One part, or more than four, means do not split."""
+    parts = [p.strip(" .") for p in _JOINER.split(text.strip())]
+    parts = [p for p in parts if p]
+    return parts if 2 <= len(parts) <= 4 else [text.strip()]
