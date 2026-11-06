@@ -49,10 +49,10 @@ test('animations are on by default and can be switched off', () => {
 });
 
 test('integrations map to the engine environment: web search on by default, the rest off', () => {
-  assert.deepEqual(engineEnv(DEFAULTS), { CHAKMATI_CHAT_MODEL: 'qwen3.5:latest', CHAKMATI_RESEARCH_BACKEND: 'ddg', CHAKMATI_WHATSAPP_BACKEND: 'off', CHAKMATI_CALENDAR_BACKEND: 'off', CHAKMATI_RESEARCH_SCORER: 'keepall' });
+  assert.deepEqual(engineEnv(DEFAULTS), { CHAKMATI_CHAT_MODEL: 'qwen3.5:latest', CHAKMATI_PERSONALITY: 'padrao', CHAKMATI_RESEARCH_BACKEND: 'ddg', CHAKMATI_WHATSAPP_BACKEND: 'off', CHAKMATI_CALENDAR_BACKEND: 'off', CHAKMATI_RESEARCH_SCORER: 'keepall' });
   assert.equal(engineEnv(DEFAULTS, { searxng: true }).CHAKMATI_RESEARCH_BACKEND, 'searxng');
   assert.equal(engineEnv({ ...DEFAULTS, research: false }).CHAKMATI_RESEARCH_BACKEND, 'off');
-  assert.deepEqual(engineEnv({ ...DEFAULTS, whatsapp: true, calendar: true }), { CHAKMATI_CHAT_MODEL: 'qwen3.5:latest', CHAKMATI_RESEARCH_BACKEND: 'ddg', CHAKMATI_WHATSAPP_BACKEND: 'openwa', CHAKMATI_CALENDAR_BACKEND: 'auto', CHAKMATI_RESEARCH_SCORER: 'keepall' });
+  assert.deepEqual(engineEnv({ ...DEFAULTS, whatsapp: true, calendar: true }), { CHAKMATI_CHAT_MODEL: 'qwen3.5:latest', CHAKMATI_PERSONALITY: 'padrao', CHAKMATI_RESEARCH_BACKEND: 'ddg', CHAKMATI_WHATSAPP_BACKEND: 'openwa', CHAKMATI_CALENDAR_BACKEND: 'auto', CHAKMATI_RESEARCH_SCORER: 'keepall' });
   assert.equal(engineEnv({ ...DEFAULTS, laya: true }).CHAKMATI_RESEARCH_SCORER, 'laya');
   assert.equal(normalize({ whatsapp: 'yes' }).whatsapp, false);
 });
@@ -95,4 +95,11 @@ test('the chat model is a plain Ollama name and reaches the engine', () => {
   assert.equal(normalize({ chatModel: 'qwen3.5:0.8b' }).chatModel, 'qwen3.5:0.8b');
   assert.equal(engineEnv({ ...DEFAULTS, chatModel: 'qwen3.5:4b' }).CHAKMATI_CHAT_MODEL, 'qwen3.5:4b');
   for (const bad of ['', 'a b', '../x', 'x;rm', 'm'.repeat(80), 5, null]) assert.equal(normalize({ chatModel: bad }).chatModel, DEFAULTS.chatModel);
+});
+
+test('the personality is padrao unless one of the known regional ones is chosen, and it reaches the engine at start', () => {
+  assert.equal(DEFAULTS.personality, 'padrao');
+  for (const p of ['carioca', 'paulista', 'gaucho', 'nordestino', 'mineiro']) assert.equal(normalize({ personality: p }).personality, p);
+  for (const bad of ['klingon', '', null, 42, 'GAUCHO']) assert.equal(normalize({ personality: bad }).personality, 'padrao');
+  assert.equal(engineEnv({ ...DEFAULTS, personality: 'gaucho' }).CHAKMATI_PERSONALITY, 'gaucho');
 });

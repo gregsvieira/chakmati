@@ -1,4 +1,5 @@
 import asyncio
+import random
 import re
 import time
 from datetime import datetime
@@ -8,6 +9,7 @@ from dataclasses import dataclass
 from chakmati.features.automations.confirm import verdict
 from chakmati.features.chat import patriot
 from chakmati.features.chat.canned import canned_answer
+from chakmati.shared import personality as personalities
 from chakmati.shared.persona import AWAKE_SECONDS, PERSONA, wake_reply
 from chakmati.shared.timeguard import calendar_facts, needs_today, needs_web, today_line
 from chakmati.shared.gate.base import Gate, Route
@@ -101,10 +103,14 @@ class Engine:
         computer_assistant=None,
         computer_service=None,
         browser_agent=None,
+        personality: str = personalities.DEFAULT,
+        rng: random.Random | None = None,
         typing_delay: float = 0.012,
         now: Callable[[], float] = time.time,
         clock: Callable[[], datetime] = lambda: datetime.now().astimezone(),
     ):
+        self._personality = personalities.normalize(personality)  # the regional way of speaking added to short chat answers (shared/personality.py)
+        self._rng = rng or random.Random()
         self._typing_delay = typing_delay  # seconds between the pieces of a fixed answer: it is typed out, not dropped whole
         self._now = now
         self._clock = clock
@@ -123,6 +129,49 @@ class Engine:
         self._computer = computer_assistant
         self._computer_service = computer_service
         self._browser = browser_agent
+
+    @property
+    def personality(self) -> str:
+        return self._personality
+
+    def set_personality(self, personality_id: str) -> bool:
+        """Changes the way of speaking at once (no restart); False, and nothing changes, for an unknown one."""
+        if not personalities.valid(personality_id):
+            return False
+        self._personality = personality_id
+        return True
+
+    def _flavored(self, answer: str) -> str:
+        return personalities.flavor(answer, self._personality, self._rng)
+
+    async def _flavored_stream(self, deltas: AsyncIterator[str]) -> AsyncIterator[str]:
+        """The model's pieces as they come, except that a short answer is held until it is complete, so the opening and closing can go around it
+        and are then typed out. The moment it turns out to be long (or a list) the held text is released and the rest streams untouched."""
+        if self._personality == personalities.DEFAULT:
+            async for delta in deltas:
+                yield delta
+            return
+        held: list[str] = []
+        released = False
+        async for delta in deltas:
+            if released:
+                yield delta
+                continue
+            held.append(delta)
+            if not personalities.eligible("".join(held)):
+                released = True
+                yield "".join(held)
+        if released:
+            return
+        text = "".join(held)
+        styled = self._flavored(text)
+        if styled == text:
+            yield text
+            return
+        for piece in re.findall(r"\S+\s*|\s+", styled):
+            yield piece
+            if self._typing_delay:
+                await asyncio.sleep(self._typing_delay)
 
     def _notify_job(self) -> None:
         if self._on_job_created is not None:
@@ -250,7 +299,7 @@ class Engine:
         route, today, offline = await self._plan(text)
         if not route.is_slow:
             answer = await self._llm.chat(_messages(route, text, today, offline))
-            return Reply("answer", route, text=answer)
+            return Reply("answer", route, text=self._flavored(answer))
         job_id = self._store.create(route.value, text)
         self._notify_job()
         return Reply("job", route, job_id=job_id)
@@ -308,7 +357,7 @@ class Engine:
             yield {"type": "job", "job_id": job_id, "route": route.value}
             return
         parts: list[str] = []
-        async for delta in self._llm.stream_chat(_messages(route, text, today, offline)):  # type: ignore[attr-defined]
+        async for delta in self._flavored_stream(self._llm.stream_chat(_messages(route, text, today, offline))):  # type: ignore[attr-defined]
             parts.append(delta)
             yield {"type": "delta", "text": delta}
         yield {"type": "done", "result": "".join(parts)}

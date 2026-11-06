@@ -5,6 +5,7 @@ const { assertLoopback } = require('../engine').client;
 
 const SIDES = ['auto', 'top', 'bottom', 'left', 'right'];
 const MOODS = ['auto', 'idle', 'alert', 'thinking', 'happy'];
+const PERSONALITIES = ['padrao', 'carioca', 'paulista', 'gaucho', 'nordestino', 'mineiro']; // the regional way of speaking (the engine adds it to short chat answers)
 const DEFAULTS = Object.freeze({
   protect: true,          // ask the OS to leave the windows out of screen sharing and recordings (best effort)
   still: false,           // true = no animations: Chakmati stays still
@@ -19,6 +20,7 @@ const DEFAULTS = Object.freeze({
   autoSend: false,        // approve WhatsApp sends automatically (the person's standing permission; the engine still rate-limits)
   masked: false,          // discreet mode: bubbles never show names or titles
   bubbleSide: 'auto',
+  personality: 'padrao',  // 'padrao' = no regional flavour; the engine changes at once (PUT /personality) and starts with it (CHAKMATI_PERSONALITY)
   mood: 'auto',           // 'auto' follows what is happening; the others pin Chakmati's face (offline still shows)
   icon: null,             // {x, y} of the robot on screen, null = default corner
   engineUrl: 'http://127.0.0.1:8765',
@@ -49,6 +51,7 @@ function normalize(raw) {
   if (typeof r.chatModel === 'string' && /^[a-z0-9][a-z0-9._:-]{0,63}$/i.test(r.chatModel)) s.chatModel = r.chatModel;
   if (SIDES.includes(r.bubbleSide)) s.bubbleSide = r.bubbleSide;
   if (MOODS.includes(r.mood)) s.mood = r.mood;
+  if (PERSONALITIES.includes(r.personality)) s.personality = r.personality;
   if (r.icon && Number.isFinite(r.icon.x) && Number.isFinite(r.icon.y)) s.icon = { x: Math.round(r.icon.x), y: Math.round(r.icon.y) };
   if (typeof r.engineUrl === 'string') {
     try { assertLoopback(r.engineUrl); s.engineUrl = r.engineUrl; } catch { /* keep the default */ }
@@ -71,6 +74,7 @@ function save(file, settings) {
 function engineEnv(settings, { searxng = false } = {}) {
   return {
     CHAKMATI_CHAT_MODEL: settings.chatModel,
+    CHAKMATI_PERSONALITY: settings.personality,
     CHAKMATI_RESEARCH_BACKEND: !settings.research ? 'off' : searxng ? 'searxng' : 'ddg',
     CHAKMATI_WHATSAPP_BACKEND: settings.whatsapp ? 'openwa' : 'off',
     CHAKMATI_CALENDAR_BACKEND: settings.calendar ? 'auto' : 'off',
@@ -78,4 +82,4 @@ function engineEnv(settings, { searxng = false } = {}) {
   };
 }
 
-module.exports = { DEFAULTS, SIDES, MOODS, normalize, load, save, engineEnv };
+module.exports = { DEFAULTS, SIDES, MOODS, PERSONALITIES, normalize, load, save, engineEnv };

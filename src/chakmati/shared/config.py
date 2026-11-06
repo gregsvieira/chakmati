@@ -65,6 +65,7 @@ class Settings:
     calendar_poll_seconds: float = 60.0
     calendar_lead_minutes: int = 10
     contact: str = "https://github.com/gregsvieira"
+    personality: str = "padrao"  # the regional way of speaking: padrao | carioca | paulista | gaucho | nordestino | mineiro (changeable at runtime: PUT /personality)
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "Settings":
@@ -117,4 +118,5 @@ class Settings:
             calendar_poll_seconds=float(env.get("CHAKMATI_CALENDAR_POLL_SECONDS", d.calendar_poll_seconds)),
             calendar_lead_minutes=int(env.get("CHAKMATI_CALENDAR_LEAD_MINUTES", d.calendar_lead_minutes)),
             contact=env.get("CHAKMATI_CONTACT", d.contact),
+            personality=env.get("CHAKMATI_PERSONALITY", d.personality),
         )

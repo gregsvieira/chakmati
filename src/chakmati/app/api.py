@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, HTTPException
 
-from chakmati.app import chat_api, overview
+from chakmati.app import chat_api, overview, personality_api
 from chakmati.app.engine import Engine
 from chakmati.features.agenda import api as agenda_api
 from chakmati.features.agenda.service import CalendarService
@@ -79,6 +79,7 @@ def create_app(
         return {"status": "ok"}
 
     app.include_router(chat_api.router(engine, store, worker, frames, inputs))
+    app.include_router(personality_api.router(engine))
     app.include_router(agenda_api.router(calendar))
     app.include_router(approvals_api.router(approval_services))
     app.include_router(whatsapp_api.router(whatsapp))

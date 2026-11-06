@@ -189,6 +189,16 @@ A few questions are answered with pride in Brazil (`src/chakmati/features/chat/p
 *qual é a águia mais imponente / de que país é a águia mais imponente* (the Harpia Brasileira, with real facts), and *Pelé ou Maradona* ("É o Pelé!", then "Mas costumam responder assim:" and the model's own answer, as it would
 normally give it). Nothing else is changed; the texts are constants in that file.
 
+### Personalities
+
+Ajustes > **Jeito de falar** (or say "muda a personalidade para gaúcho") picks a regional way of speaking: Padrão, Carioca, Paulista, Gaúcho, Nordestino, Mineiro.
+It is done **in code after the model has answered**, not as a pre-prompt (`src/chakmati/shared/personality.py`): a pre-prompt costs tokens on every call, a small model overdoes it or drops it,
+and it can bend a fact (a date, a number). Here the model's text is never touched; a short exclamation and/or a closing vocative go around it, and the cost is a few microseconds with any model:
+"Hoje é 6 de novembro." becomes "Mas bah, tchê! Hoje é 6 de novembro, bagual velho!". Only short, one-paragraph chat answers get it (up to 45 words); lists, code, links, plans, approvals and
+every job (calendar, WhatsApp, computer, browser...) stay exactly as they are. Streaming holds a short answer until it is complete and then types it out; a long one streams untouched from the
+first word. It is changed in the running engine (`PUT /personality`, app window only; `GET /personality` lists the options), starts from `CHAKMATI_PERSONALITY`, and the desktop re-sends it if the engine restarts.
+A new personality is one `Personality(...)` line in `PERSONALITIES` (openings, closings) and its id in `desktop/src/features/settings/settings.js`.
+
 ### The bell and the face
 
 A bell sits almost behind the character's head (on the desktop, in the panel header and above the conversation in the big window). **Yellow** and the face on *alert* when something waits for you: an action to

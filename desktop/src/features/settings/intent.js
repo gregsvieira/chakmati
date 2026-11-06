@@ -33,6 +33,10 @@
     { key: 'mood', re: /\bhumor\b|\bcara\b|\bexpressao\b/, name: 'o humor', options: [
       [/\bfeliz|alegre|contente\b/, 'happy', 'feliz'], [/\bcalm[oa]|tranquil[oa]\b/, 'idle', 'calmo'], [/\balerta\b/, 'alert', 'alerta'],
       [/\bpensativ[oa]\b/, 'thinking', 'pensativo'], [/\bautomatic\w*\b/, 'auto', 'automático']] },
+    { key: 'personality', re: /\b(personalidade|sotaque|jeito de falar|modo de falar)\b/, name: 'a personalidade', options: [
+      [/\bcarioc\w*\b/, 'carioca', 'carioca'], [/\bpaulist\w*\b/, 'paulista', 'paulista'], [/\bgauch\w*\b|\bsulista\b/, 'gaucho', 'gaúcha'],
+      [/\bnordestin\w*\b/, 'nordestino', 'nordestina'], [/\bmineir\w*\b/, 'mineiro', 'mineira'],
+      [/\b(padrao|normal|neutr\w*|sem sotaque)\b/, 'padrao', 'padrão']] },
     { key: 'voiceSpeed', re: /\b(velocidade|voz)\b/, name: 'a velocidade da voz', options: [
       [/\b(mais rapid[ao]|rapid[ao]|acelera\w*)\b/, 'fast', 'mais rápida'], [/\b(normal|mais devagar|devagar|lent[ao])\b/, 'normal', 'normal']] },
     { key: 'micSource', re: /\bmicrofone\b/, name: 'o microfone', options: [

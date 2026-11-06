@@ -22,6 +22,12 @@ const cases = [
   ['coloca o humor feliz', 'mood', 'happy', false],
   ['voz mais rápida', 'voiceSpeed', 'fast', false],
   ['usa o microfone do computador', 'micSource', 'computer', false],
+  ['muda a personalidade para gaúcho', 'personality', 'gaucho', false],
+  ['coloca a personalidade carioca', 'personality', 'carioca', false],
+  ['quero o sotaque nordestino', 'personality', 'nordestino', false],
+  ['personalidade paulista', 'personality', 'paulista', false],
+  ['muda o jeito de falar para mineiro', 'personality', 'mineiro', false],
+  ['volta a personalidade para o padrão', 'personality', 'padrao', false],
 ];
 for (const [text, key, value, sensitive] of cases) {
   test(`"${text}"`, () => {
