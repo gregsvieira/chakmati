@@ -77,7 +77,7 @@ function renderProfile() {
 }
 
 function renderOptions() {
-  $('model-line').textContent = `Modelo de conversa para este computador: ${scan.model.label} (${scan.model.id}, ${scan.model.sizeText}). Sempre instalado.`;
+  $('model-line').textContent = `Obrigatórios: ${scan.engineText ? `o motor do Chakmati (cerca de ${scan.engineText}) e ` : ''}o modelo de conversa para este computador, ${scan.model.label} (${scan.model.id}, ${scan.model.sizeText}). Sem eles o Chakmati não funciona.`;
   $('options').replaceChildren(...scan.options.map((o) => {
     const box = el('input', { type: 'checkbox', id: `opt-${o.id}` });
     box.addEventListener('change', () => {
@@ -103,7 +103,7 @@ async function renderSummary() {
     $('totals').textContent = '';
     $('install').disabled = true;
   } else {
-    items($('steps'), plan.steps.map((s) => (s.approval ? `${s.label} — vai pedir sua aprovação` : s.label)));
+    items($('steps'), plan.steps.map((s) => `${s.label}${s.required ? ' — obrigatório' : ''}${s.approval ? ' — vai pedir sua aprovação' : ''}`));
     $('totals').textContent = plan.totalsText;
     $('install').disabled = false;
   }
@@ -124,7 +124,7 @@ async function install() {
   const titles = { done: 'Pronto!', aborted: 'Instalação cancelada', failed: 'A instalação falhou', blocked: 'Não foi possível instalar' };
   $('run-title').textContent = titles[result.status] || 'Fim';
   $('bar').value = result.status === 'done' ? 100 : $('bar').value;
-  $('run-status').textContent = '';
+  $('run-status').textContent = result.status === 'aborted' ? 'O motor e o modelo de conversa são obrigatórios: sem eles o Chakmati não funciona. Abra o instalador de novo quando quiser.' : '';
   const names = { done: 'feito', declined: 'pulado por você', failed: 'falhou' };
   items($('results'), result.results.map((r) => `${r.id}: ${names[r.status]}${r.error ? ` — ${r.error}` : ''}`));
   items($('after'), result.after || []);

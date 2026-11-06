@@ -172,3 +172,34 @@ test('a missing uv is reported, and an unknown extra never starts a process', as
   await assert.rejects(makeSync({ spawnFn: () => { started = true; }, resourcesPath: '/r', dataDir: '/d', platform: 'linux', env: {} })(['evil'], () => {}), /extra/i);
   assert.equal(started, false);
 });
+
+test('the engine and the chat model are mandatory: always in the plan, whatever is ticked, each with its approval and nothing that can skip it', () => {
+  for (const selected of [[], ['voice'], ['animations', 'hideShare', 'talk', 'voice', 'laya']]) {
+    const p = planFor(selected);
+    for (const id of ['engine', 'model']) {
+      const step = p.steps.find((x) => x.id === id);
+      assert.ok(step, id);
+      assert.equal(step.required, true, id);
+      assert.ok(step.approval && step.approval.sizeMb > 0, id);
+      assert.equal(step.requires, undefined, id);
+    }
+  }
+});
+
+test('declining or failing the engine stops the install before the model, and saves nothing', async () => {
+  for (const how of ['declined', 'failed']) {
+    const calls = [];
+    const runners = {
+      checkOllama: async () => { calls.push('check'); },
+      syncEngine: async () => { calls.push('engine'); if (how === 'failed') throw new Error('uv falhou'); },
+      pullModel: async () => { calls.push('model'); },
+      saveSettings: async () => { calls.push('save'); },
+    };
+    const approve = async (step) => (how === 'declined' ? step.id !== 'engine' : true);
+    const out = await runPlan(planFor(), { approve, runners });
+    assert.equal(out.status, how === 'declined' ? 'aborted' : 'failed', how);
+    assert.equal(calls.includes('model'), false, how);
+    assert.equal(calls.includes('save'), false, how);
+    assert.equal(out.settings, null, how);
+  }
+});

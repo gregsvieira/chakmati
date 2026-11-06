@@ -34,7 +34,7 @@ test('the preload exposes exactly the installer calls, each as invoke/send of a 
 
 test('the download dialog defaults to "Pular" and the only external page is the Ollama download', () => {
   const src = read('features', 'installer', 'wizard.js');
-  assert.match(src, /buttons: \['Aprovar', 'Pular'\]/);
+  assert.match(src, /buttons: step\.required \? \['Aprovar', 'Cancelar a instalação'\] : \['Aprovar', 'Pular'\]/);   // optional downloads: "Pular"; mandatory ones: cancel the install
   assert.match(src, /defaultId: 1/);
   assert.match(src, /cancelId: 1/);
   assert.equal((src.match(/openExternal\(/g) || []).length, 1);
@@ -82,4 +82,15 @@ test('the wizard sends the personality and pronouns choice with both the plan an
   assert.match(wizard, /ipcMain\.handle\('installer:plan', \(_e, selected, profile\)/);
   assert.match(wizard, /ipcMain\.handle\('installer:run', async \(_e, selected, profile\)/);
   assert.match(read('preload.js'), /plan: \(selected, profile\) => ipcRenderer\.invoke\('installer:plan', selected, profile\)/);
+});
+
+test('a mandatory download has no "Pular": only approving it or cancelling the install, and the page says it is mandatory', () => {
+  const wizard = read('features', 'installer', 'wizard.js');
+  assert.match(wizard, /step\.required \? \['Aprovar', 'Cancelar a instalação'\] : \['Aprovar', 'Pular'\]/);
+  assert.match(wizard, /Obrigatório: sem isso o Chakmati não funciona/);
+  assert.match(wizard, /defaultId: 1/);   // the default button is still the one that downloads nothing
+  const js = read('features', 'installer', 'renderer', 'installer.js');
+  assert.match(js, /Obrigatórios: /);
+  assert.match(js, /obrigatório/);
+  assert.match(js, /result\.status === 'aborted'/);
 });

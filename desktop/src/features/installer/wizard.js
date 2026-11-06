@@ -4,7 +4,7 @@ const path = require('node:path');
 const { BrowserWindow, dialog, shell } = require('electron');
 const { readHardware } = require('./hardware');
 const { verdict: judge, suggestions, reasoningFor } = require('./tiers');
-const { MODELS, optionsFor } = require('./catalog');
+const { ENGINE, MODELS, optionsFor } = require('./catalog');
 const { buildPlan } = require('./plan');
 const { runPlan } = require('./run-plan');
 const { makeRunners } = require('./runners');
@@ -46,6 +46,7 @@ function openSetup({ ipcMain, webPreferences, settingsFile, engine = null, onClo
         disk: hw.freeDiskGb === null ? 'não consegui medir' : `${hw.freeDiskGb} GB livres`,
       },
       profile: PROFILE,
+      engineText: engine ? formatSize(ENGINE.baseMb) : null, // the engine is only prepared by the installed app
       model: model && { id: model.id, label: model.label, sizeText: formatSize(model.diskMb) },
       options: optionsFor(hw.platform, { packaged: !!engine }).filter((o) => o.id !== 'reasoning' || reasoningFor(hw)).map((o) => ({
         id: o.id, advice: o.advice || null, label: o.id === 'reasoning' ? `${o.label}: ${reasoningFor(hw).id}` : o.label, description: o.description,
@@ -62,10 +63,14 @@ function openSetup({ ipcMain, webPreferences, settingsFile, engine = null, onClo
     }
   }
 
+  // The engine and the chat model are mandatory: the Chakmati does not work without them, so there is no "Pular" for them, only a way out (and the default button
+  // is still the one that downloads nothing).
   const approve = async (step) => {
     const { response } = await dialog.showMessageBox(win, {
-      type: 'question', buttons: ['Aprovar', 'Pular'], defaultId: 1, cancelId: 1, title: 'Aprovar download', message: step.label,
-      detail: `Origem: ${step.approval.source}\nTamanho: ${formatSize(step.approval.sizeMb)}\n\nNada é baixado sem a sua aprovação.`,
+      type: 'question', buttons: step.required ? ['Aprovar', 'Cancelar a instalação'] : ['Aprovar', 'Pular'], defaultId: 1, cancelId: 1, title: 'Aprovar download', message: step.label,
+      detail: `Origem: ${step.approval.source}\nTamanho: ${formatSize(step.approval.sizeMb)}\n\n`
+        + (step.required ? 'Obrigatório: sem isso o Chakmati não funciona. Se você não aprovar, a instalação é cancelada e nada é salvo.\n\n' : '')
+        + 'Nada é baixado sem a sua aprovação.',
     });
     return response === 0;
   };
