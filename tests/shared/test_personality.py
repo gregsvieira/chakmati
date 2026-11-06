@@ -11,6 +11,7 @@ from chakmati.shared import personality
 from chakmati.shared.config import Settings
 from chakmati.shared.gate.base import GateResult, Route
 from chakmati.shared.jobs import JobStore
+from chakmati.shared.persona import LISTENING_PROMPTS, wake_reply
 
 
 class Rng:
@@ -97,6 +98,8 @@ def test_every_personality_has_openings_and_closings_and_a_name():
     for p in named:
         assert p.name and len(p.openers) >= 3 and len(p.closers) >= 3
         assert all(o.endswith(("!", "?")) for o in p.openers)  # an opening is a whole exclamation
+        assert len(p.listening) >= 4 and all(phrase.endswith("!") for phrase in p.listening)
+        assert not set(p.listening) & set(LISTENING_PROMPTS)  # none repeats the standard ones: it is heard which personality is on
 
 
 def test_with_the_real_random_source_it_varies_and_always_keeps_the_answer():
@@ -236,3 +239,35 @@ def test_put_refuses_an_unknown_personality():
 def test_the_overview_tells_the_desktop_which_one_is_on():
     client, _ = make_client("gaucho")
     assert client.get("/overview").json()["personality"] == "gaucho"
+
+
+# --- the phrases said when it is called ------------------------------------------------------------------------------------------------
+def test_the_default_keeps_the_standard_listening_phrases():
+    assert personality.listening_prompts("padrao") == ()
+    assert personality.listening_prompts("klingon") == ()
+    assert wake_reply("Ôh, paizão", choose=lambda options: options[0], prompts=personality.listening_prompts("padrao")) == LISTENING_PROMPTS[0]
+
+
+@pytest.mark.parametrize("personality_id", ["carioca", "paulista", "gaucho", "nordestino", "mineiro"])
+def test_each_personality_answers_a_call_with_its_own_phrase(personality_id):
+    phrases = personality.listening_prompts(personality_id)
+    assert len(phrases) >= 4
+    seen = {wake_reply("Ôh, Xácmáti", prompts=phrases) for _ in range(200)}
+    assert len(seen) > 1 and seen <= set(phrases)
+
+
+async def test_the_engine_calls_back_in_the_chosen_personality_and_stays_awake():
+    e = engine("gaucho")
+    reply = await e.handle("Ôh, paizão")
+    assert reply.text in personality.listening_prompts("gaucho") and e.awake  # the microphone window opens as before
+    e.set_personality("padrao")
+    assert (await e.handle("Ôh, paizão")).text in LISTENING_PROMPTS
+    e.set_personality("mineiro")
+    events = [ev async for ev in e.handle_stream("oh xacmati")]
+    assert events[-1]["result"] in personality.listening_prompts("mineiro")
+
+
+async def test_a_call_is_never_dressed_with_an_opening_or_a_closing():
+    e = engine("nordestino")
+    for _ in range(30):
+        assert (await e.handle("Ôh, paizão")).text in personality.listening_prompts("nordestino")

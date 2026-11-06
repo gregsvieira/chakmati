@@ -188,7 +188,7 @@ class Engine:
         return max(0.0, self._awake_until - self._now())
 
     def _wake(self, text: str) -> str | None:
-        greeting = wake_reply(text)
+        greeting = wake_reply(text, prompts=personalities.listening_prompts(self._personality))
         self._awake_until = self._now() + AWAKE_SECONDS if greeting else 0.0  # any other message is the command: waiting ends
         return greeting
 

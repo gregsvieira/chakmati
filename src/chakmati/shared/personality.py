@@ -24,15 +24,21 @@ class Personality:
     name: str
     openers: tuple[str, ...] = ()  # exclamations that fit any answer (never a judgement of it)
     closers: tuple[str, ...] = ()  # vocatives that end the sentence ("..., tchê!")
+    listening: tuple[str, ...] = ()  # what it says when called by its name: the microphone is open and it waits for the command (empty = the standard ones)
 
 
 PERSONALITIES: tuple[Personality, ...] = (
     Personality(DEFAULT, "Padrão"),
-    Personality("carioca", "Carioca", ("E aí, mermão!", "Fala, parceiro!", "Beleza, meu irmão!", "Opa, tranquilo!"), ("mermão", "parceiro", "meu irmão", "tá ligado")),
-    Personality("paulista", "Paulista", ("Fala, mano!", "E aí, meu!", "Salve, mano!", "Beleza, meu!"), ("mano", "meu", "truta", "meu chapa")),
-    Personality("gaucho", "Gaúcho", ("Mas bah, tchê!", "Bah, tchê!", "Olha só, tchê!", "Bah, guri!"), ("bagual velho", "tchê", "guri", "meu velho")),
-    Personality("nordestino", "Nordestino", ("Oxente!", "Vixe!", "Eita, visse!", "Ôxe, meu rei!"), ("meu rei", "visse", "cabra bom", "meu fi")),
-    Personality("mineiro", "Mineiro", ("Uai!", "Ô sô!", "Nossa, sô!", "Ô trem bão!"), ("sô", "uai", "gente", "meu povo")),
+    Personality("carioca", "Carioca", ("E aí, mermão!", "Fala, parceiro!", "Beleza, meu irmão!", "Opa, tranquilo!"), ("mermão", "parceiro", "meu irmão", "tá ligado"),
+                ("Fala, mermão, que eu tô ouvindo!", "E aí, parceiro, pode falar!", "Manda aí, mermão!", "Diz aí, meu irmão!")),
+    Personality("paulista", "Paulista", ("Fala, mano!", "E aí, meu!", "Salve, mano!", "Beleza, meu!"), ("mano", "meu", "truta", "meu chapa"),
+                ("Fala, mano, tô ouvindo!", "Manda a visão, meu!", "Fala aí, mano!", "Pode falar, truta!")),
+    Personality("gaucho", "Gaúcho", ("Mas bah, tchê!", "Bah, tchê!", "Olha só, tchê!", "Bah, guri!"), ("bagual velho", "tchê", "guri", "meu velho"),
+                ("Fala, tchê, que te escuto!", "Bah, pode falar, guri!", "Manda ver, bagual velho!", "Tô na escuta, tchê!")),
+    Personality("nordestino", "Nordestino", ("Oxente!", "Vixe!", "Eita, visse!", "Ôxe, meu rei!"), ("meu rei", "visse", "cabra bom", "meu fi"),
+                ("Fala, meu rei, tô ouvindo!", "Oxente, pode falar, visse!", "Diz aí, cabra bom!", "Pode falar, meu fi!")),
+    Personality("mineiro", "Mineiro", ("Uai!", "Ô sô!", "Nossa, sô!", "Ô trem bão!"), ("sô", "uai", "gente", "meu povo"),
+                ("Fala, sô, que eu tô ouvindo!", "Uai, pode falar!", "Manda o trem, sô!", "Diz aí, uai!")),
 )
 _BY_ID = {p.id: p for p in PERSONALITIES}
 
@@ -47,6 +53,12 @@ def valid(personality_id: str) -> bool:
 def normalize(personality_id: str | None) -> str:
     """The id when it is a known personality, otherwise the default (an unknown value in the environment never breaks the engine)."""
     return personality_id if personality_id in _BY_ID else DEFAULT
+
+
+def listening_prompts(personality_id: str) -> tuple[str, ...]:
+    """The "I am listening" phrases of a personality; empty for the default, which uses the standard ones (shared/persona.py)."""
+    personality = _BY_ID.get(personality_id)
+    return personality.listening if personality else ()
 
 
 def options() -> list[dict[str, str]]:
