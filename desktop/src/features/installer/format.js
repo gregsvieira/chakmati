@@ -7,6 +7,7 @@ function formatSize(mb) {
 const LEVEL_TEXT = {
   unsupported: 'Este computador não atende o mínimo',
   light: 'Atende o mínimo (modelo leve)',
+  compact: 'Atende (modelo compacto)',
   standard: 'Atende (modelo intermediário)',
   full: 'Atende com folga (modelo completo)',
 };
