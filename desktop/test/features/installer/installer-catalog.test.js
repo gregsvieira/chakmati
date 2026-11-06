@@ -57,5 +57,6 @@ test('sizes and levels read naturally in Portuguese', () => {
   assert.equal(formatSize(6600), '6,6 GB');
   assert.equal(levelText('unsupported'), 'Este computador não atende o mínimo');
   assert.match(levelText('light'), /mínimo/);
+  assert.match(levelText('compact'), /compacto/);
   assert.match(levelText('full'), /folga/);
 });

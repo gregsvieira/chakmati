@@ -5,9 +5,10 @@
 const { REASONING } = require('./catalog');
 const LIMITS = Object.freeze({
   minRamGb: 3.5,
+  compactRamGb: 5.5, // a "6 GB" computer reports about 5.7
   standardRamGb: 7.5,
   fullRamGb: 15,
-  minFreeDiskGb: Object.freeze({ light: 6, standard: 10, full: 15 }),
+  minFreeDiskGb: Object.freeze({ light: 6, compact: 8, standard: 10, full: 15 }),
   diskMarginGb: 2,
   talkCores: 6,
   whatsappFreeDiskGb: 20,
@@ -15,14 +16,15 @@ const LIMITS = Object.freeze({
 
 const SUPPORTED_PLATFORMS = ['darwin', 'win32', 'linux'];
 const SUPPORTED_ARCH = ['x64', 'arm64'];
-const MODEL_BY_LEVEL = Object.freeze({ light: 'qwen3.5:0.8b', standard: 'qwen3.5:4b', full: 'qwen3.5:latest' });
-const LEVELS_DOWN = ['full', 'standard', 'light'];
+const MODEL_BY_LEVEL = Object.freeze({ light: 'qwen3.5:0.8b', compact: 'granite4:3b', standard: 'qwen3.5:4b', full: 'qwen3.5:latest' });
+const LEVELS_DOWN = ['full', 'standard', 'compact', 'light'];
 
 const LIGHT_NOTE = 'Com pouca memória o Chakmati usa um modelo leve: conversa e pesquisa funcionam bem, mas pedidos no computador (criar pastas e arquivos) podem falhar mais.';
 
 function ramLevel(ramGb) {
   if (ramGb >= LIMITS.fullRamGb) return 'full';
   if (ramGb >= LIMITS.standardRamGb) return 'standard';
+  if (ramGb >= LIMITS.compactRamGb) return 'compact';
   return 'light';
 }
 

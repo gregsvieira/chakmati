@@ -6,6 +6,7 @@ const CORE = Object.freeze({ diskMb: 1500, ramMb: 400 }); // the app and the eng
 const model = (id, label, diskMb) => Object.freeze({ id, label, diskMb, ramMb: diskMb + 500 });
 const MODELS = Object.freeze([
   model('qwen3.5:0.8b', 'Modelo leve', 1200),
+  model('granite4:3b', 'Modelo compacto', 2100), // 3B, Apache 2.0, 24/24 on scripts/bench_loose_requests.py (qwen3.5:0.8b: 22/24)
   model('qwen3.5:4b', 'Modelo intermediário', 4000),
   model('qwen3.5:latest', 'Modelo completo', 6600),
 ]);

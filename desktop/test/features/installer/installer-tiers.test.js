@@ -5,12 +5,15 @@ const { verdict, suggestions, MODEL_BY_LEVEL, LIMITS } = require('../../../src/f
 const pc = (over = {}) => ({ platform: 'darwin', arch: 'arm64', osRelease: '25.0', ramGb: 15.6, freeDiskGb: 50, cores: 8, ...over });
 
 test('the model ladder is the measured one', () => {
-  assert.deepEqual(MODEL_BY_LEVEL, { light: 'qwen3.5:0.8b', standard: 'qwen3.5:4b', full: 'qwen3.5:latest' });
+  assert.deepEqual(MODEL_BY_LEVEL, { light: 'qwen3.5:0.8b', compact: 'granite4:3b', standard: 'qwen3.5:4b', full: 'qwen3.5:latest' });
 });
 
 test('RAM as the system reports it picks the level (a "4 GB" PC reports about 3.7)', () => {
   assert.equal(verdict(pc({ ramGb: 3.7 })).level, 'light');
   assert.equal(verdict(pc({ ramGb: 3.7 })).model, 'qwen3.5:0.8b');
+  assert.equal(verdict(pc({ ramGb: 5.7 })).level, 'compact');
+  assert.equal(verdict(pc({ ramGb: 5.7 })).model, 'granite4:3b');
+  assert.equal(verdict(pc({ ramGb: 5.4 })).level, 'light');
   assert.equal(verdict(pc({ ramGb: 7.7 })).level, 'standard');
   assert.equal(verdict(pc({ ramGb: 7.7 })).model, 'qwen3.5:4b');
   assert.equal(verdict(pc({ ramGb: 15.6 })).level, 'full');
@@ -35,7 +38,8 @@ test('below the minimum it says what is missing and picks no model', () => {
 
 test('little free disk steps the model down; it never picks one that does not fit', () => {
   assert.equal(verdict(pc({ ramGb: 15.6, freeDiskGb: 12 })).level, 'standard');
-  assert.equal(verdict(pc({ ramGb: 15.6, freeDiskGb: 8 })).level, 'light');
+  assert.equal(verdict(pc({ ramGb: 15.6, freeDiskGb: 8 })).level, 'compact');
+  assert.equal(verdict(pc({ ramGb: 15.6, freeDiskGb: 7 })).level, 'light');
   assert.ok(verdict(pc({ ramGb: 15.6, freeDiskGb: 12 })).notes.some((n) => /espaço/i.test(n)));
 });
 
