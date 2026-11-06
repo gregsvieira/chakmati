@@ -32,6 +32,7 @@ const DEFAULTS = Object.freeze({
   whatsapp: false,        // integrations the app switches on when it starts the engine itself
   calendar: false,
   research: true,         // answer questions that need the web by searching it
+  home: false,            // the smart house and the Alexa's music, through Home Assistant (connected from Ajustes)
   chatModel: 'qwen3.5:latest', // the Ollama model the engine chats with (the setup wizard picks the one that fits this computer)
 });
 
@@ -53,6 +54,7 @@ function normalize(raw) {
   if (typeof r.whatsapp === 'boolean') s.whatsapp = r.whatsapp;
   if (typeof r.calendar === 'boolean') s.calendar = r.calendar;
   if (typeof r.research === 'boolean') s.research = r.research;
+  if (typeof r.home === 'boolean') s.home = r.home;
   if (typeof r.chatModel === 'string' && /^[a-z0-9][a-z0-9._:-]{0,63}$/i.test(r.chatModel)) s.chatModel = r.chatModel;
   if (SIDES.includes(r.bubbleSide)) s.bubbleSide = r.bubbleSide;
   if (MOODS.includes(r.mood)) s.mood = r.mood;
@@ -87,6 +89,7 @@ function engineEnv(settings, { searxng = false } = {}) {
     CHAKMATI_RESEARCH_BACKEND: !settings.research ? 'off' : searxng ? 'searxng' : 'ddg',
     CHAKMATI_WHATSAPP_BACKEND: settings.whatsapp ? 'openwa' : 'off',
     CHAKMATI_CALENDAR_BACKEND: settings.calendar ? 'auto' : 'off',
+    CHAKMATI_HOME_BACKEND: settings.home ? 'homeassistant' : 'off',
     CHAKMATI_RESEARCH_SCORER: settings.laya ? 'laya' : 'keepall',
   };
 }

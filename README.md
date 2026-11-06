@@ -201,7 +201,12 @@ normally give it). Nothing else is changed; the texts are constants in that file
 
 "próxima música", "pausa a música da sala", "volta a música", "aumenta o volume", "volume em 30", "o que está tocando na sala?" change what a speaker plays. The Alexa has no public API of its own, so the
 Chakmati talks to **Home Assistant**, where each Echo shows up as a `media_player` (with the community integration *Alexa Media Player*, installed from HACS; it is unofficial and logs in with your Amazon account).
-Connect it once: `CHAKMATI_HOME_BACKEND=homeassistant`, `CHAKMATI_HOME_URL=http://homeassistant.local:8123` and a long-lived access token in `~/.lite-agent/home_token.txt` (`CHAKMATI_HOME_TOKEN_FILE`).
+**Connecting is one click, with nothing to copy** (Ajustes > Integrações > "Casa inteligente e Alexa", like the WhatsApp one; the setup wizard also offers it and points to this): the switch turns the house on, "Conectar ao Home Assistant"
+finds it on the network (`homeassistant.local`), opens ITS login page in the browser, and the person only taps "Aprovar". It is Home Assistant's own sign-in (the one its phone app uses): the engine receives a one-time code, exchanges it for tokens
+and keeps them in `~/.lite-agent/home_auth.json` (only the person's user can read it); the access token lasts 30 minutes and is renewed by itself, and it works at once, with no restart. If it is not found, an address field appears ("192.168.0.10").
+Only addresses of the own network are accepted. Ajustes then says what it can see ("Conectado. Achei: Echo Dot da sala") or what is missing, and has "Desconectar". The older way still works: `CHAKMATI_HOME_BACKEND=homeassistant`,
+`CHAKMATI_HOME_URL` and a long-lived token in `~/.lite-agent/home_token.txt`.
+What cannot be automated is inside Home Assistant itself: having one running and adding the Alexa to it (the *Alexa Media Player* integration, with the Amazon login). Ajustes says so when it sees no speaker, with a link.
 The commands are read **by rules, not by the model** (`features/home/rules.py`): instant, and a small model cannot get "pausa" wrong. With no device named, the one that is playing is used (the only one, if just one exists;
 it asks "Em qual aparelho?" when it is not clear), and "... da sala" / "... da cozinha" picks one by name. Music never asks for approval (it does not open the house); the volume is limited to 0-100%.
 "toque uma música do Pelé" (choosing a song) is not supported yet: only controlling what is playing.
