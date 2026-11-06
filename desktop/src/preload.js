@@ -14,8 +14,8 @@ contextBridge.exposeInMainWorld('assistant', {
   voice: { synthesize: (text, speed) => ipcRenderer.invoke('voice:synthesize', text, speed) },
   installer: {
     scan: () => ipcRenderer.invoke('installer:scan'),
-    plan: (selected) => ipcRenderer.invoke('installer:plan', selected),
-    run: (selected) => ipcRenderer.invoke('installer:run', selected),
+    plan: (selected, profile) => ipcRenderer.invoke('installer:plan', selected, profile),
+    run: (selected, profile) => ipcRenderer.invoke('installer:run', selected, profile),
     ollamaPage: () => ipcRenderer.invoke('installer:ollama-page'),
     onProgress: (cb) => listen('installer:progress', cb),
     finish: () => send('installer:finish'),

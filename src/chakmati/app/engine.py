@@ -10,6 +10,7 @@ from chakmati.features.automations.confirm import verdict
 from chakmati.features.chat import patriot
 from chakmati.features.chat.canned import canned_answer
 from chakmati.shared import personality as personalities
+from chakmati.shared import pronouns as pronoun_sets
 from chakmati.shared.persona import AWAKE_SECONDS, PERSONA, wake_reply
 from chakmati.shared.timeguard import calendar_facts, needs_today, needs_web, today_line
 from chakmati.shared.gate.base import Gate, Route
@@ -104,12 +105,14 @@ class Engine:
         computer_service=None,
         browser_agent=None,
         personality: str = personalities.DEFAULT,
+        pronouns: str = pronoun_sets.DEFAULT,
         rng: random.Random | None = None,
         typing_delay: float = 0.012,
         now: Callable[[], float] = time.time,
         clock: Callable[[], datetime] = lambda: datetime.now().astimezone(),
     ):
         self._personality = personalities.normalize(personality)  # the regional way of speaking added to short chat answers (shared/personality.py)
+        self._pronouns = pronoun_sets.normalize(pronouns)  # how the person is addressed: picks the words code adds, and one line for the model
         self._rng = rng or random.Random()
         self._typing_delay = typing_delay  # seconds between the pieces of a fixed answer: it is typed out, not dropped whole
         self._now = now
@@ -141,8 +144,26 @@ class Engine:
         self._personality = personality_id
         return True
 
+    @property
+    def pronouns(self) -> str:
+        return self._pronouns
+
+    def set_pronouns(self, pronouns_id: str) -> bool:
+        """Changes how the person is addressed at once; False, and nothing changes, for an unknown one."""
+        if not pronoun_sets.valid(pronouns_id):
+            return False
+        self._pronouns = pronouns_id
+        return True
+
     def _flavored(self, answer: str) -> str:
-        return personalities.flavor(answer, self._personality, self._rng)
+        return personalities.flavor(answer, self._personality, self._rng, self._pronouns)
+
+    def _msgs(self, route: Route, text: str, today: str | None = None, offline: bool = False) -> list[dict[str, str]]:
+        """The model's messages, plus (only when the person said their pronouns) the one line that tells it how to address them."""
+        messages = _messages(route, text, today, offline)
+        if line := pronoun_sets.prompt_line(self._pronouns):
+            messages[0]["content"] += f" {line}"
+        return messages
 
     async def _flavored_stream(self, deltas: AsyncIterator[str]) -> AsyncIterator[str]:
         """The model's pieces as they come, except that a short answer is held until it is complete, so the opening and closing can go around it
@@ -188,7 +209,7 @@ class Engine:
         return max(0.0, self._awake_until - self._now())
 
     def _wake(self, text: str) -> str | None:
-        greeting = wake_reply(text, prompts=personalities.listening_prompts(self._personality))
+        greeting = wake_reply(text, prompts=personalities.listening_prompts(self._personality, self._pronouns))
         self._awake_until = self._now() + AWAKE_SECONDS if greeting else 0.0  # any other message is the command: waiting ends
         return greeting
 
@@ -280,10 +301,10 @@ class Engine:
         for part in answer.parts:
             if part == patriot.MODEL:
                 if hasattr(self._llm, "stream_chat"):
-                    async for delta in self._llm.stream_chat(_messages(Route.CHAT, text)):  # type: ignore[attr-defined]
+                    async for delta in self._llm.stream_chat(self._msgs(Route.CHAT, text)):  # type: ignore[attr-defined]
                         yield delta
                 else:
-                    yield await self._llm.chat(_messages(Route.CHAT, text))
+                    yield await self._llm.chat(self._msgs(Route.CHAT, text))
                 continue
             for piece in re.findall(r"\S+\s*|\s+", part):
                 yield piece
@@ -298,7 +319,7 @@ class Engine:
             return Reply("answer", Route.CHAT, text="".join([piece async for piece in self._patriotic(text, patriotic)]).strip())
         route, today, offline = await self._plan(text)
         if not route.is_slow:
-            answer = await self._llm.chat(_messages(route, text, today, offline))
+            answer = await self._llm.chat(self._msgs(route, text, today, offline))
             return Reply("answer", route, text=self._flavored(answer))
         job_id = self._store.create(route.value, text)
         self._notify_job()
@@ -330,7 +351,7 @@ class Engine:
         if self._researcher is not None and job.route == Route.RESEARCH.value:
             return (await self._researcher.answer(job.prompt, today=today, now=now)).render()
         offline = job.route == Route.RESEARCH.value  # a research job with search switched off
-        return await self._llm.chat(_messages(Route(job.route), job.prompt, today if offline else None, offline))
+        return await self._llm.chat(self._msgs(Route(job.route), job.prompt, today if offline else None, offline))
 
     async def handle_stream(self, text: str) -> AsyncIterator[dict]:
         """Like `handle`, as a sequence of events: route, then either the reply as delta events
@@ -357,7 +378,7 @@ class Engine:
             yield {"type": "job", "job_id": job_id, "route": route.value}
             return
         parts: list[str] = []
-        async for delta in self._flavored_stream(self._llm.stream_chat(_messages(route, text, today, offline))):  # type: ignore[attr-defined]
+        async for delta in self._flavored_stream(self._llm.stream_chat(self._msgs(route, text, today, offline))):  # type: ignore[attr-defined]
             parts.append(delta)
             yield {"type": "delta", "text": delta}
         yield {"type": "done", "result": "".join(parts)}
@@ -397,5 +418,5 @@ class Engine:
                 yield delta
             return
         offline = job.route == Route.RESEARCH.value
-        async for delta in self._llm.stream_chat(_messages(Route(job.route), job.prompt, today if offline else None, offline)):  # type: ignore[attr-defined]
+        async for delta in self._llm.stream_chat(self._msgs(Route(job.route), job.prompt, today if offline else None, offline)):  # type: ignore[attr-defined]
             yield delta

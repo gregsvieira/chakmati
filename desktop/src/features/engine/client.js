@@ -139,6 +139,12 @@ class EngineClient {
     return (await this._request('/personality', { method: 'PUT', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify({ id }) })).json();
   }
 
+  // How the person is addressed (ele/dele, ela/dela, elu/delu, or none), changed in the running engine.
+  async setPronouns(id) {
+    if (typeof id !== 'string' || !/^[a-z]{3,20}$/.test(id)) throw new Error('invalid pronouns');
+    return (await this._request('/pronouns', { method: 'PUT', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify({ id }) })).json();
+  }
+
   async _decide(id, verb) {
     if (!ACTION_ID.test(id)) throw new Error('invalid action id');
     return (await this._request(`/actions/${id}/${verb}`, { method: 'POST', headers: { 'X-LiteAgent-UI': '1' } })).json();

@@ -29,13 +29,35 @@
       <div class="actions"><button id="to-options" type="button" class="primary">Continuar</button></div>
     </section>
 
+    <section id="s-profile" hidden>
+      <h2>Como o Chakmati fala com você</h2>
+      <p class="muted">Isso não baixa nada e você muda quando quiser em Ajustes.</p>
+      <fieldset class="card">
+        <legend>Personalidade padrão</legend>
+        <div id="profile-personality" class="choices"></div>
+      </fieldset>
+      <fieldset class="card">
+        <legend>Instalar também (aparecem em Ajustes)</legend>
+        <div id="profile-more" class="choices"></div>
+      </fieldset>
+      <fieldset class="card">
+        <legend>Seus pronomes</legend>
+        <div id="profile-pronouns" class="choices"></div>
+        <p class="muted">É como ele fala com você e sobre você (“obrigado”, “obrigada”). Sem informar, ele evita palavras que marcam gênero.</p>
+      </fieldset>
+      <div class="actions">
+        <button id="back-check2" type="button">Voltar</button>
+        <button id="to-options2" type="button" class="primary">Continuar</button>
+      </div>
+    </section>
+
     <section id="s-options" hidden>
       <h2>O que instalar além do básico</h2>
       <p class="muted">Nada vem marcado. O básico (conversar, pesquisar) já funciona; marque só o que quiser, para gastar menos memória e espaço.</p>
       <p id="model-line" class="card"></p>
       <ul id="options" class="options"></ul>
       <div class="actions">
-        <button id="back-check" type="button">Voltar</button>
+        <button id="back-profile" type="button">Voltar</button>
         <button id="to-summary" type="button" class="primary">Continuar</button>
       </div>
     </section>

@@ -206,7 +206,13 @@ and it can bend a fact (a date, a number). Here the model's text is never touche
 every job (calendar, WhatsApp, computer, browser...) stay exactly as they are. Streaming holds a short answer until it is complete and then types it out; a long one streams untouched from the
 first word. It is changed in the running engine (`PUT /personality`, app window only; `GET /personality` lists the options), starts from `CHAKMATI_PERSONALITY`, and the desktop re-sends it if the engine restarts.
 Each personality also has its own "I am listening" phrases for when it is called by name ("Ôh, Xácmáti": e.g. gaúcho "Fala, tchê, que te escuto!", mineiro "Uai, pode falar!"); the Padrão keeps the standard four ("Fala paizão!"...).
-A new personality is one `Personality(...)` entry in `PERSONALITIES` (openings, closings, listening phrases) and its id in `desktop/src/features/settings/settings.js`.
+A new personality is one `Personality(...)` entry in `PERSONALITIES` (openings, closings, listening phrases, each as `Lines(shared, ele, ela, elu)`) and its id in `desktop/src/features/settings/settings.js`.
+
+**Pronouns** (Ajustes > Jeito de falar, the setup wizard, or "meus pronomes são ela/dela"): ele/dele, ela/dela, elu/delu, or "prefiro não informar". They do two things. The words code adds agree with them
+("guri" / "guria" / "amigue"; with no pronouns only words that fit anyone, like "tchê"). And the model's own text is steered by ONE line added to the system prompt (`shared/pronouns.py`: "use o feminino
+(\"obrigada\")"), only when the person said their pronouns: someone who did not say gets nothing extra, so no tokens are spent and no gender is assumed. Changed in the running engine (`PUT /pronouns`, app window only),
+starts from `CHAKMATI_PRONOUNS`. **In the setup wizard** a screen "Como o Chakmati fala com você" picks the default personality, the others to install too (they appear in Ajustes; Padrão and the one in use always stay,
+and an upgrade keeps all of them) and the pronouns. It downloads nothing, so it asks for no approval.
 
 ### The bell and the face
 

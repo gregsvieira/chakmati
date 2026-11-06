@@ -79,6 +79,10 @@ summary { cursor: pointer; color: var(--muted); font-size: 13px; width: max-cont
 .switch-text { font-weight: 600; }
 .switch-text small { display: block; margin-top: 2px; color: var(--muted); font-weight: 400; font-size: 12.5px; }
 .field { display: grid; gap: 4px; font-weight: 600; }
+fieldset.field { border: 0; padding: 0; margin: 0; min-width: 0; }
+fieldset.field legend { padding: 0; margin-bottom: 4px; }
+.check-row { display: flex; flex-wrap: wrap; gap: 6px 16px; font-weight: 400; }
+.check-row label { display: flex; gap: 6px; align-items: center; }
 .field select { height: 32px; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface-2); color: var(--text); padding: 0 8px; font: inherit; font-weight: 400; }
 .hint { margin: 0; color: var(--muted); font-size: 12.5px; }
 

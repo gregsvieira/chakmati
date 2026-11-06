@@ -37,6 +37,9 @@
       [/\bcarioc\w*\b/, 'carioca', 'carioca'], [/\bpaulist\w*\b/, 'paulista', 'paulista'], [/\bgauch\w*\b|\bsulista\b/, 'gaucho', 'gaúcha'],
       [/\bnordestin\w*\b/, 'nordestino', 'nordestina'], [/\bmineir\w*\b/, 'mineiro', 'mineira'],
       [/\b(padrao|normal|neutr\w*|sem sotaque)\b/, 'padrao', 'padrão']] },
+    { key: 'pronouns', re: /\bpronomes?\b/, name: 'os pronomes', options: [
+      [/\belu\b/, 'elu', 'elu/delu'], [/\bela\b/, 'ela', 'ela/dela'], [/\bele\b/, 'ele', 'ele/dele'],
+      [/\b(nao informar|nenhum|sem pronome|prefiro nao)\b/, 'none', 'sem informar']] },
     { key: 'voiceSpeed', re: /\b(velocidade|voz)\b/, name: 'a velocidade da voz', options: [
       [/\b(mais rapid[ao]|rapid[ao]|acelera\w*)\b/, 'fast', 'mais rápida'], [/\b(normal|mais devagar|devagar|lent[ao])\b/, 'normal', 'normal']] },
     { key: 'micSource', re: /\bmicrofone\b/, name: 'o microfone', options: [

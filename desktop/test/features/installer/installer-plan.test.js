@@ -121,3 +121,35 @@ test('asking for it on a computer without the memory is refused, not silently dr
 test('the option exists in the catalog on every system, with a size that depends on the computer', () => {
   assert.ok(optionsFor('win32').some((o) => o.id === 'reasoning' && o.dynamic));
 });
+
+const profile = { personality: 'gaucho', personalities: ['mineiro', 'carioca'], pronouns: 'ela' };
+
+test('without a profile the plan is only what was ticked (the wizard always sends one)', () => {
+  assert.equal(buildPlan({ hw: pc(), verdict: verdict(pc()) }).steps.some((s) => s.id === 'profile'), false);
+});
+
+test('the profile is one free step after the model: the default personality, the ones to install too and the pronouns', () => {
+  const p = buildPlan({ hw: pc(), verdict: verdict(pc()), profile });
+  assert.deepEqual(p.steps.map((s) => s.id), ['ollama', 'model', 'profile']);
+  const step = p.steps[2];
+  assert.equal(step.kind, 'setting');
+  assert.equal(step.approval, undefined);   // nothing is downloaded, so nothing to approve
+  assert.equal(step.required, false);
+  assert.deepEqual(step.settings, { personality: 'gaucho', personalities: ['padrao', 'carioca', 'gaucho', 'mineiro'], pronouns: 'ela' });
+  assert.match(step.label, /Gaúcho/);
+  assert.match(step.label, /Carioca, Mineiro/);
+  assert.match(step.label, /ela\/dela/);
+  assert.deepEqual(p.totals, { diskMb: 1500 + 6600, ramMb: 400 + 7100 });   // and it costs nothing
+});
+
+test('the default choices still say what was chosen', () => {
+  const p = buildPlan({ hw: pc(), verdict: verdict(pc()), profile: { personality: 'padrao', personalities: [], pronouns: 'none' } });
+  assert.deepEqual(p.steps[2].settings, { personality: 'padrao', personalities: ['padrao'], pronouns: 'none' });
+  assert.match(p.steps[2].label, /Padrão.*Prefiro não informar/);
+});
+
+test('an unknown personality, pronouns or list entry is refused, never written', () => {
+  for (const bad of [{ personality: 'klingon' }, { pronouns: 'eles' }, { personalities: ['klingon'] }, { personalities: 'gaucho' }]) {
+    assert.throws(() => buildPlan({ hw: pc(), verdict: verdict(pc()), profile: { ...profile, ...bad } }));
+  }
+});
