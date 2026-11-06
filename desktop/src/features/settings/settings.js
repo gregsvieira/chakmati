@@ -11,7 +11,8 @@ const PRONOUNS = ['none', 'ele', 'ela', 'elu']; // how the person is addressed; 
 const PRONOUN_NAMES = Object.freeze({ none: 'Prefiro não informar', ele: 'ele/dele', ela: 'ela/dela', elu: 'elu/delu' });
 const DEFAULTS = Object.freeze({
   protect: true,          // ask the OS to leave the windows out of screen sharing and recordings (best effort)
-  still: false,           // true = no animations: Chakmati stays still
+  still: true,            // true = no animations: Chakmati stays still (the default: animations cost about 70 MB of memory; the setup wizard offers them)
+  glass: false,           // the "liquid glass" look of the panel (blur of what is behind it); off = flat panes, about 80 MB of memory less
   hear: false,            // "Ouvir o Chakmati": answers and notices are spoken aloud
   enhancedVoice: false,   // false = the voice of the operating system; true = the small neural voice (downloaded when turned on)
   voiceSpeed: 'normal',   // 'normal' | 'fast' (enhanced voice only)
@@ -50,6 +51,7 @@ function normalize(raw) {
   if (r.voiceSpeed === 'normal' || r.voiceSpeed === 'fast') s.voiceSpeed = r.voiceSpeed;
   if (r.micSource === 'computer' || r.micSource === 'system') s.micSource = r.micSource;
   if (typeof r.still === 'boolean') s.still = r.still;
+  if (typeof r.glass === 'boolean') s.glass = r.glass;
   if (typeof r.whatsapp === 'boolean') s.whatsapp = r.whatsapp;
   if (typeof r.calendar === 'boolean') s.calendar = r.calendar;
   if (typeof r.research === 'boolean') s.research = r.research;

@@ -59,13 +59,14 @@ function reasoningFor(hw) {
 
 // Only labels: nothing is ever pre-selected from this.
 function suggestions(hw, level) {
-  if (level === 'unsupported') return { reasoning: false, voice: false, talk: false, whatsapp: false, animations: false, hideShare: false };
+  if (level === 'unsupported') return { reasoning: false, voice: false, talk: false, whatsapp: false, animations: false, glass: false, hideShare: false };
   return {
     reasoning: reasoningFor(hw) !== null,
     voice: hw.ramGb >= LIMITS.standardRamGb,
     talk: hw.ramGb >= LIMITS.fullRamGb && hw.cores >= LIMITS.talkCores,
     whatsapp: hw.ramGb >= LIMITS.fullRamGb && hw.freeDiskGb !== null && hw.freeDiskGb >= LIMITS.whatsappFreeDiskGb,
-    animations: level !== 'light',
+    animations: level === 'standard' || level === 'full', // they cost memory: only suggested where there is plenty
+    glass: level === 'standard' || level === 'full',
     hideShare: true,
   };
 }

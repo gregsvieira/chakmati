@@ -47,6 +47,7 @@ function updateSetting(key, value) {
   else if (key === 'autoSend' && typeof value === 'boolean') { ctx.settings.autoSend = value; engineService.autoApproveNew(); }
   else if (key === 'still' && typeof value === 'boolean') { ctx.settings.still = value; sendTo(ctx.widgetWin, 'widget:still', value); }
   else if (key === 'mood' && settingsLib.MOODS.includes(value)) ctx.settings.mood = value;
+  else if (key === 'glass' && typeof value === 'boolean') { ctx.settings.glass = value; panelWindow.applyGlass(); }
   else if (key === 'personality' && settingsLib.PERSONALITIES.includes(value)) {
     ctx.settings.personality = value; // choosing one that is not installed installs it (it costs nothing: it is a few lines of text)
     ctx.settings = settingsLib.normalize(ctx.settings);

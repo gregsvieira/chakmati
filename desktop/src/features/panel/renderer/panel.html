@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="panel.css">
   <link rel="stylesheet" href="glass.css">
 </head>
-<body>
+<body data-flat data-still>   <!-- the defaults: no glass, no animations, until the settings arrive -->
   <div id="panel" data-screen="main">
     <!-- fixed header: back arrow + the title of the page you are on -->
     <header id="bar">
@@ -168,6 +168,9 @@
               <option value="auto">Automático</option><option value="top">Em cima</option><option value="bottom">Embaixo</option>
               <option value="left">À esquerda</option><option value="right">À direita</option>
             </select></label>
+          <label class="switch"><input type="checkbox" id="set-glass"><span class="track"></span>
+            <span class="switch-text">Efeito de vidro
+              <small>O painel fica translúcido, com o fundo desfocado. Desligado, usa cerca de 80 MB a menos de memória.</small></span></label>
           <label class="switch"><input type="checkbox" id="set-still"><span class="track"></span>
             <span class="switch-text">Desativar animações
               <small>O Chakmati fica parado: sem piscar, sem pulinho e sem a boca mexendo.</small></span></label>

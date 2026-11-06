@@ -60,3 +60,13 @@ test('sizes and levels read naturally in Portuguese', () => {
   assert.match(levelText('compact'), /compacto/);
   assert.match(levelText('full'), /folga/);
 });
+
+test('the animations and the glass are two optional items that cost memory (measured), each written off when left out', () => {
+  const animations = OPTIONS.find((o) => o.id === 'animations');
+  const glass = OPTIONS.find((o) => o.id === 'glass');
+  assert.deepEqual(animations.settings, { still: false });
+  assert.deepEqual(glass.settings, { glass: true });
+  assert.deepEqual(glass.offSettings, { glass: false });
+  assert.ok(animations.ramMb > 0 && glass.ramMb > 0, 'they are not free: the wizard says how much memory they take');
+  assert.equal(glass.diskMb, 0);
+});

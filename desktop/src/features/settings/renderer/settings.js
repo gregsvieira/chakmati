@@ -41,6 +41,8 @@
     P.syncAmbient();
     P.updateHint();
     document.body.toggleAttribute('data-still', !!P.state.settings.still);
+    $('set-glass').checked = !!P.state.settings.glass;
+    document.body.toggleAttribute('data-flat', !P.state.settings.glass);   // glass off: flat panes (the CSS drops every blur)
     $('set-whatsapp').checked = !!P.state.settings.whatsapp;
     $('set-calendar').checked = !!P.state.settings.calendar;
     $('set-research').checked = !!P.state.settings.research;
@@ -117,6 +119,7 @@
     $('set-talk').addEventListener('change', (e) => api.setSetting('talk', e.target.checked));
 
     $('set-still').addEventListener('change', (e) => api.setSetting('still', e.target.checked));
+    $('set-glass').addEventListener('change', (e) => api.setSetting('glass', e.target.checked));
     $('set-mood').addEventListener('change', (e) => api.setSetting('mood', e.target.value));
     $('set-personality').addEventListener('change', (e) => api.setSetting('personality', e.target.value));
     $('set-pronouns').addEventListener('change', (e) => api.setSetting('pronouns', e.target.value));
