@@ -29,8 +29,9 @@ class HomeAssistantClient:
             if not valid_entity_id(entity_id):
                 continue
             attrs = item.get("attributes") or {}
+            playing = " - ".join(str(attrs[k]) for k in ("media_artist", "media_title") if attrs.get(k)) if entity_id.startswith("media_player.") else ""
             out.append(Entity(entity_id, str(attrs.get("friendly_name") or entity_id), entity_id.split(".")[0], str(item.get("state", "")),
-                              str(attrs.get("device_class") or ""), str(attrs.get("unit_of_measurement") or "")))
+                              str(attrs.get("device_class") or ""), str(attrs.get("unit_of_measurement") or ""), playing[:120]))
         return [e for e in out if e.domain in ALLOWED_DOMAINS]
 
     async def call(self, domain: str, service: str, data: dict) -> None:

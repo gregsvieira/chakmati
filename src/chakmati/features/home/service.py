@@ -40,6 +40,17 @@ class HomeService(ApprovalService):
         best = [e for s, e in scored if s == scored[0][0]]
         return (best[0], []) if len(best) == 1 else (None, best[:5])
 
+    @staticmethod
+    def default_player(entities: list[Entity]) -> tuple[Entity | None, list[Entity]]:
+        """The music player a request without a device means: the only one playing, or the only one there is. (None, candidates) when it is not clear."""
+        players = [e for e in entities if e.domain == "media_player"]
+        playing = [e for e in players if e.state == "playing"]
+        if len(playing) == 1:
+            return playing[0], []
+        if not playing and len(players) == 1:
+            return players[0], []
+        return None, (playing or players)[:5]
+
     def _rate(self) -> None:
         cutoff = self._now() - 60
         while self._calls and self._calls[0] < cutoff:

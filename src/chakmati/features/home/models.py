@@ -5,9 +5,10 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
-ALLOWED_DOMAINS = ("light", "switch", "fan", "cover", "lock", "climate", "scene", "input_boolean")
+ALLOWED_DOMAINS = ("light", "switch", "fan", "cover", "lock", "climate", "scene", "input_boolean", "media_player")  # media_player: speakers and TVs, Alexa among them (Alexa Media Player in Home Assistant)
 SENSITIVE_COVERS = ("garage", "door", "gate")
-ACTIONS = ("on", "off", "toggle", "lock", "unlock", "open", "close", "set_temperature", "brightness", "scene", "status", "list")
+MEDIA_ACTIONS = ("play", "pause", "stop", "next", "previous", "volume_up", "volume_down", "volume")
+ACTIONS = ("on", "off", "toggle", "lock", "unlock", "open", "close", "set_temperature", "brightness", "scene", "status", "list", *MEDIA_ACTIONS)
 _ID = re.compile(r"^[a-z_]+\.[a-z0-9_]+$")
 
 
@@ -23,6 +24,7 @@ class Entity:
     state: str
     device_class: str = ""
     unit: str = ""
+    detail: str = ""  # what a media player is playing ("Artista - Título")
 
     def label(self) -> str:
         return self.name
@@ -81,4 +83,16 @@ def plan(action: str, entity: Entity, value=None) -> Command:
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not 1 <= value <= 100:
             raise HomeError("o brilho deve ficar entre 1 e 100%")
         return cmd("turn_on", {"brightness_pct": int(value)}, f"Colocar {name} com {int(value)}% de brilho")
+    if domain == "media_player" and action in MEDIA_ACTIONS:
+        simple = {
+            "play": ("media_play", f"Tocar em {name}"), "pause": ("media_pause", f"Pausar {name}"), "stop": ("media_stop", f"Parar {name}"),
+            "next": ("media_next_track", f"Próxima música em {name}"), "previous": ("media_previous_track", f"Música anterior em {name}"),
+            "volume_up": ("volume_up", f"Aumentar o volume de {name}"), "volume_down": ("volume_down", f"Diminuir o volume de {name}"),
+        }
+        if action in simple:
+            service, text = simple[action]
+            return cmd(service, None, text)
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 100:
+            raise HomeError("o volume deve ficar entre 0 e 100%")
+        return cmd("volume_set", {"volume_level": round(value / 100, 2)}, f"Colocar o volume de {name} em {int(value)}%")
     raise HomeError(f"não dá para fazer isso com {name}")
