@@ -54,6 +54,6 @@ def is_wake(text: str) -> bool:
     return len(joined) >= 5 and (_similar(joined, "paizao") >= 0.85 or _is_name(joined))
 
 
-def wake_reply(text: str, choose: Callable[[Sequence[str]], str] = random.choice) -> str | None:
-    """One of the short "I am listening" phrases when `text` is a wake phrase, otherwise None."""
-    return choose(LISTENING_PROMPTS) if is_wake(text) else None
+def wake_reply(text: str, choose: Callable[[Sequence[str]], str] = random.choice, prompts: Sequence[str] = ()) -> str | None:
+    """One of the short "I am listening" phrases when `text` is a wake phrase, otherwise None. `prompts` are the ones of the chosen personality (none = the standard ones)."""
+    return choose(prompts or LISTENING_PROMPTS) if is_wake(text) else None

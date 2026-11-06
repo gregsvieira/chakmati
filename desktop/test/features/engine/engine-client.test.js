@@ -228,3 +228,15 @@ test('Parar asks the engine to stop the job, with the UI header, and only for a 
   await assert.rejects(() => c.cancelJob('../etc'), /invalid request/);
   assert.equal(calls.length, 1);
 });
+
+test('the personality is changed in the running engine with the UI header, and only with a well-formed id', async () => {
+  const { fetchImpl, calls } = recorder(() => json({ current: 'gaucho' }));
+  const client = new EngineClient({ baseUrl: 'http://127.0.0.1:8765', fetchImpl });
+  assert.deepEqual(await client.setPersonality('gaucho'), { current: 'gaucho' });
+  assert.equal(calls[0].url, 'http://127.0.0.1:8765/personality');
+  assert.equal(calls[0].init.method, 'PUT');
+  assert.equal(calls[0].init.headers['X-LiteAgent-UI'], '1');
+  assert.deepEqual(JSON.parse(calls[0].init.body), { id: 'gaucho' });
+  for (const bad of ['', 'Gaucho', '../x', 'a'.repeat(30), null]) await assert.rejects(client.setPersonality(bad), /invalid personality/);
+  assert.equal(calls.length, 1);
+});

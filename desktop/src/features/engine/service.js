@@ -40,11 +40,20 @@ async function syncStanding() {
   try { await ctx.engine.setStanding(want); ctx.state.overview.computer_standing = want; } catch { /* the next refresh tries again */ }
 }
 
+// The way of speaking is changed in the running engine (no restart); a restarted or foreign engine is told again when it disagrees.
+async function syncPersonality() {
+  const have = ctx.state.overview && ctx.state.overview.personality;
+  if (have === undefined) return; // an engine that predates personalities
+  if (have === ctx.settings.personality) return;
+  try { await ctx.engine.setPersonality(ctx.settings.personality); ctx.state.overview.personality = ctx.settings.personality; } catch { /* the next refresh tries again */ }
+}
+
 async function refreshOverview() {
   try {
     widgetMood.applyOverview(await ctx.engine.overview());
     ctx.state.engineUp = true;
     syncStanding();
+    syncPersonality();
   } catch {
     ctx.state.engineUp = false;
   }
@@ -149,4 +158,4 @@ async function restartEngine() {
   return startEngine();
 }
 
-Object.assign(module.exports, { projectRoot, refreshOverview, autoApproveNew, syncStanding, restartEngine, healthLoop, noticeLoop, startEngine });
+Object.assign(module.exports, { projectRoot, refreshOverview, autoApproveNew, syncStanding, syncPersonality, restartEngine, healthLoop, noticeLoop, startEngine });

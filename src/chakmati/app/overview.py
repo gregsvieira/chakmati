@@ -63,6 +63,7 @@ def router(engine: Engine, notices: NoticeBoard, calendar: CalendarService | Non
         result["home"] = {"enabled": home is not None}
         result["computer_standing"] = bool(getattr(computer, "standing", False))
         result["last_notice_id"] = notices.last_id
+        result["personality"] = engine.personality
         result["awake"] = engine.awake
         result["awake_for"] = round(engine.awake_for, 1)
         return result

@@ -68,7 +68,7 @@ function panelState() {
     describe: { ...widgetMood.currentDescription(), mood: ctx.settings.mood === 'auto' ? moodWithBell(widgetMood.currentDescription().mood, widgetMood.currentBell()) : widgetMood.effectiveMood(widgetMood.currentDescription().mood) },
     bell: widgetMood.currentBell(),
     notices: ctx.state.notices.slice(-20),
-    settings: { protect: ctx.settings.protect, masked: ctx.settings.masked, autoSend: ctx.settings.autoSend, autoRunSafe: ctx.settings.autoRunSafe, hear: ctx.settings.hear, talk: ctx.settings.talk, enhancedVoice: ctx.settings.enhancedVoice, voiceSpeed: ctx.settings.voiceSpeed, speakEmojis: ctx.settings.speakEmojis, micSource: ctx.settings.micSource, still: ctx.settings.still, bubbleSide: ctx.settings.bubbleSide, mood: ctx.settings.mood, whatsapp: ctx.settings.whatsapp, calendar: ctx.settings.calendar, research: ctx.settings.research },
+    settings: { protect: ctx.settings.protect, masked: ctx.settings.masked, autoSend: ctx.settings.autoSend, autoRunSafe: ctx.settings.autoRunSafe, hear: ctx.settings.hear, talk: ctx.settings.talk, enhancedVoice: ctx.settings.enhancedVoice, voiceSpeed: ctx.settings.voiceSpeed, speakEmojis: ctx.settings.speakEmojis, micSource: ctx.settings.micSource, still: ctx.settings.still, bubbleSide: ctx.settings.bubbleSide, mood: ctx.settings.mood, personality: ctx.settings.personality, whatsapp: ctx.settings.whatsapp, calendar: ctx.settings.calendar, research: ctx.settings.research },
     voice: ctx.state.voice,
     ownsEngine: !!ctx.engineProcess,
     canOpenWa: !!engineService.projectRoot(),

@@ -117,6 +117,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         computer_assistant=ComputerAssistant(llm, computer_service, gather=researcher.gather if researcher is not None else None, models=catalog, reasoning_for=lambda name: OllamaClient(s.ollama_url, name, think=True, keep_alive="5m", timeout=900), compact=is_small_model(s.chat_model)),
         computer_service=computer_service,
         browser_agent=browser_agent,
+        personality=s.personality,
     )
     worker = Worker(store, engine.run_job, stream_handler=engine.run_job_stream)
     worker_ref.append(worker)

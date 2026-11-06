@@ -9,6 +9,7 @@
     $('set-masked').checked = !!P.state.settings.masked;
     $('set-side').value = P.state.settings.bubbleSide;
     $('set-mood').value = P.state.settings.mood;
+    $('set-personality').value = P.state.settings.personality || 'padrao';
     $('set-still').checked = !!P.state.settings.still;
     $('set-hear').checked = !!P.state.settings.hear;
     $('set-talk').checked = !!P.state.settings.talk;
@@ -98,6 +99,7 @@
 
     $('set-still').addEventListener('change', (e) => api.setSetting('still', e.target.checked));
     $('set-mood').addEventListener('change', (e) => api.setSetting('mood', e.target.value));
+    $('set-personality').addEventListener('change', (e) => api.setSetting('personality', e.target.value));
     $('set-side').addEventListener('change', (e) => api.setSetting('bubbleSide', e.target.value));
   });
 

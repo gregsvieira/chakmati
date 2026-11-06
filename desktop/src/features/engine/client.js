@@ -133,6 +133,12 @@ class EngineClient {
     return res.json();
   }
 
+  // The regional way of speaking, changed in the running engine.
+  async setPersonality(id) {
+    if (typeof id !== 'string' || !/^[a-z]{3,20}$/.test(id)) throw new Error('invalid personality');
+    return (await this._request('/personality', { method: 'PUT', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify({ id }) })).json();
+  }
+
   async _decide(id, verb) {
     if (!ACTION_ID.test(id)) throw new Error('invalid action id');
     return (await this._request(`/actions/${id}/${verb}`, { method: 'POST', headers: { 'X-LiteAgent-UI': '1' } })).json();

@@ -47,6 +47,7 @@ function updateSetting(key, value) {
   else if (key === 'autoSend' && typeof value === 'boolean') { ctx.settings.autoSend = value; engineService.autoApproveNew(); }
   else if (key === 'still' && typeof value === 'boolean') { ctx.settings.still = value; sendTo(ctx.widgetWin, 'widget:still', value); }
   else if (key === 'mood' && settingsLib.MOODS.includes(value)) ctx.settings.mood = value;
+  else if (key === 'personality' && settingsLib.PERSONALITIES.includes(value)) { ctx.settings.personality = value; engineService.syncPersonality(); }
   else if ((key === 'whatsapp' || key === 'calendar' || key === 'research') && typeof value === 'boolean') {
     ctx.settings[key] = value;
     if (ctx.engineProcess) engineService.restartEngine().then(engineService.refreshOverview);
