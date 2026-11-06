@@ -118,6 +118,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         computer_service=computer_service,
         browser_agent=browser_agent,
         personality=s.personality,
+        pronouns=s.pronouns,
     )
     worker = Worker(store, engine.run_job, stream_handler=engine.run_job_stream)
     worker_ref.append(worker)

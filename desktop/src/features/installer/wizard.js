@@ -15,6 +15,8 @@ const { formatSize, levelText } = require('./format');
 const { quip } = require('./quips');
 const settingsLib = require('../settings').settings;
 
+const PROFILE = { personalities: settingsLib.PERSONALITIES.map((id) => ({ id, name: settingsLib.PERSONALITY_NAMES[id] })), pronouns: settingsLib.PRONOUNS.map((id) => ({ id, name: settingsLib.PRONOUN_NAMES[id] })) };
+
 const OLLAMA_DOWNLOAD = 'https://ollama.com/download';
 
 const ids = (value) => (Array.isArray(value) ? value.filter((v) => typeof v === 'string') : []);
@@ -43,6 +45,7 @@ function openSetup({ ipcMain, webPreferences, settingsFile, engine = null, onClo
         system: `${hw.platform} ${hw.arch} (${hw.osRelease})`, ram: `${hw.ramGb} GB`, cores: String(hw.cores),
         disk: hw.freeDiskGb === null ? 'não consegui medir' : `${hw.freeDiskGb} GB livres`,
       },
+      profile: PROFILE,
       model: model && { id: model.id, label: model.label, sizeText: formatSize(model.diskMb) },
       options: optionsFor(hw.platform, { packaged: !!engine }).filter((o) => o.id !== 'reasoning' || reasoningFor(hw)).map((o) => ({
         id: o.id, advice: o.advice || null, label: o.id === 'reasoning' ? `${o.label}: ${reasoningFor(hw).id}` : o.label, description: o.description,
@@ -52,9 +55,9 @@ function openSetup({ ipcMain, webPreferences, settingsFile, engine = null, onClo
     };
   }
 
-  function planFor(selected) {
+  function planFor(selected, profile) {
     const hw = readHardware();
-    try { return buildPlan({ hw, verdict: judge(hw), selected: ids(selected), engine: engine ? { packaged: true } : null }); } catch (e) {
+    try { return buildPlan({ hw, verdict: judge(hw), selected: ids(selected), engine: engine ? { packaged: true } : null, profile: profile && typeof profile === 'object' ? profile : null }); } catch (e) {
       return { ok: false, blocked: [e.message], steps: [], baseline: {}, totals: null, warnings: [], after: [] };
     }
   }
@@ -68,15 +71,15 @@ function openSetup({ ipcMain, webPreferences, settingsFile, engine = null, onClo
   };
 
   ipcMain.handle('installer:scan', () => scan());
-  ipcMain.handle('installer:plan', (_e, selected) => {
-    const plan = planFor(selected);
+  ipcMain.handle('installer:plan', (_e, selected, profile) => {
+    const plan = planFor(selected, profile);
     const totalsText = plan.totals
       ? `Espaço em disco: cerca de ${formatSize(plan.totals.diskMb)}. Memória em uso: cerca de ${formatSize(plan.totals.ramMb)} (estimativas).`
       : '';
     return { ...plan, totalsText };
   });
-  ipcMain.handle('installer:run', async (_e, selected) => {
-    const plan = planFor(selected);
+  ipcMain.handle('installer:run', async (_e, selected, profile) => {
+    const plan = planFor(selected, profile);
     const result = await runPlan(plan, { approve, runners, onProgress: (p) => send('installer:progress', p) });
     if (engine && result.status === 'done') writeSetupDone({ dataDir: engine.dataDir, extras: extrasFromSettings(result.settings) });
     return { ...result, after: plan.after };

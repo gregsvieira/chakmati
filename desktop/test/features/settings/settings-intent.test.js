@@ -28,6 +28,10 @@ const cases = [
   ['personalidade paulista', 'personality', 'paulista', false],
   ['muda o jeito de falar para mineiro', 'personality', 'mineiro', false],
   ['volta a personalidade para o padrão', 'personality', 'padrao', false],
+  ['meus pronomes são ela/dela', 'pronouns', 'ela', false],
+  ['usa os pronomes ele/dele', 'pronouns', 'ele', false],
+  ['coloca o pronome elu', 'pronouns', 'elu', false],
+  ['prefiro não informar os pronomes', 'pronouns', 'none', false],
 ];
 for (const [text, key, value, sensitive] of cases) {
   test(`"${text}"`, () => {

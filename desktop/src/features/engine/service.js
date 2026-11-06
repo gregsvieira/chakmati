@@ -48,12 +48,19 @@ async function syncPersonality() {
   try { await ctx.engine.setPersonality(ctx.settings.personality); ctx.state.overview.personality = ctx.settings.personality; } catch { /* the next refresh tries again */ }
 }
 
+async function syncPronouns() {
+  const have = ctx.state.overview && ctx.state.overview.pronouns;
+  if (have === undefined || have === ctx.settings.pronouns) return; // an engine that predates pronouns, or already agreeing
+  try { await ctx.engine.setPronouns(ctx.settings.pronouns); ctx.state.overview.pronouns = ctx.settings.pronouns; } catch { /* the next refresh tries again */ }
+}
+
 async function refreshOverview() {
   try {
     widgetMood.applyOverview(await ctx.engine.overview());
     ctx.state.engineUp = true;
     syncStanding();
     syncPersonality();
+    syncPronouns();
   } catch {
     ctx.state.engineUp = false;
   }
@@ -158,4 +165,4 @@ async function restartEngine() {
   return startEngine();
 }
 
-Object.assign(module.exports, { projectRoot, refreshOverview, autoApproveNew, syncStanding, syncPersonality, restartEngine, healthLoop, noticeLoop, startEngine });
+Object.assign(module.exports, { projectRoot, refreshOverview, autoApproveNew, syncStanding, syncPersonality, syncPronouns, restartEngine, healthLoop, noticeLoop, startEngine });

@@ -11,6 +11,9 @@ h2 { font-size: 17px; margin: 0 0 10px; }
 .verdict[data-level="light"] { color: var(--amber); }
 .verdict[data-level="compact"], .verdict[data-level="standard"], .verdict[data-level="full"] { color: var(--leaf); }
 ul { padding-left: 18px; }
+.choices { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.choices label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+fieldset.card legend { font-weight: 600; padding: 0 6px; }
 .options { list-style: none; padding: 0; }
 .options li { background: var(--surface-2); border: 1px solid var(--rule); border-radius: 12px; padding: 10px 12px; margin: 8px 0; }
 .options label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }

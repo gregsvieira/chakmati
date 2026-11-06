@@ -64,3 +64,22 @@ test('the wizard writes the marker only after a finished install, and runs uv wi
   const sync = read('features', 'installer', 'engine-sync.js');
   assert.equal(/shell:\s*true|exec\(|execSync|child_process'\)\.exec\b/.test(sync), false);
 });
+
+test('every element the wizard script looks up exists in the page, profile screen included', () => {
+  const html = read('features', 'installer', 'renderer', 'installer.html');
+  const js = read('features', 'installer', 'renderer', 'installer.js');
+  const wanted = [...new Set([...js.matchAll(/\$\('([\w-]+)'\)/g)].map((m) => m[1]))];
+  const missing = wanted.filter((id) => !html.includes(`id="${id}"`));
+  assert.deepEqual(missing, []);
+  assert.ok(wanted.includes('profile-personality') && wanted.includes('profile-more') && wanted.includes('profile-pronouns'));
+});
+
+test('the wizard sends the personality and pronouns choice with both the plan and the run, and the main process rebuilds the plan from it', () => {
+  const js = read('features', 'installer', 'renderer', 'installer.js');
+  assert.match(js, /api\.plan\(\[\.\.\.chosen\], profileOut\(\)\)/);
+  assert.match(js, /api\.run\(\[\.\.\.chosen\], profileOut\(\)\)/);
+  const wizard = read('features', 'installer', 'wizard.js');
+  assert.match(wizard, /ipcMain\.handle\('installer:plan', \(_e, selected, profile\)/);
+  assert.match(wizard, /ipcMain\.handle\('installer:run', async \(_e, selected, profile\)/);
+  assert.match(read('preload.js'), /plan: \(selected, profile\) => ipcRenderer\.invoke\('installer:plan', selected, profile\)/);
+});

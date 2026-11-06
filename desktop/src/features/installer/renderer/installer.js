@@ -16,6 +16,8 @@ const show = (name) => { for (const s of document.querySelectorAll('main > secti
 let scan;
 let face = null;   // the tiny Chakmati that says the remark about the computer
 const chosen = new Set();
+const profile = { personality: 'padrao', personalities: new Set(), pronouns: 'none' };   // how the Chakmati speaks: the default, the ones to install too, the pronouns
+const profileOut = () => ({ personality: profile.personality, personalities: [...profile.personalities], pronouns: profile.pronouns });
 
 // WhatsApp: the first time it is ticked, a notice about not getting the number blocked has to be read ("Compreendi e estou ciente!").
 // Esc or a click outside closes it without ticking the box.
@@ -54,6 +56,26 @@ async function start() {
   show('check');
 }
 
+function renderProfile() {
+  const radios = (host, name, list, current, onPick) => host.replaceChildren(...list.map((o) => {
+    const input = el('input', { type: 'radio', name, value: o.id, checked: o.id === current });
+    input.addEventListener('change', () => onPick(o.id));
+    return el('label', {}, input, o.name);
+  }));
+  const more = () => {
+    profile.personalities.delete(profile.personality);   // the default is installed anyway
+    $('profile-more').replaceChildren(...scan.profile.personalities.filter((o) => o.id !== 'padrao' && o.id !== profile.personality).map((o) => {
+      const box = el('input', { type: 'checkbox', checked: profile.personalities.has(o.id) });
+      box.addEventListener('change', () => { if (box.checked) profile.personalities.add(o.id); else profile.personalities.delete(o.id); });
+      return el('label', {}, box, o.name);
+    }));
+  };
+  radios($('profile-personality'), 'personality', scan.profile.personalities, profile.personality, (id) => { profile.personality = id; more(); });
+  radios($('profile-pronouns'), 'pronouns', scan.profile.pronouns, profile.pronouns, (id) => { profile.pronouns = id; });
+  more();
+  show('profile');
+}
+
 function renderOptions() {
   $('model-line').textContent = `Modelo de conversa para este computador: ${scan.model.label} (${scan.model.id}, ${scan.model.sizeText}). Sempre instalado.`;
   $('options').replaceChildren(...scan.options.map((o) => {
@@ -75,7 +97,7 @@ function renderOptions() {
 }
 
 async function renderSummary() {
-  const plan = await api.plan([...chosen]);
+  const plan = await api.plan([...chosen], profileOut());
   if (!plan.ok) {
     items($('steps'), plan.blocked);
     $('totals').textContent = '';
@@ -97,7 +119,7 @@ async function install() {
     $('run-status').textContent = p.total ? `${p.status} (${Math.round((p.completed / p.total) * 100)}%)` : p.status;
     if (p.total) $('bar').value = Math.round((p.completed / p.total) * 100);
   });
-  const result = await api.run([...chosen]);
+  const result = await api.run([...chosen], profileOut());
   off();
   const titles = { done: 'Pronto!', aborted: 'Instalação cancelada', failed: 'A instalação falhou', blocked: 'Não foi possível instalar' };
   $('run-title').textContent = titles[result.status] || 'Fim';
@@ -110,8 +132,10 @@ async function install() {
   $('finish').textContent = result.status === 'done' ? 'Concluir' : 'Fechar';
 }
 
-$('to-options').addEventListener('click', renderOptions);
-$('back-check').addEventListener('click', () => show('check'));
+$('to-options').addEventListener('click', renderProfile);
+$('back-check2').addEventListener('click', () => show('check'));
+$('to-options2').addEventListener('click', renderOptions);
+$('back-profile').addEventListener('click', renderProfile);
 $('to-summary').addEventListener('click', renderSummary);
 $('back-options').addEventListener('click', () => show('options'));
 $('install').addEventListener('click', install);

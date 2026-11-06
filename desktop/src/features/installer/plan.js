@@ -2,10 +2,28 @@
 // Turns "this computer + what the person ticked" into the list of things to do. Pure: it changes nothing and downloads nothing.
 const { CORE, ENGINE, MODELS, OPTIONS, extrasSizeMb } = require('./catalog');
 const { LIMITS, reasoningFor } = require('./tiers');
+const { PERSONALITIES, PERSONALITY_NAMES, PRONOUNS, PRONOUN_NAMES } = require('../settings').settings; // the pure part of the feature: the plan never needs electron
 
 const TIGHT_RAM = 0.85; // above this share of the computer's memory the app will feel heavy
 
-function buildPlan({ hw, verdict, selected = [], engine = null }) {
+// How the Chakmati speaks: the personality chosen as the default, the others the person wants in Ajustes, and the pronouns. Free (a few lines of text):
+// no download, no approval. Null when the wizard did not ask (the plan is then only what was ticked).
+function profileStep(profile) {
+  if (!profile) return null;
+  const { personality = 'padrao', personalities = [], pronouns = 'none' } = profile;
+  if (!PERSONALITIES.includes(personality)) throw new Error(`Personalidade desconhecida: ${personality}`);
+  if (!PRONOUNS.includes(pronouns)) throw new Error(`Pronomes desconhecidos: ${pronouns}`);
+  if (!Array.isArray(personalities) || personalities.some((p) => !PERSONALITIES.includes(p))) throw new Error('Personalidade desconhecida na lista.');
+  const installed = PERSONALITIES.filter((p) => p === 'padrao' || p === personality || personalities.includes(p));
+  const more = installed.filter((p) => p !== 'padrao' && p !== personality).map((p) => PERSONALITY_NAMES[p]);
+  return {
+    id: 'profile', kind: 'setting', required: false,
+    label: `Jeito de falar: ${PERSONALITY_NAMES[personality]}${more.length ? ` (e mais: ${more.join(', ')})` : ''}; pronomes: ${PRONOUN_NAMES[pronouns]}`,
+    settings: { personality, personalities: installed, pronouns },
+  };
+}
+
+function buildPlan({ hw, verdict, selected = [], engine = null, profile = null }) {
   if (verdict.level === 'unsupported') {
     return { ok: false, blocked: [...verdict.reasons], steps: [], baseline: {}, totals: null, warnings: [], after: [] };
   }
@@ -36,10 +54,12 @@ function buildPlan({ hw, verdict, selected = [], engine = null }) {
     required: false, extras,
     approval: { source: 'pypi.org (pelo uv que vem no instalador)', sizeMb: extrasSizeMb(extras) }, settings: {},
   };
+  const profileLine = profileStep(profile);
   const steps = [
     ollama,
     ...(engine ? [engineStep] : []),
     modelStep,
+    ...(profileLine ? [profileLine] : []),
     ...(engine && extras.length ? [extrasStep] : []),
     ...(thinker ? [{
       id: 'reasoning', kind: 'pull-model', model: thinker.id, label: `Baixar o ${thinker.label.toLowerCase()} (${thinker.id})`, required: false,

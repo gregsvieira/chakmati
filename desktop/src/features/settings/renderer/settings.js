@@ -4,12 +4,31 @@
   const P = window.Panel;
   const { $, thread, api } = P;
 
+  const PERSONALITY_NAMES = { padrao: 'Padrão', carioca: 'Carioca', paulista: 'Paulista', gaucho: 'Gaúcho', nordestino: 'Nordestino', mineiro: 'Mineiro' };
+
+  // The select lists the installed personalities; the checkboxes install or remove the others (Padrão and the one in use stay).
+  function renderPersonalities() {
+    const s = P.state.settings;
+    const installed = s.personalities || Object.keys(PERSONALITY_NAMES);
+    const active = s.personality || 'padrao';
+    $('set-personality').replaceChildren(...installed.map((id) => Object.assign(document.createElement('option'), { value: id, textContent: PERSONALITY_NAMES[id] || id })));
+    $('set-personality').value = active;
+    $('personality-list').replaceChildren(...Object.keys(PERSONALITY_NAMES).map((id) => {
+      const box = Object.assign(document.createElement('input'), { type: 'checkbox', checked: installed.includes(id), disabled: id === 'padrao' || id === active });
+      box.addEventListener('change', () => api.setSetting('personalities', Object.keys(PERSONALITY_NAMES).filter((p) => (p === id ? box.checked : installed.includes(p)))));
+      const label = document.createElement('label');
+      label.append(box, ` ${PERSONALITY_NAMES[id]}`);
+      return label;
+    }));
+  }
+
   function renderSettings() {
     $('set-protect').checked = !!P.state.settings.protect;
     $('set-masked').checked = !!P.state.settings.masked;
     $('set-side').value = P.state.settings.bubbleSide;
     $('set-mood').value = P.state.settings.mood;
-    $('set-personality').value = P.state.settings.personality || 'padrao';
+    renderPersonalities();
+    $('set-pronouns').value = P.state.settings.pronouns || 'none';
     $('set-still').checked = !!P.state.settings.still;
     $('set-hear').checked = !!P.state.settings.hear;
     $('set-talk').checked = !!P.state.settings.talk;
@@ -100,6 +119,7 @@
     $('set-still').addEventListener('change', (e) => api.setSetting('still', e.target.checked));
     $('set-mood').addEventListener('change', (e) => api.setSetting('mood', e.target.value));
     $('set-personality').addEventListener('change', (e) => api.setSetting('personality', e.target.value));
+    $('set-pronouns').addEventListener('change', (e) => api.setSetting('pronouns', e.target.value));
     $('set-side').addEventListener('change', (e) => api.setSetting('bubbleSide', e.target.value));
   });
 

@@ -6,6 +6,9 @@ const { assertLoopback } = require('../engine').client;
 const SIDES = ['auto', 'top', 'bottom', 'left', 'right'];
 const MOODS = ['auto', 'idle', 'alert', 'thinking', 'happy'];
 const PERSONALITIES = ['padrao', 'carioca', 'paulista', 'gaucho', 'nordestino', 'mineiro']; // the regional way of speaking (the engine adds it to short chat answers)
+const PERSONALITY_NAMES = Object.freeze({ padrao: 'Padrão', carioca: 'Carioca', paulista: 'Paulista', gaucho: 'Gaúcho', nordestino: 'Nordestino', mineiro: 'Mineiro' });
+const PRONOUNS = ['none', 'ele', 'ela', 'elu']; // how the person is addressed; 'none' = prefers not to say (nothing is assumed)
+const PRONOUN_NAMES = Object.freeze({ none: 'Prefiro não informar', ele: 'ele/dele', ela: 'ela/dela', elu: 'elu/delu' });
 const DEFAULTS = Object.freeze({
   protect: true,          // ask the OS to leave the windows out of screen sharing and recordings (best effort)
   still: false,           // true = no animations: Chakmati stays still
@@ -20,6 +23,8 @@ const DEFAULTS = Object.freeze({
   autoSend: false,        // approve WhatsApp sends automatically (the person's standing permission; the engine still rate-limits)
   masked: false,          // discreet mode: bubbles never show names or titles
   bubbleSide: 'auto',
+  personalities: [...PERSONALITIES], // the personalities the person has installed (the setup wizard narrows it); the active one is always in it
+  pronouns: 'none',       // 'none' | 'ele' | 'ela' | 'elu': how the Chakmati addresses the person
   personality: 'padrao',  // 'padrao' = no regional flavour; the engine changes at once (PUT /personality) and starts with it (CHAKMATI_PERSONALITY)
   mood: 'auto',           // 'auto' follows what is happening; the others pin Chakmati's face (offline still shows)
   icon: null,             // {x, y} of the robot on screen, null = default corner
@@ -52,6 +57,9 @@ function normalize(raw) {
   if (SIDES.includes(r.bubbleSide)) s.bubbleSide = r.bubbleSide;
   if (MOODS.includes(r.mood)) s.mood = r.mood;
   if (PERSONALITIES.includes(r.personality)) s.personality = r.personality;
+  if (PRONOUNS.includes(r.pronouns)) s.pronouns = r.pronouns;
+  if (Array.isArray(r.personalities)) s.personalities = PERSONALITIES.filter((p) => r.personalities.includes(p)); // known ones only, in the catalog's order
+  s.personalities = PERSONALITIES.filter((p) => p === 'padrao' || p === s.personality || s.personalities.includes(p)); // Padrão and the active one are always there
   if (r.icon && Number.isFinite(r.icon.x) && Number.isFinite(r.icon.y)) s.icon = { x: Math.round(r.icon.x), y: Math.round(r.icon.y) };
   if (typeof r.engineUrl === 'string') {
     try { assertLoopback(r.engineUrl); s.engineUrl = r.engineUrl; } catch { /* keep the default */ }
@@ -75,6 +83,7 @@ function engineEnv(settings, { searxng = false } = {}) {
   return {
     CHAKMATI_CHAT_MODEL: settings.chatModel,
     CHAKMATI_PERSONALITY: settings.personality,
+    CHAKMATI_PRONOUNS: settings.pronouns,
     CHAKMATI_RESEARCH_BACKEND: !settings.research ? 'off' : searxng ? 'searxng' : 'ddg',
     CHAKMATI_WHATSAPP_BACKEND: settings.whatsapp ? 'openwa' : 'off',
     CHAKMATI_CALENDAR_BACKEND: settings.calendar ? 'auto' : 'off',
@@ -82,4 +91,4 @@ function engineEnv(settings, { searxng = false } = {}) {
   };
 }
 
-module.exports = { DEFAULTS, SIDES, MOODS, PERSONALITIES, normalize, load, save, engineEnv };
+module.exports = { DEFAULTS, SIDES, MOODS, PERSONALITIES, PERSONALITY_NAMES, PRONOUNS, PRONOUN_NAMES, normalize, load, save, engineEnv };

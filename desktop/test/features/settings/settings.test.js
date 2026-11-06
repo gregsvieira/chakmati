@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { DEFAULTS, normalize, load, save, engineEnv } = require('../../../src/features/settings/settings');
+const { PRONOUNS, PRONOUN_NAMES, PERSONALITIES, PERSONALITY_NAMES, DEFAULTS, normalize, load, save, engineEnv } = require('../../../src/features/settings/settings');
 
 test('defaults protect the window and show names', () => {
   assert.deepEqual(normalize(undefined), DEFAULTS);
@@ -49,10 +49,10 @@ test('animations are on by default and can be switched off', () => {
 });
 
 test('integrations map to the engine environment: web search on by default, the rest off', () => {
-  assert.deepEqual(engineEnv(DEFAULTS), { CHAKMATI_CHAT_MODEL: 'qwen3.5:latest', CHAKMATI_PERSONALITY: 'padrao', CHAKMATI_RESEARCH_BACKEND: 'ddg', CHAKMATI_WHATSAPP_BACKEND: 'off', CHAKMATI_CALENDAR_BACKEND: 'off', CHAKMATI_RESEARCH_SCORER: 'keepall' });
+  assert.deepEqual(engineEnv(DEFAULTS), { CHAKMATI_CHAT_MODEL: 'qwen3.5:latest', CHAKMATI_PERSONALITY: 'padrao', CHAKMATI_PRONOUNS: 'none', CHAKMATI_RESEARCH_BACKEND: 'ddg', CHAKMATI_WHATSAPP_BACKEND: 'off', CHAKMATI_CALENDAR_BACKEND: 'off', CHAKMATI_RESEARCH_SCORER: 'keepall' });
   assert.equal(engineEnv(DEFAULTS, { searxng: true }).CHAKMATI_RESEARCH_BACKEND, 'searxng');
   assert.equal(engineEnv({ ...DEFAULTS, research: false }).CHAKMATI_RESEARCH_BACKEND, 'off');
-  assert.deepEqual(engineEnv({ ...DEFAULTS, whatsapp: true, calendar: true }), { CHAKMATI_CHAT_MODEL: 'qwen3.5:latest', CHAKMATI_PERSONALITY: 'padrao', CHAKMATI_RESEARCH_BACKEND: 'ddg', CHAKMATI_WHATSAPP_BACKEND: 'openwa', CHAKMATI_CALENDAR_BACKEND: 'auto', CHAKMATI_RESEARCH_SCORER: 'keepall' });
+  assert.deepEqual(engineEnv({ ...DEFAULTS, whatsapp: true, calendar: true }), { CHAKMATI_CHAT_MODEL: 'qwen3.5:latest', CHAKMATI_PERSONALITY: 'padrao', CHAKMATI_PRONOUNS: 'none', CHAKMATI_RESEARCH_BACKEND: 'ddg', CHAKMATI_WHATSAPP_BACKEND: 'openwa', CHAKMATI_CALENDAR_BACKEND: 'auto', CHAKMATI_RESEARCH_SCORER: 'keepall' });
   assert.equal(engineEnv({ ...DEFAULTS, laya: true }).CHAKMATI_RESEARCH_SCORER, 'laya');
   assert.equal(normalize({ whatsapp: 'yes' }).whatsapp, false);
 });
@@ -102,4 +102,22 @@ test('the personality is padrao unless one of the known regional ones is chosen,
   for (const p of ['carioca', 'paulista', 'gaucho', 'nordestino', 'mineiro']) assert.equal(normalize({ personality: p }).personality, p);
   for (const bad of ['klingon', '', null, 42, 'GAUCHO']) assert.equal(normalize({ personality: bad }).personality, 'padrao');
   assert.equal(engineEnv({ ...DEFAULTS, personality: 'gaucho' }).CHAKMATI_PERSONALITY, 'gaucho');
+});
+
+test('pronouns are "none" unless one of the known ones is chosen, and they reach the engine at start', () => {
+  assert.equal(DEFAULTS.pronouns, 'none');
+  for (const p of ['none', 'ele', 'ela', 'elu']) assert.equal(normalize({ pronouns: p }).pronouns, p);
+  for (const bad of ['eles', '', null, 42, 'ELA']) assert.equal(normalize({ pronouns: bad }).pronouns, 'none');
+  assert.equal(engineEnv({ ...DEFAULTS, pronouns: 'ela' }).CHAKMATI_PRONOUNS, 'ela');
+  assert.deepEqual(Object.keys(PRONOUN_NAMES), PRONOUNS);
+  assert.deepEqual(Object.keys(PERSONALITY_NAMES), PERSONALITIES);
+});
+
+test('the installed personalities: everything for someone who never chose, and Padrão plus the active one are never removable', () => {
+  assert.deepEqual(normalize({}).personalities, PERSONALITIES);                                   // an upgrade keeps what was there
+  assert.deepEqual(normalize({ personalities: ['gaucho'] }).personalities, ['padrao', 'gaucho']);  // Padrão is always installed
+  assert.deepEqual(normalize({ personality: 'mineiro', personalities: ['gaucho'] }).personalities, ['padrao', 'gaucho', 'mineiro']); // so is the active one
+  assert.deepEqual(normalize({ personalities: ['klingon', 'gaucho', 'gaucho'] }).personalities, ['padrao', 'gaucho']);              // unknown and repeated ones drop out
+  assert.deepEqual(normalize({ personalities: 'gaucho' }).personalities, PERSONALITIES);          // not a list: ignored
+  assert.deepEqual(normalize({ personalities: [], personality: 'padrao' }).personalities, ['padrao']);
 });
