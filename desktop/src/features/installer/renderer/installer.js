@@ -52,7 +52,6 @@ async function start() {
   const usable = scan.verdict.level !== 'unsupported';
   $('ollama-help').hidden = !usable || scan.ollamaUp;
   $('to-options').hidden = !usable;
-  $('to-options').disabled = !scan.ollamaUp;
   buildScreens();
   show('check');
 }
@@ -87,6 +86,7 @@ const GROUPS = [
 ];
 const model = { local: true, cloud: false, connected: false, provider: '', name: '' };   // how the chat model runs
 const modelOut = () => ({ local: model.local, cloud: model.cloud && model.connected });
+let ollamaWarn = null;   // the warning on the first screen (only for the local model, and only when the Ollama is not there)
 let screens = [];   // 'basics' then the groups that have something on this computer
 let step = 0;
 
@@ -105,7 +105,7 @@ function flagRow(box, title, lines) {
 
 function modelFlags() {
   const local = el('input', { type: 'checkbox', checked: model.local });
-  local.addEventListener('change', () => { model.local = local.checked; });
+  local.addEventListener('change', () => { model.local = local.checked; if (ollamaWarn) ollamaWarn.hidden = scan.ollamaUp || !model.local; });
   const cloud = el('input', { type: 'checkbox', checked: model.cloud });
   cloud.addEventListener('change', () => { model.cloud = cloud.checked; });
   return [
@@ -150,6 +150,7 @@ function goStep(n) {
       el('p', { className: 'card', textContent: `Obrigatório: ${scan.engineText ? `o motor do Chakmati (cerca de ${scan.engineText}).` : 'o Chakmati.'} O resto você marca abaixo e só é instalado no fim, tudo de uma vez.` }),
       el('h3', { textContent: 'Modelo de conversa' }),
       ...modelFlags(),
+      (ollamaWarn = el('p', { className: 'muted', hidden: scan.ollamaUp || !model.local, textContent: 'O Ollama não foi encontrado neste computador. O modelo local precisa dele: instale e abra o Ollama antes de instalar, ou use só a sua IA paga.' })),
     );
   } else {
     $('opt-title').textContent = sc.title;

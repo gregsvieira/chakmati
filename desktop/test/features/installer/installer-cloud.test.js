@@ -109,3 +109,12 @@ test('the screens: boxes to flag, grouped, and the paid AI behind its own box', 
   assert.match(js, /type: 'checkbox'/);
   for (const g of ['Voz', 'Modelos extras', 'Integrações', 'Aparência e privacidade']) assert.ok(js.includes(`'${g}'`), g);
 });
+
+test('the Ollama is recommended, never required: the first screen can always continue, and only the local model gets a warning', () => {
+  const js = read('features', 'installer', 'renderer', 'installer.js');
+  assert.equal(/\$\('to-options'\)\.disabled/.test(js), false);
+  assert.match(js, /hidden: scan\.ollamaUp \|\| !model\.local/);
+  const html = read('features', 'installer', 'renderer', 'installer.html');
+  assert.match(html, /<strong>Recomendado:<\/strong> instalar e abrir o Ollama/);
+  assert.match(html, /pode continuar sem ele/);
+});
