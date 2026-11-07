@@ -76,25 +76,51 @@ function renderProfile() {
   show('profile');
 }
 
-function renderOptions() {
-  $('model-line').textContent = `Obrigatórios: ${scan.engineText ? `o motor do Chakmati (cerca de ${scan.engineText}) e ` : ''}o modelo de conversa para este computador, ${scan.model.label} (${scan.model.id}, ${scan.model.sizeText}). Sem eles o Chakmati não funciona.`;
-  $('options').replaceChildren(...scan.options.map((o) => {
-    const box = el('input', { type: 'checkbox', id: `opt-${o.id}` });
-    box.addEventListener('change', () => {
-      if (box.checked && o.id === 'whatsapp') {
-        box.checked = false;  // ticked only after the notice was acknowledged
-        waGate.run(showWhatsAppNotice, () => { box.checked = true; chosen.add(o.id); });
-        return;
-      }
-      if (box.checked) chosen.add(o.id); else chosen.delete(o.id);
-    });
-    const title = el('span', { className: 'name', textContent: o.label });
-    if (scan.suggested[o.id]) title.append(el('span', { className: 'badge', textContent: 'Recomendado para este PC' }));
-    const text = el('span', {}, title, el('br'), el('span', { textContent: o.description }), el('br'), ...(o.advice ? [el('span', { className: 'advice', textContent: o.advice }), el('br')] : []), el('span', { className: 'cost', textContent: o.costText }));
-    return el('li', {}, el('label', {}, box, text));
-  }));
+// One thing per screen: first what is mandatory, then each optional item with its cost, "Pular" or "Instalar". The screens are built from the scan, so the list is the main process's.
+let step = 0;   // 0 = the basics, 1..n = scan.options[step - 1]
+
+function renderOptions() { goStep(0); }
+
+function goStep(n) {
+  step = n;
+  const total = scan.options.length;
+  const body = $('opt-body');
+  const opt = n === 0 ? null : scan.options[n - 1];
+  $('opt-progress').textContent = n === 0 ? '' : `Extra ${n} de ${total}`;
+  if (!opt) {
+    $('opt-title').textContent = 'O que será instalado';
+    body.replaceChildren(
+      el('p', { className: 'muted', textContent: 'O básico (conversar, pesquisar) já funciona. Depois você escolhe, um por um, o que mais quiser, para gastar menos memória e espaço.' }),
+      el('p', { className: 'card', textContent: `Obrigatório: ${scan.engineText ? `o motor do Chakmati (cerca de ${scan.engineText}) e ` : ''}o modelo de conversa para este computador, ${scan.model.label} (${scan.model.id}, ${scan.model.sizeText}). Sem ${scan.engineText ? 'eles' : 'ele'} o Chakmati não funciona.` }),
+    );
+    $('opt-skip').hidden = true;
+    $('opt-yes').textContent = 'Continuar';
+  } else {
+    $('opt-title').textContent = opt.label;
+    const title = el('p', { className: 'card' });
+    if (scan.suggested[opt.id]) title.append(el('span', { className: 'badge', textContent: 'Recomendado para este PC' }), el('br'));
+    title.append(el('span', { textContent: opt.description }), el('br'));
+    if (opt.advice) title.append(el('span', { className: 'advice', textContent: opt.advice }), el('br'));
+    title.append(el('span', { className: 'cost', textContent: opt.costText }));
+    body.replaceChildren(title);
+    $('opt-skip').hidden = false;
+    $('opt-skip').textContent = 'Pular';
+    $('opt-yes').textContent = chosen.has(opt.id) ? 'Manter' : 'Instalar';
+  }
   show('options');
 }
+
+function nextStep() { if (step >= scan.options.length) renderSummary(); else goStep(step + 1); }
+
+$('opt-back').addEventListener('click', () => { if (step === 0) renderProfile(); else goStep(step - 1); });
+$('opt-skip').addEventListener('click', () => { chosen.delete(scan.options[step - 1].id); nextStep(); });
+$('opt-yes').addEventListener('click', () => {
+  if (step === 0) { nextStep(); return; }
+  const id = scan.options[step - 1].id;
+  if (id === 'whatsapp' && !chosen.has(id)) { waGate.run(showWhatsAppNotice, () => { chosen.add(id); nextStep(); }); return; }   // ticked only after the notice was acknowledged
+  chosen.add(id);
+  nextStep();
+});
 
 async function renderSummary() {
   const plan = await api.plan([...chosen], profileOut());
@@ -166,9 +192,7 @@ $('home-setup').addEventListener('click', async () => {
 $('to-options').addEventListener('click', renderProfile);
 $('back-check2').addEventListener('click', () => show('check'));
 $('to-options2').addEventListener('click', renderOptions);
-$('back-profile').addEventListener('click', renderProfile);
-$('to-summary').addEventListener('click', renderSummary);
-$('back-options').addEventListener('click', () => show('options'));
+$('back-options').addEventListener('click', () => goStep(scan.options.length));
 $('install').addEventListener('click', install);
 $('finish').addEventListener('click', () => api.finish());
 $('done-finish').addEventListener('click', () => api.finish());
