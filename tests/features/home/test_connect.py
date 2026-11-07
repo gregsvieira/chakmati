@@ -78,10 +78,15 @@ async def test_something_else_on_that_address_is_not_taken_for_one():
     assert await probe(HA, httpx.AsyncClient(transport=httpx.MockTransport(boom))) is None
 
 
-async def test_two_names_for_the_same_house_are_one_result():
+async def test_each_address_that_answers_is_one_result_and_the_first_is_the_usual_name():
     http = server_with({"http://homeassistant.local:8123/manifest.json": {"name": "Home Assistant"}, "http://homeassistant:8123/manifest.json": {"name": "Home Assistant"}})
-    assert [f["url"] for f in await discover(http)] == ["http://homeassistant.local:8123"]
-    assert await discover(server_with({})) == []
+    assert [f["url"] for f in await discover(http, hosts=[])] == ["http://homeassistant.local:8123", "http://homeassistant:8123"]
+    assert await discover(server_with({}), hosts=[]) == []
+
+
+async def test_this_computer_is_searched_too():
+    http = server_with({"http://localhost:8123/manifest.json": {"name": "Home Assistant"}})
+    assert [f["url"] for f in await discover(http, hosts=[])] == ["http://localhost:8123"]
 
 
 # --- the credentials ----------------------------------------------------------------------------------------------------------------------
@@ -290,7 +295,7 @@ def build(tmp_path, entities=()):
         return httpx.Response(404)
 
     transport = httpx.MockTransport(handler)
-    link = HomeLink(auth, HomeAssistantClient(auth=auth, transport=transport), httpx.AsyncClient(transport=transport))
+    link = HomeLink(auth, HomeAssistantClient(auth=auth, transport=transport), httpx.AsyncClient(transport=transport), hosts=[])
     link.connector._now = clock
     store = JobStore(":memory:")
     home = HomeService(link.client, ActionStore(":memory:"))
@@ -371,3 +376,100 @@ def test_the_overview_tells_the_desktop_what_is_connected(tmp_path):
     auth.save(HA, "A", "R", 1800, ENGINE)
     home = client.get("/overview").json()["home"]
     assert home["enabled"] is True and home["connected"] is True and home["players"] == [{"name": "Echo Dot da sala", "state": "idle"}]
+
+
+# --- searching the own network --------------------------------------------------------------------------------------------------------------
+def test_the_own_network_is_the_other_254_addresses_of_the_slash_24(monkeypatch):
+    class FakeSocket:
+        def __init__(self, *a): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def connect(self, addr): pass
+        def getsockname(self): return ("192.168.0.3", 40000)
+    monkeypatch.setattr("chakmati.features.home.connect.socket.socket", FakeSocket)
+    from chakmati.features.home.connect import own_hosts
+    hosts = own_hosts()
+    assert len(hosts) == 253 and "192.168.0.3" not in hosts and hosts[0] == "192.168.0.1" and hosts[-1] == "192.168.0.254"
+
+
+@pytest.mark.parametrize("address", ["8.8.8.8", "127.0.0.1", "100.64.0.5"])
+def test_a_network_that_is_not_the_persons_own_is_never_scanned(monkeypatch, address):
+    class FakeSocket:
+        def __init__(self, *a): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def connect(self, addr): pass
+        def getsockname(self): return (address, 1)
+    monkeypatch.setattr("chakmati.features.home.connect.socket.socket", FakeSocket)
+    from chakmati.features.home.connect import own_hosts
+    assert own_hosts() == []
+
+
+def test_no_network_card_means_nothing_to_scan(monkeypatch):
+    def broken(*a):
+        raise OSError("sem rede")
+    monkeypatch.setattr("chakmati.features.home.connect.socket.socket", broken)
+    from chakmati.features.home.connect import own_hosts
+    assert own_hosts() == []
+
+
+async def test_the_scan_finds_a_home_assistant_on_a_listening_address_and_ignores_the_rest():
+    import asyncio
+    from chakmati.features.home.connect import scan
+
+    async def serve(reader, writer):
+        writer.close()
+    server = await asyncio.start_server(serve, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    pages = {f"http://127.0.0.1:{port}/manifest.json": {"name": "Home Assistant"}}
+    try:
+        found = await scan(server_with(pages), ["127.0.0.1", "127.0.0.2"], port=port, timeout=0.3)
+    finally:
+        server.close()
+        await server.wait_closed()
+    assert found == [{"url": f"http://127.0.0.1:{port}", "name": "Home Assistant"}]       # 127.0.0.2 has nothing listening: skipped without a page request
+
+
+async def test_something_listening_that_is_not_a_home_assistant_is_not_one():
+    import asyncio
+    from chakmati.features.home.connect import scan
+
+    async def serve(reader, writer):
+        writer.close()
+    server = await asyncio.start_server(serve, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    try:
+        assert await scan(server_with({f"http://127.0.0.1:{port}/manifest.json": {"name": "Minha impressora"}}), ["127.0.0.1"], port=port, timeout=0.3) == []
+    finally:
+        server.close()
+        await server.wait_closed()
+
+
+async def test_a_slow_name_does_not_hold_the_search_back(monkeypatch):
+    import asyncio
+    import time
+    from chakmati.features.home import connect
+
+    async def slow_probe(url, http):
+        if "homeassistant.local" in url:
+            await asyncio.sleep(30)          # a .local lookup that never answers
+        return {"url": url, "name": "Home Assistant"} if url == "http://localhost:8123" else None
+    monkeypatch.setattr(connect, "probe", slow_probe)
+    monkeypatch.setattr(connect, "NAME_TIMEOUT_SECONDS", 0.2)
+    started = time.perf_counter()
+    assert [f["url"] for f in await connect.discover(None, hosts=[])] == ["http://localhost:8123"]
+    assert time.perf_counter() - started < 2
+
+
+async def test_the_names_and_the_scan_run_together_and_both_are_listed(monkeypatch):
+    from chakmati.features.home import connect
+
+    async def fake_probe(url, http):
+        return {"url": url, "name": "Home Assistant"} if url in ("http://homeassistant.local:8123", "http://192.168.0.7:8123") else None
+
+    async def fake_scan(http, hosts, **kw):
+        return [await fake_probe(f"http://{h}:8123", http) for h in hosts if h == "192.168.0.7"]
+    monkeypatch.setattr(connect, "probe", fake_probe)
+    monkeypatch.setattr(connect, "scan", fake_scan)
+    found = await connect.discover(None, hosts=["192.168.0.7", "192.168.0.8"])
+    assert [f["url"] for f in found] == ["http://homeassistant.local:8123", "http://192.168.0.7:8123"]    # the usual name first

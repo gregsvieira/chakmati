@@ -31,11 +31,12 @@ def _page(title: str, text: str, ok: bool) -> HTMLResponse:
 class HomeLink:
     """What is needed to connect: the credentials, the client that uses them and the sign-in flow."""
 
-    def __init__(self, auth: HomeAuth, client: HomeAssistantClient, http: httpx.AsyncClient | None = None):
+    def __init__(self, auth: HomeAuth, client: HomeAssistantClient, http: httpx.AsyncClient | None = None, hosts: list[str] | None = None):
         self.auth = auth
         self.client = client
         self._http = http or httpx.AsyncClient(timeout=10.0)
         self.connector = HomeConnector(auth, self._http)
+        self._hosts = hosts   # None = search the own network; a list (tests) = only these addresses
 
     async def status(self) -> dict:
         """Connected or not, and the music players it can see; never raises (a problem is a sentence for the person)."""
@@ -56,7 +57,7 @@ class HomeLink:
 
         @router.get("/home/discover")
         async def home_discover():
-            return {"found": await discover(self._http)}
+            return {"found": await discover(self._http, hosts=self._hosts)}
 
         @router.post("/home/connect", dependencies=[Depends(ui_only)])
         async def home_connect(body: ConnectIn, request: Request):

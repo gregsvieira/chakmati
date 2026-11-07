@@ -48,9 +48,10 @@ function createHomeService(deps) {
     try {
       let url = typeof typed === 'string' ? typed.trim() : '';
       if (!url) {
+        note('Procurando o Home Assistant na sua rede… (leva alguns segundos)');
         const { found } = await engine().homeDiscover();
         if (!found || !found.length) {
-          const message = 'Não achei o Home Assistant na sua rede. Escreva o endereço dele (por exemplo 192.168.0.10, que aparece na tela de rede do seu roteador ou no próprio Home Assistant).';
+          const message = 'Não achei o Home Assistant na sua rede. Se ele estiver ligado, escreva o endereço dele abaixo (por exemplo 192.168.0.10, que aparece em Configurações > Sistema > Rede no próprio Home Assistant, ou na lista de aparelhos do seu roteador). Se você ainda não tem um, toque em "Ainda não tenho o Home Assistant".';
           note(message);
           return { needAddress: true, message };
         }

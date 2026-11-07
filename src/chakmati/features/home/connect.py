@@ -4,12 +4,13 @@ The person's part is one click on "Aprovar" in their own Home Assistant. No toke
 Assistant's own phone app uses (https://developers.home-assistant.io/docs/auth_api): the Chakmati asks for access, Home Assistant sends the browser
 back to the engine with a one-time code, and the code is exchanged for tokens that are kept in a file only the person's user can read.
 
-Only addresses of the person's own network are accepted (a name ending in .local, a private IP, a name with no dot): the engine never sends a
+The search covers this computer and the person's own network only (a plain connection to port 8123 on each address of its /24, then the public page of the ones that answer); only addresses of the person's own network are accepted (a name ending in .local, a private IP, a name with no dot): the engine never sends a
 sign-in to a stranger's server."""
 
 import asyncio
 import ipaddress
 import secrets
+import socket
 import time
 from urllib.parse import urlencode, urlsplit
 
@@ -18,7 +19,10 @@ import httpx
 from chakmati.features.home.auth import HomeAuth
 from chakmati.features.home.models import HomeError
 
-CANDIDATES = ("http://homeassistant.local:8123", "http://homeassistant:8123")  # the names a Home Assistant answers to by default
+# The names a Home Assistant answers to by default, and this computer itself (a Home Assistant in Docker listens here).
+CANDIDATES = ("http://homeassistant.local:8123", "http://homeassistant:8123", "http://localhost:8123")
+PORT = 8123
+NAME_TIMEOUT_SECONDS = 3.0   # a name that does not exist can take several seconds to fail (the .local lookup): it is not worth waiting for
 STATE_TTL_SECONDS = 600.0
 HOME_ASSISTANT = "Home Assistant"
 
@@ -61,12 +65,58 @@ async def probe(url: str, http: httpx.AsyncClient) -> dict | None:
     return None
 
 
-async def discover(http: httpx.AsyncClient, candidates=CANDIDATES) -> list[dict]:
-    found = [f for f in await asyncio.gather(*(probe(u, http) for u in candidates)) if f]
+def own_hosts() -> list[str]:
+    """The other addresses of this computer's own network (its /24, when that is a private one): where a Home Assistant on another device would be.
+    The address is found without sending anything (a UDP "connect" only asks the system which network card it would use)."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("10.255.255.255", 1))
+            mine = ipaddress.ip_address(sock.getsockname()[0])
+    except OSError:
+        return []
+    if not mine.is_private or mine.is_loopback:
+        return []
+    base = ".".join(str(mine).split(".")[:3])
+    return [f"{base}.{n}" for n in range(1, 255) if f"{base}.{n}" != str(mine)]
+
+
+async def _listening(host: str, port: int, timeout: float) -> bool:
+    try:
+        _, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout)
+    except (OSError, asyncio.TimeoutError):
+        return False
+    writer.close()
+    return True
+
+
+async def scan(http: httpx.AsyncClient, hosts: list[str], port: int = PORT, timeout: float = 0.7, concurrency: int = 64) -> list[dict]:
+    """Looks for a Home Assistant on each address of `hosts`: first a plain connection to the port (fast), then the public page on the ones that answer."""
+    gate = asyncio.Semaphore(concurrency)
+
+    async def one(host: str) -> dict | None:
+        async with gate:
+            if not await _listening(host, port, timeout):
+                return None
+        return await probe(f"http://{host}:{port}", http)
+
+    return [f for f in await asyncio.gather(*(one(h) for h in hosts)) if f]
+
+
+async def discover(http: httpx.AsyncClient, candidates=CANDIDATES, hosts: list[str] | None = None) -> list[dict]:
+    """Every Home Assistant that answers: the usual names and this computer first, then the rest of the own network. One result per address."""
+    async def named(url: str) -> dict | None:
+        try:
+            return await asyncio.wait_for(probe(url, http), NAME_TIMEOUT_SECONDS)
+        except asyncio.TimeoutError:
+            return None
+
+    # the names and the own network are searched AT THE SAME TIME: the slowest of them, not their sum
+    by_name, by_scan = await asyncio.gather(asyncio.gather(*(named(u) for u in candidates)), scan(http, own_hosts() if hosts is None else hosts))
+    found = [f for f in by_name if f] + by_scan
     seen, out = set(), []
     for item in found:
-        if item["name"] not in seen:  # two names that lead to the same house are one house
-            seen.add(item["name"])
+        if item["url"] not in seen:
+            seen.add(item["url"])
             out.append(item)
     return out
 
