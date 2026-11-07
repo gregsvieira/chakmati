@@ -136,6 +136,14 @@
             <span class="switch-text">Descrever os emojis ao falar
               <small>Desligado, o Chakmati pula os emojis quando fala. Ligado, ele diz o que eles são (por exemplo, “rosto sorrindo”).</small></span></label>
         </section>
+        <section class="cat" id="cloud-section">
+          <h3>IA paga</h3>
+          <p id="cloud-status" class="muted"></p>
+          <div class="row">
+            <button type="button" id="cloud-open" class="ghost">Conectar a minha IA paga</button>
+            <button type="button" id="cloud-remove" class="ghost" hidden>Remover</button>
+          </div>
+        </section>
         <section class="cat" id="home-section">
           <h3>Assistente de Casa e Alexa</h3>
           <button type="button" id="home-open" class="ghost">Conectar Home Assistant</button>
@@ -224,6 +232,25 @@
       <button type="button" id="panic" class="ghost">Ocultar tudo agora</button>
       <button type="button" id="restart" class="ghost">Reiniciar o Chakmati</button>
     </footer>
+    <div id="cloud-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="cloud-modal-title" hidden>
+      <div class="modal-card">
+        <h2 id="cloud-modal-title">Minha IA paga</h2>
+        <p>O Chakmati usa a sua IA primeiro. Quando o limite dela acabar, usa o modelo local, e volta para a sua IA quando o limite renovar.</p>
+        <label class="field">Provedor<select id="cloud-provider"></select></label>
+        <input type="password" id="cloud-key" maxlength="400" autocomplete="off" spellcheck="false" placeholder="Chave de API" aria-label="Chave de API">
+        <p id="cloud-help" class="hint"></p>
+        <input type="text" id="cloud-model" maxlength="80" autocomplete="off" spellcheck="false" placeholder="Modelo" aria-label="Modelo">
+        <label class="switch"><input type="checkbox" id="cloud-local"><span class="track"></span>
+          <span class="switch-text">Manter o modelo local de reserva
+            <small>Desmarcado, quando o limite da sua IA acabar o Chakmati não responde até ele renovar.</small></span></label>
+        <p class="hint">É preciso uma chave de API, cobrada à parte, por uso: assinaturas de chat não dão acesso a uma API. A chave é conferida com o próprio provedor e guardada criptografada no cofre do sistema deste computador.</p>
+        <p id="cloud-error" class="note" role="alert" hidden></p>
+        <div class="modal-actions">
+          <button type="button" id="cloud-save" class="primary">Salvar</button>
+          <button type="button" id="cloud-cancel" class="ghost">Cancelar</button>
+        </div>
+      </div>
+    </div>
     <div id="home-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="home-modal-title" hidden>
       <div class="modal-card">
         <h2 id="home-modal-title">Assistente de Casa e Alexa</h2>
@@ -312,6 +339,7 @@
   <script src="../../agenda/renderer/agenda.js"></script>
   <script src="../../notices/renderer/recent.js"></script>
   <script src="../../settings/renderer/settings.js"></script>
+  <script src="../../cloud/renderer/cloud.js"></script>
   <script src="../../home/modal-logic.js"></script>
   <script src="../../home/renderer/flow.js"></script>
   <script src="../../home/renderer/home.js"></script>
