@@ -197,6 +197,15 @@ A few questions are answered with pride in Brazil (`src/chakmati/features/chat/p
 *qual é a águia mais imponente / de que país é a águia mais imponente* (the Harpia Brasileira, with real facts), and *Pelé ou Maradona* ("É o Pelé!", then "Mas costumam responder assim:" and the model's own answer, as it would
 normally give it). Nothing else is changed; the texts are constants in that file.
 
+### Music on the Alexa (through Home Assistant)
+
+"próxima música", "pausa a música da sala", "volta a música", "aumenta o volume", "volume em 30", "o que está tocando na sala?" change what a speaker plays. The Alexa has no public API of its own, so the
+Chakmati talks to **Home Assistant**, where each Echo shows up as a `media_player` (with the community integration *Alexa Media Player*, installed from HACS; it is unofficial and logs in with your Amazon account).
+Connect it once: `CHAKMATI_HOME_BACKEND=homeassistant`, `CHAKMATI_HOME_URL=http://homeassistant.local:8123` and a long-lived access token in `~/.lite-agent/home_token.txt` (`CHAKMATI_HOME_TOKEN_FILE`).
+The commands are read **by rules, not by the model** (`features/home/rules.py`): instant, and a small model cannot get "pausa" wrong. With no device named, the one that is playing is used (the only one, if just one exists;
+it asks "Em qual aparelho?" when it is not clear), and "... da sala" / "... da cozinha" picks one by name. Music never asks for approval (it does not open the house); the volume is limited to 0-100%.
+"toque uma música do Pelé" (choosing a song) is not supported yet: only controlling what is playing.
+
 ### Personalities
 
 Ajustes > **Jeito de falar** (or say "muda a personalidade para gaúcho") picks a regional way of speaking: Padrão, Carioca, Paulista, Gaúcho, Nordestino, Mineiro.
