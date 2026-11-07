@@ -90,7 +90,7 @@ test('a mandatory download has no "Pular": only approving it or cancelling the i
   assert.match(wizard, /Obrigatório: sem isso o Chakmati não funciona/);
   assert.match(wizard, /defaultId: 1/);   // the default button is still the one that downloads nothing
   const js = read('features', 'installer', 'renderer', 'installer.js');
-  assert.match(js, /Obrigatórios: /);
+  assert.match(js, /Obrigatório: /);
   assert.match(js, /obrigatório/);
   assert.match(js, /result\.status === 'aborted'/);
 });

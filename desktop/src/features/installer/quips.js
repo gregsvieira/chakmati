@@ -11,9 +11,9 @@ const PRAISE = Object.freeze([
 ]);
 
 const TEASE = Object.freeze([
-  'É a primeira vez que tentam me rodar no laptop da xuxa.',
-  'Esse é o computador do show do milhão?',
-  'Ual. Esse pc so nao eh mais potente que minha torradeira jorges formgrill',
+  'É a primeira vez que tentam me rodar no laptop da Xuxa.',
+  'Esse é o computador do Show do Milhão?',
+  'Uau. Esse PC só não é mais potente que a minha torradeira Jorges Formgrill.',
 ]);
 
 const STRONG = Object.freeze({ ramGb: 15, cores: 8 }); // "well above what is asked": 16 GB and 8 cores (the same line the wizard uses for the full model)

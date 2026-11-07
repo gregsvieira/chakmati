@@ -22,9 +22,9 @@ test('the sentences the owner asked for are among them', () => {
   assert.ok(PRAISE.includes('Nossa, é uma honra ser convidado para essa máquina da NASA!'));
   assert.ok(PRAISE.includes('Então esse é o computador de lançamento da SpaceX?'));
   assert.deepEqual([...TEASE], [
-    'É a primeira vez que tentam me rodar no laptop da xuxa.',
-    'Esse é o computador do show do milhão?',
-    'Ual. Esse pc so nao eh mais potente que minha torradeira jorges formgrill',
+    'É a primeira vez que tentam me rodar no laptop da Xuxa.',
+    'Esse é o computador do Show do Milhão?',
+    'Uau. Esse PC só não é mais potente que a minha torradeira Jorges Formgrill.',
   ]);
 });
 
