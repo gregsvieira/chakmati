@@ -20,6 +20,7 @@
       : 'Ligar o Home Assistant que já foi instalado.');
     steps.push(info.alexa_ready ? 'Usar a integração da Alexa (alexa_media_player), que já está no Home Assistant.' : 'Baixar a integração da Alexa (alexa_media_player) para dentro do Home Assistant.');
     steps.push('Ligar tudo e conferir que está funcionando.');
+    steps.push('Ligar a sua Alexa: o Chakmati pede o e-mail e a senha da Amazon aqui mesmo, e o login acontece numa janela do próprio Chakmati.');
     return steps;
   }
 
@@ -47,14 +48,36 @@
     return { stage: 'approving' };
   }
 
-  // The last page: what was found, and what is still missing for the Alexa.
+  // The last page: what was found.
   function doneText(status) {
     const players = (status && status.players) || [];
     if (players.length) return `Achei: ${players.slice(0, 3).map((p) => p.name).join(', ')}${players.length > 3 ? ' e mais' : ''}. Já dá para dizer "próxima música".`;
-    return 'Falta só uma coisa para a Alexa aparecer: entrar na sua conta da Amazon dentro do Home Assistant. Toque em "Abrir o Home Assistant", vá em Configurações > Dispositivos e serviços > Adicionar integração, procure "Alexa Media Player" e entre com a sua conta da Amazon.';
+    return 'Você pode ligar a Alexa quando quiser: toque em "Conectar a Alexa" em Ajustes.';
   }
 
-  const api = { introSteps, canStart, stageFor, approval, doneText };
+  // Once Home Assistant is connected: if a speaker is already there, finish; otherwise it is time to link the Alexa.
+  function afterConnected(status) {
+    return status && (status.players || []).length ? 'done' : 'alexa';
+  }
+
+  // The Amazon site for the language of the computer ("pt-BR" -> amazon.com.br), among the ones the integration knows.
+  function regionFor(locale, regions) {
+    const country = String(locale || '').replace('_', '-').split('-').pop().toUpperCase();
+    const byCountry = { BR: 'amazon.com.br', US: 'amazon.com', CA: 'amazon.ca', MX: 'amazon.com.mx', GB: 'amazon.co.uk', DE: 'amazon.de', ES: 'amazon.es', FR: 'amazon.fr', IT: 'amazon.it', IN: 'amazon.in', JP: 'amazon.co.jp', AU: 'amazon.com.au' };
+    const guess = byCountry[country] || 'amazon.com';
+    if (!regions || Object.prototype.hasOwnProperty.call(regions, guess)) return guess;
+    return Object.prototype.hasOwnProperty.call(regions, 'amazon.com') ? 'amazon.com' : Object.keys(regions)[0];   // a country the integration does not know: the international site
+  }
+
+  // While the person signs in to Amazon in the window: keep waiting, finished, or back to the form with a sentence.
+  function alexaWait(status) {
+    if (!status || status.state === 'login') return { stage: 'alexa-wait' };
+    if (status.state === 'done') return { stage: 'done' };
+    if (status.state === 'error') return { stage: 'alexa', text: status.message || 'Não deu certo. Tente de novo.' };
+    return { stage: 'alexa', text: 'A janela foi fechada antes de terminar. Se foi sem querer, tente de novo.' };   // idle: it was cancelled
+  }
+
+  const api = { introSteps, canStart, stageFor, approval, doneText, afterConnected, regionFor, alexaWait };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.HomeModal = api;
 })(typeof window !== 'undefined' ? window : globalThis);

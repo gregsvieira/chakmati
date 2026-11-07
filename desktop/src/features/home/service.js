@@ -5,6 +5,8 @@ const { isLocalHttpUrl } = require('./lan');
 
 const POLL_MS = 2000;
 const GIVE_UP_MS = 3 * 60 * 1000;
+const ALEXA_POLL_MS = 2000;
+const ALEXA_GIVE_UP_MS = 11 * 60 * 1000;
 const CANCELLED_AFTER_MS = 6000;   // pending is gone and nothing got connected: the person said no (or it failed)
 
 const names = (players) => (players || []).slice(0, 3).map((p) => p.name).join(', ');
@@ -20,7 +22,7 @@ function summary(status) {
     : 'Conectado ao Home Assistant, mas ainda não vejo nenhuma Alexa ou caixa de som. Falta entrar na sua conta da Amazon dentro do Home Assistant.';
 }
 
-// deps: engine (the client), openExternal(url), note(text), afterConnected(status), afterDisconnected(), friendlyError(e), isEngineUp(), sleep(ms), now()
+// deps: engine (the client), openExternal(url), openLoginWindow(url, { onClosed }) -> { close() }, note(text), afterConnected(status), afterDisconnected(), friendlyError(e), isEngineUp(), sleep(ms), now()
 function createHomeService(deps) {
   const { engine, openExternal, note, afterConnected, friendlyError, isEngineUp } = deps;
   const sleep = deps.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
@@ -84,6 +86,53 @@ function createHomeService(deps) {
     } catch (e) { return { error: friendlyError(e) }; }
   }
 
+  // Linking the Alexa: the engine starts Home Assistant's setup with the credentials (which stop there), the sign-in page opens in the app's own window,
+  // and the status is read until Home Assistant has finished. -> { ok } | { error }
+  let loginWindow = null;
+  let alexaRun = 0;
+  const closeLogin = () => { const w = loginWindow; loginWindow = null; if (w) { try { w.close(); } catch { /* already closed */ } } };
+
+  async function alexaStart({ region, email, password } = {}) {
+    if (!isEngineUp()) return down();
+    try {
+      const out = await engine().homeAlexaStart(region, email, password);
+      const url = out && out.url;
+      let path = '';
+      try { path = new URL(url).pathname; } catch { /* not a URL */ }
+      if (!isLocalHttpUrl(url) || !path.startsWith('/auth/alexamedia/proxy/')) {
+        await engine().homeAlexaCancel().catch(() => {});
+        return { error: 'Endereço de login inesperado: não abri nada.' };
+      }
+      const mine = ++alexaRun;
+      closeLogin();
+      let finished = false;
+      loginWindow = deps.openLoginWindow(url, { onClosed: () => { loginWindow = null; if (!finished && mine === alexaRun) engine().homeAlexaCancel().catch(() => {}); } });
+      lastWait = (async () => {
+        const started = now();
+        while (mine === alexaRun && now() - started < ALEXA_GIVE_UP_MS) {
+          await sleep(ALEXA_POLL_MS);
+          if (mine !== alexaRun) return;
+          let status;
+          try { status = await engine().homeAlexaStatus(); } catch { continue; }
+          if (status.state === 'login') continue;
+          finished = true;
+          closeLogin();
+          if (status.state === 'done') await deps.afterConnected(await engine().homeStatus());
+          return;
+        }
+        if (mine === alexaRun) { finished = true; closeLogin(); await engine().homeAlexaCancel().catch(() => {}); }
+      })().catch(() => {});
+      return { ok: true };
+    } catch (e) { return { error: friendlyError(e) }; }
+  }
+
+  async function alexaCancel() {
+    alexaRun += 1;
+    closeLogin();
+    try { await engine().homeAlexaCancel(); } catch { /* it was already over */ }
+    return { ok: true };
+  }
+
   async function disconnect() {
     waiting += 1;
     try { await engine().homeDisconnect(); } catch (e) { return { error: friendlyError(e) }; }
@@ -92,7 +141,7 @@ function createHomeService(deps) {
     return { ok: true };
   }
 
-  return { discover, connect, startInstall, account, disconnect, waitForApproval, idle: () => lastWait, cancel: () => { waiting += 1; } };
+  return { discover, connect, startInstall, account, alexaStart, alexaCancel, disconnect, waitForApproval, idle: () => lastWait, cancel: () => { waiting += 1; } };
 }
 
 module.exports = { createHomeService, summary, POLL_MS, GIVE_UP_MS };

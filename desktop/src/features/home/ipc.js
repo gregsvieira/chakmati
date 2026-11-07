@@ -4,6 +4,7 @@ const { ipcMain, shell } = require('electron');
 const ctx = require('../../shared/context');
 const { friendlyError } = require('../engine').errors;
 const { createHomeService, summary } = require('./service');
+const { openLoginWindow } = require('./alexa-window');
 
 function register() {
   const note = (text) => { ctx.state.homeNote = text || ''; require('../panel').window.sendPanelState(); };
@@ -11,6 +12,7 @@ function register() {
     engine: () => ctx.engine,
     isEngineUp: () => ctx.state.engineUp,
     openExternal: (url) => shell.openExternal(url),
+    openLoginWindow: (url, opts) => openLoginWindow(url, { parent: ctx.panelWin && !ctx.panelWin.isDestroyed() ? ctx.panelWin : null, ...opts }),
     note,
     friendlyError,
     async afterConnected(status) {
@@ -31,6 +33,9 @@ function register() {
   ipcMain.handle('panel:home-install-info', async () => { try { return await ctx.engine.homeInstallStatus(); } catch (e) { return { error: friendlyError(e) }; } });
   ipcMain.handle('panel:home-install-start', () => service.startInstall());
   ipcMain.handle('panel:home-account', (_e, name, password) => service.account({ name: text(name, 60), password: text(password, 128) }));
+  ipcMain.handle('panel:home-alexa-start', (_e, region, email, password) => service.alexaStart({ region: text(region, 40), email: text(email, 254), password: text(password, 256) }));
+  ipcMain.handle('panel:home-alexa-status', async () => { try { return await ctx.engine.homeAlexaStatus(); } catch (e) { return { state: 'error', message: friendlyError(e) }; } });
+  ipcMain.handle('panel:home-alexa-cancel', () => service.alexaCancel());
   ipcMain.handle('panel:home-open-ha', () => shell.openExternal('http://localhost:8123'));   // a fixed address: the page never chooses it
   ipcMain.handle('panel:home-disconnect', () => service.disconnect());
 }

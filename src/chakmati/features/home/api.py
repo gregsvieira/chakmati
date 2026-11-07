@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
+from chakmati.features.home.alexa_setup import REGIONS, AlexaSetup
 from chakmati.features.home.auth import HomeAuth
 from chakmati.features.home.client import HomeAssistantClient
 from chakmati.features.home.connect import HomeConnector, discover
@@ -23,6 +24,12 @@ class ConnectIn(BaseModel):
 
 class InstallIn(BaseModel):
     confirm: bool = False   # the person said yes in the modal, which says what will be installed (the desktop sends this)
+
+
+class AlexaIn(BaseModel):
+    region: str = Field(min_length=1, max_length=40)
+    email: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=1, max_length=256)
 
 
 class AccountIn(BaseModel):
@@ -47,6 +54,7 @@ class HomeLink:
         self._http = http or httpx.AsyncClient(timeout=10.0)
         self.connector = HomeConnector(auth, self._http)
         self.installer = installer
+        self.alexa = AlexaSetup(auth, self._http)
         self._hosts = hosts   # None = search the own network; a list (tests) = only these addresses
 
     async def status(self) -> dict:
@@ -116,6 +124,26 @@ class HomeLink:
             except HomeError as exc:
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
             return await self.installer.inspect()
+
+        @router.get("/home/alexa")
+        async def alexa_status():
+            try:
+                return {**await self.alexa.status(), "regions": REGIONS}
+            except HomeError as exc:
+                return {"state": "error", "message": str(exc)[0].upper() + str(exc)[1:] + ".", "url": "", "regions": REGIONS}
+
+        @router.post("/home/alexa", dependencies=[Depends(ui_only)])
+        async def alexa_start(body: AlexaIn):
+            # The credentials go on to Home Assistant over this computer's loopback and are neither kept nor written anywhere by the Chakmati.
+            try:
+                return await self.alexa.start(body.region, body.email, body.password)
+            except HomeError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        @router.delete("/home/alexa", dependencies=[Depends(ui_only)])
+        async def alexa_cancel():
+            await self.alexa.cancel()
+            return await self.alexa.status()
 
         @router.get("/home/status")
         async def home_status():
