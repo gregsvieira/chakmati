@@ -115,6 +115,8 @@ async function install() {
   show('run');
   $('bar').value = 0;
   $('run-title').textContent = 'Instalando…';
+  $('run-details').hidden = true;
+  $('finish').hidden = true;
   const off = api.onProgress((p) => {
     $('run-status').textContent = p.total ? `${p.status} (${Math.round((p.completed / p.total) * 100)}%)` : p.status;
     if (p.total) $('bar').value = Math.round((p.completed / p.total) * 100);
@@ -128,16 +130,28 @@ async function install() {
   const names = { done: 'feito', declined: 'pulado por você', failed: 'falhou' };
   items($('results'), result.results.map((r) => `${r.id}: ${names[r.status]}${r.error ? ` — ${r.error}` : ''}`));
   items($('after'), result.after || []);
+  $('after-details').hidden = !(result.after || []).length;
+  if (result.status === 'done') return showDone(true);   // one short screen of its own, with the optional house step
+  $('run-details').hidden = false;
   $('finish').hidden = false;
-  $('finish').textContent = result.status === 'done' ? 'Concluir' : 'Fechar';
-  $('home-setup').hidden = result.status !== 'done';   // the engine and the model are ready: the house can be connected now, so the Chakmati opens already connected
+  return undefined;
+}
+
+// The end: "installed" and the one optional thing left. After the house step (or without it) the same screen only says it is over.
+function showDone(offerHome) {
+  $('done-title').textContent = offerHome ? 'O Chakmati está instalado' : 'Tudo pronto!';
+  $('done-lead').hidden = !offerHome;
+  $('home-setup').hidden = !offerHome;
+  $('done-finish').textContent = offerHome ? 'Agora não' : 'Concluir';
+  $('done-finish').className = offerHome ? '' : 'primary';
+  show('done');
 }
 
 // The smart house and the Alexa: the same flow as Ajustes (home/renderer/flow.js), shown as one more screen. It needs the engine, which the main process starts for it.
 const homeFlow = window.HomeFlow.create({
   $, api, locale: navigator.language, rootId: 's-home',
   labels: { cancel: 'Voltar', close: 'Concluir', skip: 'Agora não' },
-  onClose: () => { show('run'); $('home-setup').hidden = true; },
+  onClose: () => showDone(false),
 });
 homeFlow.bind();
 $('home-setup').addEventListener('click', async () => {
@@ -146,7 +160,7 @@ $('home-setup').addEventListener('click', async () => {
   $('home-setup').disabled = false;
   if (ready && ready.error) { items($('after'), [`Casa e Alexa: ${ready.error} Você pode fazer isso depois em Ajustes.`]); return; }
   show('home');
-  homeFlow.open();
+  try { await homeFlow.open(); } catch { showDone(true); $('done-lead').textContent = 'Não consegui abrir a conexão da casa agora. Você pode fazer isso depois, em Ajustes.'; $('home-setup').hidden = true; }   // never an empty screen
 });
 
 $('to-options').addEventListener('click', renderProfile);
@@ -157,6 +171,7 @@ $('to-summary').addEventListener('click', renderSummary);
 $('back-options').addEventListener('click', () => show('options'));
 $('install').addEventListener('click', install);
 $('finish').addEventListener('click', () => api.finish());
+$('done-finish').addEventListener('click', () => api.finish());
 $('open-ollama').addEventListener('click', () => api.ollamaPage());
 $('recheck').addEventListener('click', start);
 

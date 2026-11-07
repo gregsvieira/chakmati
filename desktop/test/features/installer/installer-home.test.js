@@ -17,7 +17,8 @@ test('the wizard has the same smart-house markup as the modal in Ajustes, so the
 
 test('the step is offered only after a finished install, is optional, and every call it makes is exposed to the wizard', () => {
   const js = read('features', 'installer', 'renderer', 'installer.js');
-  assert.match(js, /\$\('home-setup'\)\.hidden = result\.status !== 'done'/);
+  assert.match(js, /if \(result\.status === 'done'\) return showDone\(true\)/);
+  assert.match(js, /onClose: \(\) => showDone\(false\)/);
   assert.match(js, /rootId: 's-home'/);
   const preload = read('preload.js');
   const installer = preload.slice(preload.indexOf('installer: {'), preload.indexOf('}', preload.indexOf('homeOpenHa')));
