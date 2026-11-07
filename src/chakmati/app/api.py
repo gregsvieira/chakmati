@@ -42,6 +42,7 @@ def create_app(
     computer: ApprovalService | None = None,
     frames: FrameStore | None = None,
     inputs: InputBroker | None = None,
+    home_link=None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -86,5 +87,7 @@ def create_app(
     app.include_router(voice_api.router(stt, tts, lambda: engine.awake))
     app.include_router(automations_api.router(automations, stt, engine.expect_answer))
     app.include_router(computer_api.router(computer))
-    app.include_router(overview.router(engine, notices, calendar, whatsapp, automations, home, computer))
+    if home_link is not None:
+        app.include_router(home_link.router())
+    app.include_router(overview.router(engine, notices, calendar, whatsapp, automations, home, computer, home_link))
     return app

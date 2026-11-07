@@ -102,6 +102,19 @@
               <span class="switch-text">WhatsApp
                 <small id="wa-status">Ler, resumir e enviar mensagens (sempre com a sua aprovação).</small></span></label>
           <button type="button" id="wa-connect" class="ghost" hidden>Conectar WhatsApp via OpenWa</button>
+          <label class="switch"><input type="checkbox" id="set-home"><span class="track"></span>
+              <span class="switch-text">Casa inteligente e Alexa
+                <small id="home-status">Controlar luzes, tomadas e a música da Alexa. Usa o Home Assistant da sua casa.</small></span></label>
+          <div id="home-actions" class="stack" hidden>
+            <button type="button" id="home-connect" class="ghost">Conectar ao Home Assistant</button>
+            <div id="home-address-row" class="stack" hidden>
+              <input type="text" id="home-address" maxlength="100" placeholder="Endereço, por exemplo 192.168.0.10" aria-label="Endereço do Home Assistant" autocomplete="off">
+              <button type="button" id="home-address-go" class="ghost">Conectar neste endereço</button>
+            </div>
+            <button type="button" id="home-alexa-help" class="ghost" hidden>Como ligar a Alexa</button>
+            <button type="button" id="home-disconnect" class="ghost" hidden>Desconectar</button>
+            <small id="home-note" class="hint"></small>
+          </div>
           <label class="switch"><input type="checkbox" id="set-calendar"><span class="track"></span>
               <span class="switch-text">Agenda
                 <small>Ver e marcar compromissos no calendário do computador.</small></span></label>

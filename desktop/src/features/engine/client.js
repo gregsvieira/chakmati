@@ -139,6 +139,15 @@ class EngineClient {
     return (await this._request('/personality', { method: 'PUT', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify({ id }) })).json();
   }
 
+  // Connecting to Home Assistant (the way to the Alexa): find it, start the sign-in, say what is connected, disconnect.
+  async homeDiscover() { return (await this._request('/home/discover')).json(); }
+  async homeStatus() { return (await this._request('/home/status')).json(); }
+  async homeConnect(url) {
+    if (typeof url !== 'string' || !url.trim() || url.length > 200) throw new Error('invalid address');
+    return (await this._request('/home/connect', { method: 'POST', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify({ url: url.trim() }) })).json();
+  }
+  async homeDisconnect() { return (await this._request('/home', { method: 'DELETE', headers: UI })).json(); }
+
   // How the person is addressed (ele/dele, ela/dela, elu/delu, or none), changed in the running engine.
   async setPronouns(id) {
     if (typeof id !== 'string' || !/^[a-z]{3,20}$/.test(id)) throw new Error('invalid pronouns');

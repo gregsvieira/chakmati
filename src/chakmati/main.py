@@ -33,7 +33,9 @@ from chakmati.features.research.searxng import SearxngBackend
 from chakmati.features.research.tool import ResearchTool
 from chakmati.features.computer.assistant import ComputerAssistant
 from chakmati.features.computer.service import ComputerService
+from chakmati.features.home.api import HomeLink
 from chakmati.features.home.assistant import HomeAssistantBot
+from chakmati.features.home.auth import HomeAuth
 from chakmati.features.home.client import HomeAssistantClient
 from chakmati.features.home.service import HomeService
 from chakmati.features.whatsapp.assistant import WhatsAppAssistant
@@ -85,15 +87,13 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         automation_runner = AutomationRunner(automation_store, whatsapp, calendar=calendar, voice_dir=s.automations_dir)
         automation_assistant = AutomationAssistant(llm, automation_service, whatsapp)
     computer_service = ComputerService(s.workspace, actions)
-    home_service = home_bot = None
+    home_service = home_bot = home_link = None
+    home_auth = HomeAuth(s.home_auth_file, s.home_token_file, s.home_url)
+    home_client = HomeAssistantClient(auth=home_auth)
+    home_link = HomeLink(home_auth, home_client)  # the connect flow works even before it is connected, and even with the house switched off
     if s.home_backend == "homeassistant":
-        try:
-            token = open(s.home_token_file, encoding="utf-8").read().strip()
-        except OSError:
-            token = ""
-        if token:
-            home_service = HomeService(HomeAssistantClient(s.home_url, token), actions)
-            home_bot = HomeAssistantBot(llm, home_service)
+        home_service = HomeService(home_client, actions)  # not connected yet: it says so in words; connecting (Ajustes) works at once, with no restart
+        home_bot = HomeAssistantBot(llm, home_service)
     frames = browser_agent = inputs = None
     if s.browser_backend == "chrome":
         frames = FrameStore(s.browser_frames_dir)
@@ -149,6 +149,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         computer=computer_service,
         frames=frames,
         inputs=inputs,
+        home_link=home_link,
         on_startup=llm.preload if s.preload_model else None,
         calendar=calendar,
         whatsapp=whatsapp,

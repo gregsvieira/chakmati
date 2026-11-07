@@ -57,6 +57,12 @@ const OPTIONS = Object.freeze([
     after: 'WhatsApp: depois da instalação, conecte em Ajustes > Integrações (isso instala o OpenWA e mostra o QR code).',
   },
   {
+    id: 'home', label: 'Casa inteligente e Alexa (Home Assistant)', platforms: ALL, diskMb: 0, ramMb: 0,
+    description: 'Controlar luzes, tomadas e a música da Alexa pelo Home Assistant da sua casa. Só faz sentido se você já usa o Home Assistant.',
+    settings: { home: true }, offSettings: { home: false },
+    after: 'Casa inteligente: depois da instalação, abra Ajustes > Integrações e toque em "Conectar ao Home Assistant". O Chakmati procura o seu na rede e você só precisa aprovar o acesso, sem copiar nenhum código.',
+  },
+  {
     id: 'laya', label: 'Laya (filtro de relevância da pesquisa)', platforms: ALL, extra: 'laya', diskMb: 1500, ramMb: 800,
     advice: 'Não recomendado. Possui baixa eficácia neste projeto até o momento.',
     description: 'Um modelo extra que descarta trechos pouco relevantes das páginas da pesquisa antes de responder.',

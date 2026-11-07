@@ -53,7 +53,8 @@ class Settings:
     browser_headless: bool = True  # no Chrome window for the person; the screenshots are the view. False = watch it work
     home_backend: str = "off"  # "off" | "homeassistant" (also the way to reach Alexa-compatible devices)
     home_url: str = "http://homeassistant.local:8123"
-    home_token_file: str = os.path.expanduser("~/.lite-agent/home_token.txt")
+    home_token_file: str = os.path.expanduser("~/.lite-agent/home_token.txt")  # the older way: a long-lived token pasted by hand
+    home_auth_file: str = os.path.expanduser("~/.lite-agent/home_auth.json")  # what the connect flow in Ajustes writes (address and renewable tokens)
     openwa_api_key: str = ""
     openwa_api_key_file: str = os.path.expanduser("~/.lite-agent/openwa/api_key.txt")
     whatsapp_max_sends_per_hour: int = 20
@@ -108,6 +109,7 @@ class Settings:
             home_backend=env.get("CHAKMATI_HOME_BACKEND", d.home_backend),
             home_url=env.get("CHAKMATI_HOME_URL", d.home_url),
             home_token_file=os.path.expanduser(env.get("CHAKMATI_HOME_TOKEN_FILE", d.home_token_file)),
+            home_auth_file=os.path.expanduser(env.get("CHAKMATI_HOME_AUTH_FILE", d.home_auth_file)),
             openwa_api_key=env.get("CHAKMATI_OPENWA_API_KEY", d.openwa_api_key),
             openwa_api_key_file=env.get("CHAKMATI_OPENWA_API_KEY_FILE", d.openwa_api_key_file),
             whatsapp_max_sends_per_hour=int(env.get("CHAKMATI_WHATSAPP_MAX_SENDS_PER_HOUR", d.whatsapp_max_sends_per_hour)),

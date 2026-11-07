@@ -63,7 +63,7 @@ test('settings are saved once, at the end: chosen items on, the rest off', async
   assert.equal(out.status, 'done');
   const saves = h.log.filter((l) => l.startsWith('save:'));
   assert.equal(saves.length, 1);
-  assert.deepEqual(out.settings, { talk: false, laya: false, protect: false, chatModel: 'qwen3.5:latest', enhancedVoice: true, still: false });
+  assert.deepEqual(out.settings, { talk: false, home: false, laya: false, protect: false, chatModel: 'qwen3.5:latest', enhancedVoice: true, still: false });
 });
 
 test('declining an optional item skips it and keeps going', async () => {

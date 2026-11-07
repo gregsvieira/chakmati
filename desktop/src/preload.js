@@ -53,6 +53,8 @@ contextBridge.exposeInMainWorld('assistant', {
     panic: () => send('panel:panic'),
     restart: () => send('panel:restart'),
     openWa: () => ipcRenderer.invoke('panel:openwa'),
+    homeConnect: (url) => ipcRenderer.invoke('panel:home-connect', typeof url === 'string' ? url : ''),
+    homeDisconnect: () => ipcRenderer.invoke('panel:home-disconnect'),
     chats: () => ipcRenderer.invoke('panel:chats'),
     messages: (chatId) => ipcRenderer.invoke('panel:messages', chatId),
     audio: (chatId, messageId) => ipcRenderer.invoke('panel:audio', chatId, messageId),
