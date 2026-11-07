@@ -60,3 +60,14 @@ button.ghost { background: transparent; }
 #opt-body .cost, #opt-body .advice { display: block; margin-top: 10px; }
 #opt-body .advice { color: var(--wine); }
 #opt-title { font-size: 19px; }
+
+/* flagged items */
+.flag { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; background: var(--surface-2); border: 1px solid var(--rule); border-radius: 12px; padding: 12px 14px; margin: 10px 0; }
+.flag input { margin-top: 3px; }
+.flag .name { font-weight: 600; }
+.flag .cost { color: var(--muted); font-size: 13px; }
+.flag .advice { color: var(--wine); }
+#s-options h3 { font-size: 15px; margin: 18px 0 4px; }
+.field { display: block; margin: 12px 0; font-size: 14px; }
+.field input, .field select { display: block; width: 100%; box-sizing: border-box; margin-top: 6px; padding: 9px 11px; font: inherit; border-radius: 10px; border: 1px solid var(--rule); background: var(--surface-2); color: var(--text); }
+.note { color: var(--wine); }

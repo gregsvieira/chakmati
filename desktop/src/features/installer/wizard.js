@@ -1,7 +1,7 @@
 'use strict';
 // The wizard window and its IPC. Every handler recomputes from the real hardware; the page only sends the ids ticked.
 const path = require('node:path');
-const { BrowserWindow, dialog, shell } = require('electron');
+const { BrowserWindow, dialog, shell, app, safeStorage } = require('electron');
 const { readHardware } = require('./hardware');
 const { verdict: judge, suggestions, reasoningFor } = require('./tiers');
 const { ENGINE, MODELS, optionsFor } = require('./catalog');
@@ -15,6 +15,7 @@ const { formatSize, levelText } = require('./format');
 const { quip } = require('./quips');
 const settingsLib = require('../settings').settings;
 const ctx = require('../../shared/context');
+const cloudKey = require('../engine').cloudKey;
 
 const PROFILE = { personalities: settingsLib.PERSONALITIES.map((id) => ({ id, name: settingsLib.PERSONALITY_NAMES[id] })), pronouns: settingsLib.PRONOUNS.map((id) => ({ id, name: settingsLib.PRONOUN_NAMES[id] })) };
 
@@ -47,6 +48,7 @@ function openSetup({ ipcMain, webPreferences, settingsFile, engine = null, onClo
         disk: hw.freeDiskGb === null ? 'não consegui medir' : `${hw.freeDiskGb} GB livres`,
       },
       profile: PROFILE,
+      providers: Object.values(cloudKey.PROVIDERS).map((p) => ({ id: p.id, label: p.label, defaultModel: p.defaultModel, keyHelp: p.keyHelp })),
       engineText: engine ? formatSize(ENGINE.baseMb) : null, // the engine is only prepared by the installed app
       model: model && { id: model.id, label: model.label, sizeText: formatSize(model.diskMb) },
       options: optionsFor(hw.platform, { packaged: !!engine }).filter((o) => o.id !== 'reasoning' || reasoningFor(hw)).map((o) => ({
@@ -57,9 +59,22 @@ function openSetup({ ipcMain, webPreferences, settingsFile, engine = null, onClo
     };
   }
 
-  function planFor(selected, profile) {
+  // The paid AI: its key was checked with the provider and stored (encrypted) by `installer:cloud-check`; here only the provider and the model are known.
+  const keyStore = cloudKey.createKeyStore({ file: path.join(app.getPath('userData'), 'cloud-key.bin'), safeStorage });
+  let cloud = null;   // { provider, model } once a key was accepted
+
+  function planFor(selected, profile, opts) {
     const hw = readHardware();
-    try { return buildPlan({ hw, verdict: judge(hw), selected: ids(selected), engine: engine ? { packaged: true } : null, profile: profile && typeof profile === 'object' ? profile : null }); } catch (e) {
+    const wantsCloud = !!(opts && opts.cloud);
+    const wantsLocal = !(opts && opts.local === false);
+    try {
+      if (!wantsLocal && !wantsCloud) throw new Error('Escolha o modelo local, a sua assinatura de IA paga, ou os dois.');
+      if (wantsCloud && !cloud) throw new Error('Falta conectar a sua IA paga: volte e informe a chave.');
+      return buildPlan({
+        hw, verdict: judge(hw), selected: ids(selected), engine: engine ? { packaged: true } : null, profile: profile && typeof profile === 'object' ? profile : null,
+        cloud: wantsCloud ? { ...cloud, local: wantsLocal } : null,
+      });
+    } catch (e) {
       return { ok: false, blocked: [e.message], steps: [], baseline: {}, totals: null, warnings: [], after: [] };
     }
   }
@@ -77,15 +92,27 @@ function openSetup({ ipcMain, webPreferences, settingsFile, engine = null, onClo
   };
 
   ipcMain.handle('installer:scan', () => scan());
-  ipcMain.handle('installer:plan', (_e, selected, profile) => {
-    const plan = planFor(selected, profile);
+  ipcMain.handle('installer:cloud-check', async (_e, provider, key, model) => {
+    if (!cloudKey.validProvider(provider)) return { error: 'Escolha o provedor.' };
+    if (!cloudKey.validModel(model)) return { error: 'O nome do modelo tem caracteres inválidos.' };
+    if (!cloudKey.validKey(key)) return { error: 'A chave tem um formato inválido (sem espaços nem quebras de linha).' };
+    if (!keyStore.available()) return { error: 'Este computador não tem um cofre do sistema para guardar a chave com segurança, então não vou guardá-la.' };
+    const checked = await cloudKey.checkKey(provider, key);
+    if (checked.error) return checked;
+    try { keyStore.save(key); } catch (e) { return { error: e.message }; }
+    cloud = { provider, model };
+    return { ok: true };
+  });
+  ipcMain.handle('installer:cloud-clear', () => { keyStore.clear(); cloud = null; return { ok: true }; });
+  ipcMain.handle('installer:plan', (_e, selected, profile, opts) => {
+    const plan = planFor(selected, profile, opts);
     const totalsText = plan.totals
       ? `Espaço em disco: cerca de ${formatSize(plan.totals.diskMb)}. Memória em uso: cerca de ${formatSize(plan.totals.ramMb)} (estimativas).`
       : '';
     return { ...plan, totalsText };
   });
-  ipcMain.handle('installer:run', async (_e, selected, profile) => {
-    const plan = planFor(selected, profile);
+  ipcMain.handle('installer:run', async (_e, selected, profile, opts) => {
+    const plan = planFor(selected, profile, opts);
     const result = await runPlan(plan, { approve, runners, onProgress: (p) => send('installer:progress', p) });
     if (engine && result.status === 'done') writeSetupDone({ dataDir: engine.dataDir, extras: extrasFromSettings(result.settings) });
     return { ...result, after: plan.after };

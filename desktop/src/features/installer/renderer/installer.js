@@ -53,6 +53,7 @@ async function start() {
   $('ollama-help').hidden = !usable || scan.ollamaUp;
   $('to-options').hidden = !usable;
   $('to-options').disabled = !scan.ollamaUp;
+  buildScreens();
   show('check');
 }
 
@@ -76,54 +77,138 @@ function renderProfile() {
   show('profile');
 }
 
-// One thing per screen: first what is mandatory, then each optional item with its cost, "Pular" or "Instalar". The screens are built from the scan, so the list is the main process's.
-let step = 0;   // 0 = the basics, 1..n = scan.options[step - 1]
+// A few short screens, each with boxes to flag: nothing is installed until the summary. The first is the basics (the engine, and how the chat model runs: the local one,
+// the person's paid AI, or both), then one screen per group of extras. The screens are built from the scan, so the list is the main process's.
+const GROUPS = [
+  { title: 'Voz', ids: ['voice', 'talk'] },
+  { title: 'Modelos extras', ids: ['reasoning', 'laya'] },
+  { title: 'Integrações', ids: ['whatsapp', 'home', 'homeInstall'] },
+  { title: 'Aparência e privacidade', ids: ['animations', 'glass', 'hideShare'] },
+];
+const model = { local: true, cloud: false, connected: false, provider: '', name: '' };   // how the chat model runs
+const modelOut = () => ({ local: model.local, cloud: model.cloud && model.connected });
+let screens = [];   // 'basics' then the groups that have something on this computer
+let step = 0;
+
+function buildScreens() {
+  const known = new Set(GROUPS.flatMap((g) => g.ids));
+  const present = scan.options.map((o) => o.id);
+  const groups = GROUPS.map((g) => ({ ...g, ids: g.ids.filter((id) => present.includes(id)) }));
+  const rest = present.filter((id) => !known.has(id));
+  if (rest.length) groups.push({ title: 'Outros', ids: rest });
+  screens = [{ kind: 'basics' }, ...groups.filter((g) => g.ids.length).map((g) => ({ kind: 'group', ...g }))];
+}
+
+function flagRow(box, title, lines) {
+  return el('label', { className: 'flag' }, box, el('span', {}, title, ...lines.flatMap((l) => [el('br'), l])));
+}
+
+function modelFlags() {
+  const local = el('input', { type: 'checkbox', checked: model.local });
+  local.addEventListener('change', () => { model.local = local.checked; });
+  const cloud = el('input', { type: 'checkbox', checked: model.cloud });
+  cloud.addEventListener('change', () => { model.cloud = cloud.checked; });
+  return [
+    flagRow(local, el('span', { className: 'name', textContent: `Rodar com o modelo local: ${scan.model.label} (${scan.model.id}, ${scan.model.sizeText})` }),
+      [el('span', { textContent: 'Funciona sem internet e sem gastar nada. É baixado neste computador.' })]),
+    flagRow(cloud, el('span', { className: 'name', textContent: 'Quero rodar com a minha assinatura de IA paga' }),
+      [el('span', { textContent: 'Claude, OpenAI… O Chakmati usa a sua IA primeiro; quando o limite dela acabar, usa o modelo local. Se você marcar só esta, não baixa o modelo local.' })]),
+  ];
+}
+
+function groupFlags(ids) {
+  return ids.map((id) => {
+    const opt = scan.options.find((o) => o.id === id);
+    const box = el('input', { type: 'checkbox', checked: chosen.has(id) });
+    box.addEventListener('change', () => {
+      if (box.checked && id === 'whatsapp') {
+        box.checked = false;   // flagged only after the notice was acknowledged
+        waGate.run(showWhatsAppNotice, () => { box.checked = true; chosen.add(id); });
+        return;
+      }
+      if (box.checked) chosen.add(id); else chosen.delete(id);
+    });
+    const title = el('span', { className: 'name', textContent: opt.label });
+    if (scan.suggested[id]) title.append(el('span', { className: 'badge', textContent: 'Recomendado' }));
+    const lines = [el('span', { textContent: opt.description })];
+    if (opt.advice) lines.push(el('span', { className: 'advice', textContent: opt.advice }));
+    lines.push(el('span', { className: 'cost', textContent: opt.costText }));
+    return flagRow(box, title, lines);
+  });
+}
 
 function renderOptions() { goStep(0); }
 
 function goStep(n) {
   step = n;
-  const total = scan.options.length;
-  const body = $('opt-body');
-  const opt = n === 0 ? null : scan.options[n - 1];
-  $('opt-progress').textContent = n === 0 ? '' : `Extra ${n} de ${total}`;
-  if (!opt) {
+  const sc = screens[n];
+  $('opt-error').hidden = true;
+  $('opt-progress').textContent = n === 0 ? '' : `Extras ${n} de ${screens.length - 1}`;
+  if (sc.kind === 'basics') {
     $('opt-title').textContent = 'O que será instalado';
-    body.replaceChildren(
-      el('p', { className: 'muted', textContent: 'O básico (conversar, pesquisar) já funciona. Depois você escolhe, um por um, o que mais quiser, para gastar menos memória e espaço.' }),
-      el('p', { className: 'card', textContent: `Obrigatório: ${scan.engineText ? `o motor do Chakmati (cerca de ${scan.engineText}) e ` : ''}o modelo de conversa para este computador, ${scan.model.label} (${scan.model.id}, ${scan.model.sizeText}). Sem ${scan.engineText ? 'eles' : 'ele'} o Chakmati não funciona.` }),
+    $('opt-body').replaceChildren(
+      el('p', { className: 'card', textContent: `Obrigatório: ${scan.engineText ? `o motor do Chakmati (cerca de ${scan.engineText}).` : 'o Chakmati.'} O resto você marca abaixo e só é instalado no fim, tudo de uma vez.` }),
+      el('h3', { textContent: 'Modelo de conversa' }),
+      ...modelFlags(),
     );
-    $('opt-skip').hidden = true;
-    $('opt-yes').textContent = 'Continuar';
   } else {
-    $('opt-title').textContent = opt.label;
-    const title = el('p', { className: 'card' });
-    if (scan.suggested[opt.id]) title.append(el('span', { className: 'badge', textContent: 'Recomendado para este PC' }), el('br'));
-    title.append(el('span', { textContent: opt.description }), el('br'));
-    if (opt.advice) title.append(el('span', { className: 'advice', textContent: opt.advice }), el('br'));
-    title.append(el('span', { className: 'cost', textContent: opt.costText }));
-    body.replaceChildren(title);
-    $('opt-skip').hidden = false;
-    $('opt-skip').textContent = 'Pular';
-    $('opt-yes').textContent = chosen.has(opt.id) ? 'Manter' : 'Instalar';
+    $('opt-title').textContent = sc.title;
+    $('opt-body').replaceChildren(el('p', { className: 'muted', textContent: 'Marque o que quiser. Nada vem marcado e nada é instalado agora: tudo é instalado de uma vez no fim.' }), ...groupFlags(sc.ids));
   }
+  $('opt-yes').textContent = n === screens.length - 1 ? 'Ver o resumo' : 'Continuar';
   show('options');
 }
 
-function nextStep() { if (step >= scan.options.length) renderSummary(); else goStep(step + 1); }
+function nextStep() {
+  if (step === 0) {
+    if (!model.local && !model.cloud) { $('opt-error').textContent = 'Marque o modelo local, a sua assinatura de IA paga, ou os dois.'; $('opt-error').hidden = false; return; }
+    if (!model.cloud && model.connected) { api.cloudClear(); model.connected = false; }   // unflagged after connecting: the stored key goes too
+    if (model.cloud && !model.connected) { renderCloud(); return; }
+  }
+  if (step >= screens.length - 1) renderSummary(); else goStep(step + 1);
+}
+
+// The paid AI: provider, key and model. The main process checks the key with the provider and stores it encrypted; the page keeps nothing of it.
+function renderCloud() {
+  const pick = $('cloud-provider');
+  pick.replaceChildren(...scan.providers.map((p) => el('option', { value: p.id, textContent: p.label })));
+  pick.value = model.provider || scan.providers[0].id;
+  const sync = () => {
+    const p = scan.providers.find((x) => x.id === pick.value);
+    $('cloud-model').value = model.name && model.provider === pick.value ? model.name : p.defaultModel;
+    $('cloud-help').textContent = `Crie a chave em ${p.keyHelp}.`;
+  };
+  pick.onchange = sync;
+  sync();
+  $('cloud-key').value = '';
+  $('cloud-error').hidden = true;
+  show('cloud');
+  $('cloud-key').focus();
+}
+
+async function saveCloud() {
+  const provider = $('cloud-provider').value;
+  const name = $('cloud-model').value.trim();
+  const key = $('cloud-key').value.trim();
+  $('cloud-key').value = '';   // gone from the page the moment it is sent
+  $('cloud-save').disabled = true;
+  $('cloud-save').textContent = 'Conferindo com o provedor…';
+  const res = await api.cloudCheck(provider, key, name);
+  $('cloud-save').disabled = false;
+  $('cloud-save').textContent = 'Testar e guardar';
+  if (res.error) { $('cloud-error').textContent = res.error; $('cloud-error').hidden = false; return; }
+  Object.assign(model, { connected: true, provider, name });
+  step = 0;
+  nextStep();
+}
 
 $('opt-back').addEventListener('click', () => { if (step === 0) renderProfile(); else goStep(step - 1); });
-$('opt-skip').addEventListener('click', () => { chosen.delete(scan.options[step - 1].id); nextStep(); });
-$('opt-yes').addEventListener('click', () => {
-  if (step === 0) { nextStep(); return; }
-  const id = scan.options[step - 1].id;
-  if (id === 'whatsapp' && !chosen.has(id)) { waGate.run(showWhatsAppNotice, () => { chosen.add(id); nextStep(); }); return; }   // ticked only after the notice was acknowledged
-  chosen.add(id);
-  nextStep();
-});
+$('opt-yes').addEventListener('click', nextStep);
+$('cloud-back').addEventListener('click', () => { $('cloud-key').value = ''; goStep(0); });
+$('cloud-save').addEventListener('click', saveCloud);
 
 async function renderSummary() {
-  const plan = await api.plan([...chosen], profileOut());
+  const plan = await api.plan([...chosen], profileOut(), modelOut());
   if (!plan.ok) {
     items($('steps'), plan.blocked);
     $('totals').textContent = '';
@@ -147,7 +232,7 @@ async function install() {
     $('run-status').textContent = p.total ? `${p.status} (${Math.round((p.completed / p.total) * 100)}%)` : p.status;
     if (p.total) $('bar').value = Math.round((p.completed / p.total) * 100);
   });
-  const result = await api.run([...chosen], profileOut());
+  const result = await api.run([...chosen], profileOut(), modelOut());
   off();
   const titles = { done: 'Pronto!', aborted: 'Instalação cancelada', failed: 'A instalação falhou', blocked: 'Não foi possível instalar' };
   $('run-title').textContent = titles[result.status] || 'Fim';
@@ -192,7 +277,7 @@ $('home-setup').addEventListener('click', async () => {
 $('to-options').addEventListener('click', renderProfile);
 $('back-check2').addEventListener('click', () => show('check'));
 $('to-options2').addEventListener('click', renderOptions);
-$('back-options').addEventListener('click', () => goStep(scan.options.length));
+$('back-options').addEventListener('click', () => goStep(screens.length - 1));
 $('install').addEventListener('click', install);
 $('finish').addEventListener('click', () => api.finish());
 $('done-finish').addEventListener('click', () => api.finish());

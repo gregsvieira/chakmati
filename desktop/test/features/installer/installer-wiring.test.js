@@ -76,12 +76,12 @@ test('every element the wizard script looks up exists in the page, profile scree
 
 test('the wizard sends the personality and pronouns choice with both the plan and the run, and the main process rebuilds the plan from it', () => {
   const js = read('features', 'installer', 'renderer', 'installer.js');
-  assert.match(js, /api\.plan\(\[\.\.\.chosen\], profileOut\(\)\)/);
-  assert.match(js, /api\.run\(\[\.\.\.chosen\], profileOut\(\)\)/);
+  assert.match(js, /api\.plan\(\[\.\.\.chosen\], profileOut\(\), modelOut\(\)\)/);
+  assert.match(js, /api\.run\(\[\.\.\.chosen\], profileOut\(\), modelOut\(\)\)/);
   const wizard = read('features', 'installer', 'wizard.js');
-  assert.match(wizard, /ipcMain\.handle\('installer:plan', \(_e, selected, profile\)/);
-  assert.match(wizard, /ipcMain\.handle\('installer:run', async \(_e, selected, profile\)/);
-  assert.match(read('preload.js'), /plan: \(selected, profile\) => ipcRenderer\.invoke\('installer:plan', selected, profile\)/);
+  assert.match(wizard, /ipcMain\.handle\('installer:plan', \(_e, selected, profile, opts\)/);
+  assert.match(wizard, /ipcMain\.handle\('installer:run', async \(_e, selected, profile, opts\)/);
+  assert.match(read('preload.js'), /plan: \(selected, profile, opts\) => ipcRenderer\.invoke\('installer:plan', selected, profile, opts\)/);
 });
 
 test('a mandatory download has no "Pular": only approving it or cancelling the install, and the page says it is mandatory', () => {
