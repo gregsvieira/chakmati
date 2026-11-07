@@ -46,6 +46,7 @@
     $('set-whatsapp').checked = !!P.state.settings.whatsapp;
     $('set-calendar').checked = !!P.state.settings.calendar;
     $('set-research').checked = !!P.state.settings.research;
+    if (P.renderHome) P.renderHome();   // the smart-house section lives in features/home/renderer/home.js
     const wa = (P.state.overview && P.state.overview.whatsapp) || { enabled: false };
     $('wa-status').textContent = !wa.enabled ? 'Ler, resumir e enviar mensagens (sempre com a sua aprovação).'
       : wa.connected ? 'Conectado.' : 'Ligado, mas sem conexão. Conecte abaixo.';

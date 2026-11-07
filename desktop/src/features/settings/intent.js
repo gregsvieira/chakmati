@@ -21,6 +21,7 @@
     { key: 'still', re: /\b(animacoes?|animado|ficar parado|estatico)\b/, name: 'as animações', invert: true },
     { key: 'talk', re: /\b(falar com (o )?(chakmati|xacmati)|escutar|me ouvir|ouvir (a )?minha voz|microfone|modo de escuta)\b/, name: 'o falar com o Chakmati' },
     { key: 'hear', re: /\b(ouvir (o )?(chakmati|xacmati)|falar em voz alta|ler em voz alta|voz alta|responder falando|falar as respostas)\b/, name: 'o ouvir o Chakmati' },
+    { key: 'home', re: /\b(casa inteligente|home assistant|alexa)\b/, name: 'a casa inteligente' },
     { key: 'whatsapp', re: /\bwhats\w*|\bzap\w*|\bwpp\b/, name: 'o WhatsApp' },
     { key: 'calendar', re: /\b(agenda|calendario)\b/, name: 'a agenda' },
     { key: 'research', re: /\b(pesquisa|pesquisar|buscar) (na )?(internet|web)\b|\bpesquisa na internet\b/, name: 'a pesquisa na internet' },

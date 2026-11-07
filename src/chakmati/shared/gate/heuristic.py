@@ -54,6 +54,13 @@ _AUTOMATION_VERB = re.compile(r"\b(?:respond\w*|envi\w*|mand\w*|avis\w*|lembr\w*
 # The house: a device word AND something said about it ("liga a luz da sala", "a porta está trancada?").
 _HOME_NOUN = re.compile(r"\b(luz(?:es)?|l[âa]mpadas?|tomadas?|ventilador|ar[- ]condicionado|termostato|persianas?|cortinas?|port[ãa]o|garagem|fechadura|alexa|home assistant)\b", re.IGNORECASE)
 _HOME_VERB = re.compile(r"\b(lig\w+|deslig\w+|apag\w+|acend\w+|abr\w+|fech\w+|tranc\w+|destranc\w+|ajust\w+|coloc\w+|ativ\w+|diminu\w+|aument\w+|est[áa]|esta)\b", re.IGNORECASE)
+# Music on the speakers (Alexa) through the house: "próxima música", "pausa a música da sala", "volume em 30", "aumenta o volume".
+_HOME_MUSIC = re.compile(
+    r"\b(?:pr[óo]xima|pul[ae]r?|pula|troc\w+|mud\w+|volt\w+|anterior|paus\w+|pause|continu\w+|retom\w+)\b.{0,25}\b(?:m[úu]sica|faixa|can[çc][ãa]o)\b"
+    r"|\b(?:aument\w+|diminu\w+|abaix\w+|baix\w+|sobe|suba|reduz\w*)\b.{0,20}\bvolume\b|\bvolume\b.{0,20}\b\d{1,3}\b|^\W*pr[óo]xima\W*$"
+    r"|\b(?:o\s+que|que\s+m[úu]sica|qual\s+m[úu]sica|que\s+faixa)\b.{0,20}\b(?:est[áa]\s+tocando|toca|tocando)\b",
+    re.IGNORECASE,
+)
 _HOME_PHRASE = re.compile(r"\b(?:ativ\w+|coloc\w+)\s+(?:a\s+)?cena\b|\bporta\b.{0,25}\b(?:trancad\w+|aberta|fechada|destranc\w+)\b|\b(?:tranc\w+|destranc\w+)\s+a\s+porta\b", re.IGNORECASE)
 
 # The computer itself: making a file, opening a program / site / folder (an imperative at the start: "abre o Spotify").
@@ -92,7 +99,7 @@ class HeuristicGate:
     def classify(self, text: str) -> GateResult:
         if _BROWSER.search(text) or _CART.search(text) or (_URL.search(text) and _URL_TASK.search(text) and not re.search(r"\bwhats\w*|\bzap", text, re.IGNORECASE)) or ((_SITE_NAME.search(text) or _STORE_PHRASE.search(text)) and _SITE_ACT.search(text) and not re.search(r"\bwhats\w*|\bzap", text, re.IGNORECASE)):
             return GateResult(Route.BROWSER, 0.9, self.source)
-        if (_HOME_NOUN.search(text) and _HOME_VERB.search(text) and not _WHATSAPP.search(text)) or _HOME_PHRASE.search(text):
+        if (_HOME_NOUN.search(text) and _HOME_VERB.search(text) and not _WHATSAPP.search(text)) or _HOME_PHRASE.search(text) or _HOME_MUSIC.search(text):
             return GateResult(Route.HOME, 0.9, self.source)
         if _GRADE.search(text):
             return GateResult(Route.COMPUTER, 0.9, self.source)

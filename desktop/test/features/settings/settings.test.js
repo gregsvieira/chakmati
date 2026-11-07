@@ -53,10 +53,10 @@ test('animations and the glass are off by default (they cost memory) and each ca
 });
 
 test('integrations map to the engine environment: web search on by default, the rest off', () => {
-  assert.deepEqual(engineEnv(DEFAULTS), { CHAKMATI_CHAT_MODEL: 'qwen3.5:latest', CHAKMATI_PERSONALITY: 'padrao', CHAKMATI_PRONOUNS: 'none', CHAKMATI_RESEARCH_BACKEND: 'ddg', CHAKMATI_WHATSAPP_BACKEND: 'off', CHAKMATI_CALENDAR_BACKEND: 'off', CHAKMATI_RESEARCH_SCORER: 'keepall' });
+  assert.deepEqual(engineEnv(DEFAULTS), { CHAKMATI_CHAT_MODEL: 'qwen3.5:latest', CHAKMATI_PERSONALITY: 'padrao', CHAKMATI_PRONOUNS: 'none', CHAKMATI_RESEARCH_BACKEND: 'ddg', CHAKMATI_WHATSAPP_BACKEND: 'off', CHAKMATI_CALENDAR_BACKEND: 'off', CHAKMATI_HOME_BACKEND: 'off', CHAKMATI_RESEARCH_SCORER: 'keepall' });
   assert.equal(engineEnv(DEFAULTS, { searxng: true }).CHAKMATI_RESEARCH_BACKEND, 'searxng');
   assert.equal(engineEnv({ ...DEFAULTS, research: false }).CHAKMATI_RESEARCH_BACKEND, 'off');
-  assert.deepEqual(engineEnv({ ...DEFAULTS, whatsapp: true, calendar: true }), { CHAKMATI_CHAT_MODEL: 'qwen3.5:latest', CHAKMATI_PERSONALITY: 'padrao', CHAKMATI_PRONOUNS: 'none', CHAKMATI_RESEARCH_BACKEND: 'ddg', CHAKMATI_WHATSAPP_BACKEND: 'openwa', CHAKMATI_CALENDAR_BACKEND: 'auto', CHAKMATI_RESEARCH_SCORER: 'keepall' });
+  assert.deepEqual(engineEnv({ ...DEFAULTS, whatsapp: true, calendar: true }), { CHAKMATI_CHAT_MODEL: 'qwen3.5:latest', CHAKMATI_PERSONALITY: 'padrao', CHAKMATI_PRONOUNS: 'none', CHAKMATI_RESEARCH_BACKEND: 'ddg', CHAKMATI_WHATSAPP_BACKEND: 'openwa', CHAKMATI_CALENDAR_BACKEND: 'auto', CHAKMATI_HOME_BACKEND: 'off', CHAKMATI_RESEARCH_SCORER: 'keepall' });
   assert.equal(engineEnv({ ...DEFAULTS, laya: true }).CHAKMATI_RESEARCH_SCORER, 'laya');
   assert.equal(normalize({ whatsapp: 'yes' }).whatsapp, false);
 });
@@ -124,4 +124,12 @@ test('the installed personalities: everything for someone who never chose, and P
   assert.deepEqual(normalize({ personalities: ['klingon', 'gaucho', 'gaucho'] }).personalities, ['padrao', 'gaucho']);              // unknown and repeated ones drop out
   assert.deepEqual(normalize({ personalities: 'gaucho' }).personalities, PERSONALITIES);          // not a list: ignored
   assert.deepEqual(normalize({ personalities: [], personality: 'padrao' }).personalities, ['padrao']);
+});
+
+test('the smart house is off by default; switching it on starts the engine with the Home Assistant backend', () => {
+  assert.equal(DEFAULTS.home, false);
+  assert.equal(normalize({ home: true }).home, true);
+  assert.equal(normalize({ home: 'yes' }).home, false);
+  assert.equal(engineEnv({ ...DEFAULTS, home: true }).CHAKMATI_HOME_BACKEND, 'homeassistant');
+  assert.equal(engineEnv(DEFAULTS).CHAKMATI_HOME_BACKEND, 'off');
 });

@@ -18,7 +18,7 @@ from chakmati.shared.notices import NoticeBoard
 
 
 def router(engine: Engine, notices: NoticeBoard, calendar: CalendarService | None, whatsapp: WhatsAppService | None,
-           automations: AutomationService | None, home: ApprovalService | None, computer: ApprovalService | None) -> APIRouter:
+           automations: AutomationService | None, home: ApprovalService | None, computer: ApprovalService | None, home_link=None) -> APIRouter:
     router = APIRouter()
 
     @router.get("/notices")
@@ -60,7 +60,7 @@ def router(engine: Engine, notices: NoticeBoard, calendar: CalendarService | Non
         result["pending"] = [action_json(a) for a in sorted(pending, key=lambda a: a.expires_at)]
         if automations is not None:
             result["automations"] = [automation_json(a) for a in await asyncio.to_thread(automations.store.list)]
-        result["home"] = {"enabled": home is not None}
+        result["home"] = {"enabled": home is not None, **(await home_link.status() if home_link is not None else {})}
         result["computer_standing"] = bool(getattr(computer, "standing", False))
         result["last_notice_id"] = notices.last_id
         result["personality"] = engine.personality

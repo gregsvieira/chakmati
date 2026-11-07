@@ -197,6 +197,29 @@ A few questions are answered with pride in Brazil (`src/chakmati/features/chat/p
 *qual é a águia mais imponente / de que país é a águia mais imponente* (the Harpia Brasileira, with real facts), and *Pelé ou Maradona* ("É o Pelé!", then "Mas costumam responder assim:" and the model's own answer, as it would
 normally give it). Nothing else is changed; the texts are constants in that file.
 
+### Music on the Alexa (through Home Assistant)
+
+"próxima música", "pausa a música da sala", "volta a música", "aumenta o volume", "volume em 30", "o que está tocando na sala?" change what a speaker plays. The Alexa has no public API of its own, so the
+Chakmati talks to **Home Assistant**, where each Echo shows up as a `media_player` (with the community integration *Alexa Media Player*, installed from HACS; it is unofficial and logs in with your Amazon account).
+**Ajustes has one section for this, "Assistente de Casa e Alexa", with one button: "Conectar Home Assistant"** (once connected it says so and offers "Desconectar"). The button opens a modal that does the work:
+1. It looks for a Home Assistant (the usual names, this computer, and a quick look at port 8123 on the rest of the own network, about 3 seconds). If it finds one: "Conectar" opens ITS login page in the browser, the person only taps "Aprovar" (Home Assistant's own sign-in, the one
+   its phone app uses), and the engine keeps the tokens in `~/.lite-agent/home_auth.json` (only the person's user can read it; the access token lasts 30 minutes and is renewed by itself; it works at once, with no restart).
+2. If it finds none, the modal says what it will do on THIS computer (the list depends on what is there) and waits for "Começar": install Docker Desktop if it is missing (the system asks for the administrator password; Windows may ask to restart), open Docker if it is off, download Home Assistant
+   (`ghcr.io/home-assistant/home-assistant:stable`, about 1 GB) and run it in a container published on this computer only (`127.0.0.1:8123`, settings in `~/.lite-agent/homeassistant`), **download the Alexa integration (`alexa_media_player`, from its GitHub release) into Home Assistant's `custom_components`**,
+   start everything and check it. Each step is a plain sentence in the modal; it can be closed and the work goes on in the background.
+3. Only then does the modal ask for a name and a password (used once, kept nowhere): it creates the owner (user `chakmati`) through Home Assistant's own onboarding API and connects, with no sign-in to approve.
+When the Chakmati starts it switches the container on again (Docker Desktop too) if it was the one that installed it, but never downloads or creates anything at start. All the commands are fixed calls with no shell (`features/home/docker.py`, `docker_setup.py`), and Docker's installer comes only from `desktop.docker.com` over https.
+The older way still works: `CHAKMATI_HOME_BACKEND=homeassistant`, `CHAKMATI_HOME_URL` and a long-lived token in `~/.lite-agent/home_token.txt`.
+**Linking the Alexa** (the last page of the modal, or "Conectar a Alexa" in Ajustes while no speaker is there): the person picks the country of the Amazon account (from the language of the computer) and types the e-mail and password **in the modal**. The Chakmati starts the integration's own setup through Home Assistant's API (`features/home/alexa_setup.py`), with
+the address a browser can reach (`http://localhost:8123`: the integration's default, `homeassistant.local`, does not exist for a browser, which is what leaves its sign-in page blank), and shows the sign-in page in **a small window of the app itself** instead of the browser: it is Amazon's own sign-in page, served by Home Assistant, where Amazon may ask for a captcha or a code. The window is locked to that one address (no other pages, no new windows, no permissions, storage only in memory
+and cleared on close). When the sign-in ends the integration tells Home Assistant by itself and the window closes; the speakers then show up. The Chakmati only reads the list of Home Assistant's configurations while it waits: asking about the setup itself (`GET .../flow/<id>`) makes Home Assistant move on and throws the sign-in page away.
+**What is kept, said plainly:** the e-mail and the password go from the modal to the engine and from there to Home Assistant over this computer's loopback, in one request; the Chakmati never stores or logs them (the page clears the fields the moment they are sent). Home Assistant itself keeps them, in its own settings folder on this computer (`~/.lite-agent/homeassistant`), because the integration needs them to sign in again when Amazon asks; that file is not encrypted.
+The sign-in to Amazon is made by Home Assistant over https. The Amazon sign-in cannot be done without that page: the integration (5.x) has no other way, so a captcha or a code from Amazon is answered in that window.
+What cannot be automated: installing Docker on Linux (the distribution's package manager does it; the Chakmati says so) and the Amazon login for the Alexa, which is done once inside Home Assistant (the last page of the modal says where: Configurações > Dispositivos e serviços > Adicionar integração > Alexa Media Player).
+The commands are read **by rules, not by the model** (`features/home/rules.py`): instant, and a small model cannot get "pausa" wrong. With no device named, the one that is playing is used (the only one, if just one exists;
+it asks "Em qual aparelho?" when it is not clear), and "... da sala" / "... da cozinha" picks one by name. Music never asks for approval (it does not open the house); the volume is limited to 0-100%.
+"toque uma música do Pelé" (choosing a song) is not supported yet: only controlling what is playing.
+
 ### Personalities
 
 Ajustes > **Jeito de falar** (or say "muda a personalidade para gaúcho") picks a regional way of speaking: Padrão, Carioca, Paulista, Gaúcho, Nordestino, Mineiro.

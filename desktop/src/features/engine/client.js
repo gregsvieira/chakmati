@@ -139,6 +139,34 @@ class EngineClient {
     return (await this._request('/personality', { method: 'PUT', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify({ id }) })).json();
   }
 
+  // Connecting to Home Assistant (the way to the Alexa): find it, start the sign-in, say what is connected, disconnect.
+  async homeDiscover() { return (await this._request('/home/discover')).json(); }
+  async homeStatus() { return (await this._request('/home/status')).json(); }
+  async homeConnect(url) {
+    if (typeof url !== 'string' || !url.trim() || url.length > 200) throw new Error('invalid address');
+    return (await this._request('/home/connect', { method: 'POST', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify({ url: url.trim() }) })).json();
+  }
+  // Installing a Home Assistant on this computer through Docker (for someone who has none): what is there, and start it.
+  async homeInstallStatus() { return (await this._request('/home/install')).json(); }
+  async homeInstallStart() {
+    return (await this._request('/home/install', { method: 'POST', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) })).json();
+  }
+  async homeAccount(name, password) {
+    if (typeof password !== 'string' || password.length < 8 || password.length > 128) throw new Error('invalid password');
+    const body = { name: typeof name === 'string' ? name.slice(0, 60) : '', password };
+    return (await this._request('/home/install/account', { method: 'POST', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify(body) })).json();
+  }
+  // Linking the Alexa through Home Assistant's own setup: status (and the countries), start with the credentials (they go no further than the engine), cancel.
+  async homeAlexaStatus() { return (await this._request('/home/alexa')).json(); }
+  async homeAlexaStart(region, email, password) {
+    if (typeof region !== 'string' || !/^amazon\.[a-z.]{2,8}$/.test(region)) throw new Error('invalid region');
+    if (typeof email !== 'string' || email.length < 3 || email.length > 254) throw new Error('invalid email');
+    if (typeof password !== 'string' || !password || password.length > 256) throw new Error('invalid password');
+    return (await this._request('/home/alexa', { method: 'POST', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify({ region, email, password }) })).json();
+  }
+  async homeAlexaCancel() { return (await this._request('/home/alexa', { method: 'DELETE', headers: UI })).json(); }
+  async homeDisconnect() { return (await this._request('/home', { method: 'DELETE', headers: UI })).json(); }
+
   // How the person is addressed (ele/dele, ela/dela, elu/delu, or none), changed in the running engine.
   async setPronouns(id) {
     if (typeof id !== 'string' || !/^[a-z]{3,20}$/.test(id)) throw new Error('invalid pronouns');

@@ -55,7 +55,7 @@ function updateSetting(key, value) {
   }
   else if (key === 'personalities' && Array.isArray(value)) ctx.settings = settingsLib.normalize({ ...ctx.settings, personalities: value });
   else if (key === 'pronouns' && settingsLib.PRONOUNS.includes(value)) { ctx.settings.pronouns = value; engineService.syncPronouns(); }
-  else if ((key === 'whatsapp' || key === 'calendar' || key === 'research') && typeof value === 'boolean') {
+  else if ((key === 'whatsapp' || key === 'calendar' || key === 'research' || key === 'home') && typeof value === 'boolean') {
     ctx.settings[key] = value;
     if (ctx.engineProcess) engineService.restartEngine().then(engineService.refreshOverview);
   } else return false;
