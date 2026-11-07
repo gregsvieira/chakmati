@@ -251,7 +251,7 @@ test('Ajustes has one section with one button, and nothing of the old controls i
 
 test('the modal has the pages, the name and the password only at the end, and every element the code looks up', () => {
   const html = read('features', 'panel', 'renderer', 'panel.html');
-  const js = read('features', 'home', 'renderer', 'home.js');
+  const js = read('features', 'home', 'renderer', 'flow.js') + read('features', 'home', 'renderer', 'home.js');
   const modalHtml = html.slice(html.indexOf('<div id="home-modal"'), html.indexOf('<div id="notice-modal"'));
   for (const id of ['hm-search', 'hm-found', 'hm-intro', 'hm-progress', 'hm-approving', 'hm-account', 'hm-done']) assert.ok(modalHtml.includes(`id="${id}"`), id);
   const account = modalHtml.slice(modalHtml.indexOf('id="hm-account"'), modalHtml.indexOf('id="hm-alexa"'));
@@ -263,7 +263,7 @@ test('the modal has the pages, the name and the password only at the end, and ev
   assert.deepEqual(wanted.filter((id) => !html.includes(`id="${id}"`)), []);
   assert.match(js, /for \(const id of \['hm-password', 'hm-alexa-password', 'hm-email'\]\) \$\(id\)\.value = ''/);      // neither the passwords nor the e-mail stay on the page
   assert.match(js, /\$\('hm-alexa-password'\)\.value = ''; *\/\/ gone from the page the moment it is sent/);
-  assert.match(html, /<script src="\.\.\/\.\.\/home\/modal-logic\.js"><\/script>\s*<script src="\.\.\/\.\.\/home\/renderer\/home\.js"><\/script>/);
+  assert.match(html, /<script src="\.\.\/\.\.\/home\/modal-logic\.js"><\/script>\s*<script src="\.\.\/\.\.\/home\/renderer\/flow\.js"><\/script>\s*<script src="\.\.\/\.\.\/home\/renderer\/home\.js"><\/script>/);
 });
 
 test('the main process opens only the checked login or the fixed address of the own Home Assistant, and caps what the page sends', () => {
@@ -381,5 +381,5 @@ test('the page has the Alexa form with the local and safe promise, and a button 
   assert.match(alexa, /uma conexão local/);
   assert.match(alexa, /conexão segura \(https\)/);
   assert.match(html, /id="home-alexa" class="ghost" hidden>Conectar a Alexa</);
-  assert.match(read('features', 'home', 'renderer', 'home.js'), /\$\('home-alexa'\)\.addEventListener\('click', openAlexa\)/);
+  assert.match(read('features', 'home', 'renderer', 'home.js'), /\$\('home-alexa'\)\.addEventListener\('click', flow\.openAlexa\)/);
 });

@@ -130,7 +130,24 @@ async function install() {
   items($('after'), result.after || []);
   $('finish').hidden = false;
   $('finish').textContent = result.status === 'done' ? 'Concluir' : 'Fechar';
+  $('home-setup').hidden = result.status !== 'done';   // the engine and the model are ready: the house can be connected now, so the Chakmati opens already connected
 }
+
+// The smart house and the Alexa: the same flow as Ajustes (home/renderer/flow.js), shown as one more screen. It needs the engine, which the main process starts for it.
+const homeFlow = window.HomeFlow.create({
+  $, api, locale: navigator.language, rootId: 's-home',
+  labels: { cancel: 'Voltar', close: 'Concluir', skip: 'Agora não' },
+  onClose: () => { show('run'); $('home-setup').hidden = true; },
+});
+homeFlow.bind();
+$('home-setup').addEventListener('click', async () => {
+  $('home-setup').disabled = true;
+  const ready = await api.homePrepare();
+  $('home-setup').disabled = false;
+  if (ready && ready.error) { items($('after'), [`Casa e Alexa: ${ready.error} Você pode fazer isso depois em Ajustes.`]); return; }
+  show('home');
+  homeFlow.open();
+});
 
 $('to-options').addEventListener('click', renderProfile);
 $('back-check2').addEventListener('click', () => show('check'));
