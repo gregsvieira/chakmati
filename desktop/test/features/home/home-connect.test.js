@@ -34,7 +34,6 @@ function harness({ found = [{ url: 'http://homeassistant.local:8123', name: 'Cas
   });
   return { service, log };
 }
-const settle = () => new Promise((r) => setTimeout(r, 20));
 
 test('the engine being down is said in words and nothing is tried', async () => {
   const { service, log } = harness({ engineUp: false });
@@ -87,7 +86,7 @@ test('when the approval arrives the connection is announced and the house switch
   const connected = { configured: true, connected: true, pending: false, players: [{ name: 'Echo Dot da sala', state: 'idle' }] };
   const { service, log } = harness({ statuses: [{ pending: true }, { pending: true }, connected] });
   await service.connect('');
-  await settle();
+  await service.idle();
   assert.equal(log.connected.length, 1);
   assert.equal(summary(log.connected[0]), 'Conectado. Achei: Echo Dot da sala.');
 });
@@ -95,7 +94,7 @@ test('when the approval arrives the connection is announced and the house switch
 test('saying no in Home Assistant is noticed and said kindly', async () => {
   const { service, log } = harness({ statuses: [{ pending: true }, { pending: false, connected: false, configured: false }] });
   await service.connect('');
-  await settle();
+  await service.idle();
   assert.match(log.notes.at(-1), /não foi concluída/);
   assert.equal(log.connected.length, 0);
 });
@@ -104,17 +103,17 @@ test('a short hiccup while waiting does not end the wait', async () => {
   const connected = { configured: true, connected: true, pending: false, players: [] };
   const { service, log } = harness({ statuses: [new Error('rede'), { pending: true }, connected] });
   await service.connect('');
-  await settle();
+  await service.idle();
   assert.equal(log.connected.length, 1);
 });
 
 test('waiting is not forever: it gives up with a sentence', async () => {
   const { service, log } = harness({ statuses: [{ pending: true }] });
   await service.connect('');
-  await new Promise((r) => setTimeout(r, 60));
-  assert.match(log.notes.at(-1) || '', /Não vi a aprovação a tempo|Abri o Home Assistant/);
+  await service.idle();                              // the clock is fake: three minutes pass at once
+  assert.equal(log.notes.at(-1), 'Não vi a aprovação a tempo. Toque em Conectar para tentar de novo.');
+  assert.equal(log.connected.length, 0);
   assert.ok(GIVE_UP_MS / POLL_MS > 10);
-  service.cancel();
 });
 
 test('starting again cancels the earlier wait, and disconnecting cancels it too', async () => {
@@ -122,7 +121,7 @@ test('starting again cancels the earlier wait, and disconnecting cancels it too'
   const { service, log } = harness({ statuses: [{ pending: true }, { pending: true }, connected] });
   await service.connect('');
   await service.disconnect();
-  await settle();
+  await service.idle();
   assert.equal(log.connected.length, 0);          // the first wait ended when the person disconnected
   assert.equal(log.disconnects, 1);
   assert.match(log.notes.at(-1), /Desconectado/);

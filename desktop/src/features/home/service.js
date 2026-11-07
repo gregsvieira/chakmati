@@ -27,6 +27,7 @@ function createHomeService(deps) {
   const sleep = deps.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
   const now = deps.now || Date.now;
   let waiting = 0;   // a counter: starting again cancels the wait of the earlier try
+  let lastWait = Promise.resolve();   // the wait in progress, so a test (or a caller) can await it instead of guessing a time
 
   async function waitForApproval(mine) {
     const started = now();
@@ -59,7 +60,7 @@ function createHomeService(deps) {
       if (!isLocalHttpUrl(authorize)) return { error: 'Endereço de conexão inesperado: não abri nada.' };
       const mine = ++waiting;
       await openExternal(authorize);
-      waitForApproval(mine).catch(() => {});
+      lastWait = waitForApproval(mine).catch(() => {});
       const message = 'Abri o Home Assistant no seu navegador. Entre com a sua conta e toque em Aprovar.';
       note(message);
       return { ok: true, message };
@@ -78,7 +79,7 @@ function createHomeService(deps) {
     return { ok: true };
   }
 
-  return { connect, disconnect, waitForApproval, cancel: () => { waiting += 1; } };
+  return { connect, disconnect, waitForApproval, idle: () => lastWait, cancel: () => { waiting += 1; } };
 }
 
 module.exports = { createHomeService, summary, POLL_MS, GIVE_UP_MS };
