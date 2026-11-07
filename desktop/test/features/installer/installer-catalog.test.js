@@ -60,3 +60,27 @@ test('sizes and levels read naturally in Portuguese', () => {
   assert.match(levelText('compact'), /compacto/);
   assert.match(levelText('full'), /folga/);
 });
+
+test('two ways into the smart house: connect the one you have (free), or have one installed here (it costs disk and memory, said up front)', () => {
+  const have = OPTIONS.find((o) => o.id === 'home');
+  const install = OPTIONS.find((o) => o.id === 'homeInstall');
+  assert.deepEqual(have.settings, { home: true });
+  assert.deepEqual(have.offSettings, { home: false });
+  assert.equal(have.diskMb + have.ramMb, 0);
+  assert.deepEqual(install.settings, { home: true });
+  assert.deepEqual(install.offSettings, {});               // leaving it out must not undo "I already have one"
+  assert.ok(install.diskMb >= 1000 && install.ramMb >= 2000, 'the wizard says what it costs');
+  assert.match(install.description, /Docker/);
+  assert.match(install.after, /Ajustes > Integrações/);
+});
+
+test('choosing to install turns the house on even though the other item is left out', () => {
+  const { buildPlan } = require('../../../src/features/installer/plan');
+  const { verdict } = require('../../../src/features/installer/tiers');
+  const hw = { platform: 'darwin', arch: 'arm64', osRelease: '25.0', ramGb: 15.6, freeDiskGb: 50, cores: 8 };
+  const p = buildPlan({ hw, verdict: verdict(hw), selected: ['homeInstall'] });
+  assert.equal(p.baseline.home, false);                                   // written off because "I already have one" was left out...
+  assert.deepEqual(p.steps.find((s) => s.id === 'homeInstall').settings, { home: true });   // ...and then turned on by the step, which is applied after
+  assert.deepEqual(p.after.filter((a) => /Home Assistant/.test(a)).length, 1);
+  assert.equal(p.totals.diskMb, 1500 + 6600 + 1000);
+});
