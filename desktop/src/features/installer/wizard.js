@@ -14,6 +14,7 @@ const { extrasFromSettings } = require('../engine').launch;
 const { formatSize, levelText } = require('./format');
 const { quip } = require('./quips');
 const settingsLib = require('../settings').settings;
+const ctx = require('../../shared/context');
 
 const PROFILE = { personalities: settingsLib.PERSONALITIES.map((id) => ({ id, name: settingsLib.PERSONALITY_NAMES[id] })), pronouns: settingsLib.PRONOUNS.map((id) => ({ id, name: settingsLib.PRONOUN_NAMES[id] })) };
 
@@ -96,7 +97,28 @@ function openSetup({ ipcMain, webPreferences, settingsFile, engine = null, onClo
     });
     if (response === 0) await shell.openExternal(OLLAMA_DOWNLOAD);
   });
-  ipcMain.on('installer:finish', () => onFinish());
+  // The smart-house step needs the engine: start it here (with the settings the wizard just saved) and wait until it answers. The page never chooses what runs.
+  ipcMain.handle('installer:home-prepare', async () => {
+    try {
+      const { EngineClient } = require('../engine').client;
+      ctx.settingsFile = settingsFile;
+      ctx.settings = settingsLib.load(settingsFile);
+      ctx.engine = ctx.engine || new EngineClient({ baseUrl: ctx.settings.engineUrl });
+      if (!(await ctx.engine.health())) {
+        if (!(await require('../engine').service.startEngine())) return { error: 'Não consegui iniciar o motor do Chakmati agora.' };
+        for (let i = 0; i < 60 && !(await ctx.engine.health()); i += 1) await new Promise((r) => setTimeout(r, 1000));
+      }
+      if (!(await ctx.engine.health())) return { error: 'O motor do Chakmati demorou demais para responder.' };
+      ctx.state.engineUp = true;
+      return { ok: true };
+    } catch (e) { return { error: 'Não consegui iniciar o motor do Chakmati agora.' }; }
+  });
+  ipcMain.on('installer:finish', async () => {
+    // The engine started for the house step is stopped, so the app that opens next starts it with the final settings.
+    const child = ctx.engineProcess;
+    if (child) await new Promise((resolve) => { child.once('exit', resolve); child.kill(); setTimeout(resolve, 4000); });
+    onFinish();
+  });
   return win;
 }
 

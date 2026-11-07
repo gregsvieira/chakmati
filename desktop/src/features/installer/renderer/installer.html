@@ -79,8 +79,64 @@
       <p id="run-status" class="muted"></p>
       <ul id="results"></ul>
       <ul id="after"></ul>
-      <div class="actions"><button id="finish" type="button" class="primary" hidden>Concluir</button></div>
+      <div class="actions">
+        <button id="home-setup" type="button" hidden>Conectar a casa e a Alexa (opcional)</button>
+        <button id="finish" type="button" class="primary" hidden>Concluir</button>
+      </div>
     </section>
+    <section id="s-home" hidden>
+      <h2>Casa e Alexa</h2>
+      <div id="s-home-body">
+        <div id="hm-search" hidden>
+    <p>Procurando o Home Assistant na sua rede… (leva alguns segundos)</p>
+  </div>
+  <div id="hm-found" hidden>
+    <p id="hm-found-text"></p>
+    <p class="hint">O Chakmati abre o login do seu Home Assistant no navegador. Você só precisa entrar e tocar em Aprovar.</p>
+  </div>
+  <div id="hm-intro" hidden>
+    <p>Não encontrei um Home Assistant na sua rede. Posso instalar um para você. O Chakmati vai:</p>
+    <ul id="hm-steps"></ul>
+    <p class="hint">Isso pode levar vários minutos. Deixe o Chakmati aberto. Quando terminar, você escolhe um nome e uma senha.</p>
+  </div>
+  <div id="hm-progress" hidden>
+    <progress></progress>
+    <p id="hm-progress-text" role="status"></p>
+  </div>
+  <div id="hm-approving" hidden>
+    <progress></progress>
+    <p>Abri o Home Assistant no seu navegador. Entre com a sua conta e toque em Aprovar. Aguardando…</p>
+  </div>
+  <div id="hm-account" hidden>
+    <p id="hm-account-text"></p>
+    <input type="text" id="hm-name" maxlength="60" placeholder="Seu nome" aria-label="Seu nome" autocomplete="name">
+    <input type="password" id="hm-password" maxlength="128" placeholder="Crie uma senha (pelo menos 8 caracteres)" aria-label="Senha do Home Assistant" autocomplete="new-password">
+    <p class="hint">Guarde essa senha: você vai usá-la para entrar no Home Assistant (usuário: chakmati). O Chakmati não a guarda.</p>
+  </div>
+  <div id="hm-alexa" hidden>
+    <p>Agora vamos ligar a sua Alexa. Escolha o país da sua conta Amazon e digite o e-mail e a senha dela.</p>
+    <select id="hm-region" aria-label="País da conta Amazon"></select>
+    <input type="text" id="hm-email" maxlength="254" placeholder="E-mail da conta Amazon" aria-label="E-mail da conta Amazon" autocomplete="username" inputmode="email">
+    <input type="password" id="hm-alexa-password" maxlength="256" placeholder="Senha da conta Amazon" aria-label="Senha da conta Amazon" autocomplete="current-password">
+    <p class="hint"><strong>Local e seguro:</strong> o e-mail e a senha vão só do Chakmati para o Home Assistant, dentro deste computador (uma conexão local, que nem sai para a rede). O Chakmati não guarda nem registra nada. O Home Assistant guarda no próprio computador, num arquivo dele, para a Alexa continuar funcionando, e é ele quem entra na Amazon, por conexão segura (https).</p>
+  </div>
+  <div id="hm-alexa-wait" hidden>
+    <progress></progress>
+    <p>Abri uma janela do Chakmati para entrar na Amazon. Entre lá: se a Amazon pedir um código ou uma verificação, faça nela. Aguardando…</p>
+  </div>
+  <div id="hm-done" hidden>
+    <p><strong>Pronto! O Home Assistant está conectado.</strong></p>
+    <p id="hm-done-text"></p>
+  </div>
+        <p id="hm-error" class="note" role="alert" hidden></p>
+      </div>
+      <div class="actions">
+        <button type="button" id="hm-cancel" class="ghost">Cancelar</button>
+        <button type="button" id="hm-secondary" class="ghost" hidden>Abrir o Home Assistant</button>
+        <button type="button" id="hm-primary" class="primary">Começar</button>
+      </div>
+    </section>
+
   </main>
 
   <div id="notice-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="notice-title" aria-describedby="notice-body" hidden>
@@ -101,6 +157,8 @@
 
   <script src="../../whatsapp/notice-gate.js"></script>
   <script src="../../../shared/ui/robot.js"></script>
+  <script src="../../home/modal-logic.js"></script>
+  <script src="../../home/renderer/flow.js"></script>
   <script src="installer.js"></script>
 </body>
 </html>
