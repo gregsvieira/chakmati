@@ -63,8 +63,8 @@ const OPTIONS = Object.freeze([
     after: 'Casa inteligente: depois da instalação, abra Ajustes > Assistente de Casa e Alexa e toque em "Conectar Home Assistant". O Chakmati procura o seu Home Assistant na rede e você só precisa aprovar o acesso, sem copiar nenhum código.',
   },
   {
-    id: 'homeInstall', label: 'Casa inteligente e Alexa (instalar um Home Assistant neste computador)', platforms: ALL, diskMb: 1000, ramMb: 2000, // estimates: the image is about 1 GB, Docker plus Home Assistant about 2 GB of memory
-    description: 'Para quem não tem Home Assistant: o Chakmati instala um para você, usando o Docker. Precisa do Docker Desktop (o Chakmati abre; se não estiver instalado, ele avisa e mostra onde baixar).',
+    id: 'homeInstall', label: 'Casa inteligente e Alexa', platforms: ALL, diskMb: 1000, ramMb: 2000, // estimates: the image is about 1 GB, Docker plus Home Assistant about 2 GB of memory
+    description: 'O Chakmati procura o Home Assistant da sua casa na rede e usa esse; se não houver, instala um para você, usando o Docker (precisa do Docker Desktop: o Chakmati abre; se não estiver instalado, ele avisa e mostra onde baixar). O custo abaixo é só se precisar instalar.',
     settings: { home: true }, offSettings: {},
     after: 'Home Assistant: depois da instalação, abra Ajustes > Assistente de Casa e Alexa e toque em "Conectar Home Assistant". O Chakmati explica o que vai fazer, liga o Docker (ou instala, se faltar), instala o Home Assistant com a integração da Alexa e, no fim, pede um nome e uma senha.',
   },

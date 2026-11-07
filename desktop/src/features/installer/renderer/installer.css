@@ -56,7 +56,7 @@ progress { width: 100%; height: 14px; }
 button.ghost { background: transparent; }
 
 /* one option per screen */
-#opt-body .badge { margin: 0 0 10px; }
+#opt-body .badge { margin: 0 0 0 10px; }
 #opt-body .cost, #opt-body .advice { display: block; margin-top: 10px; }
 #opt-body .advice { color: var(--wine); }
 #opt-title { font-size: 19px; }

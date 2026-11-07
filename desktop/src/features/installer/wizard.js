@@ -52,7 +52,7 @@ function openSetup({ ipcMain, webPreferences, settingsFile, engine = null, onClo
       providers: Object.values(cloudKey.PROVIDERS).map((p) => ({ id: p.id, label: p.label, defaultModel: p.defaultModel, keyHelp: p.keyHelp })),
       engineText: engine ? formatSize(ENGINE.baseMb) : null, // the engine is only prepared by the installed app
       model: model && { id: model.id, label: model.label, sizeText: formatSize(model.diskMb) },
-      options: optionsFor(hw.platform, { packaged: !!engine }).filter((o) => o.id !== 'reasoning' || reasoningFor(hw)).map((o) => ({
+      options: optionsFor(hw.platform, { packaged: !!engine }).filter((o) => o.id !== 'home').filter((o) => o.id !== 'reasoning' || reasoningFor(hw)).map((o) => ({
         id: o.id, advice: o.advice || null, label: o.id === 'reasoning' ? `${o.label}: ${reasoningFor(hw).id}` : o.label, description: o.description,
         costText: o.id === 'reasoning' ? `cerca de ${formatSize(reasoningFor(hw).diskMb)} em disco e ${formatSize(reasoningFor(hw).ramMb)} de memória (não ao mesmo tempo que o modelo de conversa)`
           : o.diskMb || o.ramMb ? `cerca de ${formatSize(o.diskMb)} em disco e ${formatSize(o.ramMb)} de memória` : 'não ocupa espaço nem memória extra',
