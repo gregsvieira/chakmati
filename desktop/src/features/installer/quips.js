@@ -1,7 +1,7 @@
 'use strict';
 // A bit of humour about the computer, under the real figures in the wizard. It is a joke in reverse: a weak computer is treated like
 // a prize (absurd praise), a very strong one like a relic (mock disdain). A computer in between gets nothing, and so does one that
-// cannot run the app (no joking at the verdict). The same computer always gets the same line, so "check again" does not change it.
+// cannot run the app (no joking at the verdict). The line alternates between the computers' remarks from one opening of the wizard to the next, but within one opening it is always the same, so "check again" does not change it.
 
 const PRAISE = Object.freeze([
   'Nossa, é uma honra ser convidado para essa máquina da NASA!',
@@ -11,16 +11,17 @@ const PRAISE = Object.freeze([
 ]);
 
 const TEASE = Object.freeze([
-  'Primeira vez que vou tentar rodar no laptop da Xuxa.',
-  'Ainda fabricam o computador Show do Milhão?! Bom, vamos tentar...',
-  'Isso aqui é um computador ou uma torradeira com Wi-Fi? Vamos ver.',
-  'Esse computador já viu o Windows 95 nascer, né? Vamos tentar mesmo assim.',
+  'É a primeira vez que tentam me rodar no laptop da xuxa.',
+  'Esse é o computador do show do milhão?',
+  'Ual. Esse pc so nao eh mais potente que minha torradeira jorges formgrill',
 ]);
 
 const STRONG = Object.freeze({ ramGb: 15, cores: 8 }); // "well above what is asked": 16 GB and 8 cores (the same line the wizard uses for the full model)
 
+const SESSION = Math.floor(Math.random() * 1000);   // chosen once per run: another opening of the wizard may say another line
+
 function pick(list, hw) {
-  let n = Math.round((hw.ramGb || 0) * 10) + (hw.cores || 0) * 7;
+  let n = SESSION + Math.round((hw.ramGb || 0) * 10) + (hw.cores || 0) * 7;
   for (const ch of String(hw.platform || '')) n += ch.charCodeAt(0);
   return list[n % list.length];
 }

@@ -21,8 +21,11 @@ test('a very strong computer is teased as if it were a relic', () => {
 test('the sentences the owner asked for are among them', () => {
   assert.ok(PRAISE.includes('Nossa, é uma honra ser convidado para essa máquina da NASA!'));
   assert.ok(PRAISE.includes('Então esse é o computador de lançamento da SpaceX?'));
-  assert.ok(TEASE.includes('Primeira vez que vou tentar rodar no laptop da Xuxa.'));
-  assert.ok(TEASE.includes('Ainda fabricam o computador Show do Milhão?! Bom, vamos tentar...'));
+  assert.deepEqual([...TEASE], [
+    'É a primeira vez que tentam me rodar no laptop da xuxa.',
+    'Esse é o computador do show do milhão?',
+    'Ual. Esse pc so nao eh mais potente que minha torradeira jorges formgrill',
+  ]);
 });
 
 test('a computer in between gets no remark, and neither does one that cannot run the app', () => {
