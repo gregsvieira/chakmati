@@ -94,8 +94,9 @@ test('the page never keeps the key, the main process stores it, and the engine o
   assert.equal(/(local|session)Storage\.setItem\([^)]*key/i.test(js), false);
   const wiz = read('features', 'installer', 'wizard.js');
   assert.match(wiz, /ipcMain\.handle\('installer:cloud-check'/);
-  assert.match(wiz, /checkKey\(provider, key\)/);
-  assert.ok(wiz.indexOf('checkKey(provider, key)') < wiz.indexOf('keyStore.save(key)'), 'only a key the provider accepted is stored');
+  assert.match(wiz, /createCloudSetup\(\{ keyStore \}\)\.connect\(provider, key, model\)/);
+  const setup = read('features', 'engine', 'cloud-setup.js');
+  assert.ok(setup.indexOf('await check(provider, key)') < setup.indexOf('keyStore.save(key)'), 'only a key the provider accepted is stored');
   assert.match(read('features', 'engine', 'service.js'), /CHAKMATI_CLOUD_API_KEY = cloudKeyStore\(\)\.load\(\)/);
   assert.match(read('preload.js'), /cloudCheck: \(provider, key, model\)/);
 });

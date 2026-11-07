@@ -4,6 +4,7 @@ const widgetIpc = require('../features/widget').ipc;
 const panelIpc = require('../features/panel').ipc;
 const whatsappIpc = require('../features/whatsapp').ipc;
 const homeIpc = require('../features/home').ipc;
+const cloudIpc = require('../features/cloud').ipc;
 const voiceIpc = require('../features/voice').ipc;
 const approvalsIpc = require('../features/approvals').ipc;
 
@@ -12,6 +13,7 @@ function registerIpc() {
   panelIpc.register();
   whatsappIpc.register();
   homeIpc.register();
+  cloudIpc.register();
   voiceIpc.register();
   approvalsIpc.register();
 }

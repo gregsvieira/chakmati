@@ -16,6 +16,7 @@ const { quip } = require('./quips');
 const settingsLib = require('../settings').settings;
 const ctx = require('../../shared/context');
 const cloudKey = require('../engine').cloudKey;
+const { createCloudSetup } = require('../engine').cloudSetup;
 
 const PROFILE = { personalities: settingsLib.PERSONALITIES.map((id) => ({ id, name: settingsLib.PERSONALITY_NAMES[id] })), pronouns: settingsLib.PRONOUNS.map((id) => ({ id, name: settingsLib.PRONOUN_NAMES[id] })) };
 
@@ -93,15 +94,9 @@ function openSetup({ ipcMain, webPreferences, settingsFile, engine = null, onClo
 
   ipcMain.handle('installer:scan', () => scan());
   ipcMain.handle('installer:cloud-check', async (_e, provider, key, model) => {
-    if (!cloudKey.validProvider(provider)) return { error: 'Escolha o provedor.' };
-    if (!cloudKey.validModel(model)) return { error: 'O nome do modelo tem caracteres inválidos.' };
-    if (!cloudKey.validKey(key)) return { error: 'A chave tem um formato inválido (sem espaços nem quebras de linha).' };
-    if (!keyStore.available()) return { error: 'Este computador não tem um cofre do sistema para guardar a chave com segurança, então não vou guardá-la.' };
-    const checked = await cloudKey.checkKey(provider, key);
-    if (checked.error) return checked;
-    try { keyStore.save(key); } catch (e) { return { error: e.message }; }
-    cloud = { provider, model };
-    return { ok: true };
+    const res = await createCloudSetup({ keyStore }).connect(provider, key, model);   // validates, checks with the provider, and only then stores
+    if (res.ok) cloud = { provider, model };
+    return res;
   });
   ipcMain.handle('installer:cloud-clear', () => { keyStore.clear(); cloud = null; return { ok: true }; });
   ipcMain.handle('installer:plan', (_e, selected, profile, opts) => {
