@@ -6,6 +6,7 @@ const { isLocalHttpUrl } = require('./lan');
 
 const POLL_MS = 2000;
 const GIVE_UP_MS = 3 * 60 * 1000;
+const INSTALL_GIVE_UP_MS = 40 * 60 * 1000;   // a download plus the first start of Home Assistant
 const CANCELLED_AFTER_MS = 6000;   // pending is gone and nothing got connected: the person said no (or it failed)
 
 const names = (players) => (players || []).slice(0, 3).map((p) => p.name).join(', ');
@@ -72,6 +73,49 @@ function createHomeService(deps) {
     }
   }
 
+  // Installing a Home Assistant here (Docker). The person is asked first: a download of about 1 GB must never start without a yes.
+  async function waitForInstall(mine) {
+    const started = now();
+    let shown = '';
+    while (mine === waiting && now() - started < INSTALL_GIVE_UP_MS) {
+      let status;
+      try { status = await engine().homeInstallStatus(); } catch { await sleep(POLL_MS); continue; }
+      if (status.message && status.message !== shown) { shown = status.message; note(shown); }
+      if (status.state === 'done') { await afterConnected(await engine().homeStatus()); return; }
+      if (status.state === 'error') return;
+      await sleep(POLL_MS);
+    }
+    if (mine === waiting) note('A instalação está demorando mais do que o normal. Deixe o Chakmati aberto e veja de novo daqui a pouco.');
+  }
+
+  // -> { ok, message } | { cancelled, message } | { error, code? }
+  async function install({ name, password } = {}) {
+    if (!isEngineUp()) return { error: 'O motor do Chakmati não está rodando.' };
+    if (typeof password !== 'string' || password.length < 8) return { error: 'Escolha uma senha com pelo menos 8 caracteres.' };
+    try {
+      const info = await engine().homeInstallStatus();
+      if (info.docker === 'no_docker') {
+        const message = 'O Docker não está instalado neste computador. Instale o Docker Desktop (é grátis para uso pessoal), abra-o uma vez e toque em Instalar de novo.';
+        note(message);
+        return { error: message, code: 'docker_missing' };
+      }
+      const yes = await deps.confirm({
+        message: 'Instalar o Home Assistant neste computador?',
+        detail: `O Chakmati vai usar o Docker para baixar o Home Assistant (cerca de ${Math.round((info.image_mb || 1000) / 100) / 10} GB, uma estimativa) da internet e deixá-lo rodando só neste computador. Ele usa uns 2 GB de memória enquanto estiver ligado.\n\nNada é baixado sem a sua aprovação.`,
+      });
+      if (yes !== true) { const message = 'Tudo bem, não instalei nada.'; note(message); return { cancelled: true, message }; }
+      const mine = ++waiting;
+      await engine().homeInstall(typeof name === 'string' ? name : '', password);
+      note('Instalando o Home Assistant… pode levar vários minutos. Deixe o Chakmati aberto.');
+      lastWait = waitForInstall(mine).catch(() => {});
+      return { ok: true, message: 'Instalando o Home Assistant…' };
+    } catch (e) {
+      const message = friendlyError(e);
+      note(message);
+      return { error: message };
+    }
+  }
+
   async function disconnect() {
     waiting += 1;
     try { await engine().homeDisconnect(); } catch (e) { return { error: friendlyError(e) }; }
@@ -80,7 +124,7 @@ function createHomeService(deps) {
     return { ok: true };
   }
 
-  return { connect, disconnect, waitForApproval, idle: () => lastWait, cancel: () => { waiting += 1; } };
+  return { connect, install, disconnect, waitForApproval, idle: () => lastWait, cancel: () => { waiting += 1; } };
 }
 
 module.exports = { createHomeService, summary, POLL_MS, GIVE_UP_MS };

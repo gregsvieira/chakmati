@@ -24,6 +24,7 @@
 
   // Casa inteligente e Alexa: the switch, and (only when it is on) connecting, what was found, and how to disconnect.
   let showAddress = false;
+  let showInstall = false;
   function homeStatusText(on, home) {
     if (!on) return 'Controlar luzes, tomadas e a música da Alexa. Usa o Home Assistant da sua casa.';
     if (!home.enabled) return 'Ligando a casa inteligente…';
@@ -44,8 +45,28 @@
     $('home-disconnect').hidden = !home.connected;
     $('home-alexa-help').hidden = !(home.connected && !(home.players || []).length);
     $('home-address-row').hidden = !showAddress || !!home.connected;
+    $('home-install').hidden = !showInstall || !!home.connected;
     $('home-note').textContent = P.state.homeNote || '';
     $('home-note').hidden = !P.state.homeNote;
+  }
+  // What Docker needs before the install: said in words, with the button that fixes it.
+  async function loadInstallInfo() {
+    const info = await api.homeInstallInfo();
+    const note = $('home-install-docker');
+    const missing = info && info.docker === 'no_docker';
+    note.hidden = !(info && (missing || info.docker === 'daemon_off' || info.error));
+    note.textContent = info && info.error ? info.error
+      : missing ? 'O Docker não está instalado neste computador. Instale o Docker Desktop (é grátis para uso pessoal), abra-o uma vez e depois toque em verificar de novo.'
+      : info && info.docker === 'daemon_off' ? (info.can_open_docker ? 'O Docker está desligado. O Chakmati vai abri-lo para você.' : 'O Docker está desligado. Inicie o serviço do Docker e tente de novo.') : '';
+    $('home-docker-download').hidden = !missing;
+    $('home-install-recheck').hidden = !missing;
+  }
+  async function installHome() {
+    const password = $('home-install-password').value;
+    const res = await api.homeInstall($('home-install-name').value, password);
+    if (res && res.ok) { $('home-install-password').value = ''; showInstall = false; }   // the password is not kept on the page once it was sent
+    if (res && res.code === 'docker_missing') await loadInstallInfo();
+    renderHome();
   }
   async function connectHome(address) {
     const res = await api.homeConnect(address || '');
@@ -142,7 +163,11 @@
     $('home-address-go').addEventListener('click', () => connectHome($('home-address').value));
     $('home-address').addEventListener('keydown', (e) => { if (e.key === 'Enter') connectHome($('home-address').value); });
     $('home-disconnect').addEventListener('click', async () => { showAddress = false; await api.homeDisconnect(); renderHome(); });
-    $('home-install-help').addEventListener('click', () => api.openLink('https://www.home-assistant.io/installation/'));
+    $('home-install-help').addEventListener('click', async () => { showInstall = true; renderHome(); await loadInstallInfo(); });
+    $('home-install-go').addEventListener('click', installHome);
+    $('home-install-password').addEventListener('keydown', (e) => { if (e.key === 'Enter') installHome(); });
+    $('home-docker-download').addEventListener('click', () => api.homeDockerPage());
+    $('home-install-recheck').addEventListener('click', loadInstallInfo);
     $('home-alexa-help').addEventListener('click', () => { const h = P.state.overview && P.state.overview.home; if (h && h.alexa_help) api.openLink(h.alexa_help); });
     $('set-calendar').addEventListener('change', (e) => api.setSetting('calendar', e.target.checked));
 

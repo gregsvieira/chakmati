@@ -110,7 +110,17 @@
             <div id="home-address-row" class="stack" hidden>
               <input type="text" id="home-address" maxlength="100" placeholder="Endereço, por exemplo 192.168.0.10" aria-label="Endereço do Home Assistant" autocomplete="off">
               <button type="button" id="home-address-go" class="ghost">Conectar neste endereço</button>
-              <button type="button" id="home-install-help" class="ghost">Ainda não tenho o Home Assistant</button>
+              <button type="button" id="home-install-help" class="ghost">Ainda não tenho o Home Assistant: instalar um</button>
+            </div>
+            <div id="home-install" class="stack" hidden>
+              <p class="note">O Chakmati instala um Home Assistant neste computador, usando o Docker. Baixa cerca de 1 GB e usa uns 2 GB de memória enquanto estiver ligado. Ele só fica acessível neste computador.</p>
+              <p id="home-install-docker" class="note" role="status" hidden></p>
+              <input type="text" id="home-install-name" maxlength="60" placeholder="Seu nome" aria-label="Seu nome" autocomplete="name">
+              <input type="password" id="home-install-password" maxlength="128" placeholder="Crie uma senha (pelo menos 8 caracteres)" aria-label="Senha do Home Assistant" autocomplete="new-password">
+              <small class="hint">Guarde essa senha: você vai usá-la para entrar no Home Assistant (usuário: chakmati) e ligar a Alexa. O Chakmati não a guarda.</small>
+              <button type="button" id="home-install-go" class="primary">Instalar o Home Assistant</button>
+              <button type="button" id="home-docker-download" class="ghost" hidden>Baixar o Docker Desktop</button>
+              <button type="button" id="home-install-recheck" class="ghost" hidden>Já instalei o Docker: verificar de novo</button>
             </div>
             <button type="button" id="home-alexa-help" class="ghost" hidden>Como ligar a Alexa</button>
             <button type="button" id="home-disconnect" class="ghost" hidden>Desconectar</button>

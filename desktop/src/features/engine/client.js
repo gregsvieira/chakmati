@@ -146,6 +146,13 @@ class EngineClient {
     if (typeof url !== 'string' || !url.trim() || url.length > 200) throw new Error('invalid address');
     return (await this._request('/home/connect', { method: 'POST', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify({ url: url.trim() }) })).json();
   }
+  // Installing a Home Assistant on this computer through Docker (for someone who has none): what is there, and start it.
+  async homeInstallStatus() { return (await this._request('/home/install')).json(); }
+  async homeInstall(name, password) {
+    if (typeof password !== 'string' || password.length < 8 || password.length > 128) throw new Error('invalid password');
+    const body = { name: typeof name === 'string' ? name.slice(0, 60) : '', password, confirm: true };
+    return (await this._request('/home/install', { method: 'POST', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify(body) })).json();
+  }
   async homeDisconnect() { return (await this._request('/home', { method: 'DELETE', headers: UI })).json(); }
 
   // How the person is addressed (ele/dele, ela/dela, elu/delu, or none), changed in the running engine.

@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from chakmati.features.home.auth import HomeAuth
 from chakmati.features.home.client import HomeAssistantClient
 from chakmati.features.home.connect import HomeConnector, discover
+from chakmati.features.home.install import HomeInstaller
 from chakmati.features.home.models import HomeError
 from chakmati.shared.http import ui_only
 
@@ -18,6 +19,12 @@ ALEXA_HELP = "https://github.com/alandtse/alexa_media_player"  # the integration
 
 class ConnectIn(BaseModel):
     url: str = Field(min_length=1, max_length=200)
+
+
+class InstallIn(BaseModel):
+    name: str = Field(default="", max_length=60)
+    password: str = Field(min_length=1, max_length=128)
+    confirm: bool = False   # the person said yes to the download (the desktop asks before it sends this)
 
 
 def _page(title: str, text: str, ok: bool) -> HTMLResponse:
@@ -31,11 +38,12 @@ def _page(title: str, text: str, ok: bool) -> HTMLResponse:
 class HomeLink:
     """What is needed to connect: the credentials, the client that uses them and the sign-in flow."""
 
-    def __init__(self, auth: HomeAuth, client: HomeAssistantClient, http: httpx.AsyncClient | None = None, hosts: list[str] | None = None):
+    def __init__(self, auth: HomeAuth, client: HomeAssistantClient, http: httpx.AsyncClient | None = None, hosts: list[str] | None = None, installer: HomeInstaller | None = None):
         self.auth = auth
         self.client = client
         self._http = http or httpx.AsyncClient(timeout=10.0)
         self.connector = HomeConnector(auth, self._http)
+        self.installer = installer
         self._hosts = hosts   # None = search the own network; a list (tests) = only these addresses
 
     async def status(self) -> dict:
@@ -77,6 +85,24 @@ class HomeLink:
             except HomeError as exc:
                 return _page("Não consegui conectar", str(exc), False)
             return _page("Pronto!", "O Chakmati já está conectado ao seu Home Assistant. Pode fechar esta janela e voltar ao Chakmati.", True)
+
+        @router.get("/home/install")
+        async def install_status():
+            if self.installer is None:
+                raise HTTPException(status_code=404, detail="a instalação do Home Assistant não está disponível")
+            return await self.installer.inspect()
+
+        @router.post("/home/install", dependencies=[Depends(ui_only)])
+        async def install_start(body: InstallIn, request: Request):
+            if self.installer is None:
+                raise HTTPException(status_code=404, detail="a instalação do Home Assistant não está disponível")
+            if not body.confirm:
+                raise HTTPException(status_code=400, detail="falta a sua confirmação para baixar o Home Assistant")
+            try:
+                self.installer.start(body.name, body.password, str(request.base_url))
+            except HomeError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return await self.installer.inspect()
 
         @router.get("/home/status")
         async def home_status():

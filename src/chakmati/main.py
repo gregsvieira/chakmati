@@ -1,4 +1,7 @@
+import asyncio
 import logging
+
+import httpx
 import uvicorn
 from fastapi import FastAPI
 
@@ -34,6 +37,8 @@ from chakmati.features.research.tool import ResearchTool
 from chakmati.features.computer.assistant import ComputerAssistant
 from chakmati.features.computer.service import ComputerService
 from chakmati.features.home.api import HomeLink
+from chakmati.features.home.docker import DockerHome
+from chakmati.features.home.install import HomeInstaller
 from chakmati.features.home.assistant import HomeAssistantBot
 from chakmati.features.home.auth import HomeAuth
 from chakmati.features.home.client import HomeAssistantClient
@@ -90,7 +95,8 @@ def build_app(settings: Settings | None = None) -> FastAPI:
     home_service = home_bot = home_link = None
     home_auth = HomeAuth(s.home_auth_file, s.home_token_file, s.home_url)
     home_client = HomeAssistantClient(auth=home_auth)
-    home_link = HomeLink(home_auth, home_client)  # the connect flow works even before it is connected, and even with the house switched off
+    home_installer = HomeInstaller(DockerHome(s.home_config_dir), home_auth, httpx.AsyncClient(timeout=10.0), s.home_docker_file)
+    home_link = HomeLink(home_auth, home_client, installer=home_installer)  # the connect flow works even before it is connected, and even with the house switched off
     if s.home_backend == "homeassistant":
         home_service = HomeService(home_client, actions)  # not connected yet: it says so in words; connecting (Ajustes) works at once, with no restart
         home_bot = HomeAssistantBot(llm, home_service)
@@ -136,6 +142,11 @@ def build_app(settings: Settings | None = None) -> FastAPI:
     if services:
         watchers.append(ApprovalWatcher([*services, computer_service], board))  # (the computer alone is not a reason to run the notifier)
     notifier = Notifier(watchers, background=[events.run] if events else []) if watchers and s.notices_enabled else None
+    async def startup() -> None:
+        """Once the engine is serving: the model is loaded into memory, and a Home Assistant that the Chakmati installed is switched on again."""
+        jobs = ([llm.preload()] if s.preload_model else []) + ([home_installer.ensure_up()] if s.home_backend == "homeassistant" else [])
+        await asyncio.gather(*jobs, return_exceptions=True)
+
     return create_app(
         engine,
         store,
@@ -150,7 +161,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         frames=frames,
         inputs=inputs,
         home_link=home_link,
-        on_startup=llm.preload if s.preload_model else None,
+        on_startup=startup,
         calendar=calendar,
         whatsapp=whatsapp,
     )
