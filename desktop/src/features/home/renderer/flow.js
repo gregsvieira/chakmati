@@ -34,7 +34,7 @@
       if (name === 'approving') buttons(null, null, { text: L.cancel });
       if (name === 'account') buttons({ text: 'Conectar' }, null, { text: L.cancel });
       if (name === 'alexa') buttons({ text: 'Conectar a Alexa' }, null, { text: L.skip });
-      if (name === 'alexa-wait') buttons(null, null, { text: L.cancel });
+      if (name === 'alexa-wait') buttons(null, { text: 'Abrir no meu navegador' }, { text: L.cancel });
       if (name === 'done') buttons({ text: L.close }, fromInstall ? { text: 'Abrir o Home Assistant' } : null, null);
       if (text !== undefined) {
         if (name === 'progress') $('hm-progress-text').textContent = text;
@@ -180,7 +180,7 @@
     // Wires the buttons of the markup once.
     function bind() {
       $('hm-primary').addEventListener('click', primary);
-      $('hm-secondary').addEventListener('click', () => api.homeOpenHa());
+      $('hm-secondary').addEventListener('click', () => (page === 'alexa-wait' ? api.homeAlexaBrowser() : api.homeOpenHa()));
       $('hm-cancel').addEventListener('click', async () => {
         if (page === 'alexa-wait') { await api.homeAlexaCancel(); show('alexa'); return; }
         if (page === 'alexa') { await api.homeAlexaCancel(); show('done', M.doneText(await api.homeStatus())); return; }

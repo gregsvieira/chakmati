@@ -280,7 +280,7 @@ test('the main process opens only the checked login or the fixed address of the 
 
 // --- linking the Alexa ---------------------------------------------------------------------------------------------------------------------------
 function alexaHarness({ url = 'http://localhost:8123/auth/alexamedia/proxy/01ABC?config_flow_id=01ABC', statuses = [{ state: 'login' }], startFails = null, engineUp = true } = {}) {
-  const log = { windows: [], closed: 0, starts: [], cancels: 0, connected: [] };
+  const log = { windows: [], closed: 0, starts: [], cancels: 0, connected: [], opened: [] };
   let clock = 0;
   const queue = [...statuses];
   const engine = {
@@ -290,7 +290,7 @@ function alexaHarness({ url = 'http://localhost:8123/auth/alexamedia/proxy/01ABC
     homeStatus: async () => ({ configured: true, connected: true, pending: false, players: [{ name: 'Echo Dot da sala' }] }),
   };
   const service = createHomeService({
-    engine: () => engine, isEngineUp: () => engineUp, openExternal: async () => {}, note: () => {}, friendlyError: (e) => `ERRO: ${e.message}`,
+    engine: () => engine, isEngineUp: () => engineUp, openExternal: async (u) => { log.opened.push(u); }, note: () => {}, friendlyError: (e) => `ERRO: ${e.message}`,
     openLoginWindow: (u, { onClosed }) => { const w = { u, onClosed, close() { log.closed += 1; onClosed(); } }; log.windows.push(w); return w; },
     afterConnected: async (s) => { log.connected.push(s); }, afterDisconnected: async () => {},
     sleep: async (ms) => { clock += ms; await new Promise((r) => setImmediate(r)); }, now: () => clock,
@@ -325,6 +325,19 @@ test('closing the window before it ends cancels the setup in Home Assistant', as
   assert.equal(log.cancels, 1);
   await service.alexaCancel();
   await service.idle();
+});
+
+test('"Abrir no meu navegador": the same page opens in the browser, the app window closes WITHOUT cancelling, and the wait goes on to the end', async () => {
+  const { service, log } = alexaHarness({ statuses: [{ state: 'login' }, { state: 'login' }, { state: 'done' }] });
+  assert.match((await service.alexaOpenBrowser()).error, /Não há um login/);            // nothing in progress: nothing is opened
+  await service.alexaStart(credentials);
+  assert.deepEqual(await service.alexaOpenBrowser(), { ok: true });
+  assert.deepEqual(log.opened, ['http://localhost:8123/auth/alexamedia/proxy/01ABC?config_flow_id=01ABC']);
+  assert.equal(log.closed, 1);
+  assert.equal(log.cancels, 0);                                                           // closing the window for the browser is not "I gave up"
+  await service.idle();
+  assert.equal(log.connected.length, 1);                                                  // the browser sign-in ends like the other: the speakers are refreshed
+  assert.match((await service.alexaOpenBrowser()).error, /Não há um login/);            // and once it is over the address is forgotten
 });
 
 test('a sign-in page that is not Home Assistant\'s own is never opened, and the setup is dropped', async () => {
