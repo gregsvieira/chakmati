@@ -90,6 +90,8 @@ function createHomeService(deps) {
   // and the status is read until Home Assistant has finished. -> { ok } | { error }
   let loginWindow = null;
   let alexaRun = 0;
+  let loginUrl = '';   // the sign-in page of the setup in progress (checked before it was kept)
+  let toBrowser = false;   // the person moved the sign-in to their own browser: closing the app's window then must not cancel the setup
   const closeLogin = () => { const w = loginWindow; loginWindow = null; if (w) { try { w.close(); } catch { /* already closed */ } } };
 
   async function alexaStart({ region, email, password } = {}) {
@@ -106,7 +108,9 @@ function createHomeService(deps) {
       const mine = ++alexaRun;
       closeLogin();
       let finished = false;
-      loginWindow = deps.openLoginWindow(url, { onClosed: () => { loginWindow = null; if (!finished && mine === alexaRun) engine().homeAlexaCancel().catch(() => {}); } });
+      loginUrl = url;
+      toBrowser = false;
+      loginWindow = deps.openLoginWindow(url, { onClosed: () => { loginWindow = null; if (!finished && !toBrowser && mine === alexaRun) engine().homeAlexaCancel().catch(() => {}); } });
       lastWait = (async () => {
         const started = now();
         while (mine === alexaRun && now() - started < ALEXA_GIVE_UP_MS) {
@@ -116,6 +120,7 @@ function createHomeService(deps) {
           try { status = await engine().homeAlexaStatus(); } catch { continue; }
           if (status.state === 'login') continue;
           finished = true;
+          loginUrl = '';
           closeLogin();
           if (status.state === 'done') await deps.afterConnected(await engine().homeStatus());
           return;
@@ -126,8 +131,21 @@ function createHomeService(deps) {
     } catch (e) { return { error: friendlyError(e) }; }
   }
 
+  // The person prefers (or needs) to sign in with their own browser: the page is the same one, at the same local address. The wait goes on; the app's window closes
+  // without cancelling the setup. Only the address the engine returned and this service checked is ever opened.
+  async function alexaOpenBrowser() {
+    let path = '';
+    try { path = new URL(loginUrl).pathname; } catch { /* nothing in progress */ }
+    if (!loginUrl || !isLocalHttpUrl(loginUrl) || !path.startsWith('/auth/alexamedia/proxy/')) return { error: 'Não há um login da Alexa em andamento.' };
+    toBrowser = true;
+    closeLogin();
+    await deps.openExternal(loginUrl);
+    return { ok: true };
+  }
+
   async function alexaCancel() {
     alexaRun += 1;
+    loginUrl = '';
     closeLogin();
     try { await engine().homeAlexaCancel(); } catch { /* it was already over */ }
     return { ok: true };
@@ -141,7 +159,7 @@ function createHomeService(deps) {
     return { ok: true };
   }
 
-  return { discover, connect, startInstall, account, alexaStart, alexaCancel, disconnect, waitForApproval, idle: () => lastWait, cancel: () => { waiting += 1; } };
+  return { discover, connect, startInstall, account, alexaStart, alexaOpenBrowser, alexaCancel, disconnect, waitForApproval, idle: () => lastWait, cancel: () => { waiting += 1; } };
 }
 
 module.exports = { createHomeService, summary, POLL_MS, GIVE_UP_MS };

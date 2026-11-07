@@ -4,6 +4,7 @@
 // open other windows, ask for permissions, or keep anything (its storage lives only in memory and goes away when it closes).
 const { BrowserWindow } = require('electron');
 const { isLocalHttpUrl } = require('./lan');
+const { cleanUserAgent } = require('./user-agent');
 
 function openLoginWindow(url, { parent = null, onClosed = () => {} } = {}) {
   const origin = new URL(url).origin;
@@ -12,6 +13,7 @@ function openLoginWindow(url, { parent = null, onClosed = () => {} } = {}) {
     webPreferences: { partition: `alexa-login-${Date.now()}`, sandbox: true, contextIsolation: true, nodeIntegration: false, webSecurity: true, spellcheck: false },
   });
   win.removeMenu?.();
+  win.webContents.setUserAgent(cleanUserAgent(win.webContents.getUserAgent(), require('electron').app.getName()));
   const ses = win.webContents.session;
   ses.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
