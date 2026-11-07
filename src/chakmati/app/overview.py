@@ -60,7 +60,7 @@ def router(engine: Engine, notices: NoticeBoard, calendar: CalendarService | Non
         result["pending"] = [action_json(a) for a in sorted(pending, key=lambda a: a.expires_at)]
         if automations is not None:
             result["automations"] = [automation_json(a) for a in await asyncio.to_thread(automations.store.list)]
-        result["home"] = {"enabled": home is not None, **(await home_link.status() if home_link is not None and home is not None else {})}
+        result["home"] = {"enabled": home is not None, **(await home_link.status() if home_link is not None else {})}
         result["computer_standing"] = bool(getattr(computer, "standing", False))
         result["last_notice_id"] = notices.last_id
         result["personality"] = engine.personality

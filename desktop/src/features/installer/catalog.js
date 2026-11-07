@@ -60,13 +60,13 @@ const OPTIONS = Object.freeze([
     id: 'home', label: 'Casa inteligente e Alexa (já tenho o Home Assistant)', platforms: ALL, diskMb: 0, ramMb: 0,
     description: 'Controlar luzes, tomadas e a música da Alexa pelo Home Assistant que você já usa.',
     settings: { home: true }, offSettings: { home: false },
-    after: 'Casa inteligente: depois da instalação, abra Ajustes > Integrações e toque em "Conectar ao Home Assistant". O Chakmati procura o seu na rede e você só precisa aprovar o acesso, sem copiar nenhum código.',
+    after: 'Casa inteligente: depois da instalação, abra Ajustes > Assistente de Casa e Alexa e toque em "Conectar Home Assistant". O Chakmati procura o seu Home Assistant na rede e você só precisa aprovar o acesso, sem copiar nenhum código.',
   },
   {
     id: 'homeInstall', label: 'Casa inteligente e Alexa (instalar um Home Assistant neste computador)', platforms: ALL, diskMb: 1000, ramMb: 2000, // estimates: the image is about 1 GB, Docker plus Home Assistant about 2 GB of memory
     description: 'Para quem não tem Home Assistant: o Chakmati instala um para você, usando o Docker. Precisa do Docker Desktop (o Chakmati abre; se não estiver instalado, ele avisa e mostra onde baixar).',
     settings: { home: true }, offSettings: {},
-    after: 'Home Assistant: depois da instalação, abra Ajustes > Integrações, deixe "Casa inteligente e Alexa" ligada e toque em "Ainda não tenho o Home Assistant: instalar um". O Chakmati pede uma senha, baixa o Home Assistant, liga e conecta sozinho.',
+    after: 'Home Assistant: depois da instalação, abra Ajustes > Assistente de Casa e Alexa e toque em "Conectar Home Assistant". O Chakmati explica o que vai fazer, liga o Docker (ou instala, se faltar), instala o Home Assistant com a integração da Alexa e, no fim, pede um nome e uma senha.',
   },
   {
     id: 'laya', label: 'Laya (filtro de relevância da pesquisa)', platforms: ALL, extra: 'laya', diskMb: 1500, ramMb: 800,

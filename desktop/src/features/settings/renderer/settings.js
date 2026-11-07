@@ -22,59 +22,6 @@
     }));
   }
 
-  // Casa inteligente e Alexa: the switch, and (only when it is on) connecting, what was found, and how to disconnect.
-  let showAddress = false;
-  let showInstall = false;
-  function homeStatusText(on, home) {
-    if (!on) return 'Controlar luzes, tomadas e a música da Alexa. Usa o Home Assistant da sua casa.';
-    if (!home.enabled) return 'Ligando a casa inteligente…';
-    if (home.error) return home.error;
-    if (!home.configured) return 'Falta conectar. Toque no botão abaixo: o Chakmati procura o seu Home Assistant e você só precisa aprovar o acesso.';
-    if (!home.connected) return 'Conectando…';
-    const players = home.players || [];
-    return players.length ? `Conectado. Achei: ${players.slice(0, 3).map((p) => p.name).join(', ')}${players.length > 3 ? ' e mais' : ''}.`
-      : 'Conectado, mas não vejo nenhuma Alexa ou caixa de som. Falta ligar a Alexa no Home Assistant.';
-  }
-  function renderHome() {
-    const on = !!P.state.settings.home;
-    const home = (P.state.overview && P.state.overview.home) || { enabled: false };
-    $('set-home').checked = on;
-    $('home-status').textContent = homeStatusText(on, home);
-    $('home-actions').hidden = !(on && home.enabled);
-    $('home-connect').hidden = !!home.connected;
-    $('home-disconnect').hidden = !home.connected;
-    $('home-alexa-help').hidden = !(home.connected && !(home.players || []).length);
-    $('home-address-row').hidden = !showAddress || !!home.connected;
-    $('home-install').hidden = !showInstall || !!home.connected;
-    $('home-note').textContent = P.state.homeNote || '';
-    $('home-note').hidden = !P.state.homeNote;
-  }
-  // What Docker needs before the install: said in words, with the button that fixes it.
-  async function loadInstallInfo() {
-    const info = await api.homeInstallInfo();
-    const note = $('home-install-docker');
-    const missing = info && info.docker === 'no_docker';
-    note.hidden = !(info && (missing || info.docker === 'daemon_off' || info.error));
-    note.textContent = info && info.error ? info.error
-      : missing ? 'O Docker não está instalado neste computador. Instale o Docker Desktop (é grátis para uso pessoal), abra-o uma vez e depois toque em verificar de novo.'
-      : info && info.docker === 'daemon_off' ? (info.can_open_docker ? 'O Docker está desligado. O Chakmati vai abri-lo para você.' : 'O Docker está desligado. Inicie o serviço do Docker e tente de novo.') : '';
-    $('home-docker-download').hidden = !missing;
-    $('home-install-recheck').hidden = !missing;
-  }
-  async function installHome() {
-    const password = $('home-install-password').value;
-    const res = await api.homeInstall($('home-install-name').value, password);
-    if (res && res.ok) { $('home-install-password').value = ''; showInstall = false; }   // the password is not kept on the page once it was sent
-    if (res && res.code === 'docker_missing') await loadInstallInfo();
-    renderHome();
-  }
-  async function connectHome(address) {
-    const res = await api.homeConnect(address || '');
-    if (res && res.needAddress) { showAddress = true; $('home-address').focus(); }
-    else if (res && res.ok) showAddress = false;
-    renderHome();
-  }
-
   function renderSettings() {
     $('set-protect').checked = !!P.state.settings.protect;
     $('set-masked').checked = !!P.state.settings.masked;
@@ -97,7 +44,7 @@
     $('set-whatsapp').checked = !!P.state.settings.whatsapp;
     $('set-calendar').checked = !!P.state.settings.calendar;
     $('set-research').checked = !!P.state.settings.research;
-    renderHome();
+    if (P.renderHome) P.renderHome();   // the smart-house section lives in features/home/renderer/home.js
     const wa = (P.state.overview && P.state.overview.whatsapp) || { enabled: false };
     $('wa-status').textContent = !wa.enabled ? 'Ler, resumir e enviar mensagens (sempre com a sua aprovação).'
       : wa.connected ? 'Conectado.' : 'Ligado, mas sem conexão. Conecte abaixo.';
@@ -158,17 +105,6 @@
     $('set-masked').addEventListener('change', (e) => api.setSetting('masked', e.target.checked));
 
     $('set-research').addEventListener('change', (e) => api.setSetting('research', e.target.checked));
-    $('set-home').addEventListener('change', (e) => api.setSetting('home', e.target.checked));
-    $('home-connect').addEventListener('click', () => connectHome(''));
-    $('home-address-go').addEventListener('click', () => connectHome($('home-address').value));
-    $('home-address').addEventListener('keydown', (e) => { if (e.key === 'Enter') connectHome($('home-address').value); });
-    $('home-disconnect').addEventListener('click', async () => { showAddress = false; await api.homeDisconnect(); renderHome(); });
-    $('home-install-help').addEventListener('click', async () => { showInstall = true; renderHome(); await loadInstallInfo(); });
-    $('home-install-go').addEventListener('click', installHome);
-    $('home-install-password').addEventListener('keydown', (e) => { if (e.key === 'Enter') installHome(); });
-    $('home-docker-download').addEventListener('click', () => api.homeDockerPage());
-    $('home-install-recheck').addEventListener('click', loadInstallInfo);
-    $('home-alexa-help').addEventListener('click', () => { const h = P.state.overview && P.state.overview.home; if (h && h.alexa_help) api.openLink(h.alexa_help); });
     $('set-calendar').addEventListener('change', (e) => api.setSetting('calendar', e.target.checked));
 
     $('set-autosend').addEventListener('change', (e) => api.setSetting('autoSend', e.target.checked));

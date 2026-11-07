@@ -102,30 +102,6 @@
               <span class="switch-text">WhatsApp
                 <small id="wa-status">Ler, resumir e enviar mensagens (sempre com a sua aprovação).</small></span></label>
           <button type="button" id="wa-connect" class="ghost" hidden>Conectar WhatsApp via OpenWa</button>
-          <label class="switch"><input type="checkbox" id="set-home"><span class="track"></span>
-              <span class="switch-text">Casa inteligente e Alexa
-                <small id="home-status">Controlar luzes, tomadas e a música da Alexa. Usa o Home Assistant da sua casa.</small></span></label>
-          <div id="home-actions" class="stack" hidden>
-            <button type="button" id="home-connect" class="ghost">Conectar ao Home Assistant</button>
-            <div id="home-address-row" class="stack" hidden>
-              <input type="text" id="home-address" maxlength="100" placeholder="Endereço, por exemplo 192.168.0.10" aria-label="Endereço do Home Assistant" autocomplete="off">
-              <button type="button" id="home-address-go" class="ghost">Conectar neste endereço</button>
-              <button type="button" id="home-install-help" class="ghost">Ainda não tenho o Home Assistant: instalar um</button>
-            </div>
-            <div id="home-install" class="stack" hidden>
-              <p class="note">O Chakmati instala um Home Assistant neste computador, usando o Docker. Baixa cerca de 1 GB e usa uns 2 GB de memória enquanto estiver ligado. Ele só fica acessível neste computador.</p>
-              <p id="home-install-docker" class="note" role="status" hidden></p>
-              <input type="text" id="home-install-name" maxlength="60" placeholder="Seu nome" aria-label="Seu nome" autocomplete="name">
-              <input type="password" id="home-install-password" maxlength="128" placeholder="Crie uma senha (pelo menos 8 caracteres)" aria-label="Senha do Home Assistant" autocomplete="new-password">
-              <small class="hint">Guarde essa senha: você vai usá-la para entrar no Home Assistant (usuário: chakmati) e ligar a Alexa. O Chakmati não a guarda.</small>
-              <button type="button" id="home-install-go" class="primary">Instalar o Home Assistant</button>
-              <button type="button" id="home-docker-download" class="ghost" hidden>Baixar o Docker Desktop</button>
-              <button type="button" id="home-install-recheck" class="ghost" hidden>Já instalei o Docker: verificar de novo</button>
-            </div>
-            <button type="button" id="home-alexa-help" class="ghost" hidden>Como ligar a Alexa</button>
-            <button type="button" id="home-disconnect" class="ghost" hidden>Desconectar</button>
-            <p id="home-note" class="note" role="status" hidden></p>
-          </div>
           <label class="switch"><input type="checkbox" id="set-calendar"><span class="track"></span>
               <span class="switch-text">Agenda
                 <small>Ver e marcar compromissos no calendário do computador.</small></span></label>
@@ -159,6 +135,14 @@
           <label class="switch"><input type="checkbox" id="set-emojis"><span class="track"></span>
             <span class="switch-text">Descrever os emojis ao falar
               <small>Desligado, o Chakmati pula os emojis quando fala. Ligado, ele diz o que eles são (por exemplo, “rosto sorrindo”).</small></span></label>
+        </section>
+        <section class="cat" id="home-section">
+          <h3>Assistente de Casa e Alexa</h3>
+          <button type="button" id="home-open" class="ghost">Conectar Home Assistant</button>
+          <div id="home-on" class="row" hidden>
+            <span>Home Assistant conectado</span>
+            <button type="button" id="home-disconnect" class="ghost">Desconectar</button>
+          </div>
         </section>
         <section class="cat">
           <h3>Jeito de falar</h3>
@@ -236,6 +220,47 @@
       <button type="button" id="panic" class="ghost">Ocultar tudo agora</button>
       <button type="button" id="restart" class="ghost">Reiniciar o Chakmati</button>
     </footer>
+    <div id="home-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="home-modal-title" hidden>
+      <div class="modal-card">
+        <h2 id="home-modal-title">Assistente de Casa e Alexa</h2>
+        <div id="hm-search" hidden>
+          <p>Procurando o Home Assistant na sua rede… (leva alguns segundos)</p>
+        </div>
+        <div id="hm-found" hidden>
+          <p id="hm-found-text"></p>
+          <p class="hint">O Chakmati abre o login do seu Home Assistant no navegador. Você só precisa entrar e tocar em Aprovar.</p>
+        </div>
+        <div id="hm-intro" hidden>
+          <p>Não encontrei um Home Assistant na sua rede. Posso instalar um para você. O Chakmati vai:</p>
+          <ul id="hm-steps"></ul>
+          <p class="hint">Isso pode levar vários minutos. Deixe o Chakmati aberto. Quando terminar, você escolhe um nome e uma senha.</p>
+        </div>
+        <div id="hm-progress" hidden>
+          <progress></progress>
+          <p id="hm-progress-text" role="status"></p>
+        </div>
+        <div id="hm-approving" hidden>
+          <progress></progress>
+          <p>Abri o Home Assistant no seu navegador. Entre com a sua conta e toque em Aprovar. Aguardando…</p>
+        </div>
+        <div id="hm-account" hidden>
+          <p id="hm-account-text"></p>
+          <input type="text" id="hm-name" maxlength="60" placeholder="Seu nome" aria-label="Seu nome" autocomplete="name">
+          <input type="password" id="hm-password" maxlength="128" placeholder="Crie uma senha (pelo menos 8 caracteres)" aria-label="Senha do Home Assistant" autocomplete="new-password">
+          <p class="hint">Guarde essa senha: você vai usá-la para entrar no Home Assistant (usuário: chakmati). O Chakmati não a guarda.</p>
+        </div>
+        <div id="hm-done" hidden>
+          <p><strong>Pronto! O Home Assistant está conectado.</strong></p>
+          <p id="hm-done-text"></p>
+        </div>
+        <p id="hm-error" class="note" role="alert" hidden></p>
+        <div class="modal-actions">
+          <button type="button" id="hm-primary" class="primary">Começar</button>
+          <button type="button" id="hm-secondary" class="ghost" hidden>Abrir o Home Assistant</button>
+          <button type="button" id="hm-cancel" class="ghost">Cancelar</button>
+        </div>
+      </div>
+    </div>
     <div id="notice-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="notice-title" aria-describedby="notice-body" hidden>
       <div class="modal-card">
         <h2 id="notice-title">Atenção: proteja o seu número</h2>
@@ -272,6 +297,8 @@
   <script src="../../agenda/renderer/agenda.js"></script>
   <script src="../../notices/renderer/recent.js"></script>
   <script src="../../settings/renderer/settings.js"></script>
+  <script src="../../home/modal-logic.js"></script>
+  <script src="../../home/renderer/home.js"></script>
   <script src="../../browser/renderer/screen.js"></script>
   <script src="thread.js"></script>
   <script src="../../voice/renderer/ambient.js"></script>

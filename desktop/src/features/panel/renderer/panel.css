@@ -382,3 +382,10 @@ body[data-still] #panel[data-layout="wide"] #content, body[data-still] #panel[da
 .link-open { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-left: 4px; padding: 0; vertical-align: middle; border: 1px solid currentColor; border-radius: 50%; background: transparent; color: inherit; opacity: .8; cursor: pointer; }
 .link-open:hover { opacity: 1; background: color-mix(in srgb, currentColor 18%, transparent); }
 .link-open:focus-visible { outline: 2px solid var(--petrol); outline-offset: 2px; }
+
+/* the smart-house assistant: one button in Ajustes, and a modal that does the work */
+.modal-actions { display: grid; gap: 8px; margin-top: 12px; }
+.modal-card input[type="text"], .modal-card input[type="password"] { width: 100%; box-sizing: border-box; height: 36px; margin: 0 0 8px; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface-2); color: inherit; padding: 0 10px; font: inherit; }
+.modal-card progress { width: 100%; margin: 4px 0 10px; }
+.modal-card .hint { font-size: 12.5px; opacity: 0.8; }
+#home-on { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
