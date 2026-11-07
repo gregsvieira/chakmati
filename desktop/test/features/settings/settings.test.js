@@ -53,10 +53,10 @@ test('animations and the glass are off by default (they cost memory) and each ca
 });
 
 test('integrations map to the engine environment: web search on by default, the rest off', () => {
-  assert.deepEqual(engineEnv(DEFAULTS), { CHAKMATI_CHAT_MODEL: 'qwen3.5:latest', CHAKMATI_PERSONALITY: 'padrao', CHAKMATI_PRONOUNS: 'none', CHAKMATI_RESEARCH_BACKEND: 'ddg', CHAKMATI_WHATSAPP_BACKEND: 'off', CHAKMATI_CALENDAR_BACKEND: 'off', CHAKMATI_HOME_BACKEND: 'off', CHAKMATI_RESEARCH_SCORER: 'keepall' });
+  assert.deepEqual(engineEnv(DEFAULTS), { CHAKMATI_CHAT_MODEL: 'qwen3.5:latest', CHAKMATI_CLOUD_PROVIDER: '', CHAKMATI_CLOUD_MODEL: '', CHAKMATI_LOCAL_MODEL: '1', CHAKMATI_PERSONALITY: 'padrao', CHAKMATI_PRONOUNS: 'none', CHAKMATI_RESEARCH_BACKEND: 'ddg', CHAKMATI_WHATSAPP_BACKEND: 'off', CHAKMATI_CALENDAR_BACKEND: 'off', CHAKMATI_HOME_BACKEND: 'off', CHAKMATI_RESEARCH_SCORER: 'keepall' });
   assert.equal(engineEnv(DEFAULTS, { searxng: true }).CHAKMATI_RESEARCH_BACKEND, 'searxng');
   assert.equal(engineEnv({ ...DEFAULTS, research: false }).CHAKMATI_RESEARCH_BACKEND, 'off');
-  assert.deepEqual(engineEnv({ ...DEFAULTS, whatsapp: true, calendar: true }), { CHAKMATI_CHAT_MODEL: 'qwen3.5:latest', CHAKMATI_PERSONALITY: 'padrao', CHAKMATI_PRONOUNS: 'none', CHAKMATI_RESEARCH_BACKEND: 'ddg', CHAKMATI_WHATSAPP_BACKEND: 'openwa', CHAKMATI_CALENDAR_BACKEND: 'auto', CHAKMATI_HOME_BACKEND: 'off', CHAKMATI_RESEARCH_SCORER: 'keepall' });
+  assert.deepEqual(engineEnv({ ...DEFAULTS, whatsapp: true, calendar: true }), { CHAKMATI_CHAT_MODEL: 'qwen3.5:latest', CHAKMATI_CLOUD_PROVIDER: '', CHAKMATI_CLOUD_MODEL: '', CHAKMATI_LOCAL_MODEL: '1', CHAKMATI_PERSONALITY: 'padrao', CHAKMATI_PRONOUNS: 'none', CHAKMATI_RESEARCH_BACKEND: 'ddg', CHAKMATI_WHATSAPP_BACKEND: 'openwa', CHAKMATI_CALENDAR_BACKEND: 'auto', CHAKMATI_HOME_BACKEND: 'off', CHAKMATI_RESEARCH_SCORER: 'keepall' });
   assert.equal(engineEnv({ ...DEFAULTS, laya: true }).CHAKMATI_RESEARCH_SCORER, 'laya');
   assert.equal(normalize({ whatsapp: 'yes' }).whatsapp, false);
 });

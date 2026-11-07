@@ -14,8 +14,10 @@ contextBridge.exposeInMainWorld('assistant', {
   voice: { synthesize: (text, speed) => ipcRenderer.invoke('voice:synthesize', text, speed) },
   installer: {
     scan: () => ipcRenderer.invoke('installer:scan'),
-    plan: (selected, profile) => ipcRenderer.invoke('installer:plan', selected, profile),
-    run: (selected, profile) => ipcRenderer.invoke('installer:run', selected, profile),
+    plan: (selected, profile, opts) => ipcRenderer.invoke('installer:plan', selected, profile, opts),
+    run: (selected, profile, opts) => ipcRenderer.invoke('installer:run', selected, profile, opts),
+    cloudCheck: (provider, key, model) => ipcRenderer.invoke('installer:cloud-check', typeof provider === 'string' ? provider : '', typeof key === 'string' ? key : '', typeof model === 'string' ? model : ''),
+    cloudClear: () => ipcRenderer.invoke('installer:cloud-clear'),
     ollamaPage: () => ipcRenderer.invoke('installer:ollama-page'),
     onProgress: (cb) => listen('installer:progress', cb),
     finish: () => send('installer:finish'),

@@ -34,6 +34,9 @@ const DEFAULTS = Object.freeze({
   calendar: false,
   research: true,         // answer questions that need the web by searching it
   home: false,            // the smart house and the Alexa's music, through Home Assistant (connected from Ajustes)
+  cloudProvider: '',      // '' | 'anthropic' | 'openai': the paid AI the person connected (its key lives in the system's store, never here); used first
+  cloudModel: '',
+  localModel: true,       // false = only the paid AI (no local model behind it when its limit is over)
   chatModel: 'qwen3.5:latest', // the Ollama model the engine chats with (the setup wizard picks the one that fits this computer)
 });
 
@@ -57,6 +60,10 @@ function normalize(raw) {
   if (typeof r.calendar === 'boolean') s.calendar = r.calendar;
   if (typeof r.research === 'boolean') s.research = r.research;
   if (typeof r.home === 'boolean') s.home = r.home;
+  if (r.cloudProvider === 'anthropic' || r.cloudProvider === 'openai') s.cloudProvider = r.cloudProvider;
+  if (typeof r.cloudModel === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,79}$/.test(r.cloudModel)) s.cloudModel = r.cloudModel;
+  if (typeof r.localModel === 'boolean') s.localModel = r.localModel;
+  if (!s.cloudProvider || !s.cloudModel) { s.cloudProvider = ''; s.cloudModel = ''; s.localModel = true; }   // half a connection is no connection
   if (typeof r.chatModel === 'string' && /^[a-z0-9][a-z0-9._:-]{0,63}$/i.test(r.chatModel)) s.chatModel = r.chatModel;
   if (SIDES.includes(r.bubbleSide)) s.bubbleSide = r.bubbleSide;
   if (MOODS.includes(r.mood)) s.mood = r.mood;
@@ -86,6 +93,9 @@ function save(file, settings) {
 function engineEnv(settings, { searxng = false } = {}) {
   return {
     CHAKMATI_CHAT_MODEL: settings.chatModel,
+    CHAKMATI_CLOUD_PROVIDER: settings.cloudProvider,
+    CHAKMATI_CLOUD_MODEL: settings.cloudModel,
+    CHAKMATI_LOCAL_MODEL: settings.localModel ? '1' : '0',
     CHAKMATI_PERSONALITY: settings.personality,
     CHAKMATI_PRONOUNS: settings.pronouns,
     CHAKMATI_RESEARCH_BACKEND: !settings.research ? 'off' : searxng ? 'searxng' : 'ddg',

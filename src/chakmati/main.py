@@ -37,6 +37,7 @@ from chakmati.features.research.tool import ResearchTool
 from chakmati.features.computer.assistant import ComputerAssistant
 from chakmati.features.computer.service import ComputerService
 from chakmati.features.home.api import HomeLink
+from chakmati.shared.cloud_llm import CloudClient, FallbackClient
 from chakmati.features.home.docker import DockerHome
 from chakmati.features.home.docker_setup import DockerSetup
 from chakmati.features.home.install import HomeInstaller
@@ -50,11 +51,18 @@ from chakmati.shared.voice.tts import VoiceStore, VoiceSynth
 from chakmati.features.whatsapp.factory import build_whatsapp, build_whatsapp_events
 
 
+def _chat_client(s: Settings, local: OllamaClient, max_tokens: int | None = None):
+    """The local model alone, or (when the person connected a paid AI) the paid AI first with the local model behind it for when its limit is over."""
+    if s.cloud_provider and s.cloud_api_key and s.cloud_model:
+        return FallbackClient(CloudClient(s.cloud_provider, s.cloud_api_key, s.cloud_model, max_tokens=max_tokens), local if s.local_model else None)
+    return local
+
+
 def build_app(settings: Settings | None = None) -> FastAPI:
     s = settings or Settings.from_env()
     store = JobStore(s.db_path)
     keep_alive = s.keep_alive or None
-    llm = OllamaClient(s.ollama_url, s.chat_model, think=s.think, keep_alive=keep_alive)
+    llm = _chat_client(s, OllamaClient(s.ollama_url, s.chat_model, think=s.think, keep_alive=keep_alive))
     researcher = None
     search_backend = None
     if s.research_backend in {"ddg", "searxng"}:
@@ -64,13 +72,13 @@ def build_app(settings: Settings | None = None) -> FastAPI:
             else DuckDuckGoHtmlBackend(user_agent=build_user_agent(s.contact))
         )
         search_backend = search
-        research_llm = OllamaClient(
+        research_llm = _chat_client(s, OllamaClient(
             s.ollama_url,
             s.chat_model,
             think=s.think,
             keep_alive=keep_alive,
             num_predict=s.research_max_tokens,
-        )
+        ), max_tokens=s.research_max_tokens)
         researcher = ResearchTool(
             search,
             PageFetcher(user_agent=build_user_agent(s.contact)),

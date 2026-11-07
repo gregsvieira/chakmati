@@ -22,6 +22,10 @@ class Settings:
     ollama_url: str = "http://127.0.0.1:11434"
     chat_model: str = "qwen3.5:latest"
     think: bool = False
+    cloud_provider: str = ""  # "" (only the local model) | "anthropic" | "openai": the paid AI the person connected; it is used first, the local model when its limit is over
+    cloud_api_key: str = ""
+    cloud_model: str = ""
+    local_model: bool = True  # False = the person chose to run only on the paid AI (no local model behind it)
     explain_model: str = ""  # a stronger model for working out the questions of an exam (empty = the chat model); e.g. deepseek-r1:14b, which solved all three ENEM questions
     gate_backend: str = "heuristic"  # "heuristic" | "laya"
     gate_min_confidence: float = 0.6
@@ -80,6 +84,10 @@ class Settings:
             chat_model=env.get("CHAKMATI_CHAT_MODEL", d.chat_model),
             explain_model=env.get("CHAKMATI_EXPLAIN_MODEL", d.explain_model),
             think=env.get("CHAKMATI_THINK", "0").lower() in {"1", "true", "yes"},
+            cloud_provider=env.get("CHAKMATI_CLOUD_PROVIDER", d.cloud_provider),
+            cloud_api_key=env.get("CHAKMATI_CLOUD_API_KEY", d.cloud_api_key),
+            cloud_model=env.get("CHAKMATI_CLOUD_MODEL", d.cloud_model),
+            local_model=env.get("CHAKMATI_LOCAL_MODEL", "1").lower() in {"1", "true", "yes"},
             gate_backend=env.get("CHAKMATI_GATE_BACKEND", d.gate_backend),
             gate_min_confidence=float(
                 env.get("CHAKMATI_GATE_MIN_CONFIDENCE", d.gate_min_confidence)

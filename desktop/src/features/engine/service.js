@@ -125,6 +125,8 @@ async function noticeLoop() {
   }
 }
 
+const cloudKeyStore = () => require('./cloud-key').createKeyStore({ file: path.join(app.getPath('userData'), 'cloud-key.bin'), safeStorage: require('electron').safeStorage });
+
 const projectRoot = () => {
   const root = path.resolve(__dirname, '..', '..', '..', '..');
   return fs.existsSync(path.join(root, 'pyproject.toml')) ? root : null;
@@ -143,6 +145,7 @@ async function startEngine() {
   const launch = engineLaunch({ packaged: app.isPackaged, dataDir: app.getPath('userData'), repoRoot: projectRoot(), platform: process.platform });
   if (!launch || ctx.engineProcess) return false;
   const env = settingsLib.engineEnv(ctx.settings, { searxng: await searxngUp() });
+  if (ctx.settings.cloudProvider) env.CHAKMATI_CLOUD_API_KEY = cloudKeyStore().load();   // the key is read here, from the system's store, only to hand it to the engine
   if (ctx.engineProcess) return false;
   fs.mkdirSync(launch.cwd, { recursive: true });
   const logFile = path.join(app.getPath('userData'), 'engine.log');
