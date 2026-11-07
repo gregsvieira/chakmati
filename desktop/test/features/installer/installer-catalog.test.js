@@ -71,7 +71,8 @@ test('two ways into the smart house: connect the one you have (free), or have on
   assert.deepEqual(install.offSettings, {});               // leaving it out must not undo "I already have one"
   assert.ok(install.diskMb >= 1000 && install.ramMb >= 2000, 'the wizard says what it costs');
   assert.match(install.description, /Docker/);
-  assert.match(install.after, /Ajustes > Integrações/);
+  assert.match(install.after, /Ajustes > Assistente de Casa e Alexa/);
+  assert.match(install.after, /Conectar Home Assistant/);
 });
 
 test('choosing to install turns the house on even though the other item is left out', () => {

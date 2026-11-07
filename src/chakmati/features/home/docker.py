@@ -20,6 +20,8 @@ IMAGE_SIZE_MB = 1000   # an estimate for the question "may I download?"; the rea
 DOWNLOAD_PAGE = "https://www.docker.com/products/docker-desktop/"
 MAC_APP = "/Applications/Docker.app"
 WINDOWS_APP = r"C:\Program Files\Docker\Docker\Docker Desktop.exe"
+MAC_CLI = "/Applications/Docker.app/Contents/Resources/bin/docker"
+WINDOWS_CLI = r"C:\Program Files\Docker\Docker\resources\bin\docker.exe"   # just installed: not on the PATH of programs that were already open
 
 Run = Callable[[list[str], float], Awaitable[tuple[int, str]]]
 Stream = Callable[[list[str], Callable[[str], None], float], Awaitable[int]]
@@ -83,6 +85,19 @@ class DockerHome:
         self._tz = timezone
 
     # --- what is there -------------------------------------------------------------------------------------------------------------
+    @property
+    def config_dir(self) -> str:
+        return self._dir
+
+    def cli(self) -> str:
+        """The `docker` program: by its name when the system finds it, otherwise where Docker Desktop puts it (it may be just installed)."""
+        if self._which("docker"):
+            return "docker"
+        for system, path in (("darwin", MAC_CLI), ("win32", WINDOWS_CLI)):
+            if self._platform == system and self._exists(path):
+                return path
+        return "docker"
+
     def installed(self) -> bool:
         return self._which("docker") is not None or self.desktop_app() is not None
 
@@ -94,12 +109,12 @@ class DockerHome:
         return None
 
     async def daemon_ready(self) -> bool:
-        code, _ = await self._run(["docker", "info", "--format", "{{.ServerVersion}}"], 15.0)
+        code, _ = await self._run([self.cli(), "info", "--format", "{{.ServerVersion}}"], 15.0)
         return code == 0
 
     async def container(self) -> str:
         """"none" (not created), "stopped" or "running"."""
-        code, out = await self._run(["docker", "inspect", "--format", "{{.State.Running}}", CONTAINER], 15.0)
+        code, out = await self._run([self.cli(), "inspect", "--format", "{{.State.Running}}", CONTAINER], 15.0)
         if code != 0:
             return "none"
         return "running" if out.strip() == "true" else "stopped"
@@ -128,15 +143,20 @@ class DockerHome:
         return False
 
     async def pull(self, on_line: Callable[[str], None]) -> bool:
-        return await self._stream(["docker", "pull", IMAGE], on_line, 3600.0) == 0
+        return await self._stream([self.cli(), "pull", IMAGE], on_line, 3600.0) == 0
 
     async def create(self) -> tuple[bool, str]:
         Path(self._dir).mkdir(parents=True, exist_ok=True)
         code, out = await self._run([
-            "docker", "run", "-d", "--name", CONTAINER, "--restart", "unless-stopped",
+            self.cli(), "run", "-d", "--name", CONTAINER, "--restart", "unless-stopped",
             "-p", f"127.0.0.1:{HOST_PORT}:8123", "-v", f"{self._dir}:/config", "-e", f"TZ={self._tz or local_timezone()}", IMAGE], 180.0)
         return code == 0, out
 
     async def start(self) -> tuple[bool, str]:
-        code, out = await self._run(["docker", "start", CONTAINER], 60.0)
+        code, out = await self._run([self.cli(), "start", CONTAINER], 60.0)
+        return code == 0, out
+
+    async def restart(self) -> tuple[bool, str]:
+        """Starts it again so it loads what was put in its folder while it ran (the Alexa integration)."""
+        code, out = await self._run([self.cli(), "restart", CONTAINER], 120.0)
         return code == 0, out

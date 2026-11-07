@@ -38,6 +38,7 @@ from chakmati.features.computer.assistant import ComputerAssistant
 from chakmati.features.computer.service import ComputerService
 from chakmati.features.home.api import HomeLink
 from chakmati.features.home.docker import DockerHome
+from chakmati.features.home.docker_setup import DockerSetup
 from chakmati.features.home.install import HomeInstaller
 from chakmati.features.home.assistant import HomeAssistantBot
 from chakmati.features.home.auth import HomeAuth
@@ -95,7 +96,8 @@ def build_app(settings: Settings | None = None) -> FastAPI:
     home_service = home_bot = home_link = None
     home_auth = HomeAuth(s.home_auth_file, s.home_token_file, s.home_url)
     home_client = HomeAssistantClient(auth=home_auth)
-    home_installer = HomeInstaller(DockerHome(s.home_config_dir), home_auth, httpx.AsyncClient(timeout=10.0), s.home_docker_file)
+    home_http = httpx.AsyncClient(timeout=10.0)
+    home_installer = HomeInstaller(DockerHome(s.home_config_dir), home_auth, home_http, s.home_docker_file, setup=DockerSetup(home_http))
     home_link = HomeLink(home_auth, home_client, installer=home_installer)  # the connect flow works even before it is connected, and even with the house switched off
     if s.home_backend == "homeassistant":
         home_service = HomeService(home_client, actions)  # not connected yet: it says so in words; connecting (Ajustes) works at once, with no restart

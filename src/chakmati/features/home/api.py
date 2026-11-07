@@ -22,9 +22,12 @@ class ConnectIn(BaseModel):
 
 
 class InstallIn(BaseModel):
+    confirm: bool = False   # the person said yes in the modal, which says what will be installed (the desktop sends this)
+
+
+class AccountIn(BaseModel):
     name: str = Field(default="", max_length=60)
     password: str = Field(min_length=1, max_length=128)
-    confirm: bool = False   # the person said yes to the download (the desktop asks before it sends this)
 
 
 def _page(title: str, text: str, ok: bool) -> HTMLResponse:
@@ -93,13 +96,23 @@ class HomeLink:
             return await self.installer.inspect()
 
         @router.post("/home/install", dependencies=[Depends(ui_only)])
-        async def install_start(body: InstallIn, request: Request):
+        async def install_start(body: InstallIn):
             if self.installer is None:
                 raise HTTPException(status_code=404, detail="a instalação do Home Assistant não está disponível")
             if not body.confirm:
-                raise HTTPException(status_code=400, detail="falta a sua confirmação para baixar o Home Assistant")
+                raise HTTPException(status_code=400, detail="falta a sua confirmação para instalar")
             try:
-                self.installer.start(body.name, body.password, str(request.base_url))
+                self.installer.start()
+            except HomeError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return await self.installer.inspect()
+
+        @router.post("/home/install/account", dependencies=[Depends(ui_only)])
+        async def install_account(body: AccountIn, request: Request):
+            if self.installer is None:
+                raise HTTPException(status_code=404, detail="a instalação do Home Assistant não está disponível")
+            try:
+                await self.installer.create_account(body.name, body.password, str(request.base_url))
             except HomeError as exc:
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
             return await self.installer.inspect()
