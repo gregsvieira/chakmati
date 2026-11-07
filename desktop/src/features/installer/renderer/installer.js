@@ -52,6 +52,7 @@ async function start() {
   const usable = scan.verdict.level !== 'unsupported';
   $('ollama-help').hidden = !usable || scan.ollamaUp;
   $('to-options').hidden = !usable;
+  if (!defaultsApplied) { defaultsApplied = true; for (const id of DEFAULT_ON) if (scan.options.some((o) => o.id === id)) chosen.add(id); }
   buildScreens();
   show('check');
 }
@@ -81,9 +82,14 @@ function renderProfile() {
 const GROUPS = [
   { title: 'Voz', ids: ['voice', 'talk'] },
   { title: 'Modelos extras', ids: ['reasoning', 'laya'] },
-  { title: 'Integrações', ids: ['whatsapp', 'home', 'homeInstall'] },
+  { title: 'Integrações', ids: ['whatsapp', 'homeInstall'] },   // 'home' (I already have a Home Assistant) is not offered: the house step finds the one on the network first
   { title: 'Aparência e privacidade', ids: ['animations', 'glass', 'hideShare'] },
 ];
+// What comes flagged: the recommended integrations. They are the person's to unflag; WhatsApp still asks for the notice about the number being blocked first.
+const DEFAULT_ON = ['whatsapp', 'homeInstall'];
+const boxes = {};   // the checkbox of each item on the screen being shown
+let whatsappAsked = false;
+let defaultsApplied = false;
 const model = { local: true, cloud: false, connected: false, provider: '', name: '' };   // how the chat model runs
 const modelOut = () => ({ local: model.local, cloud: model.cloud && model.connected });
 let ollamaWarn = null;   // the warning on the first screen (only for the local model, and only when the Ollama is not there)
@@ -120,6 +126,7 @@ function groupFlags(ids) {
   return ids.map((id) => {
     const opt = scan.options.find((o) => o.id === id);
     const box = el('input', { type: 'checkbox', checked: chosen.has(id) });
+    boxes[id] = box;
     box.addEventListener('change', () => {
       if (box.checked && id === 'whatsapp') {
         box.checked = false;   // flagged only after the notice was acknowledged
@@ -129,7 +136,7 @@ function groupFlags(ids) {
       if (box.checked) chosen.add(id); else chosen.delete(id);
     });
     const title = el('span', { className: 'name', textContent: opt.label });
-    if (scan.suggested[id]) title.append(el('span', { className: 'badge', textContent: 'Recomendado' }));
+    if (scan.suggested[id] || DEFAULT_ON.includes(id)) title.append(el('span', { className: 'badge', textContent: 'Recomendado' }));
     const lines = [el('span', { textContent: opt.description })];
     if (opt.advice) lines.push(el('span', { className: 'advice', textContent: opt.advice }));
     lines.push(el('span', { className: 'cost', textContent: opt.costText }));
@@ -154,10 +161,18 @@ function goStep(n) {
     );
   } else {
     $('opt-title').textContent = sc.title;
-    $('opt-body').replaceChildren(el('p', { className: 'muted', textContent: 'Marque o que quiser. Nada vem marcado e nada é instalado agora: tudo é instalado de uma vez no fim.' }), ...groupFlags(sc.ids));
+    $('opt-body').replaceChildren(el('p', { className: 'muted', textContent: 'Marque o que quiser: os recomendados já vêm marcados. Nada é instalado agora; tudo é instalado de uma vez no fim.' }), ...groupFlags(sc.ids));
   }
   $('opt-yes').textContent = n === screens.length - 1 ? 'Ver o resumo' : 'Continuar';
   show('options');
+  askWhatsappNotice();
+}
+
+// WhatsApp comes flagged, but the notice about the number being blocked has to be read before it counts: asked once, when its screen first shows.
+function askWhatsappNotice() {
+  if (whatsappAsked || !boxes.whatsapp || !document.body.contains(boxes.whatsapp) || !chosen.has('whatsapp') || waGate.acknowledged()) return;
+  whatsappAsked = true;
+  waGate.run(showWhatsAppNotice, () => {}, () => { chosen.delete('whatsapp'); boxes.whatsapp.checked = false; });
 }
 
 function nextStep() {

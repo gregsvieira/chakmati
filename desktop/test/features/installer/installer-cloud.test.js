@@ -118,3 +118,16 @@ test('the Ollama is recommended, never required: the first screen can always con
   assert.match(html, /<strong>Recomendado:<\/strong> instalar e abrir o Ollama/);
   assert.match(html, /pode continuar sem ele/);
 });
+
+test('the integrations screen offers WhatsApp and the house, both recommended and flagged from the start, with the notice asked before WhatsApp counts', () => {
+  const js = read('features', 'installer', 'renderer', 'installer.js');
+  assert.match(js, /const DEFAULT_ON = \['whatsapp', 'homeInstall'\]/);
+  assert.match(js, /\{ title: 'Integrações', ids: \['whatsapp', 'homeInstall'\] \}/);
+  assert.match(js, /scan\.suggested\[id\] \|\| DEFAULT_ON\.includes\(id\)/);
+  assert.match(js, /waGate\.run\(showWhatsAppNotice, \(\) => \{\}, \(\) => \{ chosen\.delete\('whatsapp'\); boxes\.whatsapp\.checked = false; \}\)/);
+  assert.match(read('features', 'installer', 'wizard.js'), /filter\(\(o\) => o\.id !== 'home'\)/);   // "I already have a Home Assistant" is not offered: the flow finds it on the network first
+  const { OPTIONS } = require('../../../src/features/installer/catalog');
+  const house = OPTIONS.find((o) => o.id === 'homeInstall');
+  assert.equal(house.label, 'Casa inteligente e Alexa');
+  assert.match(house.description, /procura o Home Assistant da sua casa na rede/);
+});
