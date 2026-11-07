@@ -156,6 +156,15 @@ class EngineClient {
     const body = { name: typeof name === 'string' ? name.slice(0, 60) : '', password };
     return (await this._request('/home/install/account', { method: 'POST', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify(body) })).json();
   }
+  // Linking the Alexa through Home Assistant's own setup: status (and the countries), start with the credentials (they go no further than the engine), cancel.
+  async homeAlexaStatus() { return (await this._request('/home/alexa')).json(); }
+  async homeAlexaStart(region, email, password) {
+    if (typeof region !== 'string' || !/^amazon\.[a-z.]{2,8}$/.test(region)) throw new Error('invalid region');
+    if (typeof email !== 'string' || email.length < 3 || email.length > 254) throw new Error('invalid email');
+    if (typeof password !== 'string' || !password || password.length > 256) throw new Error('invalid password');
+    return (await this._request('/home/alexa', { method: 'POST', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify({ region, email, password }) })).json();
+  }
+  async homeAlexaCancel() { return (await this._request('/home/alexa', { method: 'DELETE', headers: UI })).json(); }
   async homeDisconnect() { return (await this._request('/home', { method: 'DELETE', headers: UI })).json(); }
 
   // How the person is addressed (ele/dele, ela/dela, elu/delu, or none), changed in the running engine.

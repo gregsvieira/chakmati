@@ -141,6 +141,7 @@
           <button type="button" id="home-open" class="ghost">Conectar Home Assistant</button>
           <div id="home-on" class="row" hidden>
             <span>Home Assistant conectado</span>
+            <button type="button" id="home-alexa" class="ghost" hidden>Conectar a Alexa</button>
             <button type="button" id="home-disconnect" class="ghost">Desconectar</button>
           </div>
         </section>
@@ -248,6 +249,17 @@
           <input type="text" id="hm-name" maxlength="60" placeholder="Seu nome" aria-label="Seu nome" autocomplete="name">
           <input type="password" id="hm-password" maxlength="128" placeholder="Crie uma senha (pelo menos 8 caracteres)" aria-label="Senha do Home Assistant" autocomplete="new-password">
           <p class="hint">Guarde essa senha: você vai usá-la para entrar no Home Assistant (usuário: chakmati). O Chakmati não a guarda.</p>
+        </div>
+        <div id="hm-alexa" hidden>
+          <p>Agora vamos ligar a sua Alexa. Escolha o país da sua conta Amazon e digite o e-mail e a senha dela.</p>
+          <select id="hm-region" aria-label="País da conta Amazon"></select>
+          <input type="text" id="hm-email" maxlength="254" placeholder="E-mail da conta Amazon" aria-label="E-mail da conta Amazon" autocomplete="username" inputmode="email">
+          <input type="password" id="hm-alexa-password" maxlength="256" placeholder="Senha da conta Amazon" aria-label="Senha da conta Amazon" autocomplete="current-password">
+          <p class="hint"><strong>Local e seguro:</strong> o e-mail e a senha vão só do Chakmati para o Home Assistant, dentro deste computador (uma conexão local, que nem sai para a rede). O Chakmati não guarda nem registra nada. O Home Assistant guarda no próprio computador, num arquivo dele, para a Alexa continuar funcionando, e é ele quem entra na Amazon, por conexão segura (https).</p>
+        </div>
+        <div id="hm-alexa-wait" hidden>
+          <progress></progress>
+          <p>Abri uma janela do Chakmati para entrar na Amazon. Entre lá: se a Amazon pedir um código ou uma verificação, faça nela. Aguardando…</p>
         </div>
         <div id="hm-done" hidden>
           <p><strong>Pronto! O Home Assistant está conectado.</strong></p>
