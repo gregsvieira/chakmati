@@ -45,6 +45,7 @@
     $('home-alexa-help').hidden = !(home.connected && !(home.players || []).length);
     $('home-address-row').hidden = !showAddress || !!home.connected;
     $('home-note').textContent = P.state.homeNote || '';
+    $('home-note').hidden = !P.state.homeNote;
   }
   async function connectHome(address) {
     const res = await api.homeConnect(address || '');
@@ -141,6 +142,7 @@
     $('home-address-go').addEventListener('click', () => connectHome($('home-address').value));
     $('home-address').addEventListener('keydown', (e) => { if (e.key === 'Enter') connectHome($('home-address').value); });
     $('home-disconnect').addEventListener('click', async () => { showAddress = false; await api.homeDisconnect(); renderHome(); });
+    $('home-install-help').addEventListener('click', () => api.openLink('https://www.home-assistant.io/installation/'));
     $('home-alexa-help').addEventListener('click', () => { const h = P.state.overview && P.state.overview.home; if (h && h.alexa_help) api.openLink(h.alexa_help); });
     $('set-calendar').addEventListener('change', (e) => api.setSetting('calendar', e.target.checked));
 

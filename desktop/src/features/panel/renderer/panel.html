@@ -110,10 +110,11 @@
             <div id="home-address-row" class="stack" hidden>
               <input type="text" id="home-address" maxlength="100" placeholder="Endereço, por exemplo 192.168.0.10" aria-label="Endereço do Home Assistant" autocomplete="off">
               <button type="button" id="home-address-go" class="ghost">Conectar neste endereço</button>
+              <button type="button" id="home-install-help" class="ghost">Ainda não tenho o Home Assistant</button>
             </div>
             <button type="button" id="home-alexa-help" class="ghost" hidden>Como ligar a Alexa</button>
             <button type="button" id="home-disconnect" class="ghost" hidden>Desconectar</button>
-            <small id="home-note" class="hint"></small>
+            <p id="home-note" class="note" role="status" hidden></p>
           </div>
           <label class="switch"><input type="checkbox" id="set-calendar"><span class="track"></span>
               <span class="switch-text">Agenda

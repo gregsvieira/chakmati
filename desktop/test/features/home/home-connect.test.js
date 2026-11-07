@@ -45,8 +45,9 @@ test('with no Home Assistant found, it asks for the address instead of failing',
   const { service, log } = harness({ found: [] });
   const res = await service.connect('');
   assert.equal(res.needAddress, true);
-  assert.match(res.message, /Escreva o endereço/);
-  assert.deepEqual(log.notes, [res.message]);       // the sentence also reaches Ajustes
+  assert.match(res.message, /escreva o endereço dele abaixo/);
+  assert.match(res.message, /Ainda não tenho o Home Assistant/);   // and says what to do if there is none
+  assert.deepEqual(log.notes, ['Procurando o Home Assistant na sua rede… (leva alguns segundos)', res.message]);   // first the search is announced, then the answer reaches Ajustes
   assert.deepEqual(log.opened, []);
 });
 
@@ -173,4 +174,23 @@ test('the browser is only ever opened through the own-network check', () => {
   const service = read('features', 'home', 'service.js');
   assert.ok(service.indexOf('isLocalHttpUrl(authorize)') < service.indexOf('await openExternal(authorize)'));
   assert.equal((service.match(/await openExternal\(/g) || []).length, 1);
+});
+
+test('searching is announced at once, and a typed address skips the announcement', async () => {
+  const a = harness({ statuses: [{ pending: true }] });
+  await a.service.connect('');
+  assert.match(a.log.notes[0], /^Procurando o Home Assistant/);
+  a.service.cancel();
+  const b = harness({ statuses: [{ pending: true }] });
+  await b.service.connect('192.168.0.10');
+  assert.equal(b.log.notes.some((n) => /^Procurando/.test(n)), false);
+  b.service.cancel();
+});
+
+test('for someone with no Home Assistant the page offers how to install one, and the note is a visible paragraph', () => {
+  const html = read('features', 'panel', 'renderer', 'panel.html');
+  const js = read('features', 'settings', 'renderer', 'settings.js');
+  assert.ok(html.includes('id="home-install-help"') && /<p id="home-note" class="note"/.test(html));
+  assert.match(js, /home-install-help'\)\.addEventListener\('click', \(\) => api\.openLink\('https:\/\/www\.home-assistant\.io\/installation\/'\)\)/);
+  assert.match(js, /\$\('home-note'\)\.hidden = !P\.state\.homeNote/);
 });
