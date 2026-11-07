@@ -28,6 +28,8 @@ const cases = [
   ['personalidade paulista', 'personality', 'paulista', false],
   ['muda o jeito de falar para mineiro', 'personality', 'mineiro', false],
   ['volta a personalidade para o padrão', 'personality', 'padrao', false],
+  ['liga o efeito de vidro', 'glass', true, false],
+  ['desliga o vidro', 'glass', false, false],
   ['meus pronomes são ela/dela', 'pronouns', 'ela', false],
   ['usa os pronomes ele/dele', 'pronouns', 'ele', false],
   ['coloca o pronome elu', 'pronouns', 'elu', false],

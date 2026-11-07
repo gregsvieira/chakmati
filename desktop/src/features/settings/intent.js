@@ -12,6 +12,7 @@
   // key, the words that name it, how it is called when answering, and whether changing it asks for a confirmation first.
   const SWITCHES = [
     { key: 'enhancedVoice', re: /\bvoz (melhorada|neural|natural)\b/, name: 'a voz melhorada' },
+    { key: 'glass', re: /\b(efeito de vidro|vidro|transparencia)\b/, name: 'o efeito de vidro' },
     { key: 'speakEmojis', re: /\bemojis?\b/, name: 'a leitura dos emojis' },
     { key: 'autoSend', re: /\b(envio automatico|envio sem (pedir )?aprovacao|enviar sem (pedir )?aprovacao|enviar sem aprovar|aprovar (automaticamente|sempre|as proximas)|aprovacao automatica)\b/, name: 'o envio sem pedir aprovação', sensitive: true },
     { key: 'autoRunSafe', re: /\b(manter (os )?comandos (seguros )?aprovados|aprovar (os )?comandos (seguros )?(automaticamente|sempre)|comandos seguros)\b/, name: 'a aprovação automática dos comandos seguros', sensitive: true },

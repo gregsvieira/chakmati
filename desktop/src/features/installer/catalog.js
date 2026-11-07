@@ -76,9 +76,14 @@ const OPTIONS = Object.freeze([
     approval: { source: 'pypi.org e huggingface.co (PyTorch e o modelo Laya, pelo uv que vem no instalador)', sizeMb: 1500 },
   },
   {
-    id: 'animations', label: 'Animações do personagem', platforms: ALL, diskMb: 0, ramMb: 0,
-    description: 'O Chakmati pisca, olha e se mexe. Desligado, ele fica parado.',
+    id: 'animations', label: 'Animações do personagem', platforms: ALL, diskMb: 0, ramMb: 70, // measured: about 70 MB of the Electron's memory (scripts/measure in the PR)
+    description: 'O Chakmati pisca, olha e se mexe. Desligado, ele fica parado e o app usa menos memória.',
     settings: { still: false }, offSettings: { still: true },
+  },
+  {
+    id: 'glass', label: 'Efeito de vidro no painel', platforms: ALL, diskMb: 0, ramMb: 80, // measured: about 80 MB, mostly in the graphics process
+    description: 'O painel fica translúcido, com o fundo desfocado atrás. Desligado, ele tem o mesmo visual, só que liso e sem transparência.',
+    settings: { glass: true }, offSettings: { glass: false },
   },
   {
     id: 'hideShare', label: 'Ocultar a janela no compartilhamento de tela', platforms: ALL, diskMb: 0, ramMb: 0,

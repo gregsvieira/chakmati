@@ -19,7 +19,7 @@ function createPanel() {
   ctx.panelWin = new BrowserWindow({
     width: PANEL.w, height: PANEL.h, show: false, frame: false, transparent: true, resizable: false, hasShadow: true, alwaysOnTop: true,
     skipTaskbar: true, fullscreenable: false,
-    ...(isMac ? { vibrancy: 'under-window', visualEffectState: 'active', backgroundColor: '#00000000' } : {}), // macOS: the real blur of what is behind the glass
+    ...(isMac ? { ...(ctx.settings.glass ? { vibrancy: 'under-window', visualEffectState: 'active' } : {}), backgroundColor: '#00000000' } : {}), // macOS: the real blur of what is behind the glass (only with the glass on)
     webPreferences: { ...webPreferences(), backgroundThrottling: false }, // a hidden panel must keep listening at full speed
   });
   ctx.panelWin.setAlwaysOnTop(true, 'floating');
@@ -28,6 +28,11 @@ function createPanel() {
   traceWindow('painel', ctx.panelWin);
   ctx.panelWin.loadFile(path.join(__dirname, 'renderer', 'panel.html'));
   ctx.panelWin.on('closed', () => { ctx.panelWin = null; ctx.state.panelOpen = false; });
+}
+
+// The glass switched on or off while the panel exists: the native blur of macOS goes with it (the page flattens itself from the setting).
+function applyGlass() {
+  if (isMac && alive(ctx.panelWin)) ctx.panelWin.setVibrancy(ctx.settings.glass ? 'under-window' : null);
 }
 
 function positionPanel() {
@@ -68,7 +73,7 @@ function panelState() {
     describe: { ...widgetMood.currentDescription(), mood: ctx.settings.mood === 'auto' ? moodWithBell(widgetMood.currentDescription().mood, widgetMood.currentBell()) : widgetMood.effectiveMood(widgetMood.currentDescription().mood) },
     bell: widgetMood.currentBell(),
     notices: ctx.state.notices.slice(-20),
-    settings: { protect: ctx.settings.protect, masked: ctx.settings.masked, autoSend: ctx.settings.autoSend, autoRunSafe: ctx.settings.autoRunSafe, hear: ctx.settings.hear, talk: ctx.settings.talk, enhancedVoice: ctx.settings.enhancedVoice, voiceSpeed: ctx.settings.voiceSpeed, speakEmojis: ctx.settings.speakEmojis, micSource: ctx.settings.micSource, still: ctx.settings.still, bubbleSide: ctx.settings.bubbleSide, mood: ctx.settings.mood, home: ctx.settings.home, personality: ctx.settings.personality, personalities: ctx.settings.personalities, pronouns: ctx.settings.pronouns, whatsapp: ctx.settings.whatsapp, calendar: ctx.settings.calendar, research: ctx.settings.research },
+    settings: { protect: ctx.settings.protect, masked: ctx.settings.masked, autoSend: ctx.settings.autoSend, autoRunSafe: ctx.settings.autoRunSafe, hear: ctx.settings.hear, talk: ctx.settings.talk, enhancedVoice: ctx.settings.enhancedVoice, voiceSpeed: ctx.settings.voiceSpeed, speakEmojis: ctx.settings.speakEmojis, micSource: ctx.settings.micSource, still: ctx.settings.still, bubbleSide: ctx.settings.bubbleSide, mood: ctx.settings.mood, glass: ctx.settings.glass, home: ctx.settings.home, personality: ctx.settings.personality, personalities: ctx.settings.personalities, pronouns: ctx.settings.pronouns, whatsapp: ctx.settings.whatsapp, calendar: ctx.settings.calendar, research: ctx.settings.research },
     homeNote: ctx.state.homeNote || '',
     voice: ctx.state.voice,
     ownsEngine: !!ctx.engineProcess,
@@ -123,4 +128,4 @@ function setHidden(hidden) {
   trayMenu.rebuildMenu();
 }
 
-Object.assign(module.exports, { positionPanel, sendPanelState, togglePanel, setHidden, createPanel, openPanel, closePanel, setPanelMode });
+Object.assign(module.exports, { applyGlass, positionPanel, sendPanelState, togglePanel, setHidden, createPanel, openPanel, closePanel, setPanelMode });

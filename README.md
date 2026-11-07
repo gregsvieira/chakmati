@@ -254,7 +254,7 @@ a very strong one (16 GB and 8 cores or more) is teased as a relic ("Primeira ve
 
 Reads the computer (RAM, free disk, cores, system), says whether it meets the minimum, picks the chat model that fits
 (`qwen3.5:0.8b` under ~6 GB, `granite4:3b` up to ~8 GB, `qwen3.5:4b` up to ~16 GB, `qwen3.5:latest` above) and offers the optional pieces (better voice,
-microphone, WhatsApp, animations, hiding from screen sharing). Nothing optional is ticked. The **engine** (installed app only) and the **chat model** are mandatory: they are always in the plan, marked "obrigatório", and their download dialog has no "Pular", only "Aprovar" or
+microphone, WhatsApp, animations, hiding from screen sharing). Nothing optional is ticked, and that includes the **animations** (about 70 MB of memory) and the **glass** look of the panel (about 80 MB): both are off by default and both are offered here with their cost. Measured on macOS with the panel open wide, the Electron part uses about 200 MB with both off and about 330 MB with both on. Ajustes has a switch for each ("Desativar animações", "Efeito de vidro"; "liga o efeito de vidro" works by voice). The **engine** (installed app only) and the **chat model** are mandatory: they are always in the plan, marked "obrigatório", and their download dialog has no "Pular", only "Aprovar" or
 "Cancelar a instalação" (declining one cancels the install and saves nothing, since the Chakmati does not work without them). Every download shows its source and
 size and asks first; for the optional ones "Pular" (skip) is the default button. Needs Ollama running. WhatsApp is only recorded here: connect it later in
 Settings > Integrations. The native installers (`.exe`, `.pkg`, `.deb`) will start this wizard with `--setup`.

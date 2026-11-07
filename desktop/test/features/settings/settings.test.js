@@ -42,10 +42,14 @@ test('the mood is auto unless one of the known moods is pinned', () => {
   assert.equal(normalize({ mood: 'angry' }).mood, 'auto');
 });
 
-test('animations are on by default and can be switched off', () => {
-  assert.equal(DEFAULTS.still, false);
-  assert.equal(normalize({ still: true }).still, true);
-  assert.equal(normalize({ still: 'yes' }).still, false);
+test('animations and the glass are off by default (they cost memory) and each can be switched on', () => {
+  assert.equal(DEFAULTS.still, true);   // still = no animations
+  assert.equal(DEFAULTS.glass, false);
+  assert.equal(normalize({ still: false }).still, false);
+  assert.equal(normalize({ glass: true }).glass, true);
+  assert.equal(normalize({ still: 'no' }).still, true);     // not a boolean: the default stays
+  assert.equal(normalize({ glass: 'yes' }).glass, false);
+  assert.equal(normalize({}).still, true);
 });
 
 test('integrations map to the engine environment: web search on by default, the rest off', () => {
