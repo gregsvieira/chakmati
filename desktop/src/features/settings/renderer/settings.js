@@ -50,8 +50,9 @@
     if (P.renderHome) P.renderHome();   // the smart-house section lives in features/home/renderer/home.js
     const wa = (P.state.overview && P.state.overview.whatsapp) || { enabled: false };
     $('wa-status').textContent = !wa.enabled ? 'Ler, resumir e enviar mensagens (sempre com a sua aprovação).'
+      : wa.error ? 'O OpenWA está ligado, mas deu erro ao ler o WhatsApp. Reinicie o OpenWA abaixo.'
       : wa.connected ? 'Conectado.' : 'Ligado, mas sem conexão. Conecte abaixo.';
-    $('wa-connect').hidden = !(P.state.settings.whatsapp && P.state.canOpenWa && wa.enabled && !wa.connected);
+    $('wa-connect').hidden = !(P.state.settings.whatsapp && P.state.canOpenWa && wa.enabled && !wa.connected);  // an error also shows it: restarting OpenWA is the cure
     const hint = $('engine-hint');
     hint.hidden = P.state.ownsEngine || !P.state.engineUp;
     hint.textContent = 'O motor foi iniciado por fora do Chakmati: reinicie-o para aplicar estas opções.';

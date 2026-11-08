@@ -9,7 +9,7 @@ const src = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'src', 'featu
 test('the link button runs one attempt at a time: the source shape', () => {
   assert.match(src, /let setupRunning = null;\s*function openWaSetup\(\) \{\s*if \(!setupRunning\) setupRunning = openWaSetupOnce\(\)\.finally\(\(\) => \{ setupRunning = null; \}\);\s*return setupRunning;\s*\}/);
   assert.match(src, /async function openWaSetupOnce\(\) \{/);
-  assert.match(src, /Object\.assign\(module\.exports, \{ openWaSetup \}\)/);
+  assert.match(src, /Object\.assign\(module\.exports, \{ openWaSetup, recoverStuckSession, isStuckError \}\)/);
 });
 
 test('behaviour: three clicks while the first is starting share one attempt, and a later click starts a new one', async () => {

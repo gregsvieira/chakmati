@@ -3,4 +3,5 @@
 // (Getters, so the parts that need each other at run time never meet half-loaded.)
 module.exports = {
   get ipc() { return require('./ipc'); },
+  get openwa() { return require('./openwa'); },
 };
