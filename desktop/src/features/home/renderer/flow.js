@@ -24,7 +24,9 @@
       set('hm-cancel', cancel);
     }
 
-    function show(name, text) {
+    const DONE_TITLE = 'Pronto! O Home Assistant está conectado.';
+
+    function show(name, text, title) {
       page = name;
       for (const p of PAGES) $('hm-' + p).hidden = p !== name;
       if (name !== 'progress' && name !== 'approving' && name !== 'alexa-wait') stopPolling();
@@ -39,7 +41,7 @@
       if (text !== undefined) {
         if (name === 'progress') $('hm-progress-text').textContent = text;
         if (name === 'account') $('hm-account-text').textContent = text;
-        if (name === 'done') $('hm-done-text').textContent = text;
+        if (name === 'done') { $('hm-done-text').textContent = text; $('hm-done-title').textContent = title || DONE_TITLE; }
       }
     }
 
@@ -133,10 +135,11 @@
         if (page !== 'alexa-wait') return;
         if (out.stage === 'alexa-wait') return;
         stopPolling();
+        if (out.stage === 'waiting') return show('done', out.text, 'Quase lá');   // accepted, but Amazon asked to wait
         if (out.stage === 'done') {   // the speakers show up a few seconds after the configuration is loaded
           let status = await api.homeStatus();
           for (let i = 0; i < 10 && !(status.players || []).length; i += 1) { await new Promise((r) => setTimeout(r, 2000)); status = await api.homeStatus(); }
-          return show('done', M.doneText(status));
+          return show('done', M.doneText(status, true), (status.players || []).length ? undefined : 'Alexa conectada');
         }
         show('alexa');
         return error(out.text);
