@@ -58,7 +58,9 @@ _HOME_VERB = re.compile(r"\b(lig\w+|deslig\w+|apag\w+|acend\w+|abr\w+|fech\w+|tr
 _HOME_MUSIC = re.compile(
     r"\b(?:pr[óo]xima|pul[ae]r?|pula|troc\w+|mud\w+|volt\w+|anterior|paus\w+|pause|continu\w+|retom\w+)\b.{0,25}\b(?:m[úu]sica|faixa|can[çc][ãa]o)\b"
     r"|\b(?:aument\w+|diminu\w+|abaix\w+|baix\w+|sobe|suba|reduz\w*)\b.{0,20}\bvolume\b|\bvolume\b.{0,20}\b\d{1,3}\b|^\W*pr[óo]xima\W*$"
-    r"|\b(?:o\s+que|que\s+m[úu]sica|qual\s+m[úu]sica|que\s+faixa)\b.{0,20}\b(?:est[áa]\s+tocando|toca|tocando)\b",
+    r"|\b(?:o\s+que|que\s+m[úu]sica|qual\s+m[úu]sica|que\s+faixa)\b.{0,20}\b(?:est[áa]\s+tocando|toca|tocando)\b"
+    # asking the Echo for something to play: "toca Raul Seixas na Alexa", "coloca Djavan no echo da sala", "Alexa, toca Anitta" (a play verb at the start AND the Alexa named)
+    r"|^\W*(?:(?:ei|oi|ol[áa])?\W*alexa\W+)?(?:toca|toque|tocar|coloca|coloque|p[õo]e|ponha|bota|quero\s+(?:ouvir|escutar))\b(?:.{0,80}\b(?:alexa|echo|caixa\s+de\s+som)\b|(?<=alexa, toca)\b.{0,80})",
     re.IGNORECASE,
 )
 _HOME_PHRASE = re.compile(r"\b(?:ativ\w+|coloc\w+)\s+(?:a\s+)?cena\b|\bporta\b.{0,25}\b(?:trancad\w+|aberta|fechada|destranc\w+)\b|\b(?:tranc\w+|destranc\w+)\s+a\s+porta\b", re.IGNORECASE)

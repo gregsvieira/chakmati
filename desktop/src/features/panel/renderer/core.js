@@ -49,6 +49,7 @@
     P.renderMessages();
     P.renderAgenda();
     P.renderRecent();
+    if (P.renderHouse) P.renderHouse();
     P.renderAutomations();
     P.renderPendingMark();
     P.renderTopicHints();

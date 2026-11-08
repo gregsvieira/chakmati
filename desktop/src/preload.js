@@ -79,6 +79,8 @@ contextBridge.exposeInMainWorld('assistant', {
     cloudSave: (provider, key, model, local) => ipcRenderer.invoke('panel:cloud-save', typeof provider === 'string' ? provider : '', typeof key === 'string' ? key : '', typeof model === 'string' ? model : '', local !== false),
     cloudRemove: () => ipcRenderer.invoke('panel:cloud-remove'),
     homeOpenHa: () => ipcRenderer.invoke('panel:home-open-ha'),
+    homePlayers: () => ipcRenderer.invoke('panel:home-players'),
+    homePlayerControl: (id, action, text) => ipcRenderer.invoke('panel:home-player-control', typeof id === 'string' ? id : '', typeof action === 'string' ? action : '', typeof text === 'string' ? text : ''),
     homeDisconnect: () => ipcRenderer.invoke('panel:home-disconnect'),
     chats: () => ipcRenderer.invoke('panel:chats'),
     messages: (chatId) => ipcRenderer.invoke('panel:messages', chatId),

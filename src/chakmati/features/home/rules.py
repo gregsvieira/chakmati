@@ -58,3 +58,44 @@ def media_by_rule(text: str) -> tuple[str, str | None, float | None] | None:
     if action is None:
         return None
     return action, _device(t), value
+
+
+_PLAY_VERB = re.compile(r"^\W*(?:(?:ei|oi|ol[áa])?\W*alexa\W+)?(?:toca|toque|tocar|coloca|coloque|p[õo]e|ponha|bota|quero\s+ouvir|quero\s+escutar|ouvir|escutar)\s+(?P<rest>.+?)\W*$", re.IGNORECASE)
+_GENERIC = {"musica", "a musica", "uma musica", "som", "o som", "algo", "alguma coisa", "alguma musica", "isso", "a", "uma"}
+
+
+def _strip_where(words: list[str]) -> list[str]:
+    """Drops a trailing "na Alexa" / "no echo" / "na caixa" (just a way to say where), however many of them end the request."""
+    while len(words) > 1:
+        for i in range(len(words) - 1, 0, -1):
+            if _plain(words[i - 1]) in _PREPOSITIONS:
+                tail = [_plain(w) for w in words[i:]]
+                if tail and set(tail) <= _SKIP:
+                    words = words[: i - 1]
+                    break
+                return words
+        else:
+            return words
+    return words
+
+
+def play_by_rule(text: str) -> tuple[str, str | None, str] | None:
+    """(what to play, device name or None, the whole request) for "toca Raul Seixas na Alexa" / "coloca Legião Urbana na sala"; None when it is not a request for
+    something to play ("toca" alone and "toca a música" mean resuming). The words after the last "na/no/da/do" are the device only when they are not just
+    "a Alexa"; the service checks whether that is a device and, when it is not ("toca uma do Pelé"), the whole request is the thing to play."""
+    m = _PLAY_VERB.match(text.strip())
+    if not m:
+        return None
+    rest = m.group("rest").strip()
+    full = " ".join(_strip_where(rest.split())).strip(" ,.;:!?")
+    if not _plain(full) or _plain(full) in _GENERIC:
+        return None
+    device = _device(" ".join(_strip_where(rest.split())))
+    query = full
+    if device:
+        words = full.split()
+        for i in range(len(words) - 1, 0, -1):
+            if _plain(words[i - 1]) in _PREPOSITIONS:
+                query = " ".join(_strip_where(words[: i - 1])).strip(" ,.;:!?")   # "Legião Urbana no echo da sala": the "no echo" goes too
+                break
+    return query, device, full

@@ -1,6 +1,9 @@
 """HTTP routes of connecting to Home Assistant (used by Ajustes): find it, start the sign-in, receive the answer, say what is connected."""
 
 import html
+import time
+from collections import deque
+from typing import Literal
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -12,7 +15,8 @@ from chakmati.features.home.auth import HomeAuth
 from chakmati.features.home.client import HomeAssistantClient
 from chakmati.features.home.connect import HomeConnector, discover
 from chakmati.features.home.install import HomeInstaller
-from chakmati.features.home.models import HomeError
+from chakmati.features.home.models import Entity, HomeError, plan
+from chakmati.features.home.service import music_request
 from chakmati.shared.http import ui_only
 
 ALEXA_HELP = "https://www.home-assistant.io/integrations/alexa_devices/"  # the integration that shows each Echo in Home Assistant
@@ -30,6 +34,12 @@ class AlexaIn(BaseModel):
     email: str = Field(min_length=3, max_length=254)
     password: str = Field(min_length=1, max_length=256)
     code: str = Field(min_length=1, max_length=12)   # the one-time code of the 2-step verification
+
+
+class ControlIn(BaseModel):
+    id: str = Field(min_length=3, max_length=120)
+    action: Literal["pause", "play", "next", "previous", "volume_up", "volume_down", "search"]
+    text: str = Field(default="", max_length=200)   # what to search for ("Raul Seixas"), only for "search"
 
 
 class AccountIn(BaseModel):
@@ -55,6 +65,7 @@ class HomeLink:
         self.connector = HomeConnector(auth, self._http)
         self.installer = installer
         self.alexa = AlexaSetup(auth, self._http)
+        self._control_times: deque[float] = deque()   # the panel's buttons are rate limited like the voice commands
         self._hosts = hosts   # None = search the own network; a list (tests) = only these addresses
 
     async def status(self) -> dict:
@@ -148,6 +159,36 @@ class HomeLink:
         @router.get("/home/status")
         async def home_status():
             return await self.status()
+
+        @router.get("/home/players")
+        async def home_players():
+            """The speakers with what each one is playing and which buttons make sense (the panel of Ajustes and of the main page)."""
+            try:
+                return {"players": await self.client.players()}
+            except HomeError as exc:
+                return {"players": [], "error": str(exc)}
+
+        @router.post("/home/players/control", dependencies=[Depends(ui_only)])
+        async def home_control(body: ControlIn):
+            now = time.monotonic()
+            while self._control_times and self._control_times[0] < now - 60:
+                self._control_times.popleft()
+            if len(self._control_times) >= 30:
+                raise HTTPException(status_code=429, detail="muitos comandos seguidos; espere um minuto")
+            try:
+                found = next((p for p in await self.client.players() if p["id"] == body.id), None)   # only a speaker Home Assistant really has, never an id typed by hand
+                if found is None:
+                    raise HTTPException(status_code=404, detail="esse aparelho não está no Home Assistant")
+                self._control_times.append(now)
+                if body.action == "search":
+                    phrase = music_request(body.text)
+                    await self.client.send_text_command(body.id, phrase)
+                    return {"ok": True, "message": f"Pedi à {found['name']}: {phrase}"}
+                command = plan(body.action, Entity(found["id"], found["name"], "media_player", found["state"]))
+                await self.client.call(command.domain, command.service, command.data)
+                return {"ok": True, "message": command.text}
+            except HomeError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         @router.delete("/home", dependencies=[Depends(ui_only)])
         async def home_disconnect():
