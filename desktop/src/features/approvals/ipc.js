@@ -30,9 +30,10 @@ function register() {
       try { const a = await ctx.engine.preview(id); return { dataUrl: `data:${a.mime};base64,${a.base64}` }; } catch (e) { return { error: friendlyError(e) }; }
     });
 
-  ipcMain.handle('panel:propose-recorded', async (_e, bytes) => {
+  ipcMain.handle('panel:propose-recorded', async (_e, bytes, hours) => {
       if (!(bytes instanceof Uint8Array) || !bytes.length) return { error: 'Gravação inválida.' };
-      try { const action = await ctx.engine.proposeRecorded(bytes); engineService.refreshOverview(); return { action }; } catch (e) { return { error: friendlyError(e) }; }
+      const when = hours && typeof hours === 'object' && typeof hours.from === 'string' && typeof hours.to === 'string' ? { from: hours.from, to: hours.to } : null;
+      try { const action = await ctx.engine.proposeRecorded(bytes, when); engineService.refreshOverview(); return { action }; } catch (e) { return { error: friendlyError(e) }; }
     });
 
   ipcMain.handle('panel:approve', decide('approve'));

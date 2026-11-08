@@ -200,10 +200,12 @@ class EngineClient {
   }
 
   // The person's own recorded reply (a 16 kHz WAV of at most ~10 s) becomes a proposal that still has to be confirmed.
-  async proposeRecorded(bytes) {
+  async proposeRecorded(bytes, hours = null) {
     if (!bytes || !bytes.length) throw new Error('empty recording');
     if (bytes.length > 1.5 * 1024 * 1024) throw new Error('recording too large');
-    return (await this._request('/automations/recorded', { method: 'POST', headers: { ...UI, 'content-type': 'audio/wav' }, body: bytes })).json();
+    if (hours && !(/^([01]\d|2[0-3]):[0-5]\d$/.test(hours.from) && /^([01]\d|2[0-3]):[0-5]\d$/.test(hours.to))) throw new Error('invalid hours');
+    const query = hours ? `?hours_from=${encodeURIComponent(hours.from)}&hours_to=${encodeURIComponent(hours.to)}` : '';
+    return (await this._request(`/automations/recorded${query}`, { method: 'POST', headers: { ...UI, 'content-type': 'audio/wav' }, body: bytes })).json();
   }
 
   // "Manter aprovado" for safe computer commands: the engine itself enforces that only safe ones skip the question.

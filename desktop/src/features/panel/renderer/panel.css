@@ -328,6 +328,9 @@ body[data-still] #panel[data-layout="wide"] #content, body[data-still] #panel[da
 #panel[data-layout="compact"] #content { display: flex; flex-direction: column; }
 #panel[data-layout="compact"] #topics { flex: none; }
 #panel[data-layout="compact"] #thread-section { margin-top: auto; position: sticky; bottom: 0; padding-bottom: 4px; backdrop-filter: blur(14px); }   /* (blurred, not painted: it only hides what scrolls under it) */
+/* ...but in the small card the strip must also be PAINTED: with the topics open, what scrolls under the conversation showed through its text ("Criar" and "Avisos recentes" over the answer) */
+#panel[data-layout="compact"] #thread-section { background: var(--surface); box-shadow: 0 -10px 12px -4px var(--surface); z-index: 2; }
+#panel[data-layout="compact"] #content { scroll-padding-bottom: 140px; }   /* a topic that opens scrolls into view ABOVE the strip, not under it */
 #panel[data-layout="compact"][data-focus="thread"] #thread-section { flex: 1; margin-top: 0; }
 #panel[data-layout="compact"] #content[hidden] { display: none; }
 /* when the conversation is open the messages stand at its bottom, like in any chat (margin, not justify-content: a long one still scrolls from its top) */

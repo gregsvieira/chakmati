@@ -102,6 +102,7 @@
         if (set.has(id)) set.delete(id); else set.add(id);
         store.set(`chakmati.folded-${layoutNow()}`, [...set]);
         sync();
+        if (!set.has(id)) setTimeout(() => section.scrollIntoView({ block: 'nearest' }), 30);   // opened: shown above the conversation strip (scroll-padding), never under it
       };
       title.addEventListener('click', toggle);
       title.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });

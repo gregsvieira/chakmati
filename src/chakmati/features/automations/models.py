@@ -13,6 +13,7 @@ MAX_NAME = 60
 MAX_TEXT = 1000
 MAX_RUNS_PER_DAY = 24
 DEFAULT_COOLDOWN_MINUTES = 120
+_HHMM = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 _RECIPIENT = re.compile(r"^[0-9A-Za-z._-]+@(?:c\.us|lid|g\.us)$")
 _CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 TRIGGERS = ("whatsapp_message", "schedule", "calendar_event")
@@ -38,6 +39,30 @@ def _int(value, low: int, high: int, what: str, default: int | None = None) -> i
     return value
 
 
+def _hours(raw) -> dict | None:
+    """The hours the automation works, {"from": "22:00", "to": "07:50"} (a window that crosses midnight is fine); None = always."""
+    if raw is None:
+        return None
+    if not isinstance(raw, dict) or not all(isinstance(raw.get(k), str) and _HHMM.match(raw[k]) for k in ("from", "to")):
+        raise SpecError("the hours must be {\"from\": \"HH:MM\", \"to\": \"HH:MM\"} in 24 hours")
+    if raw["from"] == raw["to"]:
+        raise SpecError("the hours must start and end at different times")
+    return {"from": raw["from"], "to": raw["to"]}
+
+
+def _minutes(hhmm: str) -> int:
+    return int(hhmm[:2]) * 60 + int(hhmm[3:])
+
+
+def in_hours(hours: dict | None, when) -> bool:
+    """Whether `when` (a datetime) falls inside the hours; always true without hours. The window includes its start and excludes its end, and "22:00" to
+    "07:50" means from 22:00 of one day until 07:50 of the next."""
+    if not hours:
+        return True
+    now, start, end = when.hour * 60 + when.minute, _minutes(hours["from"]), _minutes(hours["to"])
+    return start <= now < end if start < end else now >= start or now < end
+
+
 def _trigger(raw) -> dict:
     if not isinstance(raw, dict) or raw.get("type") not in TRIGGERS:
         raise SpecError(f"trigger type must be one of {', '.join(TRIGGERS)}")
@@ -46,8 +71,12 @@ def _trigger(raw) -> dict:
         groups = raw.get("include_groups", False)
         if not isinstance(groups, bool):
             raise SpecError("include_groups must be true or false")
-        return {"type": kind, "include_groups": groups,
-                "cooldown_minutes": _int(raw.get("cooldown_minutes"), 1, 1440, "cooldown_minutes", DEFAULT_COOLDOWN_MINUTES)}
+        out = {"type": kind, "include_groups": groups,
+               "cooldown_minutes": _int(raw.get("cooldown_minutes"), 1, 1440, "cooldown_minutes", DEFAULT_COOLDOWN_MINUTES)}
+        hours = _hours(raw.get("hours"))
+        if hours:
+            out["hours"] = hours
+        return out
     if kind == "schedule":
         cron = raw.get("cron")
         if not isinstance(cron, str):
@@ -121,7 +150,9 @@ def describe(spec: Spec) -> str:
     quoted = f"«{action['text']}»" + (" (antes do áudio vai a mensagem \"Resposta automática Chakmati: Áudio\")" if action["type"] == "whatsapp_voice" else ' (a mensagem sai começando com \"Resposta automática Chakmati:\")')
     if trigger["type"] == "whatsapp_message":
         scope = "em conversas individuais e em grupos" if trigger["include_groups"] else "em conversas individuais (grupos ficam de fora)"
-        return (f"Quando alguém te escrever no WhatsApp, {scope}, {reply}: {quoted}. "
+        hours = trigger.get("hours")
+        when = f" entre as {hours['from']} e as {hours['to']}" if hours else ""
+        return (f"Quando alguém te escrever no WhatsApp{when}, {scope}, {reply}: {quoted}. "
                 f"No máximo uma resposta por pessoa a cada {_cooldown_words(trigger['cooldown_minutes'])}.")
     if trigger["type"] == "schedule":
         return f"{describe_cron(trigger['cron']).capitalize()}, {reply}: {quoted}."

@@ -15,6 +15,7 @@ from pathlib import Path
 
 from chakmati.features.whatsapp.models import Chat
 from chakmati.features.automations.cron import cron_matches
+from chakmati.features.automations.models import in_hours
 from chakmati.features.automations.store import Automation, AutomationStore
 
 log = logging.getLogger(__name__)
@@ -71,6 +72,8 @@ class AutomationRunner:
         for auto in self._store.list(enabled_only=True):
             trigger = auto.spec.trigger
             if trigger["type"] != "whatsapp_message":
+                continue
+            if not in_hours(trigger.get("hours"), datetime.fromtimestamp(self._now())):   # outside its hours it does nothing (and uses no cooldown)
                 continue
             for chat, _delta in fresh:
                 if not _CONVERSATION.match(chat.id) or (chat.is_group and not trigger["include_groups"]):

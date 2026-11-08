@@ -259,3 +259,18 @@ def test_the_recorded_endpoint_is_refused_when_audio_is_impossible(tmp_path):
     client = TestClient(create_app(engine, engine._store, board=NoticeBoard(), automations=service))
     res = client.post("/automations/recorded", content=sine_wav(1.0), headers={**UI, "content-type": "audio/wav"})
     assert res.status_code == 409 and "texto" in res.json()["detail"]
+
+
+def test_a_recorded_reply_can_carry_the_hours_it_works_and_bad_hours_are_refused(tmp_path):
+    from .test_audio_service import sine_wav
+
+    client, engine, service, store = recorded_client(tmp_path, FakeStt())
+    headers = {**UI, "content-type": "audio/wav"}
+    res = client.post("/automations/recorded?hours_from=22:00&hours_to=07:50", content=sine_wav(2.0), headers=headers)
+    assert res.status_code == 200 and "entre as 22:00 e as 07:50" in res.json()["summary"]
+    assert client.post(f"/actions/{res.json()['id']}/approve", headers=UI).status_code == 200
+    assert store.list()[0].spec.trigger["hours"] == {"from": "22:00", "to": "07:50"}
+    for query in ("hours_from=25:00&hours_to=07:00", "hours_from=22:00&hours_to=22:00", "hours_from=22:00", "hours_to=07:00", "hours_from=noite&hours_to=dia"):
+        assert client.post(f"/automations/recorded?{query}", content=sine_wav(2.0), headers=headers).status_code == 422, query
+    plain = client.post("/automations/recorded", content=sine_wav(2.0), headers=headers)
+    assert plain.status_code == 200 and "entre as" not in plain.json()["summary"]

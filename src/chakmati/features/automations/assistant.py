@@ -10,7 +10,7 @@ import json
 import re
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from chakmati.shared.approvals import Action
 from chakmati.shared.llm import ChatClient
@@ -29,6 +29,7 @@ Keys:
   "event_words": for "event", words the event title contains; otherwise null
   "minutes_before": for "event", how many minutes before it starts (0 = when it starts); otherwise null
   "include_groups": true only if the user explicitly wants group chats included, otherwise false
+  "hours_from", "hours_to": for "message", the hours the automation works as "HH:MM" in 24 hours when the user said them ("between 10pm and 7:50am" -> "22:00" and "07:50"); otherwise null
   "cooldown_minutes": only if the user said how often to reply to the same person, otherwise null
   "reply_mode": "voice" if the user wants an audio / recorded / voice reply, otherwise "text"
   "reply_text": the reply EXACTLY as the user wants it written (do not add, remove or reword anything), or null
@@ -41,6 +42,28 @@ PENDING_SECONDS = 300.0
 _TIME = re.compile(r"^\s*(\d{1,2}):(\d{2})\s*$")
 _DAYS = {"daily": "*", "weekdays": "1-5", "weekend": "0,6"}
 _ACTIONS = {"create", "list"}
+_T = r"(\d{1,2})(?:\s*[:h]\s*(\d{2})?|\s*horas?)"    # 22:00, 22h, 7h50, 7 horas: the hour always carries a ":", an "h" or "horas", so "de 5 a 10" is not a time
+_RANGE = re.compile(rf"(?:\bentre\s+(?:as\s+)?|\bd[ae]s?\s+(?:as\s+)?|\bde\s+){_T}\s*(?:e|a|[àa]s|at[ée])\s+(?:as\s+|às\s+)?{_T}", re.IGNORECASE)
+
+
+def hours_from_text(text: str) -> dict | None:
+    """The hours the person said ("entre as 22:00 e as 07:50", "das 22h às 7h", "de 18:00 até 08:30") as {"from": "22:00", "to": "07:50"}, or None when they did not say
+    any. Read here, in code, from the person's own words: the model may miss them, and an automation that was meant to work at night must not end up working all day.
+    ValueError when they gave hours that do not exist ("das 25h às 7h"), so it is said instead of ignored."""
+    text = text or ""
+    # only the request itself, never the reply: "responda: estou ocupado das 9h às 17h" is a message to send, not the hours the automation works
+    reply = re.search(r"\b(?:respond\w*|mand\w*|envi\w*|diga|dizer|escrev\w*)\b.*?:\s", text, re.IGNORECASE | re.DOTALL)   # a ": " (colon and space), not the colon of 22:00
+    match = _RANGE.search(text[: reply.end()] if reply else text)
+    if not match:
+        return None
+    h1, m1, h2, m2 = match.groups()
+    values = [(int(h1), int(m1 or 0)), (int(h2), int(m2 or 0))]
+    if any(h > 23 or m > 59 for h, m in values):
+        raise ValueError("esse horário não existe")
+    out = {"from": f"{values[0][0]:02d}:{values[0][1]:02d}", "to": f"{values[1][0]:02d}:{values[1][1]:02d}"}
+    if out["from"] == out["to"]:
+        raise ValueError("o horário precisa começar e terminar em momentos diferentes")
+    return out
 
 
 def cron_for(time_text, days) -> str | None:
@@ -73,6 +96,7 @@ class Intent:
     reply_mode: str = "text"
     reply_text: str | None = None
     to: str | None = None
+    hours: dict | None = None   # {"from": "22:00", "to": "07:50"}: set by the code from the person's words (or from the model's, when they are valid)
 
 
 def _text(value) -> str | None:
@@ -98,7 +122,13 @@ def parse_intent(reply: str) -> Intent:
         _text(data.get("time")), data.get("days"), _text(data.get("event_words")), _number(data.get("minutes_before")),
         data.get("include_groups") is True, _number(data.get("cooldown_minutes")),
         "voice" if data.get("reply_mode") == "voice" else "text", _text(data.get("reply_text")), _text(data.get("to")),
+        _model_hours(data.get("hours_from"), data.get("hours_to")),
     )
+
+
+def _model_hours(start, end) -> dict | None:
+    ok = all(isinstance(x, str) and re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", x) for x in (start, end))
+    return {"from": start, "to": end} if ok and start != end else None
 
 
 @dataclass(frozen=True)
@@ -135,6 +165,12 @@ class AutomationAssistant:
                 return await self._create(pending.intent, chosen)
         reply = await self._llm.chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": text}])
         intent = parse_intent(reply)
+        try:
+            said = hours_from_text(text)
+        except ValueError as exc:
+            return f"Não entendi o horário: {exc}. Diga, por exemplo, \"entre as 22:00 e as 07:50\"."
+        if said is not None:
+            intent = replace(intent, hours=said)   # the person's own words win over the model's reading
         if intent.action == "list":
             return self._list()
         if intent.action != "create":
@@ -172,6 +208,8 @@ class AutomationAssistant:
             trigger = {"type": "whatsapp_message", "include_groups": intent.include_groups}
             if intent.cooldown_minutes is not None:
                 trigger["cooldown_minutes"] = intent.cooldown_minutes
+            if intent.hours:
+                trigger["hours"] = intent.hours
         elif intent.when == "time":
             cron = cron_for(intent.time, intent.days)
             if cron is None:

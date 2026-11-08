@@ -84,6 +84,8 @@ Then, in natural language: "tenho mensagens novas?", "o que o João disse?", "re
 
 The first time you press **Criar** (automations), turn WhatsApp on in Ajustes press **Conectar WhatsApp** or tick WhatsApp in the install wizard, a notice asks you to read how the number is protected against a block by Meta (every send is approved by you, 20 an hour with a gap, no mass or repeated sends, no unknown contacts, a secondary number) and to press **Compreendi e estou ciente!**. Esc or a click outside closes it without doing the action; once acknowledged it never shows again in that window.
 
+**Hours of operation.** A reply automation can work only in some hours: "sempre que alguém me escrever no WhatsApp entre as 22:00 e as 07:50, responda em áudio: ...". After **Criar**, the buttons go channel > hours (Sempre, À noite, Fora do expediente, Madrugada, Outro horário) > how it answers; the hours are also read from the person's own words in code (`hours_from_text`: "entre as 22:00 e as 07:50", "das 22h às 7h50"), never from the reply text, and hours that do not exist are said instead of ignored. The window includes its start, excludes its end and may cross midnight; outside it the automation does nothing and uses no cooldown. "Minha fala" takes the hours too (`/automations/recorded?hours_from=..&hours_to=..`).
+
 Safety model (same as the calendar): reading is free, **sending is always a proposal you approve** in the same inbox
 (`GET /actions`, `POST /actions/<id>/approve` with `X-LiteAgent-UI: 1`). The recipient is matched by code against your chat
 list (ambiguous names ask which one), the text sent is exactly what you wrote and is shown before approval, approved sends are
