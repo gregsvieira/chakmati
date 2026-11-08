@@ -80,6 +80,7 @@
   const robotHome = robotBox.parentNode;
   const robotNext = robotBox.nextSibling;
   function placeRobot(layout) {
+    if (P.robot) P.robot.setDoor(layout === 'wide');   // in the big window he stands in his alcove, the green door open beside him
     if (layout === 'wide') { if (robotBox.parentNode !== $('hero')) $('hero').appendChild(robotBox); }
     else if (robotBox.parentNode !== robotHome) robotHome.insertBefore(robotBox, robotNext);
   }
