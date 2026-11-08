@@ -240,6 +240,18 @@
       <button type="button" id="panic" class="ghost">Ocultar tudo agora</button>
       <button type="button" id="restart" class="ghost">Reiniciar o Chakmati</button>
     </footer>
+    <div id="automation-detail" class="modal" role="dialog" aria-modal="true" aria-labelledby="automation-detail-title" hidden>
+      <div class="modal-card">
+        <h2 id="automation-detail-title"></h2>
+        <p id="automation-detail-text"></p>
+        <dl class="detail-list">
+          <dt>Estado</dt><dd id="automation-detail-state"></dd>
+          <dt>Já respondeu</dt><dd id="automation-detail-runs"></dd>
+          <dt>Última vez</dt><dd id="automation-detail-last"></dd>
+        </dl>
+        <div class="modal-actions"><button type="button" id="automation-detail-close" class="primary">Fechar</button></div>
+      </div>
+    </div>
     <div id="cloud-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="cloud-modal-title" hidden>
       <div class="modal-card">
         <h2 id="cloud-modal-title">Minha IA paga</h2>

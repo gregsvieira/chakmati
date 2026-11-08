@@ -7,8 +7,11 @@
   function renderAutomations() {
     const list = (P.state.overview && P.state.overview.automations) || [];
     $('automations-empty').hidden = list.length > 0;
+    // The list only has the title (click it for the details in a window) and the two buttons: the sentence of what it does is long and crowded the card.
     const card = (a) => P.h('div', { class: 'row automation' },
-      P.h('div', { class: 'grow' }, P.h('p', { class: 'decision-title' }, a.name), P.h('p', { class: 'decision-body' }, a.description + (a.runs ? ` (${plural(a.runs, 'vez', 'vezes')})` : ''))),
+      P.h('div', { class: 'grow' },
+        P.h('button', { class: 'link-btn decision-title automation-title', type: 'button', title: 'Ver os detalhes', 'aria-haspopup': 'dialog', onclick: () => showDetails(a) }, a.name),
+        a.enabled ? null : P.h('span', { class: 'automation-paused' }, ' (pausada)')),
       P.h('div', { class: 'decision-actions' },
         P.h('button', { class: 'ghost small', type: 'button', onclick: () => api.automation(a.id, a.enabled ? 'disable' : 'enable') }, a.enabled ? 'Pausar' : 'Ativar'),
         P.h('button', { class: 'ghost small', type: 'button', onclick: () => api.automation(a.id, 'delete') }, 'Apagar')));
@@ -19,6 +22,19 @@
       .filter(([, items]) => items.length)
       .map(([title, items]) => subgroup(title, items.map(card))));
   }
+
+  // The details of one automation, in a window of its own.
+  const when = (t) => (t ? new Date(t * 1000).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'nunca');
+  function showDetails(a) {
+    $('automation-detail-title').textContent = a.name;
+    $('automation-detail-text').textContent = a.description;
+    $('automation-detail-state').textContent = a.enabled ? 'Ativa' : 'Pausada';
+    $('automation-detail-runs').textContent = a.runs ? plural(a.runs, 'vez', 'vezes') : 'nenhuma vez';
+    $('automation-detail-last').textContent = when(a.last_run_at);
+    $('automation-detail').hidden = false;
+    $('automation-detail-close').focus();
+  }
+  const closeDetails = () => { $('automation-detail').hidden = true; };
 
   async function previewVoice(id, button) {
     const res = await api.preview(id);
@@ -142,6 +158,9 @@
   }
 
   P.inits.push(function () {
+    $('automation-detail-close').addEventListener('click', closeDetails);
+    $('automation-detail').addEventListener('mousedown', (e) => { if (e.target === $('automation-detail')) closeDetails(); });
+    $('automation-detail').addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDetails(); });
     // Automações: nothing to show yet; the button only says what is coming
     $('create-automation').addEventListener('click', () => waGate.run(P.showWhatsAppNotice, () => { $('automation-note').hidden = false; $('input').value = ''; P.startAutomationChips(); $('input').focus(); P.showSuggestions2(); }));
   });
