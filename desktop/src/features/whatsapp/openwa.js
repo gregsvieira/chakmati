@@ -91,7 +91,15 @@ async function watchOwaLink() {
   }
 }
 
-async function openWaSetup() {
+// One link attempt at a time: a second click (or a click while the first is still starting OpenWA) gets the first one's answer instead of starting OpenWA again.
+// Three `openwa.sh start` launched within seconds of each other were seen, all from this button, fighting for the same browser profile.
+let setupRunning = null;
+function openWaSetup() {
+  if (!setupRunning) setupRunning = openWaSetupOnce().finally(() => { setupRunning = null; });
+  return setupRunning;
+}
+
+async function openWaSetupOnce() {
   const root = engineService.projectRoot();
   if (!root) return { ok: false, error: 'Não encontrei a pasta do Chakmati.' };
   const health = await owaHealth();
