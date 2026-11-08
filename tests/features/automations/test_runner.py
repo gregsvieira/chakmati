@@ -128,7 +128,7 @@ async def test_a_schedule_fires_in_its_minute_and_only_once(tmp_path):
     runner, store, wa, clock = make(tmp_path)
     spec = parse_spec({"trigger": {"type": "schedule", "cron": "0 9 * * *"}, "action": {"type": "whatsapp_text", "to": CHAT, "text": "Bom dia!"}})
     store.create(spec, clock())
-    await runner.tick(NOW.replace(minute=1))
+    await runner.tick(NOW - timedelta(minutes=1))   # before its time: nothing
     assert wa.sent == []
     await runner.tick(NOW)
     await runner.tick(NOW.replace(second=30))  # the same minute again: no second message

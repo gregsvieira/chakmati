@@ -197,9 +197,10 @@ async def test_at_the_time_the_steps_run_in_order_and_only_once_per_minute():
     assert len(client.calls) == 2                                                   # the same minute again: nothing
 
 
-async def test_the_wrong_minute_does_nothing():
-    client, _, _ = await run([dev("on", LUZ)], when=datetime(2026, 11, 9, 7, 1))
-    assert client.calls == []
+async def test_before_its_minute_and_long_after_its_window_does_nothing():
+    for when in (datetime(2026, 11, 9, 6, 59), datetime(2026, 11, 9, 8, 0)):   # before it, and an hour after (past the catch-up)
+        client, _, _ = await run([dev("on", LUZ)], when=when)
+        assert client.calls == []
 
 
 async def test_a_failing_step_is_recorded_and_the_next_steps_still_run():
