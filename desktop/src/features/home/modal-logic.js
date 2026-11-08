@@ -18,9 +18,8 @@
     steps.push(info.container === 'none' || info.container === 'unknown'
       ? `Baixar e instalar o Home Assistant (cerca de ${GB(info.image_mb || 1000)} de download).`
       : 'Ligar o Home Assistant que já foi instalado.');
-    steps.push(info.alexa_ready ? 'Usar a integração da Alexa (alexa_media_player), que já está no Home Assistant.' : 'Baixar a integração da Alexa (alexa_media_player) para dentro do Home Assistant.');
     steps.push('Ligar tudo e conferir que está funcionando.');
-    steps.push('Ligar a sua Alexa: o Chakmati pede o e-mail e a senha da Amazon aqui mesmo, e o login acontece numa janela do próprio Chakmati.');
+    steps.push('Ligar a sua Alexa: o Chakmati pede aqui mesmo o e-mail, a senha e o código de verificação da Amazon, e entra por você.');
     return steps;
   }
 
@@ -60,24 +59,15 @@
     return status && (status.players || []).length ? 'done' : 'alexa';
   }
 
-  // The Amazon site for the language of the computer ("pt-BR" -> amazon.com.br), among the ones the integration knows.
-  function regionFor(locale, regions) {
-    const country = String(locale || '').replace('_', '-').split('-').pop().toUpperCase();
-    const byCountry = { BR: 'amazon.com.br', US: 'amazon.com', CA: 'amazon.ca', MX: 'amazon.com.mx', GB: 'amazon.co.uk', DE: 'amazon.de', ES: 'amazon.es', FR: 'amazon.fr', IT: 'amazon.it', IN: 'amazon.in', JP: 'amazon.co.jp', AU: 'amazon.com.au' };
-    const guess = byCountry[country] || 'amazon.com';
-    if (!regions || Object.prototype.hasOwnProperty.call(regions, guess)) return guess;
-    return Object.prototype.hasOwnProperty.call(regions, 'amazon.com') ? 'amazon.com' : Object.keys(regions)[0];   // a country the integration does not know: the international site
-  }
-
-  // While the person signs in to Amazon in the window: keep waiting, finished, or back to the form with a sentence.
+  // While Home Assistant signs in to Amazon: keep waiting, finished, or back to the form with a sentence.
   function alexaWait(status) {
     if (!status || status.state === 'login') return { stage: 'alexa-wait' };
     if (status.state === 'done') return { stage: 'done' };
     if (status.state === 'error') return { stage: 'alexa', text: status.message || 'Não deu certo. Tente de novo.' };
-    return { stage: 'alexa', text: 'A janela foi fechada antes de terminar. Se foi sem querer, tente de novo.' };   // idle: it was cancelled
+    return { stage: 'alexa', text: 'O login foi cancelado antes de terminar. Se foi sem querer, tente de novo.' };   // idle: it was cancelled
   }
 
-  const api = { introSteps, canStart, stageFor, approval, doneText, afterConnected, regionFor, alexaWait };
+  const api = { introSteps, canStart, stageFor, approval, doneText, afterConnected, alexaWait };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.HomeModal = api;
 })(typeof window !== 'undefined' ? window : globalThis);

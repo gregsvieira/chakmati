@@ -34,7 +34,7 @@
       if (name === 'approving') buttons(null, null, { text: L.cancel });
       if (name === 'account') buttons({ text: 'Conectar' }, null, { text: L.cancel });
       if (name === 'alexa') buttons({ text: 'Conectar a Alexa' }, null, { text: L.skip });
-      if (name === 'alexa-wait') buttons(null, { text: 'Abrir no meu navegador' }, { text: L.cancel });
+      if (name === 'alexa-wait') buttons(null, null, { text: L.cancel });
       if (name === 'done') buttons({ text: L.close }, fromInstall ? { text: 'Abrir o Home Assistant' } : null, null);
       if (text !== undefined) {
         if (name === 'progress') $('hm-progress-text').textContent = text;
@@ -52,7 +52,7 @@
 
     function close() {
       stopPolling();
-      for (const id of ['hm-password', 'hm-alexa-password', 'hm-email']) $(id).value = '';   // neither the passwords nor the e-mail stay on the page
+      for (const id of ['hm-password', 'hm-alexa-password', 'hm-email', 'hm-code']) $(id).value = '';   // neither the passwords, the code nor the e-mail stay on the page
       setRoot(false);
       page = 'closed';
       error('');
@@ -114,21 +114,18 @@
 
     async function openAlexa() {
       setRoot(true);
-      const info = await api.homeAlexaStatus();
-      const regions = (info && info.regions) || {};
-      $('hm-region').replaceChildren(...Object.entries(regions).map(([id, name]) => Object.assign(document.createElement('option'), { value: id, textContent: `${name} (${id})` })));
-      $('hm-region').value = M.regionFor(locale, regions);
-      for (const id of ['hm-email', 'hm-alexa-password']) $(id).value = '';
+      for (const id of ['hm-email', 'hm-alexa-password', 'hm-code']) $(id).value = '';
       show('alexa');
       $('hm-email').focus();
     }
 
     async function startAlexa() {
-      const region = $('hm-region').value;
       const email = $('hm-email').value;
       const password = $('hm-alexa-password').value;
+      const code = $('hm-code').value;
       $('hm-alexa-password').value = '';   // gone from the page the moment it is sent
-      const res = await api.homeAlexaStart(region, email, password);
+      $('hm-code').value = '';
+      const res = await api.homeAlexaStart(email, password, code);
       if (res.error) return error(res.error);
       show('alexa-wait');
       return poll(async () => {
@@ -180,7 +177,7 @@
     // Wires the buttons of the markup once.
     function bind() {
       $('hm-primary').addEventListener('click', primary);
-      $('hm-secondary').addEventListener('click', () => (page === 'alexa-wait' ? api.homeAlexaBrowser() : api.homeOpenHa()));
+      $('hm-secondary').addEventListener('click', () => api.homeOpenHa());
       $('hm-cancel').addEventListener('click', async () => {
         if (page === 'alexa-wait') { await api.homeAlexaCancel(); show('alexa'); return; }
         if (page === 'alexa') { await api.homeAlexaCancel(); show('done', M.doneText(await api.homeStatus())); return; }
@@ -188,6 +185,7 @@
       });
       $('hm-password').addEventListener('keydown', (e) => { if (e.key === 'Enter') primary(); });
       $('hm-alexa-password').addEventListener('keydown', (e) => { if (e.key === 'Enter') primary(); });
+      $('hm-code').addEventListener('keydown', (e) => { if (e.key === 'Enter') primary(); });
       $(rootId).addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
     }
 

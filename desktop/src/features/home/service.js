@@ -22,7 +22,7 @@ function summary(status) {
     : 'Conectado ao Home Assistant, mas ainda não vejo nenhuma Alexa ou caixa de som. Falta entrar na sua conta da Amazon dentro do Home Assistant.';
 }
 
-// deps: engine (the client), openExternal(url), openLoginWindow(url, { onClosed }) -> { close() }, note(text), afterConnected(status), afterDisconnected(), friendlyError(e), isEngineUp(), sleep(ms), now()
+// deps: engine (the client), openExternal(url), note(text), afterConnected(status), afterDisconnected(), friendlyError(e), isEngineUp(), sleep(ms), now()
 function createHomeService(deps) {
   const { engine, openExternal, note, afterConnected, friendlyError, isEngineUp } = deps;
   const sleep = deps.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
@@ -88,29 +88,14 @@ function createHomeService(deps) {
 
   // Linking the Alexa: the engine starts Home Assistant's setup with the credentials (which stop there), the sign-in page opens in the app's own window,
   // and the status is read until Home Assistant has finished. -> { ok } | { error }
-  let loginWindow = null;
   let alexaRun = 0;
-  let loginUrl = '';   // the sign-in page of the setup in progress (checked before it was kept)
-  let toBrowser = false;   // the person moved the sign-in to their own browser: closing the app's window then must not cancel the setup
-  const closeLogin = () => { const w = loginWindow; loginWindow = null; if (w) { try { w.close(); } catch { /* already closed */ } } };
 
-  async function alexaStart({ region, email, password } = {}) {
+  // The credentials go to the engine (and from there to Home Assistant, which signs in to Amazon by itself): no window, no browser. The wait only reads the state.
+  async function alexaStart({ email, password, code } = {}) {
     if (!isEngineUp()) return down();
     try {
-      const out = await engine().homeAlexaStart(region, email, password);
-      const url = out && out.url;
-      let path = '';
-      try { path = new URL(url).pathname; } catch { /* not a URL */ }
-      if (!isLocalHttpUrl(url) || !path.startsWith('/auth/alexamedia/proxy/')) {
-        await engine().homeAlexaCancel().catch(() => {});
-        return { error: 'Endereço de login inesperado: não abri nada.' };
-      }
+      await engine().homeAlexaStart(email, password, code);
       const mine = ++alexaRun;
-      closeLogin();
-      let finished = false;
-      loginUrl = url;
-      toBrowser = false;
-      loginWindow = deps.openLoginWindow(url, { onClosed: () => { loginWindow = null; if (!finished && !toBrowser && mine === alexaRun) engine().homeAlexaCancel().catch(() => {}); } });
       lastWait = (async () => {
         const started = now();
         while (mine === alexaRun && now() - started < ALEXA_GIVE_UP_MS) {
@@ -119,34 +104,17 @@ function createHomeService(deps) {
           let status;
           try { status = await engine().homeAlexaStatus(); } catch { continue; }
           if (status.state === 'login') continue;
-          finished = true;
-          loginUrl = '';
-          closeLogin();
           if (status.state === 'done') await deps.afterConnected(await engine().homeStatus());
           return;
         }
-        if (mine === alexaRun) { finished = true; closeLogin(); await engine().homeAlexaCancel().catch(() => {}); }
+        if (mine === alexaRun) await engine().homeAlexaCancel().catch(() => {});
       })().catch(() => {});
       return { ok: true };
     } catch (e) { return { error: friendlyError(e) }; }
   }
 
-  // The person prefers (or needs) to sign in with their own browser: the page is the same one, at the same local address. The wait goes on; the app's window closes
-  // without cancelling the setup. Only the address the engine returned and this service checked is ever opened.
-  async function alexaOpenBrowser() {
-    let path = '';
-    try { path = new URL(loginUrl).pathname; } catch { /* nothing in progress */ }
-    if (!loginUrl || !isLocalHttpUrl(loginUrl) || !path.startsWith('/auth/alexamedia/proxy/')) return { error: 'Não há um login da Alexa em andamento.' };
-    toBrowser = true;
-    closeLogin();
-    await deps.openExternal(loginUrl);
-    return { ok: true };
-  }
-
   async function alexaCancel() {
     alexaRun += 1;
-    loginUrl = '';
-    closeLogin();
     try { await engine().homeAlexaCancel(); } catch { /* it was already over */ }
     return { ok: true };
   }
@@ -159,7 +127,7 @@ function createHomeService(deps) {
     return { ok: true };
   }
 
-  return { discover, connect, startInstall, account, alexaStart, alexaOpenBrowser, alexaCancel, disconnect, waitForApproval, idle: () => lastWait, cancel: () => { waiting += 1; } };
+  return { discover, connect, startInstall, account, alexaStart, alexaCancel, disconnect, waitForApproval, idle: () => lastWait, cancel: () => { waiting += 1; } };
 }
 
 module.exports = { createHomeService, summary, POLL_MS, GIVE_UP_MS };

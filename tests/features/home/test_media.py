@@ -1,4 +1,4 @@
-"""Music through the house: changing the track, pausing and the volume of a speaker (an Alexa through Home Assistant's Alexa Media Player)."""
+"""Music through the house: changing the track, pausing and the volume of a speaker (an Alexa through Home Assistant's Alexa Devices)."""
 
 import json
 
@@ -170,7 +170,7 @@ async def test_it_asks_which_player_when_it_is_not_clear():
 async def test_it_says_so_when_there_is_no_player():
     b, client = bot([LIGHT])
     out = await b.handle("próxima música")
-    assert "Não encontrei nenhum aparelho de música" in out and "Alexa Media Player" in out and client.calls == []
+    assert "Não encontrei nenhum aparelho de música" in out and "Alexa Devices" in out and client.calls == []
 
 
 async def test_a_music_command_ignores_the_other_devices_with_the_same_room_name():

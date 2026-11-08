@@ -291,19 +291,7 @@ class FakeSetup:
             self.docker._installed = True
 
 
-def make_alexa(version="v5.0.0", fails=None):
-    calls: list = []
-
-    async def fake(http, config_dir):
-        calls.append(config_dir)
-        if fails:
-            raise fails
-        return version
-    fake.calls = calls
-    return fake
-
-
-def make_installer(tmp_path, docker=None, ha=None, wait=30.0, setup=None, alexa=None):
+def make_installer(tmp_path, docker=None, ha=None, wait=30.0, setup=None):
     ha = ha or FakeHA()
     docker = docker or FakeDocker()
     clock = [0.0]
@@ -311,8 +299,7 @@ def make_installer(tmp_path, docker=None, ha=None, wait=30.0, setup=None, alexa=
     async def sleep(seconds):
         clock[0] += seconds
     auth = HomeAuth(str(tmp_path / "auth.json"))
-    installer = HomeInstaller(docker, auth, ha.client(), str(tmp_path / "docker.json"), setup=setup, wait_seconds=wait, sleep=sleep, clock=lambda: clock[0],
-                              alexa_install=alexa or make_alexa())
+    installer = HomeInstaller(docker, auth, ha.client(), str(tmp_path / "docker.json"), setup=setup, wait_seconds=wait, sleep=sleep, clock=lambda: clock[0])
     return installer, auth, ha
 
 
@@ -324,29 +311,12 @@ async def prepare(installer):
 
 async def test_preparing_ends_asking_for_the_account_and_nothing_is_connected_yet(tmp_path):
     d = FakeDocker()
-    alexa = make_alexa()
-    installer, auth, ha = make_installer(tmp_path, d, FakeHA(ready_after=2), alexa=alexa)
+    installer, auth, ha = make_installer(tmp_path, d, FakeHA(ready_after=2))
     status = await prepare(installer)
     assert status == {"state": "ready", "phase": "account", "message": READY, "code": "needs_account"}
-    assert d.did == ["pull", "create"] and len(alexa.calls) == 1
+    assert d.did == ["pull", "create"]
     assert installer.managed and not auth.configured                         # it is up, and the person is asked for the name and the password next
     assert [c[1] for c in ha.calls if c[1] == "/api/onboarding/users"] == []
-
-
-async def test_the_alexa_integration_is_put_in_place_before_home_assistant_starts(tmp_path):
-    order: list[str] = []
-
-    class Ordered(FakeDocker):
-        async def create(self):
-            order.append("create")
-            return await super().create()
-
-    async def alexa(http, config_dir):
-        order.append("alexa")
-        return "v5"
-    installer, *_ = make_installer(tmp_path, Ordered(), alexa=alexa)
-    await prepare(installer)
-    assert order == ["alexa", "create"]
 
 
 async def test_the_account_connects_and_keeps_the_password_nowhere(tmp_path):
@@ -378,7 +348,7 @@ async def test_a_refused_account_leaves_the_person_able_to_try_again(tmp_path):
 
 
 async def test_a_home_assistant_that_already_has_an_owner_goes_to_the_normal_connection(tmp_path):
-    installer, auth, _ = make_installer(tmp_path, FakeDocker(container="running"), FakeHA(steps=[]), alexa=make_alexa(""))
+    installer, auth, _ = make_installer(tmp_path, FakeDocker(container="running"), FakeHA(steps=[]))
     status = await prepare(installer)
     assert (status["state"], status["code"], status["message"]) == ("ready", "has_owner", HAS_OWNER) and not auth.configured
     with pytest.raises(HomeError):
@@ -438,18 +408,16 @@ async def test_an_existing_container_is_not_created_again(tmp_path):
     installer, *_ = make_installer(tmp_path, stopped)
     assert (await prepare(installer))["state"] == "ready" and stopped.did == ["start"]
     running = FakeDocker(container="running")
-    installer, *_ = make_installer(tmp_path, running, alexa=make_alexa(""))              # the integration was already there
+    installer, *_ = make_installer(tmp_path, running)              # the integration was already there
     assert (await prepare(installer))["state"] == "ready" and running.did == []
 
 
-async def test_a_running_home_assistant_is_restarted_when_the_alexa_was_just_added(tmp_path):
+async def test_a_running_home_assistant_is_left_running_and_nothing_alexa_is_downloaded(tmp_path):
     running = FakeDocker(container="running")
-    installer, *_ = make_installer(tmp_path, running, alexa=make_alexa("v5.0.0"))
-    assert (await prepare(installer))["state"] == "ready" and running.did == ["restart"]
-    failing = FakeDocker(container="running", restart=(False, "boom"))
-    installer, *_ = make_installer(tmp_path, failing, alexa=make_alexa("v5.0.0"))
+    installer, *_ = make_installer(tmp_path, running)
     status = await prepare(installer)
-    assert status["state"] == "error" and "Não consegui reiniciar o Home Assistant" in status["message"]
+    assert status["state"] == "ready" and running.did == []                   # the Alexa is a core integration now: no download, so no restart to load it
+    assert "alexa_ready" not in await installer.inspect()
 
 
 @pytest.mark.parametrize("docker,text", [
@@ -461,13 +429,6 @@ async def test_a_failing_step_is_a_sentence_with_the_reason(tmp_path, docker, te
     installer, auth, _ = make_installer(tmp_path, docker)
     status = await prepare(installer)
     assert status["state"] == "error" and text in status["message"] and status["message"].endswith(".") and not auth.configured
-
-
-async def test_a_failing_alexa_download_stops_before_home_assistant_is_touched(tmp_path):
-    d = FakeDocker()
-    installer, *_ = make_installer(tmp_path, d, alexa=make_alexa(fails=HomeError("não consegui baixar a integração da Alexa (o GitHub respondeu 503)")))
-    status = await prepare(installer)
-    assert status["state"] == "error" and "integração da Alexa" in status["message"] and d.did == []
 
 
 async def test_a_home_assistant_that_never_comes_up_says_so(tmp_path):
@@ -498,7 +459,7 @@ async def test_inspect_says_what_is_there_before_starting(tmp_path):
     installer, *_ = make_installer(tmp_path, d, setup=FakeSetup(d))
     info = await installer.inspect()
     assert info["docker"] == "no_docker" and info["container"] == "unknown" and info["docker_installable"] is True and info["docker_mb"] == 700 and info["managed"] is False
-    assert info["alexa_help"].startswith("https://github.com/") and info["alexa_ready"] is False and info["platform"] in ("darwin", "win32", "linux")
+    assert "alexa_ready" not in info and info["platform"] in ("darwin", "win32", "linux")
     installer, *_ = make_installer(tmp_path, FakeDocker(daemon=False))
     info = await installer.inspect()
     assert info["docker"] == "daemon_off" and info["docker_installable"] is False and info["docker_mb"] == 0

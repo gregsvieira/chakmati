@@ -158,11 +158,11 @@ class EngineClient {
   }
   // Linking the Alexa through Home Assistant's own setup: status (and the countries), start with the credentials (they go no further than the engine), cancel.
   async homeAlexaStatus() { return (await this._request('/home/alexa')).json(); }
-  async homeAlexaStart(region, email, password) {
-    if (typeof region !== 'string' || !/^amazon\.[a-z.]{2,8}$/.test(region)) throw new Error('invalid region');
+  async homeAlexaStart(email, password, code) {
     if (typeof email !== 'string' || email.length < 3 || email.length > 254) throw new Error('invalid email');
     if (typeof password !== 'string' || !password || password.length > 256) throw new Error('invalid password');
-    return (await this._request('/home/alexa', { method: 'POST', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify({ region, email, password }) })).json();
+    if (typeof code !== 'string' || !/^[\d\s]{6,12}$/.test(code)) throw new Error('invalid code');
+    return (await this._request('/home/alexa', { method: 'POST', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify({ email, password, code }) })).json();
   }
   async homeAlexaCancel() { return (await this._request('/home/alexa', { method: 'DELETE', headers: UI })).json(); }
   async homeDisconnect() { return (await this._request('/home', { method: 'DELETE', headers: UI })).json(); }

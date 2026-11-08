@@ -281,15 +281,16 @@
           <p class="hint">Guarde essa senha: você vai usá-la para entrar no Home Assistant (usuário: chakmati). O Chakmati não a guarda.</p>
         </div>
         <div id="hm-alexa" hidden>
-          <p>Agora vamos ligar a sua Alexa. Escolha o país da sua conta Amazon e digite o e-mail e a senha dela.</p>
-          <select id="hm-region" aria-label="País da conta Amazon"></select>
+          <p>Agora vamos ligar a sua Alexa. Digite o e-mail e a senha da sua conta Amazon e o código de verificação em duas etapas (o que aparece agora no seu aplicativo autenticador).</p>
           <input type="text" id="hm-email" maxlength="254" placeholder="E-mail da conta Amazon" aria-label="E-mail da conta Amazon" autocomplete="username" inputmode="email">
           <input type="password" id="hm-alexa-password" maxlength="256" placeholder="Senha da conta Amazon" aria-label="Senha da conta Amazon" autocomplete="current-password">
-          <p class="hint"><strong>Local e seguro:</strong> o e-mail e a senha vão só do Chakmati para o Home Assistant, dentro deste computador (uma conexão local, que nem sai para a rede). O Chakmati não guarda nem registra nada. O Home Assistant guarda no próprio computador, num arquivo dele, para a Alexa continuar funcionando, e é ele quem entra na Amazon, por conexão segura (https).</p>
+          <input type="text" id="hm-code" maxlength="12" placeholder="Código de verificação (6 números)" aria-label="Código de verificação em duas etapas" autocomplete="one-time-code" inputmode="numeric">
+          <p class="hint">Sua conta Amazon precisa ter a verificação em duas etapas ligada (na Amazon: Conta &gt; Login e segurança). O código muda a cada 30 segundos.</p>
+          <p class="hint"><strong>Local e seguro:</strong> o e-mail, a senha e o código vão só do Chakmati para o Home Assistant, dentro deste computador (uma conexão local, que nem sai para a rede). O Chakmati não guarda nem registra nada. O Home Assistant guarda o e-mail e a senha no próprio computador, num arquivo dele, para a Alexa continuar funcionando, e é ele quem entra na Amazon, por conexão segura (https).</p>
         </div>
         <div id="hm-alexa-wait" hidden>
           <progress></progress>
-          <p>Abri uma janela do Chakmati para entrar na Amazon. Entre lá: se a Amazon pedir um código ou uma verificação, faça nela. Se a Amazon mostrar "Houve um problema", toque em "Abrir no meu navegador": é a mesma página, no seu navegador. Aguardando…</p>
+          <p>Entrando na sua conta Amazon… (leva alguns segundos)</p>
         </div>
         <div id="hm-done" hidden>
           <p><strong>Pronto! O Home Assistant está conectado.</strong></p>

@@ -63,7 +63,7 @@ class HomeAssistantBot:
                 if entity is None:
                     if candidates:
                         return "Em qual aparelho?\n" + "\n".join(f"- {c.name} ({STATE_WORDS.get(c.state, c.state)})" for c in candidates) + "\nPeça de novo dizendo o aparelho, por exemplo \"próxima música da sala\"."
-                    return "Não encontrei nenhum aparelho de música no Home Assistant. A Alexa aparece lá pela integração Alexa Media Player."
+                    return "Não encontrei nenhum aparelho de música no Home Assistant. A Alexa aparece lá pela integração Alexa Devices (Ajustes > Assistente de Casa e Alexa > Conectar a Alexa)."
                 target = entity.name
             elif not target:
                 return "Qual dispositivo? Diga o nome, por exemplo \"a luz da sala\"."
