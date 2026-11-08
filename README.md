@@ -315,7 +315,12 @@ hostile strings (`tests/security/payloads.py`) and runs with the normal suite (`
 Judged by what the address *is*, not by how it starts: every way of writing an IPv4 (`127.1`, `2130706433`, `0x7f000001`, `0177.0.0.1`), IPv6
 (`[::1]`, `[fd00::]`, `[::ffff:127.0.0.1]`), carrier-grade NAT and link-local ranges, `localhost` (also with a trailing dot), single-label names
 and `.local/.lan/.internal/.home/.corp` suffixes are refused, and so are addresses with a user name or password embedded. Only `http` and `https`.
-**Known limit:** a public *name* that a DNS server points at a private address (DNS rebinding) is not resolved or checked here.
+A *name* is also resolved (`check_resolved`): if **any** answer is private, loopback, link-local or carrier-grade NAT, it is refused (a name that does not
+resolve is left to the browser; the verdict is cached a minute per host, with a 3 s limit on the lookup). The same judgement is applied to **every request
+the page makes** (`PlaywrightSession` routes `**/*` through `request_allowed`: redirects, frames, scripts, images), not only to the address the agent
+opens, so a public page cannot reach the engine, OpenWA or the house network from inside. **Known limit:** the name is looked up by us and again by
+Chrome, so an attacker's DNS that answers differently within that moment (a rebinding race) is not covered; the engine's own writes still need the
+app's header and every send still needs the person.
 
 ### SQL injection
 
@@ -327,9 +332,17 @@ data cannot be added by accident.
 ### What the tests do not promise
 
 A small model can still be *persuaded* by a page to say something wrong or to pick a different link; the layers above make sure that cannot
-turn into a sent message, a deleted file, an approval button or a local address, and that the person is told. The browser agent can still be led
-to type text into a form on a public site: that is why its screen is shown live, why it never pays or logs in without being asked, and why the
-panel says to check what it does before sending, buying or deleting.
+turn into a sent message, a deleted file, an approval button or a local address, and that the person is told.
+
+### What the browser agent may type (`check_typed`)
+
+Cleaning typed text with regexes is not how SQL injection is stopped (that is the receiving server binding its values, as every store here does), and
+rewriting text would corrupt honest entries (`o'brien`, `C++`, a search for the word `SELECT`). So the filter **refuses instead of rewriting**, and only
+for text the model made up or copied from a page: anything the person's own task contains is typed as said. Refused, with the reason given back to the model:
+an address to send data to (`https://...`, `www.`), the app's markers and chat-template tokens, scripts and event handlers (`<script>`, `javascript:`,
+`onerror=`), the shape of a SQL attack (`UNION SELECT`, `; DROP TABLE`, `' OR '1'='1`, `SLEEP(5)`, `information_schema`) and control or invisible
+characters. Passwords and other personal data never come from the model: they are asked of the person and typed by code. A plain sentence that merely
+*addresses* an assistant is not refused (it cannot hurt a website); the person is told when a page does that.
 
 Run only these: `pytest tests/security -q`.
 
