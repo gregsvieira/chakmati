@@ -4,8 +4,10 @@ Playwright talks to the Chrome that is already installed (`channel="chrome"`), s
 browser's version and nothing extra to download. The profile is a folder of its own, never the person's everyday one:
 no saved logins or history are reachable, and a Chrome that is already open does not get in the way."""
 
+import ipaddress
 import os
 import re
+import socket
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
@@ -72,16 +74,40 @@ class BrowserError(Exception):
     pass
 
 
+_LOCAL_SUFFIXES = (".local", ".internal", ".lan", ".home", ".localdomain", ".corp", ".intranet", ".home.arpa", ".localhost")
+
+
+def _address(host: str):
+    """The IP address a host name stands for when it is written as one in any of the old ways (127.1, 2130706433, 0x7f000001, 0177.0.0.1,
+    [::ffff:127.0.0.1]), or None for an ordinary name."""
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        try:
+            ip = ipaddress.IPv4Address(socket.inet_aton(host))   # the shorthand forms browsers still accept
+        except (OSError, ValueError):
+            return None
+    return ip.ipv4_mapped if getattr(ip, "ipv4_mapped", None) else ip
+
+
 def check_navigable(url: str) -> str:
-    """Only http(s) pages on the public internet: never a local file, the engine itself, or the home network."""
+    """Only http(s) pages on the public internet: never a local file, the engine itself, or the home network. The address is judged by what it
+    IS (every way of writing an IP, IPv6, mapped IPv4), not by how it starts. A name that a DNS server points at a private address is not caught here."""
     if "://" not in url and re.match(r"^[a-z][a-z0-9+.-]*:(?!\d)", url.strip(), re.IGNORECASE):  # javascript:, data:, mailto: ...
         raise BrowserError("só abro endereços http(s)")
-    parsed = urlparse(url if "://" in url else f"https://{url}")
-    host = (parsed.hostname or "").lower()
+    try:
+        parsed = urlparse(url if "://" in url else f"https://{url}")
+        host = (parsed.hostname or "").lower().rstrip(".")
+    except ValueError:
+        raise BrowserError("só abro endereços http(s)") from None
     if parsed.scheme not in {"http", "https"} or not host:
         raise BrowserError("só abro endereços http(s)")
-    if host == "localhost" or host.endswith((".local", ".internal", ".lan")) or host.startswith(("127.", "10.", "192.168.", "169.254.", "0.")) \
-            or (host.startswith("172.") and host.split(".")[1:2] and host.split(".")[1].isdigit() and 16 <= int(host.split(".")[1]) <= 31) or host in {"::1", "[::1]"}:
+    if parsed.username is not None or parsed.password is not None:
+        raise BrowserError("não abro endereços com usuário e senha embutidos")
+    if host == "localhost" or host.endswith(_LOCAL_SUFFIXES) or "." not in host and _address(host) is None and ":" not in host:
+        raise BrowserError("não abro endereços locais ou da rede da casa")
+    ip = _address(host)
+    if ip is not None and not ip.is_global:
         raise BrowserError("não abro endereços locais ou da rede da casa")
     return parsed.geturl()
 

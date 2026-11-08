@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from chakmati.shared.extras import missing_message
+from chakmati.shared.guard import neutralize
 from chakmati.features.computer.safety import ComputerError
 
 MAX_FILES, MAX_BYTES, MAX_QUESTIONS = 100, 8_000_000, 100
@@ -17,6 +18,14 @@ _QUESTION = re.compile(r"^\s*(\d{1,3})\s*[.)]\s+\S")
 _OPTION = re.compile(r"^\s*\[\s*([Xx]?)\s*\]\s*([A-Ea-e])\)")
 _NAME = re.compile(r"^\s*Aluno\(?a?\)?\s*:\s*(.+?)\s*$", re.IGNORECASE | re.MULTILINE)
 _KEY = re.compile(r"\b(\d{1,3})\s*[-:.)]?\s*([A-Ea-e])\b")
+
+
+_FORMULA_START = re.compile(r"^[\s=+\-@]+")
+
+
+def safe_cell(text) -> str:
+    """Text read from a scan, on its way into a spreadsheet cell: it can never start like a formula (= + - @), whatever the scan says."""
+    return _FORMULA_START.sub("", neutralize(str(text))).strip()[:200]
 
 
 @dataclass
@@ -32,6 +41,10 @@ class Exam:
     marks: dict[int, str]  # question -> the letters marked ("" = none, "BD" = two)
     notes: tuple = ()  # things the teacher should look at (a doubtful mark, a name that could not be read)
     questions: dict = field(default_factory=dict, compare=False)  # question -> Question (text and options), for explaining the mistakes
+
+    def __post_init__(self):   # the name and the notes come from a scan: they are cleaned where the exam is made, so nothing downstream has to remember
+        object.__setattr__(self, "student", safe_cell(self.student) or "(sem nome)")
+        object.__setattr__(self, "notes", tuple(safe_cell(n) for n in self.notes))
 
 
 def parse_key(text: str) -> dict[int, str]:

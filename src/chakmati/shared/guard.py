@@ -23,6 +23,10 @@ UNTRUSTED_RULE = (
 
 _MARKER = re.compile(r"\[\[\s*action\s*:[^\]]*\]\]?|\[\[\s*action\b[^\]]*$", re.IGNORECASE)
 _FENCE = re.compile(r"</?\s*untrusted[^>]*>?|<<<\s*MESSAGES|MESSAGES\s*>>>", re.IGNORECASE)
+# Tokens that a model's chat template reads as the start of a turn (ChatML, Llama, Gemma, Phi) and headings that imitate a turn: a page or a
+# message must not be able to write one, so a small local model never takes it for a new instruction from the system or the user.
+_TEMPLATE = re.compile(r"<\|[^>\n]{0,40}\|>|\[/?INST\]|<</?SYS>>|</?s>|<(?:start|end)_of_turn>|<\|?/?(?:system|assistant|user)\|?>", re.IGNORECASE)
+_TURN = re.compile(r"^[ \t]*(?:#{1,6}[ \t]*|\*{1,2}|>[ \t]*)?(system|assistant|user|human|developer|ai)[ \t]*\*{0,2}[ \t]*:", re.IGNORECASE | re.MULTILINE)
 _CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f​-‏‪-‮⁦-⁩]")  # includes invisible and bidi characters
 
 # Phrases that address an assistant: Portuguese and English. A hint for the person, never the only defence.
@@ -47,8 +51,8 @@ def neutralize(text: str) -> str:
     previous = None
     while previous != cleaned:  # removing one marker must not assemble another from the pieces around it
         previous = cleaned
-        cleaned = _FENCE.sub("", _MARKER.sub("", cleaned))
-    return cleaned
+        cleaned = _TEMPLATE.sub("", _FENCE.sub("", _MARKER.sub("", cleaned)))
+    return _TURN.sub(lambda m: f"{m.group(1)} -", cleaned)
 
 
 def strip_markers(text: str) -> str:
@@ -57,6 +61,9 @@ def strip_markers(text: str) -> str:
     while previous != text:
         previous = text
         text = _MARKER.sub("", text)
+    disguised = _CONTROL.sub("", _plain(text))   # full-width brackets, zero-width or bidi characters inside: the text is only normalized when it hides a marker
+    if disguised != text and _MARKER.search(disguised):
+        return strip_markers(disguised)
     return text
 
 
@@ -91,18 +98,14 @@ class StreamScrubber:
 
     def feed(self, piece: str) -> str:
         text = self._held + piece
-        cut = text.rfind("[")
-        while cut > 0 and text[cut - 1] == "[":  # a run of brackets: the marker would start at its first one
-            cut -= 1
-        if cut == -1 or len(text) - cut > self.HOLD:
+        cut = text.find("[[", max(0, len(text) - self.HOLD))   # the earliest possible start still within reach: a marker may hide a second `[[` inside it
+        if cut == -1:
+            cut = len(text) - 1 if text.endswith("[") else -1
+        if cut == -1:
             self._held = ""
             return strip_markers(text)
-        tail = text[cut:]
-        if tail.startswith("[[") or tail == "[":  # may be the start of a marker: wait for more
-            self._held = tail
-            return strip_markers(text[:cut])
-        self._held = ""
-        return strip_markers(text)
+        self._held = text[cut:]  # may be the start of a marker: wait for more
+        return strip_markers(text[:cut])
 
     def flush(self) -> str:
         rest, self._held = self._held, ""
