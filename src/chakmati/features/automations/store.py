@@ -65,9 +65,8 @@ class AutomationStore:
         return self._automation(row) if row else None
 
     def list(self, enabled_only: bool = False) -> list[Automation]:
-        query = "SELECT * FROM automations" + (" WHERE enabled = 1" if enabled_only else "") + " ORDER BY created_at"
         with self._lock:
-            rows = self._db.execute(query).fetchall()
+            rows = self._db.execute("SELECT * FROM automations WHERE enabled = 1 ORDER BY created_at" if enabled_only else "SELECT * FROM automations ORDER BY created_at").fetchall()
         return [self._automation(r) for r in rows]
 
     def set_enabled(self, auto_id: str, enabled: bool) -> bool:

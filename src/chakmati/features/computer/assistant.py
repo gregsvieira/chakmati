@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 from collections.abc import Awaitable, Callable
 
-from chakmati.shared.guard import UNTRUSTED_RULE, fence, strip_markers
+from chakmati.shared.guard import UNTRUSTED_RULE, fence, neutralize, strip_markers
 from chakmati.shared.llm import ChatClient, chat_json
 from chakmati.features.computer import documents, grading, rules
 from chakmati.features.computer.policy import PolicyError, resolve
@@ -540,15 +540,15 @@ class ComputerAssistant:
     async def _solve(self, question, right: str, solver) -> str:
         reply = await solver.chat([
             {"role": "system", "content": SOLVE_SYSTEM + UNTRUSTED_RULE},
-            {"role": "user", "content": f"{self._question_block(question)}\nCorrect option (from the teacher's key): {right}) {question.options[right]}"},
+            {"role": "user", "content": f"{self._question_block(question)}\nCorrect option (from the teacher's key): {right}) {_one_line(question.options[right])}"},
         ])
         return plain_math(strip_markers(reply))[:900]
 
     async def _explain(self, question, solution: str, letter: str, right: str) -> str:
         reply = await self._llm.chat([
             {"role": "system", "content": EXPLAIN_SYSTEM + UNTRUSTED_RULE},
-            {"role": "user", "content": f"{self._question_block(question)}\nWorked solution: {solution}\nCorrect option: {right}) {question.options[right]}\n"
-                                        f"Option the student chose: {letter}) {question.options[letter]}"},
+            {"role": "user", "content": f"{self._question_block(question)}\nWorked solution: {solution}\nCorrect option: {right}) {_one_line(question.options[right])}\n"
+                                        f"Option the student chose: {letter}) {_one_line(question.options[letter])}"},
         ])
         text = plain_math(strip_markers(reply))
         if contradicts_key(text, right, letter) or rambling(text):  # never hand the teacher an explanation that argues against her key, or that is the model arguing with itself
@@ -779,6 +779,11 @@ class ComputerAssistant:
                 return f"{action.summary.splitlines()[0]}. Confirma? Diga sim ou não.\n[[action:{action.id}]]"
             case _:
                 return HELP
+
+
+def _one_line(text: str) -> str:
+    """Text read from a scan, placed beside a prompt instead of inside its fence: cleaned and kept to a line."""
+    return " ".join(neutralize(str(text)).split())[:300]
 
 
 def _unfence(text: str) -> str:

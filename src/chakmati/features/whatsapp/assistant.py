@@ -112,6 +112,11 @@ def resolve_chat(query: str, chats: list[Chat]) -> tuple[Chat | None, list[Chat]
     return None, partial[:5]
 
 
+def _label(chat: Chat) -> str:
+    """The chat as shown and as put in a prompt: a group or contact name is written by other people, so it is cleaned like a message."""
+    return neutralize(chat.label())
+
+
 def _clean_line(message: Message) -> str:
     line = neutralize(message.display())
     return line if len(line) <= MAX_LINE else line[: MAX_LINE - 1] + "…"
@@ -206,16 +211,16 @@ class WhatsAppAssistant:
             return match, None
         if candidates:
             self._pending = _Pending(intent, candidates, self._now() + PENDING_SECONDS)
-            listed = "\n".join(f"- {c.label()}" for c in candidates)
-            return None, f"Qual destes você quer dizer?\n{listed}"
-        return None, f"Não encontrei nenhuma conversa chamada \"{intent.contact}\"."
+            listed = "\n".join(f"- {_label(c)}" for c in candidates)
+            return None, strip_markers(f"Qual destes você quer dizer?\n{listed}")
+        return None, strip_markers(f"Não encontrei nenhuma conversa chamada \"{neutralize(intent.contact)}\".")
 
     # ---------------------------------------------------------------- actions
     async def _unread(self, intent: Intent, chat: Chat | None = None) -> str:
         chats = await self._service.chats(unread_only=True, limit=15)
         if not chats:
             return "Nenhuma conversa com mensagens não lidas."
-        lines = [f"- {c.label()}: {c.unread} não lida(s)" for c in chats]
+        lines = [f"- {_label(c)}: {c.unread} não lida(s)" for c in chats]
         return strip_markers("Conversas com mensagens não lidas:\n" + "\n".join(lines))
 
     async def _read(self, intent: Intent, chat: Chat | None = None) -> str:
@@ -226,10 +231,10 @@ class WhatsAppAssistant:
             return problem or HELP
         messages = await self._service.messages(chat.id, min(intent.count or 10, 30))
         if not messages:
-            return f"Não há mensagens carregadas na conversa com {chat.label()}."
+            return f"Não há mensagens carregadas na conversa com {_label(chat)}."
         lines = [_clean_line(m) for m in messages]
-        note = NOTE if suspicious(lines, f"whatsapp:{chat.label()}") else ""
-        return strip_markers(f"Últimas mensagens com {chat.label()}:\n" + "\n".join(lines)) + note
+        note = NOTE if suspicious(lines, f"whatsapp:{_label(chat)}") else ""
+        return strip_markers(f"Últimas mensagens com {_label(chat)}:\n" + "\n".join(lines)) + note
 
     async def _summarize(self, intent: Intent, chat: Chat | None = None) -> str:
         problem = None
@@ -239,7 +244,7 @@ class WhatsAppAssistant:
             return problem or HELP
         messages = await self._service.messages(chat.id, min(intent.count or 30, 50))
         if not messages:
-            return f"Não há mensagens carregadas na conversa com {chat.label()}."
+            return f"Não há mensagens carregadas na conversa com {_label(chat)}."
         block = ""
         for line in reversed([_clean_line(m) for m in messages]):  # keep the most recent lines if it is too long
             if len(block) + len(line) + 1 > MAX_BLOCK:
@@ -248,11 +253,11 @@ class WhatsAppAssistant:
         summary = await self._llm.chat(
             [
                 {"role": "system", "content": SUMMARY_SYSTEM},
-                {"role": "user", "content": f"Summarize this chat with {chat.label()}.\n<<<MESSAGES\n{block}MESSAGES>>>"},
+                {"role": "user", "content": f"Summarize this chat with {_label(chat)}.\n<<<MESSAGES\n{block}MESSAGES>>>"},
             ]
         )
-        note = NOTE if suspicious(block.splitlines(), f"whatsapp:{chat.label()}") else ""
-        return strip_markers(f"Resumo da conversa com {chat.label()} (gerado por IA, pode conter erros):\n{summary.strip()}") + note
+        note = NOTE if suspicious(block.splitlines(), f"whatsapp:{_label(chat)}") else ""
+        return strip_markers(f"Resumo da conversa com {_label(chat)} (gerado por IA, pode conter erros):\n{summary.strip()}") + note
 
     async def _send(self, intent: Intent, chat: Chat | None = None) -> str:
         if not intent.contact:

@@ -278,6 +278,61 @@ folder (`~/Library/Application Support/Chakmati`, `%APPDATA%\Chakmati`, `~/.conf
 `.github/workflows/build.yml` builds all of them on GitHub (manual, or on pull requests that touch `desktop/` or the engine).
 Only the macOS arm64 build was checked by hand; the Windows and Ubuntu builds are untested until that workflow runs.
 
+## Security: prompt injection and SQL injection
+
+Anything written by other people is **data**, never a command: WhatsApp messages and chat names, text read from scanned exams (OCR), text
+files, web search results and the pages the browser agent visits. `tests/security/` attacks every one of those roads with the same set of
+hostile strings (`tests/security/payloads.py`) and runs with the normal suite (`pytest`).
+
+### Layers (none of them depends on the model behaving)
+
+1. **Structure.** Third-party text only reaches prompts that cannot create actions (a summary, a web answer, an exam explanation, a file edit
+   the person asked for, the browser's next step). An action exists only when the person's own request goes through an assistant and the person
+   approves it. Automations send text the person wrote and never read the message that triggered them. A reply typed in the panel's own box
+   goes through `POST /whatsapp/chats/{id}/send`, which only the app's window can call (`ui_only`).
+2. **Neutralizing** (`shared/guard.py`). `neutralize()` cleans the text before it goes into a prompt or an answer: control, zero-width and bidi
+   characters (and NFKC, so full-width brackets cannot hide anything), the app's `[[action:...]]` markers (also when removing one would
+   assemble another), anything that could close the block (`</untrusted>`, `MESSAGES>>>`), **chat-template tokens** (`<|im_start|>`, `[INST]`,
+   `<<SYS>>`, `<start_of_turn>`...) and headings that imitate a turn (`### System:`, `Assistant:`). `fence()` puts the result in
+   `<untrusted source="...">`, and `UNTRUSTED_RULE` tells the model the block is data.
+3. **Scrubbing what comes back.** `strip_markers()` and `StreamScrubber` remove `[[action:...]]` from every answer built from third-party text,
+   including a marker that arrives split across streamed pieces or written with full-width/invisible characters.
+4. **Telling the person.** `suspicious()` / `looks_like_order()` notice text that addresses an assistant ("ignore all previous
+   instructions...", "Chakmati, send..."), log it, and append a note to the answer. It is a hint, never the only defence.
+
+### What each road does
+
+| Road | Where | Guard |
+|---|---|---|
+| WhatsApp messages | `whatsapp/assistant.py` | each line `neutralize`d; the summary prompt has the rule and its own block; names of chats and groups (written by others) are cleaned too, and the "which one?" list is scrubbed; a summary can create nothing |
+| OCR of exams | `computer/assistant.py`, `computer/grading.py` | the question and options go in a fenced block; the option text beside it is cleaned and kept to one line; the student's name and notes can never start like a spreadsheet formula (`= + - @`), and formulas stay on an allow-list |
+| Text files | `computer/service.py`, `computer/assistant.py` | the file is fenced as untrusted; a file that looks like it holds secrets is never loaded; the model's new text is scrubbed; the only possible result is *one edit proposal* that waits for the person's yes |
+| Web search | `research/tool.py` | passages `neutralize`d and fenced; the answer, also streamed, is scrubbed; `gather()` (text for documents) is cleaned |
+| Web pages (browser agent) | `browser/agent.py`, `browser/session.py` | address, title, button labels, page text and search results sit in **one** fenced block; the final answer is scrubbed and the person is told when a page addressed the assistant; the model's questions to the person are cleaned; the browser only opens **public http(s)** addresses (see below) |
+
+### Addresses the browser may open (`check_navigable`)
+
+Judged by what the address *is*, not by how it starts: every way of writing an IPv4 (`127.1`, `2130706433`, `0x7f000001`, `0177.0.0.1`), IPv6
+(`[::1]`, `[fd00::]`, `[::ffff:127.0.0.1]`), carrier-grade NAT and link-local ranges, `localhost` (also with a trailing dot), single-label names
+and `.local/.lan/.internal/.home/.corp` suffixes are refused, and so are addresses with a user name or password embedded. Only `http` and `https`.
+**Known limit:** a public *name* that a DNS server points at a private address (DNS rebinding) is not resolved or checked here.
+
+### SQL injection
+
+Every query binds its values (`?`). `tests/security/test_sql_injection.py` stores and reads hostile text through the automation store, the action
+log, the job store and the computer edit log (including file names with quotes) and checks the tables survive, and a static scan
+(`test_no_query_is_built_from_text`) **fails the build if any `execute` receives anything but a literal query**, so an f-string or `+` with
+data cannot be added by accident.
+
+### What the tests do not promise
+
+A small model can still be *persuaded* by a page to say something wrong or to pick a different link; the layers above make sure that cannot
+turn into a sent message, a deleted file, an approval button or a local address, and that the person is told. The browser agent can still be led
+to type text into a form on a public site: that is why its screen is shown live, why it never pays or logs in without being asked, and why the
+panel says to check what it does before sending, buying or deleting.
+
+Run only these: `pytest tests/security -q`.
+
 ## Settings (env)
 
 | Variable | Default |
