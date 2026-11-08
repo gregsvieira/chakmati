@@ -36,6 +36,7 @@
     renderVoiceSettings();
     $('set-mic').value = P.state.settings.micSource;
     $('set-autosend').checked = !!P.state.settings.autoSend;
+    $('set-keepawake').checked = !!P.state.settings.keepAwake;
     $('set-autorun').checked = !!P.state.settings.autoRunSafe;
     if (!P.state.settings.hear) { window.Voice.stop(); P.speaking = false; }
     P.syncAmbient();
@@ -112,6 +113,7 @@
     $('set-calendar').addEventListener('change', (e) => api.setSetting('calendar', e.target.checked));
 
     $('set-autosend').addEventListener('change', (e) => api.setSetting('autoSend', e.target.checked));
+    $('set-keepawake').addEventListener('change', (e) => api.setSetting('keepAwake', e.target.checked));
     $('set-autorun').addEventListener('change', (e) => api.setSetting('autoRunSafe', e.target.checked));
     $('set-enhanced').addEventListener('change', (e) => api.setSetting('enhancedVoice', e.target.checked));
     $('set-voicespeed').addEventListener('change', (e) => api.setSetting('voiceSpeed', e.target.value));

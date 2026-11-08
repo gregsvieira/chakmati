@@ -14,6 +14,11 @@ const widgetMood = require('../widget').mood;
 const panelWindow = require('../panel').window;
 const voiceService = require('../voice').service;
 
+const { createKeepAwake } = require('./keep-awake');
+const keepAwake = createKeepAwake(require('electron').powerSaveBlocker);
+const syncKeepAwake = () => keepAwake.sync(ctx.settings, ctx.state.overview);
+app.once('before-quit', () => keepAwake.release());
+
 const autoTried = new Set();
 let greeted = false;
 
@@ -60,6 +65,7 @@ async function refreshOverview() {
     ctx.state.engineUp = true;
     require('../whatsapp').openwa.recoverStuckSession(ctx.state.overview).catch(() => {});   // a stuck OpenWA is restarted by itself
     syncStanding();
+    syncKeepAwake();
     syncPersonality();
     syncPronouns();
   } catch {
@@ -169,4 +175,4 @@ async function restartEngine() {
   return startEngine();
 }
 
-Object.assign(module.exports, { projectRoot, refreshOverview, autoApproveNew, syncStanding, syncPersonality, syncPronouns, restartEngine, healthLoop, noticeLoop, startEngine });
+Object.assign(module.exports, { projectRoot, refreshOverview, autoApproveNew, syncStanding, syncKeepAwake, syncPersonality, syncPronouns, restartEngine, healthLoop, noticeLoop, startEngine });
