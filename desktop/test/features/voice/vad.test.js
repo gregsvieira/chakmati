@@ -92,9 +92,33 @@ test('ambient: it follows a slowly rising noise floor without mistaking it for s
   assert.deepEqual(run(a, 0.2, 800), ['start']);
 });
 
-test('ambient: a very long utterance is cut at the cap', () => {
+test('ambient: speech that never pauses for the whole cap is dropped (not sent), and the floor learns that level', () => {
   const a = createAmbient({ maxMs: 5000 });
   run(a, 0.001, 800);
-  // cut at 5 s; speech that goes on right after it simply begins the next utterance
-  assert.deepEqual(run(a, 0.05, 6000), ['start', 'end', 'start']);
+  assert.deepEqual(run(a, 0.05, 6000), ['start', 'drop']);   // nobody talks for five seconds straight: it is a noise, so nothing goes to the recogniser
+  assert.deepEqual(run(a, 0.05, 6000), []);                 // and the same level no longer counts as speech
+});
+
+test('ambient: the room gets suddenly louder (music, the Echo) and the microphone does not go deaf', () => {
+  const a = createAmbient({});
+  run(a, 0.002, 800);
+  const seen = run(a, 0.03, 60000);                        // a full minute of the new noise level
+  assert.deepEqual(seen, ['start', 'drop']);                // one false start, cut at the cap, and then it is quiet again
+  assert.deepEqual(run(a, 0.2, 1200), ['start']);           // a voice above the NEW level is heard...
+  assert.deepEqual(run(a, 0.03, 1200), ['end']);            // ...and ends normally
+});
+
+test('ambient: an honest long sentence with its pauses is still sent', () => {
+  const a = createAmbient({ maxMs: 5000, silenceMs: 900 });
+  run(a, 0.001, 800);
+  assert.deepEqual(run(a, 0.05, 1500), ['start']);
+  assert.deepEqual(run(a, 0.001, 500), []);
+  assert.deepEqual(run(a, 0.05, 1500), []);
+  assert.deepEqual(run(a, 0.001, 1000), ['end']);
+});
+
+test('the microphone watchdog: a lost "stopped speaking" of the floating window cannot mute it for good', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', '..', '..', 'src', 'features', 'voice', 'renderer', 'ambient.js'), 'utf8');
+  assert.match(src, /if \(P\.otherSpeaking && Date\.now\(\) - otherSince > 90000\) \{ P\.otherSpeaking = false;/);
+  assert.match(src, /otherSince = on \? Date\.now\(\) : 0/);
 });

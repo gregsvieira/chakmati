@@ -97,3 +97,68 @@ def test_transcribe_tells_the_app_when_the_text_is_a_wake_phrase():
     client = make_client(SpeechToText("base", loader=lambda n: WakeModel()))
     r = client.post("/transcribe", content=b"AUDIO", headers={**UI, "content-type": "audio/wav"})
     assert r.json()["wake"] is True and r.json()["text"] == "Ôh, paizão"
+
+
+# --- what the model invents, and the language it is told to hear ------------------------------------------------------------------------
+from chakmati.shared.voice.stt import VOCABULARY, clean  # noqa: E402
+
+
+class Seg:
+    def __init__(self, text, no_speech_prob=0.0, avg_logprob=-0.2):
+        self.text, self.no_speech_prob, self.avg_logprob = text, no_speech_prob, avg_logprob
+
+
+def run(segments, language="pt", info_language="pt"):
+    class Info:
+        pass
+
+    Info.language = info_language
+
+    class Model:
+        def __init__(self):
+            self.kwargs = {}
+
+        def transcribe(self, audio, **kwargs):
+            self.kwargs = kwargs
+            return iter(segments), Info()
+
+    model = Model()
+    return SpeechToText("base", loader=lambda name: model, language=language).transcribe(b"A"), model.kwargs
+
+
+def test_the_language_is_fixed_to_portuguese_by_default_instead_of_guessed():
+    (_, _), kwargs = run([Seg("oi")])
+    assert kwargs["language"] == "pt"                                  # guessed, short commands came out as English ("Hocus-Hocus all seats...")
+    assert kwargs["condition_on_previous_text"] is False and kwargs["temperature"] == 0 and kwargs["beam_size"] == 3
+    (_, _), auto = run([Seg("oi")], language="auto", info_language="en")
+    assert auto["language"] is None                                    # "auto" is still possible
+    assert run([Seg("oi")], language="auto", info_language="en")[0][1] == "en"
+
+
+def test_the_prompt_is_short_so_it_does_not_leak_into_the_text():
+    assert len(VOCABULARY.split()) <= 4 and "Xácmáti" in VOCABULARY and "Alexa" in VOCABULARY
+    assert "paizão" not in VOCABULARY                                  # the long list of wake phrases came back as the text on weak audio
+
+
+@pytest.mark.parametrize("text", ["玉玉。", "Привет", "こんにちは", "안녕", "مرحبا", "Ok 玉"])
+def test_text_in_a_script_the_person_does_not_speak_is_dropped(text):
+    assert clean(text) == ""
+    assert clean(text, "auto") == text.strip()                         # with "auto" nothing is judged by script
+
+
+def test_a_sentence_repeated_in_a_loop_is_dropped_but_an_honest_repeat_is_kept():
+    assert clean("Ôh, Xácmáti. Ôh, Xácmáti. Ôh, Xácmáti. Ôh, Xácmáti.") == ""
+    assert clean("Ôh, Xácmáti. Ôh, Xácmáti.") == "Ôh, Xácmáti. Ôh, Xácmáti."
+    assert clean("Toca Raul Seixas na Alexa.") == "Toca Raul Seixas na Alexa."
+    assert clean("   ") == ""
+
+
+def test_segments_the_model_calls_silence_are_dropped_and_confident_ones_kept():
+    (text, _), _ = run([Seg("Toca Raul Seixas."), Seg("Obrigado.", no_speech_prob=0.9, avg_logprob=-1.5), Seg("na Alexa.", no_speech_prob=0.9, avg_logprob=-0.3)])
+    assert text == "Toca Raul Seixas. na Alexa."
+
+
+def test_the_engine_reads_the_language_from_the_environment():
+    from chakmati.shared.config import Settings
+    assert Settings.from_env({}).stt_language == "pt"
+    assert Settings.from_env({"CHAKMATI_STT_LANGUAGE": "auto"}).stt_language == "auto"

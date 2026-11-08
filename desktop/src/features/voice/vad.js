@@ -35,6 +35,8 @@
     let silent = 0;
     let speechMs = 0;
     let utterMs = 0;
+    let sumRms = 0;     // loudness over the utterance in progress: if it never ends, that is the room's new noise level, not speech
+    let frames = 0;
     const a = {
       speaking: false,
       get floor() { return floor; },
@@ -45,14 +47,23 @@
         if (!a.speaking) {
           if (!isLoud) floor = floor * (1 - adapt) + rms * adapt; // follow the noise only while nobody is talking
           loud = isLoud ? loud + 1 : 0;
-          if (loud >= minSpeechFrames) { a.speaking = true; silent = 0; speechMs = loud * dtMs; utterMs = loud * dtMs; return 'start'; }
+          if (loud >= minSpeechFrames) { a.speaking = true; silent = 0; speechMs = loud * dtMs; utterMs = loud * dtMs; sumRms = rms * loud; frames = loud; return 'start'; }
           return null;
         }
         utterMs += dtMs;
+        sumRms += rms; frames += 1;
         if (isLoud) { silent = 0; speechMs += dtMs; } else silent += dtMs;
+        if (utterMs >= maxMs && silent < silenceMs) {
+          // Speech that never pauses for the whole maximum is not a command: it is a noise that got louder (music, a fan, the Echo itself). The floor was only
+          // learned while nobody was talking, so without this it stayed too low for good: every frame counted as speech and the microphone was deaf, sending
+          // twenty seconds of noise to the recogniser again and again. Learn the new level, send nothing.
+          floor = Math.max(floor, sumRms / Math.max(frames, 1));
+          a.speaking = false; loud = 0; silent = 0; speechMs = 0; utterMs = 0; sumRms = 0; frames = 0;
+          return 'drop';
+        }
         if (silent >= silenceMs || utterMs >= maxMs) {
           const words = speechMs >= minSpeechMs;
-          a.speaking = false; loud = 0; silent = 0; speechMs = 0; utterMs = 0;
+          a.speaking = false; loud = 0; silent = 0; speechMs = 0; utterMs = 0; sumRms = 0; frames = 0;
           return words ? 'end' : 'drop';
         }
         return null;

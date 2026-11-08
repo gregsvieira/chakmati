@@ -67,6 +67,7 @@ class Settings:
     notices_enabled: bool = True
     automations_dir: str = os.path.expanduser("~/.lite-agent/automations")  # recordings of voice automations
     voices_dir: str = os.path.expanduser("~/.lite-agent/voices")  # where the downloaded enhanced voice lives
+    stt_language: str = "pt"  # the language of the microphone ("pt", or "auto" to let the model guess)
     stt_model: str = "base"  # faster-whisper model for "listen and speak"; "off" disables it
     whatsapp_poll_seconds: float = 10.0
     calendar_poll_seconds: float = 60.0
@@ -128,6 +129,7 @@ class Settings:
             voices_dir=os.path.expanduser(env.get("CHAKMATI_VOICES_DIR", d.voices_dir)),
             automations_dir=os.path.expanduser(env.get("CHAKMATI_AUTOMATIONS_DIR", d.automations_dir)),
             stt_model=env.get("CHAKMATI_STT_MODEL", d.stt_model),
+            stt_language=env.get("CHAKMATI_STT_LANGUAGE", d.stt_language),
             notices_enabled=env.get("CHAKMATI_NOTICES", "1").lower() in {"1", "true", "yes"},
             whatsapp_poll_seconds=float(env.get("CHAKMATI_WHATSAPP_POLL_SECONDS", d.whatsapp_poll_seconds)),
             calendar_poll_seconds=float(env.get("CHAKMATI_CALENDAR_POLL_SECONDS", d.calendar_poll_seconds)),
