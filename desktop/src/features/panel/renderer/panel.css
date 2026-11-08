@@ -408,3 +408,11 @@ body[data-still] #panel[data-layout="wide"] #content, body[data-still] #panel[da
 .house-volume { min-width: 3ch; text-align: center; font-size: 13px; color: var(--muted); }
 .house-searchrow { display: flex; gap: 6px; }
 .house-search { flex: 1; min-width: 0; padding: 7px 10px; font: inherit; border-radius: 10px; border: 1px solid var(--rule); background: var(--surface-2); color: inherit; }
+
+/* automations: only the title in the list (a button that opens the details) */
+.automation-title { text-align: left; font: inherit; font-weight: 600; padding: 0; background: none; border: 0; color: inherit; cursor: pointer; }
+.automation-title:hover { text-decoration: underline; }
+.automation-paused { color: var(--muted); font-size: 13px; }
+.detail-list { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 14px; font-size: 14px; }
+.detail-list dt { color: var(--muted); }
+.detail-list dd { margin: 0; }

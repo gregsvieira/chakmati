@@ -4,7 +4,7 @@ import pytest
 
 from chakmati.features.agenda.models import CalendarEvent
 from chakmati.features.automations.models import parse_spec
-from chakmati.features.automations.runner import PREFIX, AutomationRunner
+from chakmati.features.automations.runner import LABEL, PREFIX, AutomationRunner
 from chakmati.features.automations.store import AutomationStore
 from chakmati.features.whatsapp.models import Chat
 from chakmati.features.whatsapp.service import RateLimited
@@ -109,7 +109,7 @@ async def test_a_voice_reply_sends_the_stored_recording(tmp_path):
     auto = store.create(spec, clock())
     (tmp_path / f"{auto.id}.ogg").write_bytes(b"OggS-recording")
     await runner.on_whatsapp_messages([(MARIA, 1)])
-    assert [s["text"] for s in wa.sent] == [PREFIX + "Áudio", None]  # the label, then the voice note
+    assert [s["text"] for s in wa.sent] == [LABEL, None]  # the label, then the voice note
     assert wa.sent[1]["audio"] == b"OggS-recording" and wa.sent[1]["mime"] == "audio/ogg" and wa.sent[0]["audio"] is None
 
 
@@ -195,7 +195,7 @@ async def test_a_voice_reply_where_the_audio_fails_still_counts_so_the_label_is_
     (tmp_path / f"{auto.id}.ogg").write_bytes(b"OggS")
     await runner.on_whatsapp_messages([(MARIA, 1)])
     await runner.on_whatsapp_messages([(MARIA, 1)])  # the person writes again right away
-    assert [s["text"] for s in wa.sent] == [PREFIX + "Áudio"]  # one label only, not one per message
+    assert [s["text"] for s in wa.sent] == [LABEL]  # one label only, not one per message
     assert store.recent_runs(auto.id)[0]["outcome"].startswith("parcial")
 
 

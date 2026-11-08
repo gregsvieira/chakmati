@@ -157,3 +157,27 @@ async def test_without_hours_it_answers_at_any_time():
 async def test_the_edge_of_the_window():
     assert len((await run_at(NIGHT, 7, 49))[0]) == 1
     assert (await run_at(NIGHT, 7, 50))[0] == []
+
+
+# --- the label before a voice note ---------------------------------------------------------------------------------------------------------------
+def test_the_label_before_a_voice_note_is_only_the_label_and_text_replies_keep_their_prefix():
+    from chakmati.features.automations.runner import LABEL, PREFIX
+    assert LABEL == "Resposta automática Chakmati:"            # no word about what follows, no trailing space
+    assert PREFIX == LABEL + " " and (PREFIX + "Estou ocupado") == "Resposta automática Chakmati: Estou ocupado"
+    voice = parse_spec({"name": "x", "trigger": {"type": "whatsapp_message"}, "action": {"type": "whatsapp_voice", "to": "sender", "text": "oi"}})
+    text = parse_spec({"name": "x", "trigger": {"type": "whatsapp_message"}, "action": {"type": "whatsapp_text", "to": "sender", "text": "oi"}})
+    assert 'a mensagem "Resposta automática Chakmati:")' in describe(voice) and "Áudio" not in describe(voice).split("mensagem")[-1]
+    assert "Resposta automática Chakmati:" in describe(text)
+
+
+async def test_a_voice_automation_sends_the_bare_label_then_the_audio_and_a_text_one_sends_prefix_plus_text(tmp_path):
+    store = AutomationStore(":memory:")
+    wa = Sender()
+    voice = store.create(parse_spec({"name": "v", "trigger": {"type": "whatsapp_message"}, "action": {"type": "whatsapp_voice", "to": "sender", "text": "oi"}}), 0.0)
+    (tmp_path / f"{voice.id}.ogg").write_bytes(b"OggS-audio")
+    store.create(parse_spec({"name": "t", "trigger": {"type": "whatsapp_message"}, "action": {"type": "whatsapp_text", "to": "sender", "text": "Estou ocupado"}}), 0.0)
+    runner = AutomationRunner(store, wa, voice_dir=str(tmp_path), now=lambda: timestamp(12))
+    await runner.on_whatsapp_messages([(Chat("5511999990000@c.us"), 1)])
+    texts = [t for _, t in wa.sent]
+    assert "Resposta automática Chakmati:" in texts and "Resposta automática Chakmati: Estou ocupado" in texts
+    assert not any("Áudio" in (t or "") for t in texts)

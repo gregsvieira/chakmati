@@ -60,3 +60,20 @@ test('the client sends the hours of a recorded reply only when they are valid HH
   assert.match(read('features', 'approvals', 'ipc.js'), /panel:propose-recorded', async \(_e, bytes, hours\)/);
   assert.match(read('preload.js'), /proposeRecorded: \(bytes, hours\)/);
 });
+
+test('the automations list has only the title and the two buttons; the details open in a window when the title is clicked', () => {
+  const js = read('features', 'automations', 'renderer', 'automations.js');
+  const html = read('features', 'panel', 'renderer', 'panel.html');
+  const card = js.slice(js.indexOf('const card = (a)'), js.indexOf('// One sub-block per channel'));
+  assert.match(card, /onclick: \(\) => showDetails\(a\)/);
+  assert.equal(/a\.description|decision-body/.test(card), false, 'the long sentence is no longer in the card');
+  assert.match(card, /'Pausar'/);
+  assert.match(card, /'Apagar'/);
+  assert.match(card, /\(pausada\)/);
+  const wanted = [...new Set([...js.matchAll(/\$\('([\w-]+)'\)/g)].map((m) => m[1]))].filter((id) => id.startsWith('automation-detail'));
+  assert.deepEqual(wanted.filter((id) => !html.includes(`id="${id}"`)), []);
+  assert.match(js, /\$\('automation-detail-text'\)\.textContent = a\.description/);
+  assert.match(js, /e\.key === 'Escape'\) closeDetails\(\)/);
+  assert.equal(/innerHTML/.test(js), false);
+  assert.match(html, /<div id="automation-detail" class="modal" role="dialog" aria-modal="true" aria-labelledby="automation-detail-title" hidden>/);
+});

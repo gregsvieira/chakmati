@@ -20,6 +20,7 @@ from chakmati.features.automations.store import Automation, AutomationStore
 
 log = logging.getLogger(__name__)
 PREFIX = "Resposta automática Chakmati: "  # every automatic text says what it is, so nobody mistakes it for the person
+LABEL = PREFIX.rstrip()  # the line that goes before a voice note: just the label, no word about what follows ("Resposta automática Chakmati:")
 _CONVERSATION = re.compile(r"^[0-9A-Za-z._-]+@(?:c\.us|lid|g\.us)$")
 
 
@@ -52,7 +53,7 @@ class AutomationRunner:
                 if check is not None and await check() is not True:  # no label if the voice note cannot follow it
                     raise RuntimeError("o envio de áudio não está disponível agora")
                 # the label first, so the voice note is never mistaken for the person themself
-                await self._whatsapp.send_automated(chat_id, chat_name, text=PREFIX + "Áudio", source=source)
+                await self._whatsapp.send_automated(chat_id, chat_name, text=LABEL, source=source)
                 try:
                     await self._whatsapp.send_automated(chat_id, chat_name, audio=audio, mime="audio/ogg", source=source)
                 except Exception as exc:  # the label already went out: count this as a reply, or every new message would repeat the label
