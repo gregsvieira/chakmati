@@ -30,9 +30,10 @@ def _plain(text: str) -> str:
 
 class AutomationRunner:
     def __init__(self, store: AutomationStore, whatsapp, calendar=None, voice_dir: str | Path = ".",
-                 now: Callable[[], float] = time.time):
+                 now: Callable[[], float] = time.time, home=None):
         self._store = store
         self._whatsapp = whatsapp
+        self._home = home   # the house (HomeService): what an automation of devices and music runs through
         self._calendar = calendar
         self._voice_dir = Path(voice_dir)
         self._now = now
@@ -68,6 +69,20 @@ class AutomationRunner:
             return
         self._store.record_run(auto.id, key, "ok", self._now())
 
+    async def _perform_home(self, auto: Automation, key: str) -> None:
+        """The steps of a house automation, one after the other; a failing step is said and the next ones still run (the light must not depend on the music)."""
+        failures = []
+        if self._home is None:
+            failures.append("a casa não está ligada")
+        else:
+            for step in auto.spec.action["steps"]:
+                try:
+                    await self._home.run_step(step)
+                except Exception as exc:   # one broken step must never stop the others, nor the other automations
+                    log.warning("automation %s: a step failed: %s", auto.name, exc)
+                    failures.append(f"{step['entity']['name']}: {exc}")
+        self._store.record_run(auto.id, key, "ok" if not failures else "falhou: " + "; ".join(failures)[:300], self._now())
+
     # ---- a message arrived
     async def on_whatsapp_messages(self, fresh: Sequence[tuple[Chat, int]]) -> None:
         for auto in self._store.list(enabled_only=True):
@@ -95,7 +110,10 @@ class AutomationRunner:
             if trigger["type"] == "schedule":
                 key = when.strftime("%Y%m%d%H%M")
                 if cron_matches(trigger["cron"], when) and self._store.last_run(auto.id, key) is None:
-                    await self._perform(auto, action["to"]["chat_id"], action["to"]["name"], key)
+                    if action["type"] == "home_steps":
+                        await self._perform_home(auto, key)
+                    else:
+                        await self._perform(auto, action["to"]["chat_id"], action["to"]["name"], key)
             elif trigger["type"] == "calendar_event" and self._calendar is not None:
                 await self._calendar_trigger(auto, when)
 
@@ -114,4 +132,7 @@ class AutomationRunner:
                 continue
             key = f"{event.id}@{event.start.isoformat()}"
             if self._store.last_run(auto.id, key) is None:
-                await self._perform(auto, action["to"]["chat_id"], action["to"]["name"], key)
+                if action["type"] == "home_steps":
+                    await self._perform_home(auto, key)
+                else:
+                    await self._perform(auto, action["to"]["chat_id"], action["to"]["name"], key)

@@ -16,7 +16,7 @@ from chakmati.shared.voice.stt import SpeechToText
 
 
 def automation_json(a) -> dict:
-    return {"id": a.id, "name": a.name, "enabled": a.enabled, "description": describe(a.spec), "trigger": a.spec.trigger["type"], "channel": "whatsapp",
+    return {"id": a.id, "name": a.name, "enabled": a.enabled, "description": describe(a.spec), "trigger": a.spec.trigger["type"], "channel": "home" if a.spec.action["type"] == "home_steps" else "whatsapp",
             "voice": a.spec.action["type"] == "whatsapp_voice", "runs": a.runs, "last_run_at": a.last_run_at}
 
 

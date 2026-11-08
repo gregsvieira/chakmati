@@ -122,11 +122,27 @@
     hoursChip('Madrugada (00:00 às 06:00)', { from: '00:00', to: '06:00' }),
     { label: 'Outro horário', fill: `${BASE} entre as ` },   // the person types the hours ("22:00 e as 07:50, responda: ...")
   ];
+  // The house and the Alexa: at a time of day, do things in the house or play music. The request grows as the person picks: when, then what.
+  const HOUSE_BASE = 'Crie uma automação:';
+  const houseWhat = (when) => [
+    { label: 'Ligar a luz e abrir a cortina', fill: `${HOUSE_BASE} ${when} ligue a luz do quarto e abra a cortina do quarto` },
+    { label: 'Fechar a cortina e apagar a luz', fill: `${HOUSE_BASE} ${when} feche a cortina do quarto e apague a luz do quarto` },
+    { label: 'Tocar uma música', fill: `${HOUSE_BASE} ${when} toque Raul Seixas na Alexa` },
+    { label: 'Outra coisa', fill: `${HOUSE_BASE} ${when} ` },
+  ];
+  const houseWhenChip = (label, when) => ({ label, fill: `${HOUSE_BASE} ${when} `, next: houseWhat(when) });
+  const HOUSE_WHEN_CHIPS = [
+    houseWhenChip('Todo dia às 07:00', 'todo dia às 7h'),
+    houseWhenChip('Dias úteis às 06:30', 'de segunda a sexta às 6h30'),
+    houseWhenChip('Fim de semana às 09:00', 'no fim de semana às 9h'),
+    houseWhenChip('Todo dia às 22:00', 'todo dia às 22h'),
+    { label: 'Outro horário', fill: `${HOUSE_BASE} todo dia às ` },   // the person types the time and what to do ("7h30 ligue a luz da sala")
+  ];
   // Stage 1: the channel.
   P.AUTOMATION_CHIPS = [
     { label: 'WhatsApp', fill: `${BASE}: `, next: HOURS_CHIPS },
+    { label: 'Casa e Alexa', fill: `${HOUSE_BASE} `, next: HOUSE_WHEN_CHIPS },
     { label: 'Email (em breve)', soon: true },
-    { label: 'Alexa (em breve)', soon: true },
   ];
   let stage = null;   // the automation choices on screen now (null = the ordinary shortcuts): they stay until the request is sent or the field is edited by hand
   // This OpenWA may not be able to send files at all; then audio choices are shown as unavailable instead of failing later.

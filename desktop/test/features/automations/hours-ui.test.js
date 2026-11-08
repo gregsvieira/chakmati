@@ -77,3 +77,13 @@ test('the automations list has only the title and the two buttons; the details o
   assert.equal(/innerHTML/.test(js), false);
   assert.match(html, /<div id="automation-detail" class="modal" role="dialog" aria-modal="true" aria-labelledby="automation-detail-title" hidden>/);
 });
+
+test('"Casa e Alexa" replaces the Alexa "em breve": when, then what, and the request it fills is one the engine reads', () => {
+  assert.match(thread, /\{ label: 'Casa e Alexa', fill: `\$\{HOUSE_BASE\} `, next: HOUSE_WHEN_CHIPS \}/);
+  assert.equal(thread.includes("'Alexa (em breve)'"), false);
+  for (const label of ["'Todo dia às 07:00'", "'Dias úteis às 06:30'", "'Fim de semana às 09:00'", "'Todo dia às 22:00'", "'Outro horário'", "'Ligar a luz e abrir a cortina'", "'Fechar a cortina e apagar a luz'", "'Tocar uma música'", "'Outra coisa'"]) assert.ok(thread.includes(label), label);
+  const HOUSE_BASE = 'Crie uma automação:';
+  const houseWhenChip = (when) => `${HOUSE_BASE} ${when} toque Raul Seixas na Alexa`;
+  assert.equal(houseWhenChip('de segunda a sexta às 6h30'), 'Crie uma automação: de segunda a sexta às 6h30 toque Raul Seixas na Alexa');
+  assert.match(read('features', 'panel', 'renderer', 'panel.html'), /<dt>Já rodou<\/dt>/);   // the window says "ran", not "answered": it is not always a reply
+});

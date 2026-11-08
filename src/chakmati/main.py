@@ -94,12 +94,6 @@ def build_app(settings: Settings | None = None) -> FastAPI:
     calendar = build_calendar(s, actions)
     whatsapp = build_whatsapp(s, actions)
     voice = VoiceSynth(VoiceStore(s.voices_dir))
-    automation_service = automation_runner = automation_assistant = None
-    if whatsapp is not None:
-        automation_store = AutomationStore(s.db_path)
-        automation_service = AutomationService(automation_store, actions, voice, s.automations_dir, media_check=whatsapp.media_supported)
-        automation_runner = AutomationRunner(automation_store, whatsapp, calendar=calendar, voice_dir=s.automations_dir)
-        automation_assistant = AutomationAssistant(llm, automation_service, whatsapp)
     computer_service = ComputerService(s.workspace, actions)
     home_service = home_bot = home_link = None
     home_auth = HomeAuth(s.home_auth_file, s.home_token_file, s.home_url)
@@ -110,6 +104,12 @@ def build_app(settings: Settings | None = None) -> FastAPI:
     if s.home_backend == "homeassistant":
         home_service = HomeService(home_client, actions)  # not connected yet: it says so in words; connecting (Ajustes) works at once, with no restart
         home_bot = HomeAssistantBot(llm, home_service)
+    automation_service = automation_runner = automation_assistant = None
+    if whatsapp is not None or home_service is not None:   # automations answer WhatsApp messages and/or run things in the house
+        automation_store = AutomationStore(s.db_path)
+        automation_service = AutomationService(automation_store, actions, voice, s.automations_dir, media_check=whatsapp.media_supported if whatsapp is not None else None)
+        automation_runner = AutomationRunner(automation_store, whatsapp, calendar=calendar, voice_dir=s.automations_dir, home=home_service)
+        automation_assistant = AutomationAssistant(llm, automation_service, whatsapp, home=home_service)
     frames = browser_agent = inputs = None
     if s.browser_backend == "chrome":
         frames = FrameStore(s.browser_frames_dir)

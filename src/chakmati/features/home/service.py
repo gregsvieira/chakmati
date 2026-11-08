@@ -83,6 +83,19 @@ class HomeService(ApprovalService):
         await self._run(command)
         return command.text, None
 
+    async def run_step(self, step: dict) -> str:
+        """One step of an automation (already validated when it was created, and checked again here): a device command or a music request. Nothing that opens the
+        house ever runs this way: it needs the person's approval at that moment. -> what was done, in words."""
+        entity = step["entity"]
+        target = Entity(entity["id"], entity["name"], entity["id"].split(".")[0], "", entity.get("device_class", ""))
+        if step["kind"] == "music":
+            return await self.play_search(target, step["query"])
+        command = plan(step["action"], target, step.get("value"))
+        if command.sensitive:
+            raise HomeError(f"\"{command.text}\" abre a casa e precisa da sua aprovação: não roda sozinho")
+        await self._run(command)
+        return command.text
+
     async def play_search(self, entity: Entity, query: str) -> str:
         """Asks the Echo for music by saying it the request: "toque <query>". The text is only ever a music request: it always starts with "toque"."""
         phrase = music_request(query)
