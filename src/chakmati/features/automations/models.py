@@ -8,6 +8,7 @@ import re
 from dataclasses import dataclass
 
 from chakmati.features.automations.cron import CronError, describe_cron, fires_per_day, validate_cron
+from chakmati.features.home.models import ALLOWED_DOMAINS, Entity, HomeError, plan, valid_entity_id
 
 MAX_NAME = 60
 MAX_TEXT = 1000
@@ -17,7 +18,9 @@ _HHMM = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 _RECIPIENT = re.compile(r"^[0-9A-Za-z._-]+@(?:c\.us|lid|g\.us)$")
 _CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 TRIGGERS = ("whatsapp_message", "schedule", "calendar_event")
-ACTIONS = ("whatsapp_text", "whatsapp_voice")
+ACTIONS = ("whatsapp_text", "whatsapp_voice", "home_steps")
+MAX_STEPS = 5
+HOME_ACTIONS = ("on", "off", "open", "close", "lock", "scene", "brightness", "set_temperature", "play", "pause", "stop", "next", "previous", "volume_up", "volume_down", "volume")
 
 
 class SpecError(ValueError):
@@ -94,9 +97,70 @@ def _trigger(raw) -> dict:
     return {"type": kind, "title_contains": title.strip(), "minutes_before": _int(raw.get("minutes_before"), 0, 120, "minutes_before", 0)}
 
 
+def _entity(raw) -> Entity:
+    if not isinstance(raw, dict) or not isinstance(raw.get("id"), str) or not valid_entity_id(raw["id"]):
+        raise SpecError("a device of the house needs a valid id")
+    name = raw.get("name")
+    if not isinstance(name, str) or not name.strip() or len(name) > 80:
+        raise SpecError("a device of the house needs a name (up to 80 characters)")
+    device_class = raw.get("device_class", "")
+    if not isinstance(device_class, str) or len(device_class) > 40:
+        raise SpecError("the device class must be text")
+    return Entity(raw["id"], name.strip(), raw["id"].split(".")[0], "", device_class)
+
+
+def _home_steps(raw, trigger_type: str) -> dict:
+    """What an automation does in the house: a few steps, each a device command ("ligar a luz do quarto", "abrir a cortina") or a music request to an Echo.
+    It runs with nobody there to approve it, so anything that OPENS the house (unlocking, a garage / door / gate) is refused here and again when it runs; and
+    it never starts from a received message (anyone could write to the person and turn things on)."""
+    if trigger_type == "whatsapp_message":
+        raise SpecError("uma automação da casa não pode começar por uma mensagem recebida: qualquer pessoa poderia acioná-la")
+    steps = raw.get("steps")
+    if not isinstance(steps, list) or not 1 <= len(steps) <= MAX_STEPS:
+        raise SpecError(f"a home automation needs from 1 to {MAX_STEPS} steps")
+    out = []
+    for step in steps:
+        if not isinstance(step, dict):
+            raise SpecError("each step must be an object")
+        entity = _entity(step.get("entity"))
+        if step.get("kind") == "music":
+            if entity.domain != "media_player":
+                raise SpecError("a music request goes to a speaker")
+            query = step.get("query")
+            if not isinstance(query, str) or not query.strip() or len(query.strip()) > 100 or _CONTROL.search(query):
+                raise SpecError("the music must have 1 to 100 characters and no control characters")
+            out.append({"kind": "music", "entity": {"id": entity.id, "name": entity.name}, "query": " ".join(query.split())})
+            continue
+        if step.get("kind") != "device" or step.get("action") not in HOME_ACTIONS or entity.domain not in ALLOWED_DOMAINS:
+            raise SpecError("each step is a device command or a music request")
+        value = step.get("value")
+        try:
+            command = plan(step["action"], entity, value)
+        except HomeError as exc:
+            raise SpecError(str(exc)) from None
+        if command.sensitive:
+            raise SpecError(f"\"{command.text}\" abre a casa: isso só pode ser feito com a sua aprovação na hora, não por automação")
+        item = {"kind": "device", "action": step["action"], "entity": {"id": entity.id, "name": entity.name, "device_class": entity.device_class}}
+        if value is not None:
+            item["value"] = value
+        out.append(item)
+    return {"type": "home_steps", "steps": out}
+
+
+def step_text(step: dict) -> str:
+    """One step in plain Portuguese (what the person confirms and reads in the details)."""
+    entity = step["entity"]
+    if step["kind"] == "music":
+        return f"pedir à {entity['name']} para tocar {step['query']}"
+    command = plan(step["action"], Entity(entity["id"], entity["name"], entity["id"].split(".")[0], "", entity.get("device_class", "")), step.get("value"))
+    return command.text[:1].lower() + command.text[1:]
+
+
 def _action(raw, trigger_type: str) -> dict:
     if not isinstance(raw, dict) or raw.get("type") not in ACTIONS:
         raise SpecError(f"action type must be one of {', '.join(ACTIONS)}")
+    if raw["type"] == "home_steps":
+        return _home_steps(raw, trigger_type)
     text = raw.get("text")
     if not isinstance(text, str) or not text.strip() or len(text.strip()) > MAX_TEXT or _CONTROL.search(text):
         raise SpecError(f"the reply must have 1 to {MAX_TEXT} characters and no control characters")
@@ -127,10 +191,12 @@ def parse_spec(data) -> Spec:
     name = (name or "").strip()
     if len(name) > MAX_NAME:
         raise SpecError(f"the name must have at most {MAX_NAME} characters")
-    return Spec(name or _default_name(trigger), trigger, action)
+    return Spec(name or _default_name(trigger, action), trigger, action)
 
 
-def _default_name(trigger: dict) -> str:
+def _default_name(trigger: dict, action: dict | None = None) -> str:
+    if action and action["type"] == "home_steps":
+        return "Casa e Alexa"
     return {"whatsapp_message": "Resposta automática", "schedule": "Mensagem agendada", "calendar_event": "Aviso de compromisso"}[trigger["type"]]
 
 
@@ -144,6 +210,13 @@ def _cooldown_words(minutes: int) -> str:
 def describe(spec: Spec) -> str:
     """One plain sentence saying what will happen: this is what the person confirms."""
     trigger, action = spec.trigger, spec.action
+    if action["type"] == "home_steps":
+        what = " e ".join(step_text(s) for s in action["steps"])
+        if trigger["type"] == "schedule":
+            return f"{describe_cron(trigger['cron']).capitalize()}, {what}."
+        before = trigger["minutes_before"]
+        when = f"{before} min antes de" if before else "Quando começar"
+        return f"{when} compromissos da agenda com «{trigger['title_contains']}» no título, {what}."
     mode = ("em áudio, com a sua voz gravada" if action.get("own_voice") else "em áudio, com a minha voz") if action["type"] == "whatsapp_voice" else "por mensagem"
     who = "essa pessoa" if action["to"] == "sender" else action["to"]["name"]
     reply = f"responder {mode} para {who}" if action["to"] == "sender" else f"enviar {mode} para {who}"

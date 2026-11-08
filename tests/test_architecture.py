@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parent.parent / "src" / "chakmati"
 # (importer, imported): the one place where a feature talks to another one directly.
 ALLOWED = {
     ("automations", "whatsapp"): "an automation answers through WhatsApp: it reuses its chat model and the contact lookup",
+    ("automations", "home"): "an automation can run house commands: it validates them with the same table of services (and the same 'this opens the house' check) the house uses",
 }
 
 
