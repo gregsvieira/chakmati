@@ -58,3 +58,22 @@ test('it only asks the engine while it is on screen, open and the house is conne
   assert.match(js, /const onScreen = \(\) => connected\(\) && !document\.hidden && P\.state\.panelOpen !== false && !\$\('house'\)\.hidden && !\$\('house'\)\.dataset\.collapsed/);
   assert.match(js, /setInterval\(\(\) => \{ if \(onScreen\(\)\) refresh\(\); \}, 6000\)/);
 });
+
+test('what is typed in "Trocar música" survives the redraws (every few seconds the list is rebuilt), keeping the cursor, and goes away when sent or cancelled', () => {
+  const js = read('features', 'home', 'renderer', 'house.js');
+  assert.match(js, /const drafts = new Map\(\)/);
+  assert.match(js, /input\.value = drafts\.get\(p\.id\) \|\| ''/);
+  assert.match(js, /input\.addEventListener\('input', \(\) => drafts\.set\(p\.id, input\.value\)\)/);
+  assert.match(js, /if \(action === 'search' && res && res\.ok\) \{ searching\.delete\(player\.id\); drafts\.delete\(player\.id\); \}/);
+  assert.match(js, /e\.key === 'Escape'\) \{ searching\.delete\(p\.id\); drafts\.delete\(p\.id\); draw\(\); \}/);
+  assert.match(js, /setSelectionRange\(keep\.from, keep\.to\)/);                       // the cursor goes back where it was
+  assert.match(js, /if \(!drafts\.has\(p\.id\) && !focusedField\(\)\) setTimeout\(\(\) => input\.focus\(\), 0\)/);   // only a field that just opened takes the cursor
+  assert.match(js, /houseRefresh: refresh/);
+});
+
+test('an Alexa that stopped sending information is said in words, and asking for music is still offered', () => {
+  const js = read('features', 'home', 'renderer', 'house.js');
+  assert.match(js, /unavailable: 'sem informação agora'/);
+  assert.match(js, /p\.state === 'unavailable' \? 'A Alexa não está mandando informações agora/);
+  assert.match(js, /button\('Trocar música', 'Pedir outra música à Alexa', \(\) => \{[^}]*\}, off\)/);   // disabled only while a press is in flight, never because the state is unavailable
+});
