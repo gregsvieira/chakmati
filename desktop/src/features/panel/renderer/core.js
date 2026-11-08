@@ -101,7 +101,7 @@
     window.addEventListener('scroll', () => { if (window.scrollY || document.scrollingElement.scrollTop) window.scrollTo(0, 0); });
   });
 
-  P.robot = robot;   // layout.js shows his alcove and door in the big window
+  P.robot = robot;   // layout.js shows his wooden frame in the big window
   Object.assign(P, { api, $, relativeTime, syncTalking, thread, decided, h, fill, plural, render, sleep, showView });
 
 })();

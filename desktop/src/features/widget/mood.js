@@ -53,17 +53,26 @@ function effectiveMood(base) {
   return ctx.settings.mood;
 }
 
-function refreshMood() {
+// the face to show now: what is happening, a failure, a good ending, a notice; or the one pinned in Ajustes
+function currentMood() {
   let mood = currentDescription().mood;
   if (ctx.settings.mood !== 'auto') mood = effectiveMood(mood);
   else {
     mood = moodWithBell(mood, currentBell());
-    if (mood !== 'offline' && mood !== 'thinking' && mood !== 'alert' && mood !== 'happy') {
+    if (mood !== 'offline' && mood !== 'thinking' && Date.now() < (ctx.angryUntil || 0)) mood = 'angry';   // a failure wins over everything but working and being offline
+    else if (mood !== 'offline' && mood !== 'thinking' && mood !== 'alert' && mood !== 'happy') {
       if (Date.now() < ctx.happyUntil) mood = 'happy';
       else if (ctx.state.bubbleVisible) mood = 'alert';
     }
   }
+  return mood;
+}
+
+function refreshMood() {
+  const mood = currentMood();
   sendTo(ctx.widgetWin, 'widget:mood', mood);
+  // the face in the big window follows the same mood. Only when it changed: sending the panel's state refreshes the mood in its turn, and this must end
+  if (ctx.panelWin && mood !== ctx.panelMood) panelWindow.sendPanelState();
 }
 
 function showBubble(notice) {
@@ -91,8 +100,12 @@ function nextBubble() {
   refreshMood();
 }
 
+// an automation that failed makes him angry for a few seconds, like an answer that did not work
+const failedAutomation = (notice) => notice && notice.kind === 'automation' && /falhou/.test(String(notice.text || ''));
+
 function pushNotice(notice) {
   ctx.state.notices.push(notice);
+  if (failedAutomation(notice)) { ctx.angryUntil = Date.now() + 6000; clearTimeout(ctx.moodTimer); ctx.moodTimer = setTimeout(refreshMood, 6100); refreshMood(); }
   if (!ctx.state.panelOpen && countsAsNotice(notice)) { ctx.state.unread = (ctx.state.unread || 0) + 1; syncBell(); refreshMood(); }
   if (ctx.state.notices.length > 50) ctx.state.notices.shift();
   if (ctx.state.panelOpen) { panelWindow.sendPanelState(); return; } // the panel is open: the notice shows up in its list instead of a bubble
@@ -105,4 +118,4 @@ function localNotice(text, kind = 'system') {
   pushNotice({ id: -Date.now(), kind, text, masked: text, ts: Date.now() / 1000, key: `local:${text}` });
 }
 
-Object.assign(module.exports, { currentBell, overviewNow, currentDescription, effectiveMood, refreshMood, syncBell, hideBubble, localNotice, applyOverview, pushNotice, syncListening, nextBubble, showBubble });
+Object.assign(module.exports, { currentBell, overviewNow, currentDescription, effectiveMood, currentMood, refreshMood, syncBell, hideBubble, localNotice, applyOverview, pushNotice, syncListening, nextBubble, showBubble });

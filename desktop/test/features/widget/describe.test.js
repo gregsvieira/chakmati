@@ -53,6 +53,15 @@ test('a disconnected WhatsApp is mentioned without hiding the rest', () => {
   assert.match(err.detail, /WhatsApp está desconectado/);
 });
 
+test('online and idle he is bored; with the WhatsApp cut off he is drunk; working or alert still win', () => {
+  assert.equal(describe({ engineUp: true, overview: ok() }).mood, 'idle');
+  assert.equal(describe({ engineUp: true, overview: ok({ whatsapp: { enabled: true, connected: false, state: 'X', unread: [] } }) }).mood, 'drunk');
+  assert.equal(describe({ engineUp: true, overview: ok({ whatsapp: { enabled: true, error: 'unreachable' } }) }).mood, 'drunk');
+  assert.equal(describe({ engineUp: true, busy: true, overview: ok({ whatsapp: { enabled: true, error: 'x' } }) }).mood, 'thinking');
+  assert.equal(describe({ engineUp: true, overview: ok({ pending: [{}], whatsapp: { enabled: true, error: 'x' } }) }).mood, 'alert');
+  assert.equal(describe({ engineUp: false }).mood, 'offline');
+});
+
 test('disabled integrations are not mentioned', () => {
   const d = describe({ engineUp: true, overview: { whatsapp: { enabled: false }, calendar: { enabled: false }, pending: [] } });
   assert.equal(d.detail, 'Nada novo por enquanto.');
@@ -72,4 +81,33 @@ test('after a wake phrase it waits for the command, ahead of everything but bein
   assert.deepEqual(describe({ engineUp: true, overview: awake }), { title: 'Aguardando seu comando.', detail: 'Pode falar ou digitar.', mood: 'alert' });
   assert.equal(describe({ engineUp: true, overview: awake, busy: true }).mood, 'thinking');
   assert.equal(describe({ engineUp: false, overview: awake }).mood, 'offline');
+});
+
+// ---- refreshMood and the panel's state send each other: it has to end
+test('refreshMood and sendPanelState do not call each other forever', () => {
+  const Module = require('node:module');
+  const origLoad = Module._load;
+  const sent = [];
+  Module._load = function (request, ...rest) {
+    if (request === 'electron') {   // anything the app asks of electron answers with a function that does nothing
+      const quiet = () => new Proxy(function () {}, { get: (_t, k) => (k === Symbol.toPrimitive ? () => '' : k === 'getPath' ? () => '/tmp' : quiet()), apply: () => quiet(), construct: () => quiet() });
+      return quiet();
+    }
+    return origLoad.call(this, request, ...rest);
+  };
+  try {
+    const ctx = require('../../../src/shared/context');
+    const widgetMood = require('../../../src/features/widget').mood;
+    ctx.settings = { mood: 'auto', masked: false };
+    ctx.state.engineUp = true; ctx.state.overview = null; ctx.state.busy = 0; ctx.state.notices = [];
+    ctx.panelMood = null;
+    ctx.panelWin = { isDestroyed: () => false, webContents: { isDestroyed: () => false, send: (...a) => sent.push(a) } };
+    ctx.widgetWin = null;
+    assert.doesNotThrow(() => { widgetMood.refreshMood(); widgetMood.refreshMood(); });
+    ctx.state.busy = 1;                       // a new mood: the panel is told once
+    assert.doesNotThrow(() => widgetMood.refreshMood());
+    assert.equal(ctx.panelMood, 'thinking');
+  } finally {
+    Module._load = origLoad;
+  }
 });

@@ -16,6 +16,8 @@ const ctx = {
   moodTimer: null,
   quitting: false,
   happyUntil: 0,
+  panelMood: null,   // the mood the panel was last told (the panel's face follows the widget's)
+  angryUntil: 0,   // something failed a moment ago (an answer that did not work, an automation that failed): the face is angry until then
   queue: null, // the NoticeQueue, created at start
   streams: new Map(),
   jobOf: new Map(),
