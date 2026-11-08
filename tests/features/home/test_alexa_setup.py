@@ -24,8 +24,9 @@ class FakeHA:
     """Home Assistant's config flow API, as seen against the real one (2026.11): start -> the form; the credentials -> a progress step; reading the flow
     -> the progress until the sign-in ends, then the result: a created entry, or the form again with `errors.base`."""
 
-    def __init__(self, handler_known=True, after=None, progress_reads=1):
+    def __init__(self, handler_known=True, after=None, progress_reads=1, entry=None):
         self.handler_known, self.after, self.progress_reads = handler_known, after or {"type": "create_entry"}, progress_reads
+        self.entry = entry   # the integration's configuration: {"state": ..., "reason": ...}
         self.calls: list = []
         self.reads = 0
 
@@ -46,6 +47,8 @@ class FakeHA:
             if self.reads <= self.progress_reads:
                 return httpx.Response(200, json={"type": "progress", "flow_id": "01ABC", "step_id": "login", "progress_action": "login"})
             return httpx.Response(200, json=self.after)
+        if request.method == "GET" and path == "/api/config/config_entries/entry":
+            return httpx.Response(200, json=[{"domain": DOMAIN, **self.entry}] if self.entry else [])
         if request.method == "DELETE":
             return httpx.Response(200, json={"message": "Flow aborted"})
         return httpx.Response(404)
@@ -101,14 +104,54 @@ async def test_a_home_assistant_without_the_integration_says_what_is_needed(tmp_
         await setup.start("a@b.co", "senha", "123456")
 
 
-async def test_it_finishes_when_the_integration_creates_the_entry(tmp_path):
-    setup, ha, _ = make(tmp_path, FakeHA(progress_reads=2))
+async def test_an_accepted_account_is_not_connected_until_the_devices_are_loaded(tmp_path):
+    ha = FakeHA(progress_reads=1, entry={"state": "setup_in_progress"})
+    setup, ha, _ = make(tmp_path, ha)
     await setup.start("a@b.co", "senha", "123456")
     assert (await setup.status())["state"] == "login"
-    assert (await setup.status())["state"] == "login"
+    loading = await setup.status()                                                # the setup created the entry: that alone is NOT "connected"
+    assert loading["state"] == "loading" and "Carregando" in loading["message"]
+    assert (await setup.status())["state"] == "loading"
+    ha.entry = {"state": "loaded"}
     assert await setup.status() == {"state": "done", "message": "A Alexa foi conectada."}
     assert (await setup.status())["state"] == "done"                              # and it stays done without asking Home Assistant again
-    assert [c[0] for c in ha.calls].count("GET") == 3
+    calls = len(ha.calls)
+    await setup.status()
+    assert len(ha.calls) == calls
+
+
+async def test_amazon_asking_to_wait_is_said_plainly_and_is_not_a_failure(tmp_path):
+    reason = "Error retrieving data: CannotRetrieveData('Request failed: Too Many Requests')"
+    setup, ha, _ = make(tmp_path, FakeHA(progress_reads=0, entry={"state": "setup_retry", "reason": reason}))
+    await setup.start("a@b.co", "senha", "123456")
+    status = await setup.status()
+    assert status["state"] == "waiting" and "Amazon pediu para esperar" in status["message"] and "Não precisa conectar de novo" in status["message"]
+    assert "Too Many Requests" not in status["message"]
+
+
+async def test_another_retry_reason_is_waiting_too_and_a_broken_setup_is_an_error(tmp_path):
+    other, *_ = make(tmp_path, FakeHA(progress_reads=0, entry={"state": "setup_retry", "reason": "Error retrieving data: CannotConnect"}))
+    await other.start("a@b.co", "senha", "123456")
+    status = await other.status()
+    assert status["state"] == "waiting" and "ainda não consegui carregar os dispositivos" in status["message"]
+    for state in ("setup_error", "migration_error"):
+        broken, *_ = make(tmp_path, FakeHA(progress_reads=0, entry={"state": state}))
+        await broken.start("a@b.co", "senha", "123456")
+        assert (await broken.status())["state"] == "error"
+
+
+async def test_devices_that_take_long_to_load_become_waiting_and_a_missing_entry_an_error(tmp_path):
+    slow, ha, clock = make(tmp_path, FakeHA(progress_reads=0, entry={"state": "setup_in_progress"}))
+    await slow.start("a@b.co", "senha", "123456")
+    assert (await slow.status())["state"] == "loading"
+    clock.now += 5 * 60
+    status = await slow.status()
+    assert status["state"] == "waiting" and "ainda estão carregando" in status["message"]
+    gone, ha2, clock2 = make(tmp_path, FakeHA(progress_reads=0, entry=None))
+    await gone.start("a@b.co", "senha", "123456")
+    assert (await gone.status())["state"] == "loading"                              # the entry may take a moment to show up
+    clock2.now += 20
+    assert (await gone.status())["state"] == "error"
 
 
 async def test_waiting_only_reads_the_setup_and_never_sends_to_it(tmp_path):
@@ -139,11 +182,13 @@ async def test_an_unknown_error_and_an_unknown_answer_are_sentences_too(tmp_path
     assert (await other.status())["state"] == "error"
 
 
-async def test_an_account_that_was_already_connected_counts_as_done(tmp_path):
-    setup, *_ = make(tmp_path, FakeHA(after={"type": "abort", "reason": "already_configured"}))
+async def test_an_account_that_was_already_connected_is_checked_the_same_way(tmp_path):
+    setup, ha, _ = make(tmp_path, FakeHA(progress_reads=0, after={"type": "abort", "reason": "already_configured"}, entry={"state": "loaded"}))
     await setup.start("a@b.co", "senha", "123456")
-    await setup.status()
-    assert (await setup.status())["state"] == "done"
+    assert (await setup.status())["state"] == "done"                                # the abort only says the account exists: whether it works is what the configuration says
+    retry, *_ = make(tmp_path, FakeHA(progress_reads=0, after={"type": "abort", "reason": "already_configured"}, entry={"state": "setup_retry", "reason": "Too Many Requests"}))
+    await retry.start("a@b.co", "senha", "123456")
+    assert (await retry.status())["state"] == "waiting"
 
 
 async def test_the_second_answer_may_already_be_the_result(tmp_path):

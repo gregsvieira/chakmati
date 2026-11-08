@@ -48,9 +48,10 @@
   }
 
   // The last page: what was found.
-  function doneText(status) {
+  function doneText(status, justLinked = false) {
     const players = (status && status.players) || [];
     if (players.length) return `Achei: ${players.slice(0, 3).map((p) => p.name).join(', ')}${players.length > 3 ? ' e mais' : ''}. Já dá para dizer "próxima música".`;
+    if (justLinked) return 'A Alexa foi conectada, mas ainda não vejo as caixas de som. Elas costumam aparecer em alguns minutos.';
     return 'Você pode ligar a Alexa quando quiser: toque em "Conectar a Alexa" em Ajustes.';
   }
 
@@ -61,8 +62,9 @@
 
   // While Home Assistant signs in to Amazon: keep waiting, finished, or back to the form with a sentence.
   function alexaWait(status) {
-    if (!status || status.state === 'login') return { stage: 'alexa-wait' };
+    if (!status || status.state === 'login' || status.state === 'loading') return { stage: 'alexa-wait' };   // signing in, then loading the devices
     if (status.state === 'done') return { stage: 'done' };
+    if (status.state === 'waiting') return { stage: 'waiting', text: status.message };   // the account was accepted but Amazon asked to wait: not "connected" yet, and not a failure
     if (status.state === 'error') return { stage: 'alexa', text: status.message || 'Não deu certo. Tente de novo.' };
     return { stage: 'alexa', text: 'O login foi cancelado antes de terminar. Se foi sem querer, tente de novo.' };   // idle: it was cancelled
   }

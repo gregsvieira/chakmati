@@ -20,6 +20,7 @@ from chakmati.features.home.models import HomeError
 
 DOMAIN = "alexa_devices"
 LOGIN_SECONDS = 3 * 60   # the sign-in takes seconds; past this something is stuck
+LOAD_SECONDS = 4 * 60   # after the sign-in, Home Assistant loads the devices; past this it is told as "still loading"
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _CODE = re.compile(r"^\d{6}$")
 FLOW = "/api/config/config_entries/flow"
@@ -29,6 +30,7 @@ ERRORS = {   # what the integration reports, said for the person
     "cannot_retrieve_data": "Entrei na Amazon, mas não consegui ler os seus dispositivos. Tente de novo em instantes.",
 }
 _IDLE = {"state": "idle", "message": ""}
+_BAD_STATES = ("setup_error", "migration_error", "failed_unload")
 
 
 def _reason(errors: dict | None) -> str:
@@ -40,6 +42,7 @@ class AlexaSetup:
     def __init__(self, auth: HomeAuth, http: httpx.AsyncClient, clock=time.monotonic):
         self._auth, self._http, self._clock = auth, http, clock
         self._flow_id: str | None = None
+        self._loading = False   # the account was accepted and the integration is loading the devices
         self._started = 0.0
         self._status: dict = dict(_IDLE)
 
@@ -98,12 +101,11 @@ class AlexaSetup:
         kind = step.get("type")
         if kind == "progress":
             self._status = {"state": "login", "message": "Entrando na sua conta Amazon…"}
-        elif kind == "create_entry":
+        elif kind == "create_entry" or (kind == "abort" and step.get("reason") == "already_configured"):
+            # the account was accepted, but that is not "connected": the devices still have to load (Amazon may ask Home Assistant to wait)
             self._flow_id = None
-            self._status = {"state": "done", "message": "A Alexa foi conectada."}
-        elif kind == "abort" and step.get("reason") == "already_configured":
-            self._flow_id = None
-            self._status = {"state": "done", "message": "Essa conta Amazon já estava conectada."}
+            self._loading, self._started = True, self._clock()
+            self._status = {"state": "loading", "message": "Entrei na sua conta. Carregando os seus dispositivos…"}
         elif kind == "form":   # back to the form: the sign-in was refused
             self._flow_id = None
             self._status = {"state": "error", "message": _reason(step.get("errors"))}
@@ -112,9 +114,18 @@ class AlexaSetup:
             self._status = {"state": "error", "message": "A Alexa não aceitou os dados. Confira e tente de novo."}
         return dict(self._status)
 
+    async def _entry_state(self) -> tuple[str, str]:
+        """(state, reason) of the integration's configuration in Home Assistant, ("", "") when there is none."""
+        entries = await self._call("GET", "/api/config/config_entries/entry?domain=" + DOMAIN)
+        entry = next((e for e in entries if isinstance(e, dict) and e.get("domain") == DOMAIN), None) if isinstance(entries, list) else None
+        return (str(entry.get("state") or ""), str(entry.get("reason") or "")) if entry else ("", "")
+
     async def status(self) -> dict:
         """Where the setup is. While the sign-in runs it reads the setup's own state (a read that never changes it: Home Assistant answers a setup in progress
-        with its progress, and with the result when it is over)."""
+        with its progress, and with the result when it is over). After the account is accepted it reads the configuration's state: "done" only when the
+        integration LOADED the devices; "waiting" when Amazon asked Home Assistant to wait (too many requests), which Home Assistant retries by itself."""
+        if self._loading:
+            return await self._loading_status()
         if self._status["state"] != "login" or self._flow_id is None:
             return dict(self._status)
         if self._clock() - self._started > LOGIN_SECONDS:
@@ -129,12 +140,35 @@ class AlexaSetup:
                 self._status = {"state": "error", "message": "O login terminou sem conectar a Alexa. Tente de novo."}
                 return dict(self._status)
             raise
-        return self._read(step if isinstance(step, dict) else {})
+        out = self._read(step if isinstance(step, dict) else {})
+        return await self._loading_status() if self._loading else out
+
+    async def _loading_status(self) -> dict:
+        state, reason = await self._entry_state()
+        if state == "loaded":
+            self._loading = False
+            self._status = {"state": "done", "message": "A Alexa foi conectada."}
+        elif state == "setup_retry":
+            self._loading = False
+            limited = "too many requests" in reason.lower()
+            self._status = {"state": "waiting", "message": (
+                "Entrei na sua conta, mas a Amazon pediu para esperar um pouco (muitas requisições). O Home Assistant tenta de novo sozinho: as caixas de som aparecem quando ela liberar, em alguns minutos. Não precisa conectar de novo."
+                if limited else "Entrei na sua conta, mas ainda não consegui carregar os dispositivos. O Home Assistant tenta de novo sozinho; as caixas de som aparecem em alguns minutos.")}
+        elif state in _BAD_STATES or (not state and self._clock() - self._started > 15):
+            self._loading = False
+            self._status = {"state": "error", "message": "A conta foi aceita, mas a Alexa não conseguiu iniciar. Confira a conta e tente de novo."}
+        elif self._clock() - self._started > LOAD_SECONDS:
+            self._loading = False
+            self._status = {"state": "waiting", "message": "Entrei na sua conta, mas os dispositivos ainda estão carregando. As caixas de som aparecem em alguns minutos."}
+        else:
+            self._status = {"state": "loading", "message": "Entrei na sua conta. Carregando os seus dispositivos…"}
+        return dict(self._status)
 
     async def cancel(self) -> None:
         """Drops an unfinished setup (the person gave up)."""
         flow_id, self._flow_id = self._flow_id, None
-        if self._status["state"] == "login":
+        self._loading = False
+        if self._status["state"] in ("login", "loading"):
             self._status = dict(_IDLE)
         if flow_id:
             try:

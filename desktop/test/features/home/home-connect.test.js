@@ -275,7 +275,7 @@ test('the main process opens only the checked Home Assistant login page or the f
 
 // --- linking the Alexa ---------------------------------------------------------------------------------------------------------------------------
 function alexaHarness({ statuses = [{ state: 'login' }], startFails = null, engineUp = true } = {}) {
-  const log = { starts: [], cancels: 0, connected: [], opened: [] };
+  const log = { starts: [], cancels: 0, connected: [], opened: [], notes: [] };
   let clock = 0;
   const queue = [...statuses];
   const engine = {
@@ -285,7 +285,7 @@ function alexaHarness({ statuses = [{ state: 'login' }], startFails = null, engi
     homeStatus: async () => ({ configured: true, connected: true, pending: false, players: [{ name: 'Echo Dot da sala' }] }),
   };
   const service = createHomeService({
-    engine: () => engine, isEngineUp: () => engineUp, openExternal: async (u) => { log.opened.push(u); }, note: () => {}, friendlyError: (e) => `ERRO: ${e.message}`,
+    engine: () => engine, isEngineUp: () => engineUp, openExternal: async (u) => { log.opened.push(u); }, note: (t) => { log.notes.push(t); }, friendlyError: (e) => `ERRO: ${e.message}`,
     afterConnected: async (s) => { log.connected.push(s); }, afterDisconnected: async () => {},
     sleep: async (ms) => { clock += ms; await new Promise((r) => setImmediate(r)); }, now: () => clock,
   });
@@ -301,6 +301,33 @@ test('the Alexa starts with the credentials going to the engine only: no window 
   assert.deepEqual(log.opened, []);            // nothing is opened: Home Assistant signs in by itself
   assert.equal(log.connected.length, 1);       // and the house is refreshed with the speakers
   assert.equal(log.cancels, 0);                // a finished setup is not "cancelled"
+});
+
+test('the wait goes through "loading" and only a loaded integration announces the connection', async () => {
+  const { service, log } = alexaHarness({ statuses: [{ state: 'login' }, { state: 'loading' }, { state: 'loading' }, { state: 'done' }] });
+  await service.alexaStart(credentials);
+  await service.idle();
+  assert.equal(log.connected.length, 1);
+});
+
+test('when Amazon asks to wait the account is accepted but NOT announced as connected: it is said, and the wait ends', async () => {
+  const { service, log } = alexaHarness({ statuses: [{ state: 'login' }, { state: 'loading' }, { state: 'waiting', message: 'A Amazon pediu para esperar.' }] });
+  await service.alexaStart(credentials);
+  await service.idle();
+  assert.equal(log.connected.length, 0);
+  assert.deepEqual(log.notes, ['A Amazon pediu para esperar.']);
+  assert.equal(log.cancels, 0);                  // the account stays: Home Assistant retries by itself
+});
+
+test('the page states: loading keeps waiting, waiting is its own page, and "just linked" with no speaker says so', () => {
+  assert.deepEqual(modal.alexaWait({ state: 'loading' }), { stage: 'alexa-wait' });
+  assert.deepEqual(modal.alexaWait({ state: 'waiting', message: 'Espere.' }), { stage: 'waiting', text: 'Espere.' });
+  assert.match(modal.doneText({ players: [] }, true), /A Alexa foi conectada, mas ainda não vejo as caixas de som/);
+  assert.match(modal.doneText({ players: [] }), /Você pode ligar a Alexa quando quiser/);            // skipping the Alexa step keeps the old sentence
+  assert.match(modal.doneText({ players: [{ name: 'Echo Dot' }] }, true), /Achei: Echo Dot/);
+  const flow = read('features', 'home', 'renderer', 'flow.js');
+  assert.match(flow, /out\.stage === 'waiting'\) return show\('done', out\.text, 'Quase lá'\)/);
+  for (const f of ['panel', 'installer']) assert.ok(read('features', f, 'renderer', f + '.html').includes('id="hm-done-title"'), f);
 });
 
 test('an error ends the wait with no connection announced', async () => {

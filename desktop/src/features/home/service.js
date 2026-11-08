@@ -103,8 +103,9 @@ function createHomeService(deps) {
           if (mine !== alexaRun) return;
           let status;
           try { status = await engine().homeAlexaStatus(); } catch { continue; }
-          if (status.state === 'login') continue;
+          if (status.state === 'login' || status.state === 'loading') continue;
           if (status.state === 'done') await deps.afterConnected(await engine().homeStatus());
+          else if (status.state === 'waiting') note(status.message);   // accepted, devices not loaded yet: said, never announced as connected
           return;
         }
         if (mine === alexaRun) await engine().homeAlexaCancel().catch(() => {});
