@@ -44,6 +44,7 @@ function updateSetting(key, value) {
   else if (key === 'speakEmojis' && typeof value === 'boolean') { ctx.settings.speakEmojis = value; voiceService.sendVoice(); }
   else if (key === 'micSource' && (value === 'computer' || value === 'system')) ctx.settings.micSource = value;
   else if (key === 'autoRunSafe' && typeof value === 'boolean') { ctx.settings.autoRunSafe = value; engineService.syncStanding(); }
+  else if (key === 'keepAwake' && typeof value === 'boolean') { ctx.settings.keepAwake = value; engineService.syncKeepAwake(); }
   else if (key === 'autoSend' && typeof value === 'boolean') { ctx.settings.autoSend = value; engineService.autoApproveNew(); }
   else if (key === 'still' && typeof value === 'boolean') { ctx.settings.still = value; sendTo(ctx.widgetWin, 'widget:still', value); }
   else if (key === 'mood' && settingsLib.MOODS.includes(value)) ctx.settings.mood = value;

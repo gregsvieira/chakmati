@@ -21,6 +21,7 @@ const DEFAULTS = Object.freeze({
   laya: false,            // the Laya relevance filter for the web search (opt-in; the setup wizard says it is not recommended)
   talk: false,            // "Falar com o Chakmati": the microphone is always listening for the wake phrases and commands
   autoRunSafe: false,     // keep SAFE computer commands approved (never scripts, downloads, edits, the trash or opening programs)
+  keepAwake: false,       // keep the computer from sleeping by idleness while an automation is on (the screen may still turn off)
   autoSend: false,        // approve WhatsApp sends automatically (the person's standing permission; the engine still rate-limits)
   masked: false,          // discreet mode: bubbles never show names or titles
   bubbleSide: 'auto',
@@ -46,6 +47,7 @@ function normalize(raw) {
   if (typeof r.protect === 'boolean') s.protect = r.protect;
   if (typeof r.masked === 'boolean') s.masked = r.masked;
   if (typeof r.autoSend === 'boolean') s.autoSend = r.autoSend;
+  if (typeof r.keepAwake === 'boolean') s.keepAwake = r.keepAwake;
   if (typeof r.autoRunSafe === 'boolean') s.autoRunSafe = r.autoRunSafe;
   if (typeof r.hear === 'boolean') s.hear = r.hear;
   if (typeof r.talk === 'boolean') s.talk = r.talk;
