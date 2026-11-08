@@ -416,3 +416,12 @@ body[data-still] #panel[data-layout="wide"] #content, body[data-still] #panel[da
 .detail-list { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 14px; font-size: 14px; }
 .detail-list dt { color: var(--muted); }
 .detail-list dd { margin: 0; }
+
+/* automations: each channel is folded to its name and a count */
+#automation-list { width: 100%; }
+.automation-group { margin: 0 0 6px; width: 100%; }
+.group-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; padding: 8px 12px; font: inherit; color: inherit; background: var(--surface-2); border: 1px solid var(--rule); border-radius: 10px; cursor: pointer; text-align: left; }
+.group-head:hover { filter: brightness(1.06); }
+.group-title { font-weight: 600; font-size: 14px; }
+.group-count { min-width: 22px; padding: 1px 8px; border-radius: 999px; background: var(--rule); color: inherit; font-size: 12.5px; font-weight: 700; text-align: center; }
+.automation-group > .row { margin-top: 8px; }

@@ -64,7 +64,7 @@ test('the client sends the hours of a recorded reply only when they are valid HH
 test('the automations list has only the title and the two buttons; the details open in a window when the title is clicked', () => {
   const js = read('features', 'automations', 'renderer', 'automations.js');
   const html = read('features', 'panel', 'renderer', 'panel.html');
-  const card = js.slice(js.indexOf('const card = (a)'), js.indexOf('// One sub-block per channel'));
+  const card = js.slice(js.indexOf('const card = (a)'), js.indexOf('// One block per channel'));
   assert.match(card, /onclick: \(\) => showDetails\(a\)/);
   assert.equal(/a\.description|decision-body/.test(card), false, 'the long sentence is no longer in the card');
   assert.match(card, /'Pausar'/);
@@ -86,4 +86,18 @@ test('"Casa e Alexa" replaces the Alexa "em breve": when, then what, and the req
   const houseWhenChip = (when) => `${HOUSE_BASE} ${when} toque Raul Seixas na Alexa`;
   assert.equal(houseWhenChip('de segunda a sexta às 6h30'), 'Crie uma automação: de segunda a sexta às 6h30 toque Raul Seixas na Alexa');
   assert.match(read('features', 'panel', 'renderer', 'panel.html'), /<dt>Já rodou<\/dt>/);   // the window says "ran", not "answered": it is not always a reply
+});
+
+test('inside Automações each channel is folded to its name and how many automations it has, and a click opens it (remembered)', () => {
+  const js = read('features', 'automations', 'renderer', 'automations.js');
+  const css = read('features', 'panel', 'renderer', 'panel.css');
+  assert.match(js, /\['home', 'Casa e Alexa'\]/);
+  assert.match(js, /String\(items\.length\)/);                                            // the count is all that shows while folded
+  assert.match(js, /open \? items\.map\(card\) : null/);                                   // the cards only exist while the channel is open
+  assert.match(js, /'aria-expanded': String\(open\)/);
+  assert.match(js, /new Set\(\(P\.store && P\.store\.get\('chakmati\.auto-groups-open', \[\]\)\) \|\| \[\]\)/);   // folded by default
+  assert.match(js, /P\.store\.set\('chakmati\.auto-groups-open', \[\.\.\.set\]\)/);
+  assert.match(css, /\.group-head \{[^}]*cursor: pointer/);
+  assert.match(css, /\.group-count \{/);
+  assert.equal(/innerHTML/.test(js), false);
 });
