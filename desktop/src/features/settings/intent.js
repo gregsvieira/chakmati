@@ -42,8 +42,11 @@
     { key: 'pronouns', re: /\bpronomes?\b/, name: 'os pronomes', options: [
       [/\belu\b/, 'elu', 'elu/delu'], [/\bela\b/, 'ela', 'ela/dela'], [/\bele\b/, 'ele', 'ele/dele'],
       [/\b(nao informar|nenhum|sem pronome|prefiro nao)\b/, 'none', 'sem informar']] },
-    { key: 'voiceSpeed', re: /\b(velocidade|voz)\b/, name: 'a velocidade da voz', options: [
-      [/\b(mais rapid[ao]|rapid[ao]|acelera\w*)\b/, 'fast', 'mais rápida'], [/\b(normal|mais devagar|devagar|lent[ao])\b/, 'normal', 'normal']] },
+    // "aumenta/diminui a velocidade da voz", "acelera", "mais devagar". The speed is only fast or normal (and it is the enhanced voice's speed), so "aumenta" and "diminui"
+    // need the word "velocidade" next to them: "aumenta o volume da voz" is not a speed request.
+    { key: 'voiceSpeed', re: /\b(velocidade|voz|fala|falar|fale)\b/, not: /\bvolume\b/, name: 'a velocidade da voz', options: [
+      [/\b(mais rapid[ao]|rapid[ao]|mais veloz|acelera\w*)\b|\b(aument\w+|sobe|suba|subir|eleva\w*|maior)\b.{0,25}\bvelocidade\b|\bvelocidade\b.{0,25}\b(aument\w+|sobe|suba|subir|maior|mais alta)\b/, 'fast', 'mais rápida'],
+      [/\b(normal|mais devagar|devagar|lent[ao]|mais lent[ao]|desacelera\w*)\b|\b(diminu\w+|reduz\w*|abaix\w+|baix\w+|menor)\b.{0,25}\bvelocidade\b|\bvelocidade\b.{0,25}\b(diminu\w+|reduz\w*|abaix\w+|baix\w+|menor|mais baixa)\b/, 'normal', 'normal']] },
     { key: 'micSource', re: /\bmicrofone\b/, name: 'o microfone', options: [
       [/\b(do computador|do mac|interno|do proprio)\b/, 'computer', 'do próprio computador'], [/\b(padrao|do sistema)\b/, 'system', 'padrão do sistema']] },
   ];
@@ -54,7 +57,7 @@
     if (!t || t.split(' ').length > 14 || QUESTION.test(t)) return null;
 
     for (const c of CHOICES) {
-      if (!c.re.test(t)) continue;
+      if (!c.re.test(t) || (c.not && c.not.test(t))) continue;
       // "microfone" alone with on/off belongs to the talk switch; a choice needs one of its own words
       const hit = c.options.find(([re]) => re.test(t));
       if (hit) return { key: c.key, value: hit[1], sensitive: false, done: `Pronto: ${c.name} ${hit[2]}.`, ask: '' };

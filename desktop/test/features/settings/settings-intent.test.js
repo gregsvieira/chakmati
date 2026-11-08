@@ -21,6 +21,14 @@ const cases = [
   ['balão em cima', 'bubbleSide', 'top', false],
   ['coloca o humor feliz', 'mood', 'happy', false],
   ['voz mais rápida', 'voiceSpeed', 'fast', false],
+  ['Aumenta a velocidade da voz melhorada', 'voiceSpeed', 'fast', false],
+  ['Chakmati, aumenta a velocidade da voz', 'voiceSpeed', 'fast', false],
+  ['acelera a voz', 'voiceSpeed', 'fast', false],
+  ['coloca a velocidade da voz maior', 'voiceSpeed', 'fast', false],
+  ['diminui a velocidade da voz', 'voiceSpeed', 'normal', false],
+  ['reduz a velocidade da voz melhorada', 'voiceSpeed', 'normal', false],
+  ['fala mais devagar', 'voiceSpeed', 'normal', false],
+  ['deixa a velocidade da voz normal', 'voiceSpeed', 'normal', false],
   ['usa o microfone do computador', 'micSource', 'computer', false],
   ['muda a personalidade para gaúcho', 'personality', 'gaucho', false],
   ['coloca a personalidade carioca', 'personality', 'carioca', false],
@@ -48,7 +56,7 @@ for (const [text, key, value, sensitive] of cases) {
 }
 
 test('ordinary requests and questions are not settings', () => {
-  for (const t of ['oi tudo bem', 'liga pra Maria', 'manda no whatsapp pra Maria: oi', 'como faço para ligar a voz melhorada?',
+  for (const t of ['aumenta o volume da voz', 'diminui o volume da voz do Chakmati', 'oi tudo bem', 'liga pra Maria', 'manda no whatsapp pra Maria: oi', 'como faço para ligar a voz melhorada?',
     'o que tenho na agenda hoje?', 'tenho mensagens novas no whatsapp?', 'resuma a conversa com o João', 'qual o humor do dia',
     'ative a lanterna do celular da Maria e depois explique para mim com calma como funciona cada coisa na prática hoje']) {
     assert.equal(parse(t), null, t);
@@ -65,4 +73,11 @@ test('keeping safe commands approved is a sensitive setting', () => {
   assert.equal(r.value, true);
   assert.equal(r.sensitive, true);
   assert.equal(parse('desliga os comandos seguros').value, false);
+});
+
+test('the voice itself still turns on and off, and "chakmati, troca para a personalidade Gaúcha!" is understood with its greeting and exclamation', () => {
+  assert.deepEqual([parse('liga a voz melhorada').key, parse('liga a voz melhorada').value], ['enhancedVoice', true]);
+  assert.deepEqual([parse('desliga a voz melhorada').key, parse('desliga a voz melhorada').value], ['enhancedVoice', false]);
+  const r = parse('Chakmati, troca para a personalidade Gaúcha!');
+  assert.deepEqual([r.key, r.value, r.done], ['personality', 'gaucho', 'Pronto: a personalidade gaúcha.']);
 });
