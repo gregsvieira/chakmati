@@ -2,7 +2,7 @@
 
 (function () {
   const P = window.Panel;
-  const { api, $, fill, plural, subgroup, thread, sleep, waGate } = P;
+  const { api, $, fill, plural, thread, sleep, waGate } = P;
 
   function renderAutomations() {
     const list = (P.state.overview && P.state.overview.automations) || [];
@@ -15,12 +15,28 @@
       P.h('div', { class: 'decision-actions' },
         P.h('button', { class: 'ghost small', type: 'button', onclick: () => api.automation(a.id, a.enabled ? 'disable' : 'enable') }, a.enabled ? 'Pausar' : 'Ativar'),
         P.h('button', { class: 'ghost small', type: 'button', onclick: () => api.automation(a.id, 'delete') }, 'Apagar')));
-    // One sub-block per channel that has automations; none for the channels without any.
-    const channels = [['whatsapp', 'WhatsApp'], ['email', 'Email'], ['home', 'Casa']];
+    // One block per channel that has automations (none for the channels without any), folded: only its name and how many it has; a click opens it.
+    const channels = [['whatsapp', 'WhatsApp'], ['email', 'Email'], ['home', 'Casa e Alexa']];
+    const group = (key, title, items) => {
+      const open = openGroups().has(key);
+      return P.h('div', { class: 'subgroup automation-group' },
+        P.h('button', { class: 'group-head', type: 'button', 'aria-expanded': String(open), title: open ? 'Recolher' : 'Ver as automações', onclick: () => toggleGroup(key) },
+          P.h('span', { class: 'group-title' }, title), P.h('span', { class: 'group-count', 'aria-label': plural(items.length, 'automação', 'automações') }, String(items.length))),
+        open ? items.map(card) : null);
+    };
     fill($('automation-list'), channels
-      .map(([key, title]) => [title, list.filter((a) => (a.channel || 'whatsapp') === key)])
-      .filter(([, items]) => items.length)
-      .map(([title, items]) => subgroup(title, items.map(card))));
+      .map(([key, title]) => [key, title, list.filter((a) => (a.channel || 'whatsapp') === key)])
+      .filter(([, , items]) => items.length)
+      .map(([key, title, items]) => group(key, title, items)));
+  }
+
+  // Which channels are open: remembered (folded is the default, so only the open ones are kept).
+  const openGroups = () => new Set((P.store && P.store.get('chakmati.auto-groups-open', [])) || []);
+  function toggleGroup(key) {
+    const set = openGroups();
+    if (set.has(key)) set.delete(key); else set.add(key);
+    if (P.store) P.store.set('chakmati.auto-groups-open', [...set]);
+    renderAutomations();
   }
 
   // The details of one automation, in a window of its own.

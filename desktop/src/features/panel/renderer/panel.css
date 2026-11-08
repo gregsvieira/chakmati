@@ -211,6 +211,8 @@ button.small { height: 30px; padding: 0 14px; font-size: 13px; }
 #thread-empty { display: none; }
 #thread:empty ~ #thread-empty { display: block; }
 
+/* the conversation enlarged: it is for using and reading it, so every topic above it goes away (Mensagens, Casa e Alexa, Automações...) and the conversation rises to the top; reduced, they come back */
+#panel[data-focus="thread"][data-layout="compact"] #topics { display: none; }
 #panel[data-focus="thread"][data-layout="compact"] #topics section > :not(h2) { display: none; }
 #panel[data-focus="thread"][data-layout="compact"] #topics section > h2[role="button"]::before { transform: rotate(-45deg); }
 #panel[data-focus="thread"][data-layout="compact"] #content { display: flex; flex-direction: column; }
@@ -416,3 +418,25 @@ body[data-still] #panel[data-layout="wide"] #content, body[data-still] #panel[da
 .detail-list { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 14px; font-size: 14px; }
 .detail-list dt { color: var(--muted); }
 .detail-list dd { margin: 0; }
+
+/* automations: each channel is folded to its name and a count */
+#automation-list { width: 100%; }
+.automation-group { margin: 0 0 6px; width: 100%; }
+.group-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; padding: 8px 12px; font: inherit; color: inherit; background: var(--surface-2); border: 1px solid var(--rule); border-radius: 10px; cursor: pointer; text-align: left; }
+.group-head:hover { filter: brightness(1.06); }
+.group-title { font-weight: 600; font-size: 14px; }
+.group-count { min-width: 22px; padding: 1px 8px; border-radius: 999px; background: var(--rule); color: inherit; font-size: 12.5px; font-weight: 700; text-align: center; }
+.automation-group > .row { margin-top: 8px; }
+
+/* Ajustes as a list: an icon and the title of each item; a click opens that item alone */
+.settings-menu { display: grid; gap: 8px; padding-top: 10px; }
+.settings-menu[hidden] { display: none; }
+.menu-item { display: flex; align-items: center; gap: 14px; width: 100%; padding: 12px 14px; font: inherit; color: inherit; text-align: left; background: var(--surface-2); border: 1px solid var(--rule); border-radius: 12px; cursor: pointer; }
+.menu-item:hover { filter: brightness(1.06); }
+.menu-icon { display: grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 10px; background: var(--rule); color: var(--petrol); }
+@media (prefers-color-scheme: dark) { .menu-icon { color: #7cc0e8; } }
+.menu-name { flex: 1; font-weight: 600; font-size: 15px; }
+.menu-go { color: var(--muted); display: grid; place-items: center; }
+.cat[data-current] { border-top: 0; padding-top: 10px; }
+.cat[data-current] > h3 { display: none; }
+.cat[hidden] { display: none; }

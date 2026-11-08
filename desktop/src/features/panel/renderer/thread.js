@@ -44,6 +44,25 @@
     return rest ? [card, P.h('span', { class: 'turn-text' }, linkNodes(rest))] : [card];
   }
 
+  // The reduced card (small window, conversation not enlarged) shows only the newest message, in two lines: a longer one shows its first line and its last (fold.js).
+  const reducedNow = () => { const p = $('panel'); return p.dataset.layout === 'compact' && p.dataset.focus !== 'thread'; };
+  let measureCanvas = null;
+  function foldReduced() {
+    const last = $('thread').querySelector(':scope > .turn:last-child .turn-text');
+    const folded = $('thread').querySelector('.turn-text[data-folded]');
+    if (!reducedNow()) { if (folded) renderThread(false); return; }   // enlarged or wide again: the whole text comes back (a fresh render)
+    if (!last || last.dataset.folded || !last.clientWidth) return;
+    measureCanvas = measureCanvas || document.createElement('canvas').getContext('2d');
+    measureCanvas.font = getComputedStyle(last).font;
+    const full = last.textContent;
+    const result = window.Fold.fold(full, last.clientWidth - 6, (t) => measureCanvas.measureText(t).width);   // a little margin: the canvas and the page do not wrap to the pixel
+    if (!result.folded) return;
+    last.textContent = result.text;
+    last.dataset.folded = '1';
+    last.title = full;   // the whole text, on hover
+  }
+  P.foldReduced = foldReduced;
+
   function renderThread(scroll = true) {
     $('thread-section').hidden = thread.length === 0;
     const box = $('thread');
@@ -56,6 +75,7 @@
     if (wanted) { wanted.focusAsk = false; wanted.askInput.focus(); }
     if (scroll || atBottom) box.scrollTop = box.scrollHeight;  // the conversation has its own scroll: it follows the newest message
     if (scroll) $('thread-section').scrollIntoView({ block: 'end' }); // and a new message brings the conversation into view on the page
+    foldReduced();
   }
 
   async function submit(text, { voice = false } = {}) {

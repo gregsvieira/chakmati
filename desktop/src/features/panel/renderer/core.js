@@ -73,9 +73,11 @@
     $('foot').hidden = name === 'settings';           // the command line is on every page except Ajustes
     $('foot-settings').hidden = name !== 'settings';  // Ajustes has its own fixed footer
     $(PAGES[name]).scrollTop = 0;
+    if (name === 'settings' && P.showSettingsMenu) P.showSettingsMenu();   // Ajustes always opens on its list (features/settings/renderer/menu.js)
     if (name === 'main') { renderHeader(); $('input').focus(); } else $('title').textContent = title || TITLES[name] || '';
   }
-  const goBack = () => showView(screen === 'chat' ? P.backTo : 'main');
+  // from an open item of Ajustes the arrow goes back to the list of items; only from the list does it leave Ajustes
+  const goBack = () => { if (screen === 'settings' && P.settingsBack && P.settingsBack()) return; showView(screen === 'chat' ? P.backTo : 'main'); };
 
   P.inits.push(function () {
     if (/Mac/.test(navigator.platform || navigator.userAgent)) document.body.dataset.blur = '';
