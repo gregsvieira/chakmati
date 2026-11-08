@@ -7,6 +7,7 @@
 
   const open = new Set();        // the speakers that are expanded
   const searching = new Set();   // the ones showing the "Trocar música" field
+  const drafts = new Map();      // what was typed in each field: the list is redrawn every few seconds and must not take it away
   let players = [];
   let note = '';                 // the last answer of a button, or the problem
   let busy = '';                 // the speaker whose button was just pressed
@@ -14,7 +15,7 @@
 
   const connected = () => !!(P.state && P.state.overview && P.state.overview.home && P.state.overview.home.connected);
   const onScreen = () => connected() && !document.hidden && P.state.panelOpen !== false && !$('house').hidden && !$('house').dataset.collapsed;
-  const word = { playing: 'tocando', paused: 'pausado', idle: 'parado', unavailable: 'indisponível', standby: 'em espera' };
+  const word = { playing: 'tocando', paused: 'pausado', idle: 'parado', unavailable: 'sem informação agora', standby: 'em espera' };
 
   async function refresh() {
     if (!connected()) return;
@@ -31,7 +32,7 @@
     const res = await api.homePlayerControl(player.id, action, text);
     busy = '';
     note = (res && (res.error || res.message)) || '';
-    if (action === 'search' && res && res.ok) searching.delete(player.id);
+    if (action === 'search' && res && res.ok) { searching.delete(player.id); drafts.delete(player.id); }
     draw();
     setTimeout(refresh, 1500);   // Alexa takes a moment to start the new song: the panel shows it as soon as it does
   }
@@ -47,15 +48,17 @@
     if (!expanded) return P.h('div', { class: 'house-card' }, head);
     const off = busy === p.id;
     const field = searching.has(p.id) ? (() => {
-      const input = P.h('input', { type: 'text', class: 'house-search', maxlength: '100', placeholder: 'O que tocar? (ex.: Raul Seixas)', 'aria-label': 'O que tocar' });
+      const input = P.h('input', { type: 'text', class: 'house-search', maxlength: '100', placeholder: 'O que tocar? (ex.: Raul Seixas)', 'aria-label': 'O que tocar', 'data-player': p.id });
+      input.value = drafts.get(p.id) || '';
       const go = () => { const q = input.value.trim(); if (q) press(p, 'search', q); };
-      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); if (e.key === 'Escape') { searching.delete(p.id); draw(); } });
-      setTimeout(() => input.focus(), 0);
+      input.addEventListener('input', () => drafts.set(p.id, input.value));
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); if (e.key === 'Escape') { searching.delete(p.id); drafts.delete(p.id); draw(); } });
+      if (!drafts.has(p.id) && !focusedField()) setTimeout(() => input.focus(), 0);   // a field that just opened gets the cursor; a redraw gives it back to the one that had it (draw)
       return P.h('div', { class: 'house-searchrow' }, input, button('Tocar', 'Pedir esta música à Alexa', go, off));
     })() : null;
     return P.h('div', { class: 'house-card', 'data-open': '1' }, head,
       P.h('div', { class: 'house-body' },
-        P.h('p', { class: 'house-now' }, playing || p.state === 'paused' ? (p.title ? `♪ ${p.title}${p.artist ? ` — ${p.artist}` : ''}${p.state === 'paused' ? ' (pausada)' : ''}` : 'Tocando algo sem título') : 'Nada tocando agora'),
+        P.h('p', { class: 'house-now' }, p.state === 'unavailable' ? 'A Alexa não está mandando informações agora (a Amazon limita os pedidos do Home Assistant). Pedir uma música pelo botão abaixo ou por voz ainda funciona.' : playing || p.state === 'paused' ? (p.title ? `♪ ${p.title}${p.artist ? ` — ${p.artist}` : ''}${p.state === 'paused' ? ' (pausada)' : ''}` : 'Tocando algo sem título') : 'Nada tocando agora'),
         P.h('div', { class: 'house-buttons' },
           button('⏮', 'Música anterior', () => press(p, 'previous'), off || !p.can.previous),
           playing ? button('⏸', 'Pausar', () => press(p, 'pause'), off || !p.can.pause) : button('▶', 'Continuar tocando', () => press(p, 'play'), off || !p.can.play),
@@ -67,10 +70,19 @@
         field));
   }
 
+  // the search field that has the cursor, with where the cursor is: the list is rebuilt, and the cursor must stay where the person is typing
+  const focusedField = () => { const a = document.activeElement; return a && a.classList && a.classList.contains('house-search') ? a : null; };
+
   function draw() {
+    const had = focusedField();
+    const keep = had ? { id: had.dataset.player, from: had.selectionStart, to: had.selectionEnd } : null;
     $('house-empty').hidden = players.length > 0;
     $('house-empty').textContent = 'Nenhum aparelho de música apareceu ainda.';
     fill($('house-list'), players.map(card));
+    if (keep) {
+      const again = $('house-list').querySelector(`.house-search[data-player="${keep.id}"]`);
+      if (again) { again.focus(); try { again.setSelectionRange(keep.from, keep.to); } catch { /* the cursor position is a nicety */ } }
+    }
     $('house-note').hidden = !note;
     $('house-note').textContent = note;
     hint();
@@ -98,6 +110,6 @@
     $('house').querySelector('h2').addEventListener('click', () => setTimeout(() => { if (onScreen()) refresh(); }, 50));
   });
 
-  Object.assign(P, { renderHouse, houseHint: hint });
+  Object.assign(P, { renderHouse, houseHint: hint, houseRefresh: refresh });
   void timer;
 })();
