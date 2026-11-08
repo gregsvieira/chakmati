@@ -41,3 +41,8 @@ test('release drops the blocker; a blocker the system dropped is taken again', (
   k.release();
   assert.equal(power.live.size, 0);
 });
+
+test('the panel state carries keepAwake, or the switch always shows off', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', '..', '..', 'src', 'features', 'panel', 'window.js'), 'utf8');
+  assert.match(src, /keepAwake: ctx\.settings\.keepAwake/);
+});

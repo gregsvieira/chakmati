@@ -1,6 +1,6 @@
 'use strict';
-// "Manter o Mac acordado para as automações": while the person asked for it AND some automation is on, the system is kept from
-// sleeping by idleness (the screen may still turn off and lock). Without automations, or with the option off, nothing is held.
+// "Manter o PC acordado para as automações": while the person asked for it AND some automation is on, the system is kept from
+// sleeping by idleness on macOS, Windows and Linux (Electron's powerSaveBlocker; the screen may still turn off and lock). Without automations, or with the option off, nothing is held.
 
 // Pure: should the computer be kept awake right now?
 function wanted(settings, overview) {

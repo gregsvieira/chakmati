@@ -21,7 +21,7 @@ const DEFAULTS = Object.freeze({
   laya: false,            // the Laya relevance filter for the web search (opt-in; the setup wizard says it is not recommended)
   talk: false,            // "Falar com o Chakmati": the microphone is always listening for the wake phrases and commands
   autoRunSafe: false,     // keep SAFE computer commands approved (never scripts, downloads, edits, the trash or opening programs)
-  keepAwake: false,       // keep the computer from sleeping by idleness while an automation is on (the screen may still turn off)
+  keepAwake: true,        // keep the computer from sleeping by idleness while an automation is on (the screen may still turn off); on by default
   autoSend: false,        // approve WhatsApp sends automatically (the person's standing permission; the engine still rate-limits)
   masked: false,          // discreet mode: bubbles never show names or titles
   bubbleSide: 'auto',

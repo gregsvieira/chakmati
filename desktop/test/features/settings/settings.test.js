@@ -134,8 +134,9 @@ test('the smart house is off by default; switching it on starts the engine with 
   assert.equal(engineEnv(DEFAULTS).CHAKMATI_HOME_BACKEND, 'off');
 });
 
-test('keepAwake: off by default, only a boolean is accepted', () => {
-  assert.equal(DEFAULTS.keepAwake, false);
-  assert.equal(normalize({ keepAwake: true }).keepAwake, true);
-  assert.equal(normalize({ keepAwake: 'sim' }).keepAwake, false);
+test('keepAwake: on by default, only a boolean is accepted', () => {
+  assert.equal(DEFAULTS.keepAwake, true);
+  assert.equal(normalize({ keepAwake: false }).keepAwake, false);
+  assert.equal(normalize({ keepAwake: 'nao' }).keepAwake, true);
+  assert.equal(normalize({}).keepAwake, true);
 });
