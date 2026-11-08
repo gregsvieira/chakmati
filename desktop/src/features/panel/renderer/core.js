@@ -75,6 +75,7 @@
     $(PAGES[name]).scrollTop = 0;
     if (name === 'settings' && P.showSettingsMenu) P.showSettingsMenu();   // Ajustes always opens on its list (features/settings/renderer/menu.js)
     if (name === 'main') { renderHeader(); $('input').focus(); } else $('title').textContent = title || TITLES[name] || '';
+    if (P.onScreen) P.onScreen(name);   // the WhatsApp conversation folds its boxes and, in the big window, keeps the sides (features/whatsapp/renderer/dock.js)
   }
   // from an open item of Ajustes the arrow goes back to the list of items; only from the list does it leave Ajustes
   const goBack = () => { if (screen === 'settings' && P.settingsBack && P.settingsBack()) return; showView(screen === 'chat' ? P.backTo : 'main'); };

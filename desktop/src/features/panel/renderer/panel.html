@@ -234,7 +234,20 @@
     <!-- fixed footer: the command line on the pages where you talk to Chakmati -->
     <footer id="foot">
       <div id="chips" role="group" aria-label="Atalhos"></div>
+      <!-- inside a WhatsApp conversation only one box is open at a time; both start folded into this bar -->
+      <div id="wa-dock" hidden>
+        <button id="dock-ask" class="dock-btn" type="button" aria-expanded="false"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Peça algo ao Chakmati</span></button>
+        <button id="dock-direct" class="dock-btn ghost" type="button">Responder mensagem diretamente</button>
+        <button id="dock-thread" class="dock-btn ghost" type="button" hidden>Ver conversa com o Chakmati</button>
+      </div>
+      <form id="wa-reply" autocomplete="off" hidden>
+        <button id="reply-collapse" class="icon-btn" type="button" aria-label="Recolher" title="Recolher"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <textarea id="wa-reply-input" rows="1" maxlength="4000" placeholder="Mensagem para esta conversa…" aria-label="Mensagem direta para o WhatsApp"></textarea>
+        <button id="wa-reply-send" type="submit" aria-label="Enviar para o WhatsApp" title="Enviar para o WhatsApp"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/></svg></button>
+        <p id="wa-reply-note" role="status" hidden></p>
+      </form>
       <form id="composer" autocomplete="off">
+        <button id="ask-collapse" class="icon-btn" type="button" aria-label="Recolher" title="Recolher" hidden><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <textarea id="input" rows="1" maxlength="2000" placeholder="Peça algo ao Chakmati…" aria-label="Pedido ao Chakmati"></textarea>
         <button id="mic" type="button" aria-label="Escutando. Clique para desligar." title="Falar com o Chakmati" hidden><span></span></button>
         <button id="send" type="submit" aria-label="Enviar" title="Enviar"><svg class="icon-send" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/></svg><svg class="icon-stop" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="5.5" y="5.5" width="13" height="13" rx="2.5" fill="currentColor"/></svg></button>
@@ -359,6 +372,7 @@
   <script src="core.js"></script>
   <script src="layout.js"></script>
   <script src="../../whatsapp/renderer/whatsapp.js"></script>
+  <script src="../../whatsapp/renderer/dock.js"></script>
   <script src="../../approvals/renderer/decisions.js"></script>
   <script src="../../home/renderer/house.js"></script>
   <script src="../../automations/renderer/automations.js"></script>

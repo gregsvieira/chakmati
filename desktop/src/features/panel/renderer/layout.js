@@ -50,6 +50,7 @@
     $('maximize').setAttribute('aria-label', mode === 'full' ? 'Sair da tela cheia' : 'Tela cheia');
     $('maximize').title = mode === 'full' ? 'Sair da tela cheia' : 'Tela cheia';
     P.renderScreen();
+    if (P.onScreen) P.onScreen($('panel').dataset.screen, true);
     if (P.foldReduced) P.foldReduced();   // the reduced card folds a long message to its first and last line; the other layouts show it whole
   }
 

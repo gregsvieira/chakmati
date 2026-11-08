@@ -31,6 +31,13 @@ function register() {
       } catch (e) { return { error: e instanceof EngineError && e.status === 404 ? 'Este áudio não pode ser reproduzido.' : friendlyError(e) }; }
     });
 
+  // The person's own reply, typed in the box under a conversation: it goes straight to WhatsApp (never through the assistant).
+  ipcMain.handle('panel:wa-send', async (_e, chatId, text) => {
+      const blocked = ctx.state.engineUp ? null : 'O motor não está rodando.';
+      if (blocked || typeof chatId !== 'string' || typeof text !== 'string' || !text.trim()) return { error: blocked || 'Mensagem inválida.' };
+      try { await ctx.engine.sendDirect(chatId, text); return { ok: true }; } catch (e) { return { error: friendlyError(e) }; }
+    });
+
   ipcMain.handle('panel:openwa', () => openwa.openWaSetup());
 }
 

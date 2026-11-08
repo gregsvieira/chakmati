@@ -99,6 +99,13 @@ class EngineClient {
   }
 
   // The decrypted voice note as { mime, base64 }. The engine does the downloading and decrypting.
+  // the person's own message, typed in the reply box of a conversation: sent to WhatsApp as it is, not through the assistant
+  async sendDirect(chatId, text) {
+    if (!CHAT_ID.test(chatId)) throw new Error('invalid chat id');
+    if (typeof text !== 'string' || !text.trim() || text.length > 4000) throw new Error('invalid text');
+    return (await this._request(`/whatsapp/chats/${encodeURIComponent(chatId)}/send`, { method: 'POST', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify({ text }) })).json();
+  }
+
   async audio(chatId, messageId) {
     if (!CHAT_ID.test(chatId)) throw new Error('invalid chat id');
     if (!MESSAGE_ID.test(messageId)) throw new Error('invalid message id');

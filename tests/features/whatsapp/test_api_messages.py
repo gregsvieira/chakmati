@@ -112,3 +112,50 @@ def test_system_events_are_not_shown_and_the_limit_counts_only_what_is_shown():
     client = TestClient(create_app(Engine(FakeGate(), FakeLLM(), store), store, whatsapp=wa))
     items = client.get(f"/whatsapp/chats/{CHAT}/messages?last=2", headers=UI).json()
     assert [i["id"] for i in items] == ["a1", "a2"]  # the earlier voice note is not pushed out by 50 call-log entries
+
+
+# ---------------------------------------------------------------------------------------------- the person's own reply
+class SendingProvider(FakeProvider):
+    def __init__(self):
+        self.texts = []
+
+    async def send_text(self, chat_id, text):
+        self.texts.append((chat_id, text))
+        return "sent-1"
+
+
+@pytest.fixture
+def sending():
+    provider = SendingProvider()
+    actions = ActionStore(":memory:")
+    store = JobStore(":memory:")
+    wa = WhatsAppService(provider, actions, min_interval=0.0)
+    return TestClient(create_app(Engine(FakeGate(), FakeLLM(), store), store, whatsapp=wa)), provider, actions
+
+
+def test_a_direct_reply_goes_straight_to_whatsapp_and_is_logged(sending):
+    client, provider, actions = sending
+    res = client.post(f"/whatsapp/chats/{CHAT}/send", json={"text": "chego em 10 min"}, headers=UI)
+    assert res.status_code == 200 and res.json() == {"ok": True, "id": "sent-1"}
+    assert provider.texts == [(CHAT, "chego em 10 min")]
+    row = actions._db.execute("SELECT kind, status, summary FROM actions").fetchone()
+    assert row["kind"] == "whatsapp.direct" and row["status"] == "executed" and "Maria Victoria" in row["summary"]
+
+
+def test_a_direct_reply_only_comes_from_the_apps_own_window(sending):
+    client, provider, _ = sending
+    assert client.post(f"/whatsapp/chats/{CHAT}/send", json={"text": "oi"}).status_code == 403
+    assert provider.texts == []
+
+
+@pytest.mark.parametrize("text", ["", "   ", "x" * 5000, "a\x00b"])
+def test_a_bad_direct_reply_is_refused(sending, text):
+    client, provider, _ = sending
+    assert client.post(f"/whatsapp/chats/{CHAT}/send", json={"text": text}, headers=UI).status_code == 422
+    assert provider.texts == []
+
+
+def test_a_direct_reply_to_something_that_is_not_a_chat_is_refused(sending):
+    client, provider, _ = sending
+    assert client.post("/whatsapp/chats/not-a-chat/send", json={"text": "oi"}, headers=UI).status_code == 422
+    assert provider.texts == []

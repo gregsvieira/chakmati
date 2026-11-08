@@ -2,11 +2,16 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
+from pydantic import BaseModel
 
 from chakmati.features.whatsapp.media import MediaError
 from chakmati.features.whatsapp.openwa import WhatsAppError
-from chakmati.features.whatsapp.service import WhatsAppService
+from chakmati.features.whatsapp.service import RateLimited, WhatsAppService
 from chakmati.shared.http import ui_only
+
+class SendBody(BaseModel):
+    text: str
+
 
 HIDDEN_KINDS = {"call_log", "e2e_notification", "notification", "notification_template", "gp2", "protocol", "ciphertext",
                 "broadcast_notification", "oversized", "debug", "unknown"}
@@ -63,5 +68,21 @@ def router(whatsapp: WhatsAppService | None) -> APIRouter:
         except (WhatsAppError, MediaError) as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from None
         return Response(audio, media_type=mime, headers={"Cache-Control": "no-store"})
+
+    @router.post("/whatsapp/chats/{chat_id}/send", dependencies=[Depends(ui_only)])
+    async def whatsapp_send(chat_id: str, body: SendBody):
+        """The person's own message, typed in the panel's reply box. Only the app's window may call it (ui_only)."""
+        service = need_whatsapp()
+        try:
+            chats = await service.chats(limit=500)
+            chat = next((c for c in chats if c.id == chat_id), None)
+            message_id = await service.send_direct(chat_id, chat.name if chat else chat_id, body.text)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        except RateLimited as exc:
+            raise HTTPException(status_code=429, detail=str(exc)) from None
+        except WhatsAppError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from None
+        return {"ok": True, "id": message_id}
 
     return router
