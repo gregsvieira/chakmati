@@ -59,6 +59,7 @@
   }
 
   async function submit(text, { voice = false } = {}) {
+    stage = null;   // the request is sent: the automation choices are over
     const clean = text.trim();
     if (!clean || (P.state && P.state.busy)) return;
     if (P.trySettings(clean)) return;
@@ -100,38 +101,54 @@
     { label: 'Enviar mensagem', fill: 'manda no whatsapp pra ' },
     { label: 'Marcar compromisso', fill: 'marque ' },
   ];
-  const WHATSAPP_PROMPT = 'Crie uma automação: sempre que alguém me escrever no WhatsApp, responda';
-  // Stage 2: how the reply is made. Text and audio are written by the person (the audio is recorded by Chakmati in the
+  // The request grows as the person picks: the channel, the hours it works, then how it answers. "Crie uma automação: sempre que alguém me escrever no WhatsApp
+  // entre as 22:00 e as 07:00, responda em áudio: " (the person adds the reply).
+  const BASE = 'Crie uma automação: sempre que alguém me escrever no WhatsApp';
+  const when = (h) => (h ? ` entre as ${h.from} e as ${h.to}` : '');
+  const prompt = (h, tail) => `${BASE}${when(h)}, responda${tail}`;
+  // Stage 3: how the reply is made. Text and audio are written by the person (the audio is recorded by Chakmati in the
   // voice in use); "Minha fala" is recorded by the person.
-  const MODE_CHIPS = [
-    { label: 'Áudio', media: true, fill: `${WHATSAPP_PROMPT} em áudio: ` },
-    { label: 'Texto', fill: `${WHATSAPP_PROMPT}: ` },
-    { label: 'Minha fala', media: true, own: true },
+  const modeChips = (h) => [
+    { label: 'Áudio', media: true, fill: prompt(h, ' em áudio: ') },
+    { label: 'Texto', fill: prompt(h, ': ') },
+    { label: 'Minha fala', media: true, own: true, hours: h },
+  ];
+  // Stage 2: the hours the automation works ("horário de funcionamento"); outside them it does nothing. A window may cross midnight.
+  const hoursChip = (label, h) => ({ label, fill: `${BASE}${when(h)}`, next: modeChips(h) });
+  const HOURS_CHIPS = [
+    hoursChip('Sempre', null),
+    hoursChip('À noite (22:00 às 07:00)', { from: '22:00', to: '07:00' }),
+    hoursChip('Fora do expediente (18:00 às 08:00)', { from: '18:00', to: '08:00' }),
+    hoursChip('Madrugada (00:00 às 06:00)', { from: '00:00', to: '06:00' }),
+    { label: 'Outro horário', fill: `${BASE} entre as ` },   // the person types the hours ("22:00 e as 07:50, responda: ...")
   ];
   // Stage 1: the channel.
   P.AUTOMATION_CHIPS = [
-    { label: 'WhatsApp', fill: `${WHATSAPP_PROMPT}: `, next: MODE_CHIPS },
+    { label: 'WhatsApp', fill: `${BASE}: `, next: HOURS_CHIPS },
     { label: 'Email (em breve)', soon: true },
     { label: 'Alexa (em breve)', soon: true },
   ];
+  let stage = null;   // the automation choices on screen now (null = the ordinary shortcuts): they stay until the request is sent or the field is edited by hand
   // This OpenWA may not be able to send files at all; then audio choices are shown as unavailable instead of failing later.
   const noMedia = () => !!(P.state && P.state.overview && P.state.overview.whatsapp && P.state.overview.whatsapp.media === false);
   P.renderChips = (list) => fill($('chips'), list.map((c) => P.h('button', {
     class: 'chip', type: 'button', disabled: !!c.soon || (!!c.media && noMedia()), title: c.media && noMedia() ? 'O OpenWA instalado não envia áudio.' : null,
     onclick: () => {
-      if (c.own) { showSuggestions(false); $('input').value = ''; P.recordOwnVoice(); return; }
+      if (c.own) { stage = null; showSuggestions(false); $('input').value = ''; P.recordOwnVoice(c.hours || null); return; }
       if (c.run) { showSuggestions(false); submit(c.run); return; }
       $('input').value = c.fill; $('input').focus(); grow();
-      if (c.next) P.renderChips(c.next); else showSuggestions(false); // the next choice stays on screen
+      if (c.next) { stage = c.next; P.renderChips(c.next); } else { stage = null; showSuggestions(false); } // the next choice stays on screen
     },
   }, c.media && noMedia() ? `${c.label} (indisponível)` : c.label)));
 
   // The shortcuts are suggestions: they rise above the command line when the person clicks it, and go away again.
   const showSuggestions = (on) => {
     $('chips').classList.toggle('open', on);
-    if (!on) P.renderChips(CHIPS); // the automation choices last only until the field loses focus
+    if (!on && !stage) P.renderChips(CHIPS);   // the automation choices are kept while the request is being built: clicking elsewhere (to open a topic, to scroll) only hides them
   };
 
+  // "Criar" in Automações starts the choices from the channel
+  P.startAutomationChips = () => { stage = P.AUTOMATION_CHIPS; P.renderChips(stage); };
   P.showSuggestions2 = () => $('chips').classList.add('open');
   const input = $('input');
   const grow = () => { input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 110)}px`; };
@@ -163,8 +180,9 @@
     $('chips').addEventListener('mousedown', (e) => e.preventDefault());
 
     input.addEventListener('input', grow);
-    input.addEventListener('pointerdown', () => { if (!input.value.trim()) showSuggestions(true); });
-    input.addEventListener('input', () => { if (input.value.trim()) showSuggestions(false); });
+    // the suggestions rise when the field is clicked: when it is empty, or while an automation request is being built (its text is only the start of the request)
+    input.addEventListener('pointerdown', () => { if (!input.value.trim() || stage) { if (stage) P.renderChips(stage); showSuggestions(true); } });
+    input.addEventListener('input', () => { if (input.value.trim()) { stage = null; showSuggestions(false); } });   // typing by hand ends the choices
     input.addEventListener('blur', () => showSuggestions(false));
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('composer').requestSubmit(); }

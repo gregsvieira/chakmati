@@ -27,6 +27,7 @@
   }
 
   let recordingOwn = false;
+  let lastHours = null;   // the hours chosen for the recording in progress, so "regravar" keeps them
 
   // Chakmati says something: in the thread when the panel is open (and spoken), as a bubble by the character when it is closed.
   function tell(text, extra = {}) {
@@ -59,7 +60,7 @@
     api.live(null);
   }
 
-  async function recordOwnVoice() {
+  async function recordOwnVoice(hours = null) {
     if (recordingOwn) return;
     recordingOwn = true;
     P.stopAmbient(); // the recorder takes the microphone
@@ -108,7 +109,8 @@
       endCount();
       if (!spoke) { tell('Não ouvi nada. Clique em “Minha fala” para tentar de novo.'); return; }
       const wav = window.Wav.encodeWav(chunks, ctx.sampleRate);
-      const res = await api.proposeRecorded(wav);
+      const res = await api.proposeRecorded(wav, hours);
+      lastHours = hours;
       if (!res || res.error) { tell((res && res.error) || 'Não consegui guardar a gravação.'); return; }
       const id = res.action.id;
       const audio = await api.preview(id);
@@ -136,12 +138,12 @@
     await api.reject(turn.actionId);
     turn.decision = { text: 'Gravação descartada.' };
     P.renderThread();
-    recordOwnVoice();
+    recordOwnVoice(lastHours);
   }
 
   P.inits.push(function () {
     // Automações: nothing to show yet; the button only says what is coming
-    $('create-automation').addEventListener('click', () => waGate.run(P.showWhatsAppNotice, () => { $('automation-note').hidden = false; $('input').value = ''; P.renderChips(P.AUTOMATION_CHIPS); $('input').focus(); P.showSuggestions2(); }));
+    $('create-automation').addEventListener('click', () => waGate.run(P.showWhatsAppNotice, () => { $('automation-note').hidden = false; $('input').value = ''; P.startAutomationChips(); $('input').focus(); P.showSuggestions2(); }));
   });
 
   Object.assign(P, { renderAutomations, previewVoice, tell, recordOwnVoice, redoOwnVoice });

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 
 from chakmati.features.automations.audio import wav_to_ogg_opus_timed
-from chakmati.features.automations.models import describe, parse_spec
+from chakmati.features.automations.models import SpecError, describe, parse_spec
 from chakmati.features.automations.service import AutomationError, AutomationService
 from chakmati.shared.approvals_api import action_json
 from chakmati.shared.http import ui_only
@@ -78,8 +78,15 @@ def router(automations: AutomationService | None, stt: SpeechToText | None, expe
             with suppress(Exception):
                 text, _ = await asyncio.to_thread(stt.transcribe, audio)
         text = text.strip()[:300] or "mensagem de voz gravada por você"
-        spec = parse_spec({"name": "Resposta em áudio", "trigger": {"type": "whatsapp_message"},
-                           "action": {"type": "whatsapp_voice", "to": "sender", "text": text, "own_voice": True}})
+        trigger: dict = {"type": "whatsapp_message"}
+        start, end = request.query_params.get("hours_from"), request.query_params.get("hours_to")
+        if start or end:   # the hours the automation works (the suggestion buttons of the panel): checked by parse_spec like any other
+            trigger["hours"] = {"from": start, "to": end}
+        try:
+            spec = parse_spec({"name": "Resposta em áudio", "trigger": trigger,
+                               "action": {"type": "whatsapp_voice", "to": "sender", "text": text, "own_voice": True}})
+        except SpecError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
         try:
             await service.ensure_audio_possible()
             action = await asyncio.to_thread(service.propose_create, spec, ogg)
