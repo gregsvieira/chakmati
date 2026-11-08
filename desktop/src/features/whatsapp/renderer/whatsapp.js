@@ -103,9 +103,14 @@
 
   async function openChat(chat, from) {
     P.backTo = from;
+    P.currentChat = chat;
     P.showView('chat', chat.name);
     $('title').textContent = chat.name;
     fill($('chat-body'), P.h('p', { class: 'empty' }, 'Carregando…'));
+    await loadMessages(chat);
+  }
+
+  async function loadMessages(chat) {
     const res = await api.messages(chat.id);
     if (!res || res.error) { fill($('chat-body'), P.h('p', { class: 'warn' }, (res && res.error) || 'Não consegui carregar as mensagens.')); return; }
     if (!res.messages.length) { fill($('chat-body'), P.h('p', { class: 'empty' }, 'Nenhuma mensagem carregada.')); return; }
@@ -148,6 +153,7 @@
     $('wa-connect').addEventListener('click', connectWhatsApp);
   });
 
+  P.reloadChat = () => (P.currentChat ? loadMessages(P.currentChat) : null);
   Object.assign(P, { waGate, showWhatsAppNotice, subgroup, renderMessages, renderPendingMark });
 
 })();

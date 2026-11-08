@@ -75,7 +75,7 @@ class WhatsAppService(ApprovalService):
     MAX_AUDIO_BYTES = 5 * 1024 * 1024
 
     async def send_automated(self, chat_id: str, chat_name: str, text: str | None = None, audio: bytes | None = None,
-                             mime: str | None = None, source: str = "") -> str:
+                             mime: str | None = None, source: str = "", direct: bool = False) -> str:
         """Send what an automation was created to send. Same hourly limit and gap as approved sends, and every send
         leaves a row in the action log (kind whatsapp.auto, already executed) so there is always a trail."""
         if audio is None and text is None:
@@ -97,7 +97,8 @@ class WhatsAppService(ApprovalService):
             if wait > 0:
                 await self._sleep(wait)
         self._sent_at.append(self._now())
-        record = self._propose("whatsapp.auto", f"Envio automático ({what}) para {chat_name}", {"chat_id": chat_id, "chat_name": chat_name, "source": source, "kind": what})
+        label = "Resposta direta" if direct else "Envio automático"  # direct: typed by the person in the panel, never by the assistant
+        record = self._propose("whatsapp.direct" if direct else "whatsapp.auto", f"{label} ({what}) para {chat_name}", {"chat_id": chat_id, "chat_name": chat_name, "source": source, "kind": what})
         try:
             message_id = await (self._provider.send_voice(chat_id, audio, mime or "audio/ogg") if audio is not None else self._provider.send_text(chat_id, text))  # type: ignore[arg-type]
         except Exception as exc:
@@ -105,6 +106,11 @@ class WhatsAppService(ApprovalService):
             raise
         self._record(record.id, f"enviado (id {message_id})", None)
         return message_id
+
+    async def send_direct(self, chat_id: str, chat_name: str, text: str) -> str:
+        """A message the person typed in the panel's own reply box and sent on purpose: it does not go through the assistant or
+        the approval inbox (the person is the approval), but it keeps the hourly limit and leaves a row in the action log."""
+        return await self.send_automated(chat_id, chat_name, text=text, source="panel", direct=True)
 
     # ---- proposing
     def propose_send(self, chat: Chat, text: str) -> Action:

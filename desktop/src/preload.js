@@ -84,6 +84,7 @@ contextBridge.exposeInMainWorld('assistant', {
     homeDisconnect: () => ipcRenderer.invoke('panel:home-disconnect'),
     chats: () => ipcRenderer.invoke('panel:chats'),
     messages: (chatId) => ipcRenderer.invoke('panel:messages', chatId),
+    sendWa: (chatId, text) => ipcRenderer.invoke('panel:wa-send', chatId, text),
     audio: (chatId, messageId) => ipcRenderer.invoke('panel:audio', chatId, messageId),
     transcribe: (bytes, mime) => ipcRenderer.invoke('panel:transcribe', bytes, mime),
     send: (text) => ipcRenderer.invoke('panel:send', text),
