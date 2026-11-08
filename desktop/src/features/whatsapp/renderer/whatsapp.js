@@ -44,7 +44,9 @@
     if (!wa.enabled) return [P.h('p', { class: 'empty' }, 'WhatsApp desativado em Ajustes.')];
     if (wa.error || wa.connected === false) {
       return [
-        P.h('p', { class: 'warn' }, 'O WhatsApp está desconectado. Abra o OpenWA e escaneie o QR em Aparelhos conectados.'),
+        P.h('p', { class: 'warn' }, wa.error
+          ? 'O OpenWA respondeu com erro ao ler o WhatsApp (a sessão pode estar travada). Reinicie o OpenWA.'
+          : 'O WhatsApp está desconectado. Abra o OpenWA e escaneie o QR em Aparelhos conectados.'),
         P.state.canOpenWa ? P.h('button', { class: 'primary', type: 'button', id: 'wa-connect-inline', onclick: connectWhatsApp }, 'Conectar WhatsApp via OpenWa') : null,
         P.h('p', { class: 'hint', id: 'wa-connect-note' }, waNote)];
     }

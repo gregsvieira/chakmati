@@ -58,6 +58,7 @@ async function refreshOverview() {
   try {
     widgetMood.applyOverview(await ctx.engine.overview());
     ctx.state.engineUp = true;
+    require('../whatsapp').openwa.recoverStuckSession(ctx.state.overview).catch(() => {});   // a stuck OpenWA is restarted by itself
     syncStanding();
     syncPersonality();
     syncPronouns();

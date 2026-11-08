@@ -128,4 +128,30 @@ async function openWaSetupOnce() {
   return { ok: true, message: 'Janela do OpenWA aberta. Escaneie o QR nela; depois pode fechá-la, eu mantenho o WhatsApp conectado.' };
 }
 
-Object.assign(module.exports, { openWaSetup });
+// A stuck session: OpenWA still says READY, but its browser page is gone (puppeteer's "detached Frame" and friends), so every
+// read fails. Restarting OpenWA without a window cures it and the login stays saved. At most one restart at a time, and at
+// most one every few minutes, so a real outage cannot turn into a restart loop.
+const STUCK = /detached frame|target closed|session closed|execution context was destroyed|page has been closed/i;
+const RECOVER_COOLDOWN_MS = 3 * 60 * 1000;
+let recovering = false;
+let lastRecoverAt = 0;
+
+const isStuckError = (error) => typeof error === 'string' && STUCK.test(error);
+
+async function recoverStuckSession(overview, now = Date.now()) {
+  const wa = overview && overview.whatsapp;
+  if (!wa || !wa.enabled || !isStuckError(wa.error)) return false;
+  if (recovering || setupRunning || owaWatch || ctx.quitting) return false;   // a link by QR in progress owns OpenWA
+  if (now - lastRecoverAt < RECOVER_COOLDOWN_MS) return false;
+  recovering = true;
+  lastRecoverAt = now;
+  try {
+    await finishOwaLink();
+  } finally {
+    recovering = false;
+    engineService.refreshOverview();
+  }
+  return true;
+}
+
+Object.assign(module.exports, { openWaSetup, recoverStuckSession, isStuckError });
