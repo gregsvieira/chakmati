@@ -4,10 +4,12 @@ Playwright talks to the Chrome that is already installed (`channel="chrome"`), s
 browser's version and nothing extra to download. The profile is a folder of its own, never the person's everyday one:
 no saved logins or history are reachable, and a Chrome that is already open does not get in the way."""
 
+import asyncio
 import ipaddress
 import os
 import re
 import socket
+import time
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
@@ -112,6 +114,52 @@ def check_navigable(url: str) -> str:
     return parsed.geturl()
 
 
+# --- names that DNS points at a private address (rebinding, or a name made to look public) ------------------------------------------------
+RESOLVE_TIMEOUT = 3.0
+_RESOLVED: dict[str, tuple[float, bool]] = {}   # host -> (when, every address is public)
+RESOLVE_TTL = 60.0
+
+
+async def _getaddrinfo(host: str) -> list[str]:
+    infos = await asyncio.get_running_loop().getaddrinfo(host, None, type=socket.SOCK_STREAM)
+    return [info[4][0] for info in infos]
+
+
+async def check_resolved(url: str, resolver=_getaddrinfo, now=time.monotonic) -> str:
+    """`check_navigable`, and for a name (not an IP) also what DNS says: ONE private, loopback or link-local answer refuses it. A name that does not
+    resolve is let through (the browser fails on its own). The verdict is kept for a minute per host, so a page with many requests costs one lookup."""
+    checked = check_navigable(url)
+    host = (urlparse(checked).hostname or "").lower().rstrip(".")
+    if _address(host) is not None:   # already judged as an address
+        return checked
+    seen = _RESOLVED.get(host)
+    if seen is not None and now() - seen[0] < RESOLVE_TTL:
+        public = seen[1]
+    else:
+        try:
+            answers = await asyncio.wait_for(resolver(host), RESOLVE_TIMEOUT)
+        except (OSError, asyncio.TimeoutError, UnicodeError):
+            return checked
+        addresses = [_address(a.split("%")[0]) for a in answers]
+        public = all(a is not None and a.is_global for a in addresses)
+        _RESOLVED[host] = (now(), public)
+    if not public:
+        raise BrowserError("esse endereço aponta para uma máquina local ou da rede da casa: não abro")
+    return checked
+
+
+async def request_allowed(url: str, resolver=_getaddrinfo) -> bool:
+    """Every request a page makes (the page itself, a redirect, a frame, a script, an image) is judged like an address the agent opens, so a public page
+    cannot send the browser to the engine, to OpenWA or to the house network from inside. data:, blob: and about: stay (they reach nothing)."""
+    if url.split(":", 1)[0].lower() in {"data", "blob", "about"}:
+        return True
+    try:
+        await check_resolved(url, resolver)
+    except BrowserError:
+        return False
+    return True
+
+
 class PlaywrightSession:
     def __init__(self, profile_dir: str, headless: bool = False):
         self._profile = os.path.expanduser(profile_dir)
@@ -133,7 +181,15 @@ class PlaywrightSession:
         except Exception as exc:
             await self._pw.stop()
             raise BrowserError(f"não consegui abrir o Chrome (ele precisa estar instalado): {exc}") from exc
+        await self._context.route("**/*", self._guard)   # before any page exists: everything the browser asks for passes through request_allowed
         self._page = self._context.pages[0] if self._context.pages else await self._context.new_page()
+
+    @staticmethod
+    async def _guard(route) -> None:
+        if await request_allowed(route.request.url):
+            await route.continue_()
+        else:
+            await route.abort("blockedbyclient")
 
     @property
     def visible(self) -> bool:
@@ -158,7 +214,7 @@ class PlaywrightSession:
         self._context = self._pw = self._page = None
 
     async def goto(self, url: str) -> None:
-        await self._page.goto(check_navigable(url), wait_until="domcontentloaded", timeout=30_000)
+        await self._page.goto(await check_resolved(url), wait_until="domcontentloaded", timeout=30_000)
         await self._settle()
 
     async def back(self) -> None:

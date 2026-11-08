@@ -9,13 +9,14 @@ import asyncio
 import json
 import logging
 import re
+import unicodedata
 from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Protocol
 
 from chakmati.shared.guard import NOTE, UNTRUSTED_RULE, fence, neutralize, strip_markers, suspicious
 from chakmati.shared.llm import ChatClient
 from chakmati.features.browser.frames import FrameStore
-from chakmati.features.browser.session import BrowserError, Snapshot, check_navigable
+from chakmati.features.browser.session import BrowserError, Snapshot, check_navigable, check_resolved
 
 log = logging.getLogger(__name__)
 DEFAULT_START = "https://duckduckgo.com/"
@@ -115,6 +116,29 @@ def is_personal_field(element: dict) -> bool:
     if element.get("type") in {"password", "email", "tel"}:
         return True
     return bool(_PERSONAL.search(label)) and not _SEARCHBOX.search(label)
+
+
+# What the model may type into a page on its own. The person's own words (found in the task) are always typed as said. Anything else, which the model made
+# up or copied from a page, is refused when it carries something that is never part of an honest search or form entry: an address to send data to, the
+# app's markers or a chat-template token, a script, or the shape of a SQL attack. This is a backstop: the real defence against SQL injection is the
+# server binding its values, and the real defence against leaking data is that the model only knows the task and the page.
+_TYPED_BAD = (
+    (re.compile(r"https?://|\bwww\.|\bftp://|\b[\w-]+\.(?:com|net|org|io|ru|cn|tk|xyz)/", re.IGNORECASE), "um endereço"),
+    (re.compile(r"\[\[\s*action|</?\s*untrusted|MESSAGES\s*>>>|<<<\s*MESSAGES|<\|[^>\n]{0,40}\|>|\[/?INST\]|<</?SYS>>|<(?:start|end)_of_turn>|^[ \t]*#{1,6}[ \t]*(?:system|assistant|user|human)[ \t]*:", re.IGNORECASE | re.MULTILINE), "marcadores do assistente"),
+    (re.compile(r"<\s*/?\s*(?:script|iframe|img|svg|object|embed|style|link|meta|form)\b|javascript\s*:|\bon\w{3,}\s*=|\bdata\s*:\s*text/html", re.IGNORECASE), "um script"),
+    (re.compile(r"\bunion\s+(?:all\s+)?select\b|\bdrop\s+(?:table|database)\b|\b(?:insert\s+into|delete\s+from|update\s+\w+\s+set)\b|;\s*--|--\s*$|['\"]\s*(?:or|and)\s+['\"]?\w+['\"]?\s*=\s*['\"]?\w+|\bor\s+1\s*=\s*1\b|\bxp_cmdshell\b|\bsleep\s*\(\s*\d+|\bwaitfor\s+delay\b|\binformation_schema\b", re.IGNORECASE), "o formato de um ataque de SQL"),
+    (re.compile(r"[\x00-\x08\x0b-\x1f\x7f\u200b-\u200f\u202a-\u202e\u2066-\u2069]"), "caracteres de controle ou invisíveis"),
+)
+
+
+def check_typed(text: str, task: str) -> None:
+    """Raises BrowserError when `text`, which the model wants to type, carries something that does not belong in an entry and is not in the person's task."""
+    plain = unicodedata.normalize("NFKC", text)
+    if plain.strip().lower() in task.lower():
+        return   # the person said it
+    for pattern, what in _TYPED_BAD:
+        if pattern.search(plain) or pattern.search(text):
+            raise BrowserError(f"esse texto tem {what} que o usuário não pediu: não digito")
 
 
 def parse_action(text: str) -> dict | None:
@@ -500,7 +524,7 @@ class BrowserAgent:
     async def _do(session: Session, action: dict, snap: Snapshot, answers: dict, secrets: set, task: str) -> None:
         kind = action["action"]
         if kind == "goto":
-            await session.goto(check_navigable(str(action.get("url", ""))))
+            await session.goto(await check_resolved(str(action.get("url", ""))))
         elif kind == "click":
             await session.click(int(action["id"]))
         elif kind == "type":
@@ -513,6 +537,7 @@ class BrowserAgent:
                 await session.type(ident, answers[key], bool(action.get("enter", False)), secret=key in secrets)
                 return
             text = str(action.get("text", ""))[:500]
+            check_typed(text, task)
             if is_personal_field(element) and text.strip().lower() not in task.lower():
                 raise BrowserError("esse campo pede um dado pessoal que o usuário não informou: pergunte com ask, não invente")
             await session.type(ident, text, bool(action.get("enter", False)))
