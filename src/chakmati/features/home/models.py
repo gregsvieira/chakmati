@@ -5,7 +5,7 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
-ALLOWED_DOMAINS = ("light", "switch", "fan", "cover", "lock", "climate", "scene", "input_boolean", "media_player")  # media_player: speakers and TVs, Alexa among them (Alexa Media Player in Home Assistant)
+ALLOWED_DOMAINS = ("light", "switch", "fan", "cover", "lock", "climate", "scene", "input_boolean", "media_player")  # media_player: speakers and TVs, Alexa among them (the Alexa Devices integration of Home Assistant)
 SENSITIVE_COVERS = ("garage", "door", "gate")
 MEDIA_ACTIONS = ("play", "pause", "stop", "next", "previous", "volume_up", "volume_down", "volume")
 ACTIONS = ("on", "off", "toggle", "lock", "unlock", "open", "close", "set_temperature", "brightness", "scene", "status", "list", *MEDIA_ACTIONS)

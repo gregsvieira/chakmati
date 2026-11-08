@@ -322,7 +322,7 @@ def test_the_whole_connection_from_the_click_to_the_tokens(tmp_path):
     assert auth.oauth
     status = client.get("/home/status").json()
     assert status["connected"] is True and status["url"] == "http://homeassistant.local:8123" and status["pending"] is False
-    assert status["players"] == [{"name": "Echo Dot da sala", "state": "playing"}] and "alexa_media_player" in status["alexa_help"]
+    assert status["players"] == [{"name": "Echo Dot da sala", "state": "playing"}] and "alexa_devices" in status["alexa_help"]
 
 
 def test_a_callback_with_the_wrong_state_connects_nothing(tmp_path):

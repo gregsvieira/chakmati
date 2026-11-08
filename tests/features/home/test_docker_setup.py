@@ -1,4 +1,4 @@
-"""The Alexa integration put in Home Assistant's folder, and Docker Desktop installed with the person's permission."""
+"""Docker Desktop installed with the person's permission."""
 
 import io
 import json
@@ -8,7 +8,6 @@ from pathlib import Path
 import httpx
 import pytest
 
-from chakmati.features.home import alexa
 from chakmati.features.home.docker import MAC_CLI, WINDOWS_CLI, DockerHome
 from chakmati.features.home.docker_setup import DockerSetup, applescript_quote
 from chakmati.features.home.models import HomeError
@@ -20,98 +19,6 @@ def make_zip(files: dict[str, str]) -> bytes:
         for name, content in files.items():
             zf.writestr(name, content)
     return buffer.getvalue()
-
-
-# --- the Alexa integration ------------------------------------------------------------------------------------------------------------------------
-def github(release: dict, zips: dict[str, bytes], seen: list | None = None) -> httpx.AsyncClient:
-    def handler(request: httpx.Request) -> httpx.Response:
-        if seen is not None:
-            seen.append(str(request.url))
-        if str(request.url) == alexa.RELEASE_API:
-            return httpx.Response(200, json=release)
-        body = zips.get(str(request.url))
-        return httpx.Response(200, content=body) if body is not None else httpx.Response(404)
-    return httpx.AsyncClient(transport=httpx.MockTransport(handler))
-
-
-ASSET = "https://github.com/alandtse/alexa_media_player/releases/download/v5.0.0/alexa_media.zip"
-FILES = {"manifest.json": '{"domain": "alexa_media"}', "__init__.py": "# integration", "translations/pt-BR.json": "{}"}
-
-
-async def test_the_release_asset_is_unpacked_into_the_custom_components_folder(tmp_path):
-    http = github({"tag_name": "v5.0.0", "assets": [{"name": "alexa_media.zip", "browser_download_url": ASSET}]}, {ASSET: make_zip(FILES)})
-    assert await alexa.install(http, str(tmp_path)) == "v5.0.0"
-    target = tmp_path / "custom_components" / "alexa_media"
-    assert json.loads((target / "manifest.json").read_text())["domain"] == "alexa_media"
-    assert (target / "translations" / "pt-BR.json").is_file() and alexa.installed(str(tmp_path))
-
-
-async def test_the_source_zip_is_used_when_there_is_no_asset(tmp_path):
-    zipball = "https://api.github.com/repos/alandtse/alexa_media_player/zipball/v5.0.0"
-    nested = {f"alandtse-alexa_media_player-abc/custom_components/alexa_media/{k}": v for k, v in FILES.items()}
-    nested["alandtse-alexa_media_player-abc/README.md"] = "outra coisa"
-    http = github({"tag_name": "v5.0.0", "assets": [], "zipball_url": zipball}, {zipball: make_zip(nested)})
-    assert await alexa.install(http, str(tmp_path)) == "v5.0.0"
-    target = tmp_path / "custom_components" / "alexa_media"
-    assert (target / "manifest.json").is_file() and not (target / "README.md").exists() and not (tmp_path / "custom_components" / "README.md").exists()
-
-
-async def test_a_copy_that_is_already_there_is_left_alone_and_nothing_is_downloaded(tmp_path):
-    (tmp_path / "custom_components" / "alexa_media").mkdir(parents=True)
-    (tmp_path / "custom_components" / "alexa_media" / "manifest.json").write_text("{}")
-    seen: list = []
-    assert await alexa.install(github({}, {}, seen), str(tmp_path)) == "" and seen == []
-
-
-def test_nothing_can_be_written_outside_the_folder(tmp_path):
-    evil = make_zip({"manifest.json": "{}", "../escaped.txt": "x", "/abs.txt": "x", "sub/../../escaped2.txt": "x", "ok.py": "1"})
-    destination = tmp_path / "custom_components" / "alexa_media"
-    assert alexa.unpack(evil, destination) == 2
-    assert not (tmp_path / "escaped.txt").exists() and not (tmp_path / "custom_components" / "escaped2.txt").exists() and not Path("/abs.txt").exists()
-    assert sorted(p.name for p in destination.iterdir()) == ["manifest.json", "ok.py"]
-
-
-def test_a_new_copy_replaces_the_old_one(tmp_path):
-    destination = tmp_path / "alexa_media"
-    alexa.unpack(make_zip({"manifest.json": "{}", "old.py": "x"}), destination)
-    alexa.unpack(make_zip({"manifest.json": "{}", "new.py": "x"}), destination)
-    assert sorted(p.name for p in destination.iterdir()) == ["manifest.json", "new.py"]
-
-
-@pytest.mark.parametrize("archive,message", [(b"not a zip", "corrompida"), (make_zip({"readme.txt": "x"}), "não parece ser a integração da Alexa")])
-def test_a_bad_download_is_a_sentence(tmp_path, archive, message):
-    with pytest.raises(HomeError, match=message):
-        alexa.unpack(archive, tmp_path / "a")
-    assert not (tmp_path / "a").exists()
-
-
-async def test_only_github_addresses_are_downloaded(tmp_path):
-    seen: list = []
-    http = github({"tag_name": "v5", "assets": [{"name": "alexa_media.zip", "browser_download_url": "https://evil.example/alexa_media.zip"}]}, {}, seen)
-    with pytest.raises(HomeError, match="inesperado"):
-        await alexa.install(http, str(tmp_path))
-    assert seen == [alexa.RELEASE_API]
-    with pytest.raises(HomeError, match="inesperado"):
-        await alexa._get(github({}, {}), "http://github.com/x")                      # not https
-    with pytest.raises(HomeError, match="inesperado"):
-        await alexa._get(github({}, {}), "https://github.com.evil.example/x")        # looks like github, is not
-
-
-async def test_a_github_that_does_not_answer_is_a_sentence(tmp_path):
-    down = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(503)))
-    with pytest.raises(HomeError, match="o GitHub respondeu 503"):
-        await alexa.install(down, str(tmp_path))
-
-    def boom(request):
-        raise httpx.ConnectError("sem internet")
-    with pytest.raises(HomeError, match="não consegui baixar a integração da Alexa"):
-        await alexa.install(httpx.AsyncClient(transport=httpx.MockTransport(boom)), str(tmp_path))
-
-
-async def test_a_huge_file_is_not_used(tmp_path, monkeypatch):
-    monkeypatch.setattr(alexa, "MAX_BYTES", 10)
-    with pytest.raises(HomeError, match="grande demais"):
-        await alexa._get(github({}, {ASSET: b"x" * 100}), ASSET)
 
 
 # --- Docker Desktop ------------------------------------------------------------------------------------------------------------------------------

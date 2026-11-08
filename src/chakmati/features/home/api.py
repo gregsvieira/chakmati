@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
-from chakmati.features.home.alexa_setup import REGIONS, AlexaSetup
+from chakmati.features.home.alexa_setup import AlexaSetup
 from chakmati.features.home.auth import HomeAuth
 from chakmati.features.home.client import HomeAssistantClient
 from chakmati.features.home.connect import HomeConnector, discover
@@ -15,7 +15,7 @@ from chakmati.features.home.install import HomeInstaller
 from chakmati.features.home.models import HomeError
 from chakmati.shared.http import ui_only
 
-ALEXA_HELP = "https://github.com/alandtse/alexa_media_player"  # the integration that shows each Echo in Home Assistant
+ALEXA_HELP = "https://www.home-assistant.io/integrations/alexa_devices/"  # the integration that shows each Echo in Home Assistant
 
 
 class ConnectIn(BaseModel):
@@ -27,9 +27,9 @@ class InstallIn(BaseModel):
 
 
 class AlexaIn(BaseModel):
-    region: str = Field(min_length=1, max_length=40)
     email: str = Field(min_length=3, max_length=254)
     password: str = Field(min_length=1, max_length=256)
+    code: str = Field(min_length=1, max_length=12)   # the one-time code of the 2-step verification
 
 
 class AccountIn(BaseModel):
@@ -128,7 +128,7 @@ class HomeLink:
         @router.get("/home/alexa")
         async def alexa_status():
             try:
-                return {**await self.alexa.status(), "regions": REGIONS}
+                return await self.alexa.status()
             except HomeError as exc:
                 return {"state": "error", "message": str(exc)[0].upper() + str(exc)[1:] + ".", "url": "", "regions": REGIONS}
 
@@ -136,7 +136,7 @@ class HomeLink:
         async def alexa_start(body: AlexaIn):
             # The credentials go on to Home Assistant over this computer's loopback and are neither kept nor written anywhere by the Chakmati.
             try:
-                return await self.alexa.start(body.region, body.email, body.password)
+                return await self.alexa.start(body.email, body.password, body.code)
             except HomeError as exc:
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
 

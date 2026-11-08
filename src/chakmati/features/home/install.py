@@ -17,7 +17,7 @@ from pathlib import Path
 
 import httpx
 
-from chakmati.features.home import alexa, docker as dock, onboarding
+from chakmati.features.home import docker as dock, onboarding
 from chakmati.features.home.auth import HomeAuth
 from chakmati.features.home.connect import probe
 from chakmati.features.home.docker_setup import DockerSetup
@@ -36,10 +36,10 @@ HAS_OWNER = "O Home Assistant já tem uma conta. Toque em Conectar para entrar c
 
 class HomeInstaller:
     def __init__(self, docker: dock.DockerHome, auth: HomeAuth, http: httpx.AsyncClient, state_file: str, setup: DockerSetup | None = None,
-                 wait_seconds: float = 420.0, sleep=asyncio.sleep, clock=time.monotonic, alexa_install=alexa.install):
+                 wait_seconds: float = 420.0, sleep=asyncio.sleep, clock=time.monotonic):
         self._docker, self._auth, self._http, self._setup = docker, auth, http, setup
         self._file = Path(state_file)
-        self._wait, self._sleep, self._clock, self._alexa = wait_seconds, sleep, clock, alexa_install
+        self._wait, self._sleep, self._clock = wait_seconds, sleep, clock
         self._status = {"state": "idle", "phase": "", "message": "", "code": ""}
         self._task: asyncio.Task | None = None
 
@@ -68,7 +68,7 @@ class HomeInstaller:
         installable = self._setup is not None and self._setup.supported()
         return {**self._status, "docker": docker_state, "container": container, "managed": self.managed, "can_open_docker": self._docker.desktop_app() is not None,
                 "platform": sys.platform, "docker_installable": installable, "docker_mb": self._setup.size_mb() if installable else 0, "image_mb": dock.IMAGE_SIZE_MB,
-                "alexa_ready": alexa.installed(self._docker.config_dir), "alexa_help": alexa.HELP_PAGE, "download_page": "https://www.docker.com/products/docker-desktop/"}
+                "download_page": "https://www.docker.com/products/docker-desktop/"}
 
     # --- 1. preparing ---------------------------------------------------------------------------------------------------------------
     def start(self) -> None:
@@ -96,7 +96,6 @@ class HomeInstaller:
         d = self._docker
         if not await self._ensure_docker():
             return
-        newly = await self._put_alexa()
         state = await d.container()
         if state == "none":
             self._set("running", "image", "Baixando o Home Assistant… (pode levar vários minutos, depende da sua internet)")
@@ -111,11 +110,6 @@ class HomeInstaller:
             ok, out = await d.start()
             if not ok:
                 raise HomeError(f"não consegui ligar o Home Assistant ({out[-120:] or 'sem detalhes'})")
-        elif newly:   # it was already running: it only sees the new integration after a restart
-            self._set("running", "container", "Reiniciando o Home Assistant para carregar a Alexa…")
-            ok, out = await d.restart()
-            if not ok:
-                raise HomeError(f"não consegui reiniciar o Home Assistant ({out[-120:] or 'sem detalhes'})")
         self._mark_managed()
         self._set("running", "waiting", "Iniciando o Home Assistant pela primeira vez… pode levar alguns minutos.")
         if not await self._wait_for_home():
@@ -126,12 +120,6 @@ class HomeInstaller:
             self._set("ready", "account", READY, "needs_account")
         else:
             self._set("ready", "account", HAS_OWNER, "has_owner")
-
-    async def _put_alexa(self) -> bool:
-        """The Alexa integration in Home Assistant's folder. True when it was just put there."""
-        self._set("running", "alexa", "Baixando a integração da Alexa (alexa_media_player)…")
-        version = await self._alexa(self._http, self._docker.config_dir)
-        return bool(version)
 
     async def _ensure_docker(self) -> bool:
         """True when Docker answers. Otherwise the status already says what the person must do."""
