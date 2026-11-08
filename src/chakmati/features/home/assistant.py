@@ -41,7 +41,34 @@ class HomeAssistantBot:
         self._llm = llm
         self._service = service
 
+    async def _play(self, query: str, device: str | None, full: str) -> str:
+        """"Toca Raul Seixas na Alexa": the Echo is asked for the music by saying it the request. The device is the one named when it exists among the players,
+        otherwise the whole request is the thing to play on the player that is playing (or the only one there is)."""
+        entities = await self._service.entities()
+        players = [e for e in entities if e.domain == "media_player"]
+        entity, candidates = None, []
+        if device:
+            entity, candidates = self._service.find(players, device)
+            if entity is None and not candidates:
+                query = full                      # "toca uma do Pelé": "Pelé" was not a device, it was part of the song
+        if entity is None and not candidates:
+            entity, candidates = self._service.default_player(entities)
+        if entity is None:
+            if candidates:
+                return "Em qual aparelho?\n" + "\n".join(f"- {c.name}" for c in candidates) + "\nPeça de novo dizendo o aparelho, por exemplo \"toca Raul Seixas na sala\"."
+            return "Não encontrei nenhum aparelho de música no Home Assistant. A Alexa aparece lá pela integração Alexa Devices (Ajustes > Assistente de Casa e Alexa > Conectar a Alexa)."
+        if not query.strip():
+            return "Diga o que tocar, por exemplo \"toca Raul Seixas na Alexa\"."
+        await self._service.play_search(entity, query)
+        return f"Pedi à {entity.name} para tocar {query}."
+
     async def handle(self, text: str) -> str:
+        wanted = rules.play_by_rule(text)
+        if wanted is not None:
+            try:
+                return await self._play(*wanted)
+            except HomeError as exc:
+                return f"Não consegui: {exc}."
         ruled = rules.media_by_rule(text)  # a music command is read by code: instant, and the model cannot get it wrong
         music = ruled is not None
         if ruled is not None:

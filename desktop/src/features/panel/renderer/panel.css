@@ -390,3 +390,18 @@ body[data-still] #panel[data-layout="wide"] #content, body[data-still] #panel[da
 .modal-card progress { width: 100%; margin: 4px 0 10px; }
 .modal-card .hint { font-size: 12.5px; opacity: 0.8; }
 #home-on { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+
+/* Casa e Alexa on the main page: the speakers, each opening to its buttons */
+#house-body { display: grid; gap: 8px; }
+#house-body .empty { margin: 0; }
+#house-list { display: grid; gap: 8px; }
+.house-card { border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; }
+.house-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; width: 100%; padding: 10px 12px; font: inherit; text-align: left; background: transparent; color: inherit; border: 0; cursor: pointer; }
+.house-name { font-weight: 600; }
+.house-state { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.house-body { padding: 4px 12px 12px; display: grid; gap: 8px; }
+.house-now { margin: 0; font-size: 14px; }
+.house-buttons { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.house-volume { min-width: 3ch; text-align: center; font-size: 13px; color: var(--muted); }
+.house-searchrow { display: flex; gap: 6px; }
+.house-search { flex: 1; min-width: 0; padding: 7px 10px; font: inherit; border-radius: 10px; border: 1px solid var(--rule); background: var(--surface-2); color: inherit; }

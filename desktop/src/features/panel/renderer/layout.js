@@ -8,7 +8,7 @@
     get(key, fallback) { try { const v = window.localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); } catch { return fallback; } },
     set(key, value) { try { window.localStorage.setItem(key, JSON.stringify(value)); } catch { /* private window or storage off: the choice just is not remembered */ } },
   };
-  const TOPICS = ['decisions', 'messages', 'agenda', 'automations', 'recent'];
+  const TOPICS = ['decisions', 'messages', 'agenda', 'house', 'automations', 'recent'];
   // Which topics are folded: in the small card they start folded (one line each, with a hint of what is inside), in the big window open (there is room).
   // Each layout remembers its own choices.
   const foldedBy = {
@@ -65,6 +65,7 @@
     const unread = (wa.unread || []).length;
     const set = (id, text) => { const e = $(`hint-${id}`); if (e) e.textContent = text; };
     set('messages', !wa.enabled ? 'WhatsApp desligado' : (wa.error || wa.connected === false) ? 'WhatsApp desconectado' : unread ? plural(unread, 'conversa com novidade', 'conversas com novidade') : 'nada novo');
+    if (P.houseHint) P.houseHint();   // the house topic says what plays (features/home/renderer/house.js)
     set('automations', (o.automations || []).length ? plural(o.automations.length, 'automação', 'automações') : 'nenhuma');
     set('agenda', (((o.calendar || {}).today) || []).length ? plural(o.calendar.today.length, 'compromisso hoje', 'compromissos hoje') : 'livre hoje');
     set('recent', (P.state.notices || []).length ? plural(P.state.notices.length, 'aviso', 'avisos') : 'nenhum');

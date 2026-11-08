@@ -10,6 +10,17 @@ from chakmati.shared.approvals import Action, ActionStore, ApprovalService
 from chakmati.features.home.models import Command, Entity, HomeError, plan, plain
 
 
+MAX_QUERY = 100
+
+
+def music_request(query: str) -> str:
+    """The sentence said to the Echo for a search: always "toque ...", never anything else, one line, short. HomeError when there is nothing to ask for."""
+    text = " ".join("".join(c for c in str(query) if c.isprintable()).split())[:MAX_QUERY].strip(" ,.;:!?")
+    if not text:
+        raise HomeError("diga o que tocar, por exemplo \"Raul Seixas\"")
+    return f"toque {text}"
+
+
 class HomeService(ApprovalService):
     prefix = "home."
     cancel_text = "Certo, não fiz nada na casa."
@@ -71,6 +82,13 @@ class HomeService(ApprovalService):
             return command.text, proposal
         await self._run(command)
         return command.text, None
+
+    async def play_search(self, entity: Entity, query: str) -> str:
+        """Asks the Echo for music by saying it the request: "toque <query>". The text is only ever a music request: it always starts with "toque"."""
+        phrase = music_request(query)
+        self._rate()
+        await self._client.send_text_command(entity.id, phrase)
+        return f"Pedi à {entity.name}: {phrase}"
 
     def pending_confirmation(self) -> Action | None:
         waiting = self.pending()

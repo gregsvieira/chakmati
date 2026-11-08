@@ -164,6 +164,13 @@ class EngineClient {
     if (typeof code !== 'string' || !/^[\d\s]{6,12}$/.test(code)) throw new Error('invalid code');
     return (await this._request('/home/alexa', { method: 'POST', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify({ email, password, code }) })).json();
   }
+  async homePlayers() { return (await this._request('/home/players')).json(); }
+  async homePlayerControl(id, action, text = '') {
+    if (typeof id !== 'string' || !/^media_player\.[a-z0-9_]{1,100}$/.test(id)) throw new Error('invalid player');
+    if (!['pause', 'play', 'next', 'previous', 'volume_up', 'volume_down', 'search'].includes(action)) throw new Error('invalid action');
+    if (typeof text !== 'string' || text.length > 200) throw new Error('invalid text');
+    return (await this._request('/home/players/control', { method: 'POST', headers: { ...UI, 'content-type': 'application/json' }, body: JSON.stringify({ id, action, text }) })).json();
+  }
   async homeAlexaCancel() { return (await this._request('/home/alexa', { method: 'DELETE', headers: UI })).json(); }
   async homeDisconnect() { return (await this._request('/home', { method: 'DELETE', headers: UI })).json(); }
 

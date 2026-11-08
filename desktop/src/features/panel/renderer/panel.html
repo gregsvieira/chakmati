@@ -56,6 +56,14 @@
           <h2>Hoje na agenda</h2>
           <div id="agenda-body"></div>
         </section>
+        <section id="house" hidden>
+          <h2>Casa e Alexa</h2>
+          <div id="house-body">
+            <p class="empty" id="house-empty">Nenhum aparelho de música apareceu ainda.</p>
+            <div id="house-list"></div>
+            <p class="hint" id="house-note" role="status" hidden></p>
+          </div>
+        </section>
         <section id="automations">
           <h2>Automações</h2>
           <div id="automations-body">
@@ -336,6 +344,7 @@
   <script src="layout.js"></script>
   <script src="../../whatsapp/renderer/whatsapp.js"></script>
   <script src="../../approvals/renderer/decisions.js"></script>
+  <script src="../../home/renderer/house.js"></script>
   <script src="../../automations/renderer/automations.js"></script>
   <script src="../../agenda/renderer/agenda.js"></script>
   <script src="../../notices/renderer/recent.js"></script>
