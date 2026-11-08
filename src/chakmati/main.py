@@ -163,7 +163,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         worker,
         board=board,
         notifier=notifier,
-        stt=SpeechToText(s.stt_model) if s.stt_model != "off" and extras.available("listen") else None,
+        stt=SpeechToText(s.stt_model, language=s.stt_language) if s.stt_model != "off" and extras.available("listen") else None,
         tts=voice,
         automations=automation_service,
         home=home_service,

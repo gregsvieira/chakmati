@@ -30,9 +30,11 @@
   let speakingSince = 0;
   let queued = null;
   P.otherSpeaking = false;
+  let otherSince = 0;
   P.quietUntil = 0;
   const isMuted = () => {
     if (P.speaking && Date.now() - speakingSince > 90000) { P.speaking = false; window.Voice.stop(); } // a voice that never reports its end must not mute the microphone for good
+    if (P.otherSpeaking && Date.now() - otherSince > 90000) { P.otherSpeaking = false; diag.unstuck = (diag.unstuck || 0) + 1; } // the same for the floating window: a lost "stopped speaking" must not keep the microphone off for good
     return P.speaking || P.otherSpeaking || Date.now() < P.quietUntil; // not while Chakmati talks: it would hear itself
   };
 
@@ -207,7 +209,7 @@
 
     micButton.addEventListener('click', () => api.setSetting('talk', !P.state.settings.talk));
 
-    api.onOtherSpeaking((on) => { P.otherSpeaking = on; if (!on) { P.quietUntil = Date.now() + 700; chimeIfWaiting(); } });
+    api.onOtherSpeaking((on) => { P.otherSpeaking = on; otherSince = on ? Date.now() : 0; if (!on) { P.quietUntil = Date.now() + 700; chimeIfWaiting(); } });
   });
 
   Object.assign(P, { deliver, sayAloud, updateHint, chime, runQueued, openMicrophone, stopAmbient });
