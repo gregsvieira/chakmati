@@ -22,6 +22,11 @@ _BROWSER = re.compile(
     re.IGNORECASE,
 )
 
+# Opening a page FOR THE PERSON to use ("abrir uma página no navegador para eu baixar"): it is their own browser (the computer opens the address), not the
+# automatic browser that works through a site by itself. Anything that has the agent do the work on the page (sign in, add to the cart) still goes to the agent.
+_AGENT_WORK = re.compile(r"\b(?:entr(?:e|ar)\s+(?:no|na)|logu\w+|preench\w+|cliqu\w+|digit\w+|adicion\w+|compr\w+|carrinho|senha|login)\b", re.IGNORECASE)
+_OWN_BROWSER = re.compile(r"\b(?:abr\w+|abra|mostr\w+)\b.{0,40}\b(?:p[áa]gina|site|link|endere[çc]o)\b.{0,40}\b(?:para|pra)\s+eu\b", re.IGNORECASE)
+
 # Making a Word / Excel / PowerPoint style file ("crie slides sobre...", "monte uma planilha no Numbers"): a computer job even when
 # the request also says to look something up ("... sobre o tema pesquisado").
 _DOC_MAKE = re.compile(r"\b(?:cri\w+|fa[çc]\w*|mont\w+|ger[ae]\w*|escrev\w+|prepar\w+)\b", re.IGNORECASE)
@@ -99,6 +104,8 @@ class HeuristicGate:
     source = "heuristic"
 
     def classify(self, text: str) -> GateResult:
+        if _OWN_BROWSER.search(text) and not (_CART.search(text) or _AGENT_WORK.search(text)):
+            return GateResult(Route.COMPUTER, 0.9, self.source)
         if _BROWSER.search(text) or _CART.search(text) or (_URL.search(text) and _URL_TASK.search(text) and not re.search(r"\bwhats\w*|\bzap", text, re.IGNORECASE)) or ((_SITE_NAME.search(text) or _STORE_PHRASE.search(text)) and _SITE_ACT.search(text) and not re.search(r"\bwhats\w*|\bzap", text, re.IGNORECASE)):
             return GateResult(Route.BROWSER, 0.9, self.source)
         if (_HOME_NOUN.search(text) and _HOME_VERB.search(text) and not _WHATSAPP.search(text)) or _HOME_PHRASE.search(text) or _HOME_MUSIC.search(text):

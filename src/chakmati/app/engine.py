@@ -48,7 +48,8 @@ SYSTEM_PROMPTS: dict[Route, str] = {route: f"{PERSONA} {text}" for route, text i
 CONFIRM_SECONDS = 30.0
 COMPUTER_OFF = "As ações no computador estão desativadas neste motor."
 HOME_OFF = "A casa inteligente está desativada. Configure o Home Assistant (CHAKMATI_HOME_BACKEND=homeassistant, URL e token)."
-BROWSER_OFF = "O navegador está desativado neste motor. Ligue com CHAKMATI_BROWSER_BACKEND=chrome e instale: uv sync --extra browser."
+BROWSER_OFF = ("O navegador automático do Chakmati não está ligado, então não consigo navegar sozinho. Para abrir uma página no SEU navegador, diga o endereço ou o nome do site, "
+               "por exemplo: \"abre https://www.stremio.com/downloads\". (Para ligar o navegador automático: CHAKMATI_BROWSER_BACKEND=chrome e uv sync --extra browser.)")
 AUTOMATION_OFF = "As automações estão desativadas neste motor."
 
 CALENDAR_OFF = (

@@ -174,7 +174,7 @@ async def test_with_the_browser_off_the_engine_says_so():
     engine = Engine(BrowserGate(), ScriptedLLM(), store)
     job_id = store.create("browser", "use o navegador")
     answer = await engine.run_job(store.get(job_id))
-    assert "CHAKMATI_BROWSER_BACKEND=chrome" in answer
+    assert "CHAKMATI_BROWSER_BACKEND=chrome" in answer and "SEU navegador" in answer and "abre https://" in answer   # a sentence for the person first, the switch for the developer after
 
 
 async def test_a_human_check_is_reported_not_solved(tmp_path):
@@ -243,3 +243,24 @@ async def test_a_model_that_answers_instead_of_making_a_query_is_not_used(tmp_pa
     long = "Protocolo de comunicação entre máquinas criado pela Anthropic para conectar LLMs a ferramentas externas."
     await run(BrowserAgent(ScriptedLLM(long, '{"action":"done","answer":"x"}'), FrameStore(tmp_path), lambda: session, search=search), "o que é o protocolo MCP?")  # no search verb: the model is asked, and answers instead
     assert search.query == "o que é o protocolo MCP"
+
+
+# --- a page for the person to use goes to their own browser, not to the automatic one ---------------------------------------------------------------
+import pytest as _pytest  # noqa: E402
+from chakmati.shared.gate.base import Route as _Route  # noqa: E402
+from chakmati.shared.gate.heuristic import HeuristicGate as _Gate  # noqa: E402
+
+
+@_pytest.mark.parametrize("text", [
+    "Voce conseguiria abrir uma pagina no navegador para eu baixar?", "abre uma página no navegador pra eu baixar o Stremio", "mostra o site no navegador para eu ver",
+])
+def test_opening_a_page_for_the_person_is_the_computer_not_the_automatic_browser(text):
+    assert _Gate().classify(text).route == _Route.COMPUTER
+
+
+@_pytest.mark.parametrize("text", [
+    "use o navegador para entrar no meu banco", "pesquise na Renner uma camiseta e adicione ao carrinho", "navegue até o site e preencha o formulário para eu",
+    "abre a página no navegador e adiciona ao carrinho para eu",
+])
+def test_work_done_on_a_page_by_the_agent_still_goes_to_the_automatic_browser(text):
+    assert _Gate().classify(text).route == _Route.BROWSER
