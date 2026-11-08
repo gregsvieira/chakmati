@@ -4,7 +4,7 @@ const path = require('node:path');
 const { assertLoopback } = require('../engine').client;
 
 const SIDES = ['auto', 'top', 'bottom', 'left', 'right'];
-const MOODS = ['auto', 'idle', 'alert', 'thinking', 'happy'];
+const MOODS = ['auto', 'idle', 'alert', 'thinking', 'happy', 'angry', 'drunk', 'sleeping'];
 const PERSONALITIES = ['padrao', 'carioca', 'paulista', 'gaucho', 'nordestino', 'mineiro']; // the regional way of speaking (the engine adds it to short chat answers)
 const PERSONALITY_NAMES = Object.freeze({ padrao: 'Padrão', carioca: 'Carioca', paulista: 'Paulista', gaucho: 'Gaúcho', nordestino: 'Nordestino', mineiro: 'Mineiro' });
 const PRONOUNS = ['none', 'ele', 'ela', 'elu']; // how the person is addressed; 'none' = prefers not to say (nothing is assumed)

@@ -3,7 +3,6 @@
 const path = require('node:path');
 const { BrowserWindow } = require('electron');
 const { panelBounds, expandedBounds, MIN_WIDE } = require('../widget').placement;
-const { moodWithBell } = require('../widget').bell;
 const ctx = require('../../shared/context');
 const { PANEL, isMac, ICON, HOTKEYS } = require('../../shared/constants');
 const { alive, sendTo } = require('../../shared/util');
@@ -70,7 +69,7 @@ function panelState() {
     engineUp: ctx.state.engineUp,
     overview: widgetMood.overviewNow(),
     busy: ctx.state.busy > 0,
-    describe: { ...widgetMood.currentDescription(), mood: ctx.settings.mood === 'auto' ? moodWithBell(widgetMood.currentDescription().mood, widgetMood.currentBell()) : widgetMood.effectiveMood(widgetMood.currentDescription().mood) },
+    describe: { ...widgetMood.currentDescription(), mood: (ctx.panelMood = widgetMood.currentMood()) },
     bell: widgetMood.currentBell(),
     notices: ctx.state.notices.slice(-20),
     settings: { protect: ctx.settings.protect, masked: ctx.settings.masked, autoSend: ctx.settings.autoSend, autoRunSafe: ctx.settings.autoRunSafe, keepAwake: ctx.settings.keepAwake, hear: ctx.settings.hear, talk: ctx.settings.talk, enhancedVoice: ctx.settings.enhancedVoice, voiceSpeed: ctx.settings.voiceSpeed, speakEmojis: ctx.settings.speakEmojis, micSource: ctx.settings.micSource, still: ctx.settings.still, bubbleSide: ctx.settings.bubbleSide, mood: ctx.settings.mood, glass: ctx.settings.glass, home: ctx.settings.home, cloudProvider: ctx.settings.cloudProvider, cloudModel: ctx.settings.cloudModel, localModel: ctx.settings.localModel, personality: ctx.settings.personality, personalities: ctx.settings.personalities, pronouns: ctx.settings.pronouns, whatsapp: ctx.settings.whatsapp, calendar: ctx.settings.calendar, research: ctx.settings.research },

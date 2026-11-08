@@ -39,7 +39,8 @@ test('the mood is auto unless one of the known moods is pinned', () => {
   assert.equal(DEFAULTS.mood, 'auto');
   assert.equal(normalize({ mood: 'happy' }).mood, 'happy');
   assert.equal(normalize({ mood: 'offline' }).mood, 'auto'); // offline is a fact, not a choice
-  assert.equal(normalize({ mood: 'angry' }).mood, 'auto');
+  for (const mood of ['angry', 'drunk', 'sleeping']) assert.equal(normalize({ mood }).mood, mood);   // the new faces can be pinned too
+  assert.equal(normalize({ mood: 'furious' }).mood, 'auto');
 });
 
 test('animations and the glass are off by default (they cost memory) and each can be switched on', () => {

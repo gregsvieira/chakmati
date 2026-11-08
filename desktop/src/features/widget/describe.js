@@ -28,7 +28,9 @@ function describe({ engineUp, overview, busy = false } = {}) {
   const notes = [];
   if (wa.enabled && (wa.error || wa.connected === false)) notes.push('O WhatsApp está desconectado.');
   if (parts.length) notes.push(`Você tem ${parts.join(' e ')}.`);
-  return { title: 'Tudo certo por aqui.', detail: notes.length ? notes.join(' ') : 'Nada novo por enquanto.', mood: 'idle' };
+  // online and idle he is bored; with the WhatsApp that he was asked to watch cut off he is not himself
+  const cutOff = !!(wa.enabled && (wa.error || wa.connected === false));
+  return { title: 'Tudo certo por aqui.', detail: notes.length ? notes.join(' ') : 'Nada novo por enquanto.', mood: cutOff ? 'drunk' : 'idle' };
 }
 
 module.exports = { describe, plural };

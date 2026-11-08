@@ -43,7 +43,7 @@ async function start() {
   $('quip-row').hidden = !scan.quip;
   if (scan.quip) {
     $('quip').textContent = scan.quip.text;
-    if (!face) { face = window.Robot.create($('quip-face')); face.svg.setAttribute('viewBox', '26 4 42 54'); }   // only his head, tiny
+    if (!face) { face = window.Robot.create($('quip-face')); }   // tiny, the default view
     face.setMood(scan.quip.tone === 'praise' ? 'happy' : 'idle');
   }
   $('verdict').textContent = scan.levelText;

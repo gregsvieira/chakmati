@@ -88,8 +88,9 @@ function register() {
           ctx.stopped.delete(id);
           ctx.state.busy = Math.max(0, ctx.state.busy - 1);
           if (!failed) ctx.happyUntil = Date.now() + 3000;
+          else if (!ctx.stopped.has(id)) ctx.angryUntil = Date.now() + 6000;   // it did not work (stopping it on purpose is not a failure)
           clearTimeout(ctx.moodTimer);
-          ctx.moodTimer = setTimeout(widgetMood.refreshMood, 3100);
+          ctx.moodTimer = setTimeout(widgetMood.refreshMood, failed ? 6100 : 3100);
           engineService.refreshOverview();
         }
       })();
