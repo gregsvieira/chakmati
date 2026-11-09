@@ -8,7 +8,7 @@
     get(key, fallback) { try { const v = window.localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); } catch { return fallback; } },
     set(key, value) { try { window.localStorage.setItem(key, JSON.stringify(value)); } catch { /* private window or storage off: the choice just is not remembered */ } },
   };
-  const TOPICS = ['decisions', 'messages', 'agenda', 'house', 'automations', 'recent'];
+  const TOPICS = ['decisions', 'messages', 'agenda', 'house', 'automations'];   // (the recent notices live under the bell in the header)
   // Which topics are folded: in the small card they start folded (one line each, with a hint of what is inside), in the big window open (there is room).
   // Each layout remembers its own choices.
   const foldedBy = {
@@ -44,11 +44,12 @@
     $('focus-thread').setAttribute('aria-pressed', String(!!store.get('chakmati.focus', false)));
     $('focus-thread').textContent = store.get('chakmati.focus', false) ? 'Reduzir' : 'Ampliar';
     const mode = (P.state && P.state.panelMode) || 'compact';
-    $('expand').setAttribute('aria-label', mode === 'compact' ? 'Expandir a janela' : 'Voltar ao tamanho pequeno');
-    $('expand').title = mode === 'compact' ? 'Expandir a janela' : 'Voltar ao tamanho pequeno';
+    const expandText = mode === 'compact' ? 'Expandir a janela' : 'Voltar ao tamanho pequeno';
+    $('expand').setAttribute('aria-label', expandText); $('expand').title = expandText; $('expand-label').textContent = expandText;
     $('maximize').hidden = mode === 'compact';
     $('maximize').setAttribute('aria-label', mode === 'full' ? 'Sair da tela cheia' : 'Tela cheia');
     $('maximize').title = mode === 'full' ? 'Sair da tela cheia' : 'Tela cheia';
+    $('maximize-label').textContent = mode === 'full' ? 'Sair da tela cheia' : 'Tela cheia';
     P.renderScreen();
     if (P.onScreen) P.onScreen($('panel').dataset.screen, true);
     if (P.foldReduced) P.foldReduced();   // the reduced card folds a long message to its first and last line; the other layouts show it whole
@@ -70,7 +71,6 @@
     if (P.houseHint) P.houseHint();   // the house topic says what plays (features/home/renderer/house.js)
     set('automations', (o.automations || []).length ? plural(o.automations.length, 'automação', 'automações') : 'nenhuma');
     set('agenda', (((o.calendar || {}).today) || []).length ? plural(o.calendar.today.length, 'compromisso hoje', 'compromissos hoje') : 'livre hoje');
-    set('recent', (P.state.notices || []).length ? plural(P.state.notices.length, 'aviso', 'avisos') : 'nenhum');
   }
   // "Ampliar": the conversation takes the card and every other topic folds (their own choices come back when it is reduced)
   function setFocus(on) { store.set('chakmati.focus', on); applyLayout(); P.renderThread(true); }
@@ -88,6 +88,18 @@
   P.inits.push(function () {
     for (const side of ['left', 'right']) $(`fold-${side}`).addEventListener('click', () => { folds[side] = !folds[side]; store.set(`chakmati.${side}`, folds[side]); applyFolds(); });
 
+    // the header's two little windows: one open at a time; they close on a click elsewhere, on Escape, or after picking something
+    const pops = [['open-notices', 'notices-pop'], ['open-menu', 'menu-pop']];
+    const closePops = (except) => pops.forEach(([btn, pop]) => { if (pop !== except) { $(pop).hidden = true; $(btn).setAttribute('aria-expanded', 'false'); } });
+    for (const [btn, pop] of pops) $(btn).addEventListener('click', (e) => {
+      e.stopPropagation();
+      closePops(pop);
+      $(pop).hidden = !$(pop).hidden;
+      $(btn).setAttribute('aria-expanded', String(!$(pop).hidden));
+    });
+    $('menu-pop').addEventListener('click', () => closePops());
+    document.addEventListener('click', (e) => { if (!e.target.closest('.pop')) closePops(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePops(); }, true);
     window.addEventListener('resize', applyLayout);
     $('expand').addEventListener('click', () => api.setLayout(((P.state && P.state.panelMode) || 'compact') === 'compact' ? 'wide' : 'compact'));
     $('maximize').addEventListener('click', () => api.setLayout(((P.state && P.state.panelMode) || 'compact') === 'full' ? 'wide' : 'full'));

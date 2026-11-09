@@ -71,3 +71,7 @@ body[data-still] .bell svg { animation: none !important; }
 .bell[data-state="notice"]::after, .bell[data-state="request"]::after { position: absolute; right: -3px; top: -3px; min-width: 10px; height: 10px; border-radius: 999px; background: #fff; color: #14213d; font: 700 9px/10px system-ui, sans-serif; text-align: center; box-shadow: 0 0 0 1px rgba(20, 33, 61, 0.35); }
 .bell[data-state="notice"]::after { content: ""; }
 .bell[data-state="request"]::after { content: "!"; }
+
+/* the bell behind the character's head only shows when there is news or something waits for the person; with nothing it is gone (not an outline).
+   The bell of the panel header (#open-notices) is a button and stays visible always. */
+#approval-badge.bell[data-state="idle"], #head-approval.bell[data-state="idle"] { visibility: hidden; }
