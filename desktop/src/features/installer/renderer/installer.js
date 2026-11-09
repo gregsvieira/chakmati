@@ -82,6 +82,7 @@ function renderProfile() {
 const GROUPS = [
   { title: 'Voz', ids: ['voice', 'talk'] },
   { title: 'Modelos extras', ids: ['reasoning', 'laya'] },
+  { title: 'Arquivos', ids: ['files'] },
   { title: 'Integrações', ids: ['whatsapp', 'homeInstall'] },   // 'home' (I already have a Home Assistant) is not offered: the house step finds the one on the network first
   { title: 'Aparência e privacidade', ids: ['animations', 'glass', 'hideShare'] },
 ];
@@ -139,6 +140,7 @@ function groupFlags(ids) {
     if (scan.suggested[id] || DEFAULT_ON.includes(id)) title.append(el('span', { className: 'badge', textContent: 'Recomendado' }));
     const lines = [el('span', { textContent: opt.description })];
     if (opt.advice) lines.push(el('span', { className: 'advice', textContent: opt.advice }));
+    if (scan.notes && scan.notes[id]) lines.push(el('span', { className: scan.suggested[id] ? 'cost' : 'advice', textContent: scan.notes[id] }));
     lines.push(el('span', { className: 'cost', textContent: opt.costText }));
     return flagRow(box, title, lines);
   });

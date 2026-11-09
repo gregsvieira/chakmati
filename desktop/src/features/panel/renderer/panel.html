@@ -249,7 +249,11 @@
         <button id="wa-reply-send" type="submit" aria-label="Enviar para o WhatsApp" title="Enviar para o WhatsApp"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/></svg></button>
         <p id="wa-reply-note" role="status" hidden></p>
       </form>
+      <div id="attached" hidden></div>
+      <p id="attached-note" role="status" hidden></p>
       <form id="composer" autocomplete="off">
+        <button id="attach" class="icon-btn attach" type="button" aria-label="Anexar arquivo" title="Anexar arquivo: pergunte ou peça um resumo"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
+        <input id="attach-input" type="file" multiple hidden>
         <button id="ask-collapse" class="icon-btn" type="button" aria-label="Recolher" title="Recolher" hidden><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <textarea id="input" rows="1" maxlength="2000" placeholder="Peça algo ao Chakmati…" aria-label="Pedido ao Chakmati"></textarea>
         <button id="mic" type="button" aria-label="Escutando. Clique para desligar." title="Falar com o Chakmati" hidden><span></span></button>
@@ -390,6 +394,8 @@
   <script src="../../browser/renderer/screen.js"></script>
   <script src="fold.js"></script>
   <script src="thread.js"></script>
+  <script src="../../files/attach-logic.js"></script>
+  <script src="../../files/renderer/attach.js"></script>
   <script src="../../voice/renderer/ambient.js"></script>
   <script src="boot.js"></script>
 </body>

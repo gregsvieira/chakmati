@@ -3,7 +3,7 @@
 const path = require('node:path');
 const { BrowserWindow, dialog, shell, app, safeStorage } = require('electron');
 const { readHardware } = require('./hardware');
-const { verdict: judge, suggestions, reasoningFor } = require('./tiers');
+const { verdict: judge, suggestions, notes, reasoningFor } = require('./tiers');
 const { ENGINE, MODELS, optionsFor } = require('./catalog');
 const { buildPlan } = require('./plan');
 const { runPlan } = require('./run-plan');
@@ -43,7 +43,7 @@ function openSetup({ ipcMain, webPreferences, settingsFile, engine = null, onClo
     let ollamaUp = false;
     try { await runners.checkOllama(); ollamaUp = true; } catch { /* the page explains how to get it */ }
     return {
-      hw, verdict: v, levelText: levelText(v.level), suggested: suggestions(hw, v.level), ollamaUp, quip: quip(hw, v),
+      hw, verdict: v, levelText: levelText(v.level), suggested: suggestions(hw, v.level), notes: notes(hw, v.level), ollamaUp, quip: quip(hw, v),
       hwText: {
         system: `${hw.platform} ${hw.arch} (${hw.osRelease})`, ram: `${hw.ramGb} GB`, cores: String(hw.cores),
         disk: hw.freeDiskGb === null ? 'não consegui medir' : `${hw.freeDiskGb} GB livres`,

@@ -86,7 +86,7 @@
     const waiting = thread.slice().reverse().find((t) => t.own && !t.decision);
     if (waiting && /regrav|grav\w* (de novo|novamente)/i.test(clean)) { P.redoOwnVoice(waiting); return; }
     thread.push({ role: 'user', text: clean, status: 'done' });
-    const res = await api.send(clean);
+    const res = await api.send(clean, P.attachedIds ? P.attachedIds() : []);
     if (!res || res.error) {
       thread.push({ role: 'assistant', text: (res && res.error) || 'Não consegui enviar o pedido.', status: 'error' });
     } else {

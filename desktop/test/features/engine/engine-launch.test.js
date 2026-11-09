@@ -3,7 +3,8 @@ const assert = require('node:assert/strict');
 const { EXTRA_NAMES, extrasFromSettings, venvPython, uvPath, toolPath, engineLaunch, syncCommand } = require('../../../src/features/engine/launch');
 
 test('extras follow the settings that need them', () => {
-  assert.deepEqual(EXTRA_NAMES, ['voice', 'listen', 'laya']);
+  assert.deepEqual(EXTRA_NAMES, ['voice', 'listen', 'laya', 'documents']);
+  assert.deepEqual(extrasFromSettings({ documents: true }), ['documents']);
   assert.deepEqual(extrasFromSettings({ laya: true }), ['laya']);
   assert.deepEqual(extrasFromSettings({ enhancedVoice: false, talk: false }), []);
   assert.deepEqual(extrasFromSettings({ enhancedVoice: true, talk: false }), ['voice']);

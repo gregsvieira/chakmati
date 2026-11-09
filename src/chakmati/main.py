@@ -6,6 +6,9 @@ import uvicorn
 from fastapi import FastAPI
 
 from chakmati.features.browser.agent import BrowserAgent
+from chakmati.features.files.assistant import FileAssistant
+from chakmati.features.research.rankers import EmbeddingScorer
+from chakmati.features.files.store import AttachmentStore
 from chakmati.features.browser.frames import FrameStore
 from chakmati.features.browser.inputs import InputBroker
 from chakmati.features.browser.session import PlaywrightSession
@@ -119,6 +122,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
                                     search=search_backend, ask=inputs.ask)
     catalog = ModelCatalog(s.ollama_url, configured=s.explain_model)  # which stronger model is installed (or named in CHAKMATI_EXPLAIN_MODEL), and fits
     worker_ref: list[Worker] = []
+    attachments = AttachmentStore(s.attachments_dir)
     engine = Engine(
         build_gate(s),
         llm,
@@ -134,6 +138,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         computer_assistant=ComputerAssistant(llm, computer_service, gather=researcher.gather if researcher is not None else None, models=catalog, reasoning_for=lambda name: OllamaClient(s.ollama_url, name, think=True, keep_alive="5m", timeout=900), compact=is_small_model(s.chat_model)),
         computer_service=computer_service,
         browser_agent=browser_agent,
+        file_assistant=FileAssistant(llm, attachments, embedder=EmbeddingScorer(s.ollama_url, s.embed_model) if s.embed_model else None),
         personality=s.personality,
         pronouns=s.pronouns,
     )
@@ -163,6 +168,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
         worker,
         board=board,
         notifier=notifier,
+        attachments=attachments,
         stt=SpeechToText(s.stt_model, language=s.stt_language) if s.stt_model != "off" and extras.available("listen") else None,
         tts=voice,
         automations=automation_service,
