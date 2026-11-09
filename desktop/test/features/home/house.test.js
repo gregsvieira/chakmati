@@ -77,6 +77,9 @@ test('an Alexa that stopped sending information is said in words, and asking for
   assert.match(js, /unavailable \? 'A Alexa não está mandando informações agora\.' :/);   // one short line...
   assert.doesNotMatch(js.split('\n').find((l) => l.includes('const say =')), /Amazon/);   // ...and the reason only behind the (i)
   assert.match(js, /const UNAVAILABLE_INFO = 'A Amazon limita os pedidos do Home Assistant/);
-  assert.match(js, /aria-expanded': String\(moreInfo\)/);
+  assert.match(js, /const TIP_SECONDS = 7;/);   // a bubble that goes away by itself...
+  assert.match(js, /tipTimer = setTimeout\(hideTip, TIP_SECONDS \* 1000\)/);
+  assert.match(js, /document\.addEventListener\('click', hideTip\)/);   // ...or when the person clicks elsewhere
+  assert.doesNotMatch(js, /house-info/);   // and it is not a note in the card
   assert.match(js, /button\('Trocar música', 'Pedir outra música à Alexa', \(\) => \{[^}]*\}, off\)/);   // disabled only while a press is in flight, never because the state is unavailable
 });
