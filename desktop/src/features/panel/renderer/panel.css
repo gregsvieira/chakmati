@@ -399,15 +399,19 @@ body[data-still] #panel[data-layout="wide"] #content, body[data-still] #panel[da
 #house-body { display: grid; gap: 8px; }
 #house-body .empty { margin: 0; }
 #house-list { display: grid; gap: 8px; }
-.house-card { border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; }
-.house-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; width: 100%; padding: 10px 12px; font: inherit; text-align: left; background: transparent; color: inherit; border: 0; cursor: pointer; }
-.house-name { font-weight: 600; }
-.house-state { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.house-body { padding: 4px 12px 12px; display: grid; gap: 8px; }
-.house-now { margin: 0; font-size: 14px; }
-.house-buttons { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.house-volume { min-width: 3ch; text-align: center; font-size: 13px; color: var(--muted); }
-.house-searchrow { display: flex; gap: 6px; }
+.house-card { border: 1px solid var(--rule); border-radius: 14px; overflow: hidden; background: var(--surface-2, transparent); }
+.house-head { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 100%; padding: 14px 14px 10px; font: inherit; text-align: center; background: transparent; color: inherit; border: 0; cursor: pointer; }
+.house-head:hover { background: color-mix(in srgb, currentColor 5%, transparent); }
+.house-name { font-weight: 600; font-size: 15px; }
+.house-state { color: var(--muted); font-size: 13px; line-height: 1.35; max-width: 100%; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.house-state[data-playing] { color: inherit; opacity: .85; }
+.house-body { padding: 4px 14px 14px; display: grid; gap: 12px; justify-items: center; text-align: center; }
+.house-now { margin: 0; font-size: 13px; color: var(--muted); }
+.house-buttons { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
+.house-buttons .ghost.small { min-width: 36px; height: 36px; padding: 0 10px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; }
+.house-buttons .ghost.small:last-child { flex-basis: auto; margin-top: 2px; padding: 0 16px; }
+.house-volume { min-width: 4ch; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.house-searchrow { display: flex; gap: 6px; width: 100%; }
 .house-search { flex: 1; min-width: 0; padding: 7px 10px; font: inherit; border-radius: 10px; border: 1px solid var(--rule); background: var(--surface-2); color: inherit; }
 
 /* automations: only the title in the list (a button that opens the details) */
