@@ -461,3 +461,9 @@ body[data-still] #panel[data-layout="wide"] #content, body[data-still] #panel[da
 #panel[data-layout="wide"] #content > #chat-view { grid-column: 2; min-height: 0; max-width: none; margin: 0; padding: 12px 20px; overflow-y: auto; }
 #panel[data-layout="wide"][data-screen="chat"] #thread-section { display: none !important; }
 #panel[data-layout="wide"][data-screen="chat"]:not([data-screen="main"]) #foot { margin: 0 var(--right) 0 var(--left); }
+
+/* small card, conversation folded: it is NOT an overlay on the scrolling topics (the glass surface is see-through, so what scrolled under it showed through its text).
+   Only the topics scroll; the conversation is the fixed strip under them, above the command line. */
+#panel[data-layout="compact"]:not([data-focus="thread"]) #content { overflow: hidden; padding-bottom: 0; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #topics { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 8px; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread-section { flex: none; position: relative; margin-top: 0; padding: 34px 0 14px; background: none; box-shadow: none; }
