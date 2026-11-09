@@ -59,8 +59,9 @@ function reasoningFor(hw) {
 
 // Only labels: nothing is ever pre-selected from this.
 function suggestions(hw, level) {
-  if (level === 'unsupported') return { reasoning: false, voice: false, talk: false, whatsapp: false, animations: false, glass: false, hideShare: false };
+  if (level === 'unsupported') return { files: false, reasoning: false, voice: false, talk: false, whatsapp: false, animations: false, glass: false, hideShare: false };
   return {
+    files: level !== 'light',   // it costs almost nothing, but on the lightest model a long file is slow to summarise
     reasoning: reasoningFor(hw) !== null,
     voice: hw.ramGb >= LIMITS.standardRamGb,
     talk: hw.ramGb >= LIMITS.fullRamGb && hw.cores >= LIMITS.talkCores,
@@ -71,4 +72,14 @@ function suggestions(hw, level) {
   };
 }
 
-module.exports = { LIMITS, MODEL_BY_LEVEL, verdict, suggestions, reasoningFor };
+// A sentence per item that deserves one for this computer: whether the item is recommended here, and why. Shown under the item.
+function notes(hw, level) {
+  if (level === 'unsupported') return {};
+  return {
+    files: level === 'light'
+      ? 'Neste computador é opcional: o modelo leve responde bem sobre um trecho do arquivo, mas resumir um arquivo longo demora e pode sair incompleto.'
+      : 'Recomendado: ocupa pouco espaço e memória, e este computador aguenta resumir e responder sobre arquivos.',
+  };
+}
+
+module.exports = { LIMITS, MODEL_BY_LEVEL, verdict, suggestions, notes, reasoningFor };

@@ -7,6 +7,7 @@ const homeIpc = require('../features/home').ipc;
 const cloudIpc = require('../features/cloud').ipc;
 const voiceIpc = require('../features/voice').ipc;
 const approvalsIpc = require('../features/approvals').ipc;
+const filesIpc = require('../features/files').ipc;
 
 function registerIpc() {
   widgetIpc.register();
@@ -16,6 +17,7 @@ function registerIpc() {
   cloudIpc.register();
   voiceIpc.register();
   approvalsIpc.register();
+  filesIpc.register();
 }
 
 module.exports = { registerIpc };

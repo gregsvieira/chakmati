@@ -48,6 +48,8 @@ class Settings:
     calendar_name: str = ""  # calendar that new events go to (empty = the system default)
     whatsapp_backend: str = "off"  # "off" | "openwa"
     openwa_url: str = "http://127.0.0.1:8081"
+    embed_model: str = ""  # an Ollama embedding model (e.g. nomic-embed-text) that also matches the MEANING of a question to the pieces of an attached file; empty = words only (lighter)
+    attachments_dir: str = os.path.expanduser("~/.lite-agent/attachments")  # the text of files attached to the conversation (swept after a week)
     workspace: str = os.path.expanduser("~/Documents/Chakmati")  # the only folder where the agent creates files
     openwa_home: str = os.path.expanduser("~/.lite-agent/openwa")  # where OpenWA is installed (its browser is used for voice notes)
     browser_backend: str = "off"  # "off" | "chrome" (a visible Chrome driven with Playwright; needs `uv sync --extra browser`)
@@ -110,6 +112,8 @@ class Settings:
             calendar_name=env.get("CHAKMATI_CALENDAR_NAME", d.calendar_name),
             whatsapp_backend=env.get("CHAKMATI_WHATSAPP_BACKEND", d.whatsapp_backend),
             openwa_url=env.get("CHAKMATI_OPENWA_URL", d.openwa_url),
+            embed_model=env.get("CHAKMATI_EMBED_MODEL", d.embed_model),
+            attachments_dir=os.path.expanduser(env.get("CHAKMATI_ATTACHMENTS_DIR", d.attachments_dir)),
             workspace=os.path.expanduser(env.get("CHAKMATI_WORKSPACE", d.workspace)),
             openwa_home=os.path.expanduser(env.get("CHAKMATI_OPENWA_HOME", d.openwa_home)),
             browser_backend=env.get("CHAKMATI_BROWSER_BACKEND", d.browser_backend),

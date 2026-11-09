@@ -16,6 +16,7 @@ from chakmati.shared.timeguard import calendar_facts, needs_today, needs_web, to
 from chakmati.shared.gate.base import Gate, Route
 from chakmati.shared.jobs import Job, JobStore
 from chakmati.shared.llm import ChatClient
+from chakmati.features.files.assistant import encode as file_prompt
 from chakmati.features.research.tool import ResearchTool
 
 _ROUTE_PROMPTS: dict[Route, str] = {
@@ -50,6 +51,7 @@ COMPUTER_OFF = "As ações no computador estão desativadas neste motor."
 HOME_OFF = "A casa inteligente está desativada. Configure o Home Assistant (CHAKMATI_HOME_BACKEND=homeassistant, URL e token)."
 BROWSER_OFF = ("O navegador automático do Chakmati não está ligado, então não consigo navegar sozinho. Para abrir uma página no SEU navegador, diga o endereço ou o nome do site, "
                "por exemplo: \"abre https://www.stremio.com/downloads\". (Para ligar o navegador automático: CHAKMATI_BROWSER_BACKEND=chrome e uv sync --extra browser.)")
+FILES_OFF = "Os arquivos anexados não estão disponíveis neste motor."
 AUTOMATION_OFF = "As automações estão desativadas neste motor."
 
 CALENDAR_OFF = (
@@ -105,6 +107,7 @@ class Engine:
         computer_assistant=None,
         computer_service=None,
         browser_agent=None,
+        file_assistant=None,
         personality: str = personalities.DEFAULT,
         pronouns: str = pronoun_sets.DEFAULT,
         rng: random.Random | None = None,
@@ -133,6 +136,7 @@ class Engine:
         self._computer = computer_assistant
         self._computer_service = computer_service
         self._browser = browser_agent
+        self._files = file_assistant
 
     @property
     def personality(self) -> str:
@@ -312,10 +316,14 @@ class Engine:
                 if self._typing_delay:
                     await asyncio.sleep(self._typing_delay)
 
-    async def handle(self, text: str) -> Reply:
+    async def handle(self, text: str, attachments: list[str] | None = None) -> Reply:
         fixed = self._wake(text) or await self._confirmation(text) or canned_answer(text)
         if fixed is not None:
             return Reply("answer", Route.CHAT, text=fixed)
+        if attachments and self._files is not None:
+            job_id = self._store.create(Route.FILES.value, file_prompt(text, attachments))
+            self._notify_job()
+            return Reply("job", Route.FILES, job_id=job_id)
         if (patriotic := patriot.match(text)) is not None:
             return Reply("answer", Route.CHAT, text="".join([piece async for piece in self._patriotic(text, patriotic)]).strip())
         route, today, offline = await self._plan(text)
@@ -331,6 +339,11 @@ class Engine:
             return CALENDAR_OFF
         return await self._calendar.handle(job.prompt)
 
+    async def _files_job(self, job: Job) -> str:
+        if self._files is None:
+            return FILES_OFF
+        return await self._files.answer(job.prompt)
+
     async def _whatsapp_job(self, job: Job) -> str:
         if self._whatsapp is None:
             return WHATSAPP_OFF
@@ -345,6 +358,8 @@ class Engine:
             return await self._automation_job(job)
         if job.route == Route.HOME.value:
             return await self._home_job(job)
+        if job.route == Route.FILES.value:
+            return await self._files_job(job)
         if job.route in (Route.COMPUTER.value, Route.BROWSER.value):
             return "".join([piece async for piece in self.run_job_stream(job)])
         now = self._clock()
@@ -354,7 +369,7 @@ class Engine:
         offline = job.route == Route.RESEARCH.value  # a research job with search switched off
         return await self._llm.chat(self._msgs(Route(job.route), job.prompt, today if offline else None, offline))
 
-    async def handle_stream(self, text: str) -> AsyncIterator[dict]:
+    async def handle_stream(self, text: str, attachments: list[str] | None = None) -> AsyncIterator[dict]:
         """Like `handle`, as a sequence of events: route, then either the reply as delta events
         followed by done (chat), or a single job event for slow work (follow it via the job stream)."""
         fixed = self._wake(text) or await self._confirmation(text) or canned_answer(text)
@@ -370,6 +385,12 @@ class Engine:
                 parts.append(piece)
                 yield {"type": "delta", "text": piece}
             yield {"type": "done", "result": "".join(parts).strip()}
+            return
+        if attachments and self._files is not None:
+            yield {"type": "route", "route": Route.FILES.value}
+            job_id = self._store.create(Route.FILES.value, file_prompt(text, attachments))
+            self._notify_job()
+            yield {"type": "job", "job_id": job_id, "route": Route.FILES.value}
             return
         route, today, offline = await self._plan(text)
         yield {"type": "route", "route": route.value}
@@ -397,6 +418,13 @@ class Engine:
             return
         if job.route == Route.HOME.value:
             yield await self._home_job(job)
+            return
+        if job.route == Route.FILES.value:
+            if self._files is None:
+                yield FILES_OFF
+                return
+            async for piece in self._files.stream(job.prompt):
+                yield piece
             return
         if job.route == Route.COMPUTER.value:
             if plan := await self._plan_text(job):

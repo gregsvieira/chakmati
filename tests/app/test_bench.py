@@ -17,7 +17,7 @@ def test_evaluate_reports_accuracy_and_timing():
 
 
 def test_cases_cover_all_routes_and_both_languages():
-    assert {r for _, r in CASES} == set(Route)
+    assert {r for _, r in CASES} == set(Route) - {Route.FILES}   # FILES is never chosen by the gate: attachments decide it
     assert any("pesquise" in t or "crie" in t for t, _ in CASES)
 
 

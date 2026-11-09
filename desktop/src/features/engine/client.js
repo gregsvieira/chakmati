@@ -239,12 +239,26 @@ class EngineClient {
     return { ok: true };
   }
 
-  async* streamMessage(text, signal) {
+  // Files attached to the conversation: the engine keeps only their text (swept after a week). `bytes` is a Uint8Array.
+  async attach(name, bytes) {
+    const clean = String(name ?? '').trim();
+    if (!clean || !bytes || !bytes.length) throw new Error('empty file');
+    if (bytes.length > 20 * 1024 * 1024) throw new Error('file too large');
+    const res = await this._request('/attachments', { method: 'POST', headers: { ...UI, 'content-type': 'application/octet-stream', 'x-filename': encodeURIComponent(clean) }, body: bytes });
+    return res.json();
+  }
+
+  async detach(id) {
+    if (!ACTION_ID.test(String(id))) throw new Error('invalid attachment');
+    return (await this._request(`/attachments/${id}`, { method: 'DELETE', headers: UI })).json();
+  }
+
+  async* streamMessage(text, signal, attachments = []) {
     const clean = String(text ?? '').trim();
     if (!clean) throw new Error('empty message');
     if (clean.length > MAX_TEXT) throw new Error('message too long');
     const res = await this._request('/message/stream', {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: clean }), signal,
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: clean, attachments: attachments.filter((id) => ACTION_ID.test(String(id))).slice(0, 5) }), signal,
     });
     for await (const event of parseSse(res.body)) yield event.type === 'screenshot' ? await this._withImage(event, signal) : event;
   }

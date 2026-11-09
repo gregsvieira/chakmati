@@ -81,7 +81,7 @@ test('streamMessage posts the text and yields the engine events', async () => {
   const events = await collect(c.streamMessage('tenho mensagens novas?'));
   assert.deepEqual(events, [{ type: 'done', result: 'ok' }]);
   assert.equal(calls[0].url, 'http://127.0.0.1:8765/message/stream');
-  assert.deepEqual(JSON.parse(calls[0].init.body), { text: 'tenho mensagens novas?' });
+  assert.deepEqual(JSON.parse(calls[0].init.body), { text: 'tenho mensagens novas?', attachments: [] });
 });
 
 test('a browser screenshot event arrives with the picture fetched from the engine', async () => {

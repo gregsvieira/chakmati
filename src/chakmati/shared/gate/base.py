@@ -13,6 +13,7 @@ class Route(str, Enum):
     HOME = "home"
     COMPUTER = "computer"
     BROWSER = "browser"
+    FILES = "files"   # a question or a summary about files the person attached (never chosen by the gate: the attachments decide)
 
     @property
     def is_slow(self) -> bool:

@@ -22,12 +22,12 @@ const REASONING = Object.freeze([
 // Measured on macOS arm64 with `uv sync --frozen --no-dev --no-editable` (MB installed; the downloads are smaller):
 // base 124 + uv's managed Python 65; each extra on top of the base (the two together share packages).
 // Laya (not measured: an estimate, it brings PyTorch and transformers; its own weights are fetched on first use).
-const ENGINE = Object.freeze({ baseMb: 189, extraMb: Object.freeze({ voice: 198, listen: 183, both: 228, laya: 1500 }) });
+const ENGINE = Object.freeze({ baseMb: 189, extraMb: Object.freeze({ voice: 198, listen: 183, both: 228, laya: 1500, documents: 40 }) });
 
 function extrasSizeMb(extras) {
   const speech = extras.filter((e) => e === 'voice' || e === 'listen');
   const speechMb = !speech.length ? 0 : speech.length === 2 ? ENGINE.extraMb.both : ENGINE.extraMb[speech[0]];
-  return speechMb + (extras.includes('laya') ? ENGINE.extraMb.laya : 0);
+  return speechMb + (extras.includes('laya') ? ENGINE.extraMb.laya : 0) + (extras.includes('documents') ? ENGINE.extraMb.documents : 0);
 }
 
 const ALL = ['darwin', 'win32', 'linux'];
@@ -43,6 +43,12 @@ const OPTIONS = Object.freeze([
     description: 'O microfone fica ouvindo as frases de chamada e os comandos. Reconhecimento de voz local.',
     settings: { talk: true, hear: true }, offSettings: { talk: false },
     approval: { source: 'Hugging Face (modelo Whisper "base", baixado no primeiro uso)', sizeMb: 140 },
+  },
+  {
+    id: 'files', label: 'Perguntar e resumir arquivos (PDF, Word, Excel, PowerPoint)', platforms: ALL, extra: 'documents', diskMb: 40, ramMb: 40,
+    description: 'Com o botão + da conversa você anexa um arquivo e pede um resumo ou pergunta algo sobre ele. O Chakmati lê só os trechos que importam, sem mandar nada para a internet. Arquivos de texto já funcionam sem isto: aqui entra a leitura de PDF, Word, Excel e PowerPoint.',
+    settings: { documents: true }, offSettings: { documents: false },
+    approval: { source: 'pypi.org (leitores de PDF, Word, Excel e PowerPoint, pelo uv que vem no instalador)', sizeMb: 40 },
   },
   {
     id: 'reasoning', label: 'Modelo de raciocínio (corrigir provas e explicar os erros)', platforms: ALL, diskMb: 0, ramMb: 0, dynamic: true,

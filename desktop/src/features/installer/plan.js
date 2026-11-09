@@ -66,7 +66,7 @@ function buildPlan({ hw, verdict, selected = [], engine = null, profile = null, 
     settings: { chatModel: model.id },
   };
   const extrasStep = {
-    id: 'extras', kind: 'sync-extras', label: `Instalar os pacotes de ${extras.map((e) => ({ voice: 'voz', listen: 'microfone', laya: 'Laya' }[e])).join(' e ')}`,
+    id: 'extras', kind: 'sync-extras', label: `Instalar os pacotes de ${extras.map((e) => ({ voice: 'voz', listen: 'microfone', laya: 'Laya', documents: 'leitura de arquivos' }[e])).join(' e ')}`,
     required: false, extras,
     approval: { source: 'pypi.org (pelo uv que vem no instalador)', sizeMb: extrasSizeMb(extras) }, settings: {},
   };

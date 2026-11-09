@@ -18,6 +18,7 @@ const DEFAULTS = Object.freeze({
   voiceSpeed: 'normal',   // 'normal' | 'fast' (enhanced voice only)
   speakEmojis: false,     // read emojis aloud ("rosto sorrindo"); off: they are skipped when speaking
   micSource: 'computer',  // 'computer' = the computer's own microphone, 'system' = whatever the system default is
+  documents: false,       // the readers of PDF, Word, Excel and PowerPoint (for the files attached to the conversation); the installer offers them
   laya: false,            // the Laya relevance filter for the web search (opt-in; the setup wizard says it is not recommended)
   talk: false,            // "Falar com o Chakmati": the microphone is always listening for the wake phrases and commands
   autoRunSafe: false,     // keep SAFE computer commands approved (never scripts, downloads, edits, the trash or opening programs)
@@ -52,6 +53,7 @@ function normalize(raw) {
   if (typeof r.hear === 'boolean') s.hear = r.hear;
   if (typeof r.talk === 'boolean') s.talk = r.talk;
   if (typeof r.laya === 'boolean') s.laya = r.laya;
+  if (typeof r.documents === 'boolean') s.documents = r.documents;
   if (typeof r.speakEmojis === 'boolean') s.speakEmojis = r.speakEmojis;
   if (typeof r.enhancedVoice === 'boolean') s.enhancedVoice = r.enhancedVoice;
   if (r.voiceSpeed === 'normal' || r.voiceSpeed === 'fast') s.voiceSpeed = r.voiceSpeed;

@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, HTTPException
 
-from chakmati.app import chat_api, overview, personality_api
+from chakmati.app import chat_api, files_api, overview, personality_api
 from chakmati.app.engine import Engine
 from chakmati.features.agenda import api as agenda_api
 from chakmati.features.agenda.service import CalendarService
@@ -15,6 +15,7 @@ from chakmati.features.automations.service import AutomationService
 from chakmati.features.browser.frames import FrameStore
 from chakmati.features.browser.inputs import InputBroker
 from chakmati.features.computer import api as computer_api
+from chakmati.features.files.store import AttachmentStore
 from chakmati.features.whatsapp import api as whatsapp_api
 from chakmati.features.whatsapp.service import WhatsAppService
 from chakmati.shared import approvals_api
@@ -35,6 +36,7 @@ def create_app(
     whatsapp: WhatsAppService | None = None,
     board: NoticeBoard | None = None,
     notifier: Notifier | None = None,
+    attachments: AttachmentStore | None = None,
     stt: SpeechToText | None = None,
     tts: VoiceSynth | None = None,
     automations: AutomationService | None = None,
@@ -79,6 +81,8 @@ def create_app(
     async def health():
         return {"status": "ok"}
 
+    if attachments is not None:
+        app.include_router(files_api.router(attachments))
     app.include_router(chat_api.router(engine, store, worker, frames, inputs))
     app.include_router(personality_api.router(engine))
     app.include_router(agenda_api.router(calendar))

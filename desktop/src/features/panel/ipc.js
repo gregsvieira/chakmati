@@ -54,8 +54,9 @@ function register() {
     try { return await ctx.engine.sendInput(jobId, requestId, value); } catch { return { ok: false, error: 'Não consegui enviar a resposta. Tente de novo.' }; }
   });
 
-  ipcMain.handle('panel:send', async (_e, text) => {
+  ipcMain.handle('panel:send', async (_e, text, attachments) => {
       if (typeof text !== 'string' || !text.trim() || text.length > MAX_TEXT) return { error: 'Pedido inválido.' };
+      const files = Array.isArray(attachments) ? attachments.filter((id) => typeof id === 'string' && /^[0-9a-f]{32}$/.test(id)).slice(0, 5) : [];
       if (!ctx.state.engineUp) return { error: 'O motor não está rodando. Inicie o Chakmati.' };
       // a command arrived: the microphone stops waiting for one (the wake phrase itself starts the wait again once answered)
       ctx.state.awakeUntil = 0;
@@ -70,7 +71,7 @@ function register() {
       (async () => {
         let failed = false;
         try {
-          for await (const event of ctx.engine.streamMessage(text, ac.signal)) {
+          for await (const event of ctx.engine.streamMessage(text, ac.signal, files)) {
             if (event.type === 'job' && event.job_id) ctx.jobOf.set(id, event.job_id);
             if (event.type === 'input') { ctx.state.asking = true; widgetMood.syncBell(); widgetMood.refreshMood(); } else if (event.type === 'input_done') { ctx.state.asking = false; widgetMood.syncBell(); widgetMood.refreshMood(); }
             sendTo(ctx.panelWin, 'panel:message', { id, event });

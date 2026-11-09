@@ -4,7 +4,7 @@
 // folder and is created by the wizard with the uv that ships in resources/bin. Development: unchanged (uv run in the checkout).
 const path = require('node:path');
 
-const EXTRA_NAMES = Object.freeze(['voice', 'listen', 'laya']);
+const EXTRA_NAMES = Object.freeze(['voice', 'listen', 'laya', 'documents']);
 
 const isWin = (platform) => platform === 'win32';
 const pathOf = (platform) => (isWin(platform) ? path.win32 : path.posix);
@@ -14,6 +14,7 @@ function extrasFromSettings(settings) {
   if (settings.enhancedVoice) extras.push('voice');
   if (settings.talk) extras.push('listen');
   if (settings.laya) extras.push('laya');
+  if (settings.documents) extras.push('documents');
   return extras;
 }
 

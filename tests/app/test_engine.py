@@ -198,3 +198,41 @@ async def test_the_stream_also_routes_a_pending_answer_to_whatsapp(store):
     engine = Engine(FakeGate(Route.CHAT), FakeLLM(), store, whatsapp_assistant=PendingWhatsApp())
     events = [e async for e in engine.handle_stream("Maria Souza")]
     assert events[0] == {"type": "route", "route": "whatsapp"} and events[1]["type"] == "job"
+
+
+# --- attached files: the attachments, not the gate, decide the route ------------------------------------------------------------------
+class FilesStub:
+    def __init__(self):
+        self.prompts = []
+
+    async def stream(self, prompt):
+        self.prompts.append(prompt)
+        yield "do "
+        yield "arquivo"
+
+    async def answer(self, prompt):
+        self.prompts.append(prompt)
+        return "do arquivo"
+
+
+async def test_a_message_with_attachments_becomes_a_files_job_whatever_the_gate_says(store):
+    from chakmati.features.files.assistant import decode
+
+    ids = ["a" * 32]
+    engine = Engine(FakeGate(Route.CHAT), FakeLLM(), store, file_assistant=FilesStub())
+    reply = await engine.handle("resuma o arquivo", ids)
+    assert (reply.kind, reply.route) == ("job", Route.FILES)
+    job = store.get(reply.job_id)
+    assert job.route == "files" and decode(job.prompt) == ("resuma o arquivo", ids)
+    assert await engine.run_job(job) == "do arquivo"
+    assert "".join([p async for p in engine.run_job_stream(job)]) == "do arquivo"
+
+
+async def test_the_stream_of_a_message_with_attachments_is_a_route_and_a_job_event(store):
+    events = await collect(Engine(FakeGate(Route.CHAT), FakeLLM(), store, file_assistant=FilesStub()).handle_stream("o que diz?", ["b" * 32]))
+    assert [e["type"] for e in events] == ["route", "job"] and events[1]["route"] == "files"
+
+
+async def test_without_the_files_assistant_attachments_are_ignored_and_the_chat_answers(store):
+    reply = await Engine(FakeGate(Route.CHAT), FakeLLM(), store).handle("oi tudo bem?", ["c" * 32])
+    assert reply.kind == "answer"

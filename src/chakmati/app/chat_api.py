@@ -3,6 +3,7 @@
 import asyncio
 import re
 from collections.abc import AsyncIterator
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response, StreamingResponse
@@ -17,6 +18,7 @@ from chakmati.shared.jobs import CANCELLED, DONE, FAILED, JobStore, Worker
 
 class MessageIn(BaseModel):
     text: str = Field(min_length=1, max_length=8000)
+    attachments: list[Annotated[str, Field(pattern=r"^[0-9a-f]{32}$")]] = Field(default_factory=list, max_length=5)  # ids of attached files
 
 
 STREAM_POLL_SECONDS = 0.05
@@ -74,7 +76,7 @@ def router(engine: Engine, store: JobStore, worker: Worker | None, frames: Frame
 
     @router.post("/message")
     async def post_message(body: MessageIn):
-        reply = await engine.handle(body.text)
+        reply = await engine.handle(body.text, body.attachments)
         return {
             "kind": reply.kind,
             "route": reply.route.value,
@@ -136,7 +138,7 @@ def router(engine: Engine, store: JobStore, worker: Worker | None, frames: Frame
     @router.post("/message/stream")
     async def post_message_stream(body: MessageIn):
         async def events() -> AsyncIterator[str]:
-            async for event in engine.handle_stream(body.text):
+            async for event in engine.handle_stream(body.text, body.attachments):
                 yield sse(event)
                 if event["type"] == "job":
                     async for job_event in job_events(event["job_id"]):
