@@ -8,6 +8,8 @@
   const open = new Set();        // the speakers that are expanded
   const searching = new Set();   // the ones showing the "Trocar música" field
   const drafts = new Map();      // what was typed in each field: the list is redrawn every few seconds and must not take it away
+  const infoOpen = new Set();    // the speakers whose (i) is open: the list is redrawn every few seconds and must not close it
+  const UNAVAILABLE_INFO = 'A Amazon limita os pedidos do Home Assistant, e por isso a Alexa não está dizendo o que toca agora. Pedir uma música pelo botão abaixo ou por voz ainda funciona.';
   let players = [];
   let note = '';                 // the last answer of a button, or the problem
   let busy = '';                 // the speaker whose button was just pressed
@@ -43,7 +45,9 @@
     const expanded = open.has(p.id);
     const playing = p.state === 'playing';
     const sub = (playing || p.state === 'paused') && p.title ? `♪ ${p.title}${p.artist ? ` — ${p.artist}` : ''}${p.state === 'paused' ? ' (pausada)' : ''}` : (word[p.state] || p.state);
-    const say = p.state === 'unavailable' ? 'A Alexa não está mandando informações agora (a Amazon limita os pedidos do Home Assistant). Pedir uma música pelo botão abaixo ou por voz ainda funciona.' : (playing || p.state === 'paused') && !p.title ? 'Tocando algo sem título' : '';
+    const unavailable = p.state === 'unavailable';
+    const moreInfo = unavailable && infoOpen.has(p.id);   // the reason sits behind the (i): one short line is enough until the person asks
+    const say = unavailable ? 'A Alexa não está mandando informações agora.' : (playing || p.state === 'paused') && !p.title ? 'Tocando algo sem título' : '';
     const head = P.h('button', {
       class: 'house-head', type: 'button', 'aria-expanded': String(expanded), onclick: () => { if (expanded) open.delete(p.id); else open.add(p.id); draw(); },
     }, P.h('span', { class: 'house-name' }, p.name), P.h('span', { class: 'house-state', 'data-playing': (playing || p.state === 'paused') && p.title ? '1' : undefined }, sub));
@@ -60,7 +64,11 @@
     })() : null;
     return P.h('div', { class: 'house-card', 'data-open': '1' }, head,
       P.h('div', { class: 'house-body' },
-        (say ? P.h('p', { class: 'house-now' }, say) : null),
+        (say ? P.h('p', { class: 'house-now' }, say, unavailable ? P.h('button', {
+          class: 'info-btn', type: 'button', title: 'Por que isso acontece?', 'aria-label': 'Por que isso acontece?', 'aria-expanded': String(moreInfo),
+          onclick: () => { if (infoOpen.has(p.id)) infoOpen.delete(p.id); else infoOpen.add(p.id); draw(); },
+        }, 'i') : null) : null),
+        (moreInfo ? P.h('p', { class: 'house-info', role: 'note' }, UNAVAILABLE_INFO) : null),
         P.h('div', { class: 'house-buttons' },
           button('⏮', 'Música anterior', () => press(p, 'previous'), off || !p.can.previous),
           playing ? button('⏸', 'Pausar', () => press(p, 'pause'), off || !p.can.pause) : button('▶', 'Continuar tocando', () => press(p, 'play'), off || !p.can.play),

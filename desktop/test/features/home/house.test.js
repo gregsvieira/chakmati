@@ -74,6 +74,9 @@ test('what is typed in "Trocar música" survives the redraws (every few seconds 
 test('an Alexa that stopped sending information is said in words, and asking for music is still offered', () => {
   const js = read('features', 'home', 'renderer', 'house.js');
   assert.match(js, /unavailable: 'sem informação agora'/);
-  assert.match(js, /p\.state === 'unavailable' \? 'A Alexa não está mandando informações agora/);
+  assert.match(js, /unavailable \? 'A Alexa não está mandando informações agora\.' :/);   // one short line...
+  assert.doesNotMatch(js.split('\n').find((l) => l.includes('const say =')), /Amazon/);   // ...and the reason only behind the (i)
+  assert.match(js, /const UNAVAILABLE_INFO = 'A Amazon limita os pedidos do Home Assistant/);
+  assert.match(js, /aria-expanded': String\(moreInfo\)/);
   assert.match(js, /button\('Trocar música', 'Pedir outra música à Alexa', \(\) => \{[^}]*\}, off\)/);   // disabled only while a press is in flight, never because the state is unavailable
 });
