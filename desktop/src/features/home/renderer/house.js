@@ -42,9 +42,11 @@
   function card(p) {
     const expanded = open.has(p.id);
     const playing = p.state === 'playing';
+    const sub = (playing || p.state === 'paused') && p.title ? `♪ ${p.title}${p.artist ? ` — ${p.artist}` : ''}${p.state === 'paused' ? ' (pausada)' : ''}` : (word[p.state] || p.state);
+    const say = p.state === 'unavailable' ? 'A Alexa não está mandando informações agora (a Amazon limita os pedidos do Home Assistant). Pedir uma música pelo botão abaixo ou por voz ainda funciona.' : (playing || p.state === 'paused') && !p.title ? 'Tocando algo sem título' : '';
     const head = P.h('button', {
       class: 'house-head', type: 'button', 'aria-expanded': String(expanded), onclick: () => { if (expanded) open.delete(p.id); else open.add(p.id); draw(); },
-    }, P.h('span', { class: 'house-name' }, p.name), P.h('span', { class: 'house-state' }, playing && p.title ? `${p.title}${p.artist ? ` — ${p.artist}` : ''}` : (word[p.state] || p.state)));
+    }, P.h('span', { class: 'house-name' }, p.name), P.h('span', { class: 'house-state', 'data-playing': (playing || p.state === 'paused') && p.title ? '1' : undefined }, sub));
     if (!expanded) return P.h('div', { class: 'house-card' }, head);
     const off = busy === p.id;
     const field = searching.has(p.id) ? (() => {
@@ -58,7 +60,7 @@
     })() : null;
     return P.h('div', { class: 'house-card', 'data-open': '1' }, head,
       P.h('div', { class: 'house-body' },
-        P.h('p', { class: 'house-now' }, p.state === 'unavailable' ? 'A Alexa não está mandando informações agora (a Amazon limita os pedidos do Home Assistant). Pedir uma música pelo botão abaixo ou por voz ainda funciona.' : playing || p.state === 'paused' ? (p.title ? `♪ ${p.title}${p.artist ? ` — ${p.artist}` : ''}${p.state === 'paused' ? ' (pausada)' : ''}` : 'Tocando algo sem título') : 'Nada tocando agora'),
+        (say ? P.h('p', { class: 'house-now' }, say) : null),
         P.h('div', { class: 'house-buttons' },
           button('⏮', 'Música anterior', () => press(p, 'previous'), off || !p.can.previous),
           playing ? button('⏸', 'Pausar', () => press(p, 'pause'), off || !p.can.pause) : button('▶', 'Continuar tocando', () => press(p, 'play'), off || !p.can.play),
