@@ -37,7 +37,7 @@ test('the section sits above the automations, is hidden until the house is conne
   const html = read('features', 'panel', 'renderer', 'panel.html');
   assert.ok(html.indexOf('<section id="house"') > html.indexOf('<section id="agenda"') && html.indexOf('<section id="house"') < html.indexOf('<section id="automations"'));
   assert.match(html, /<section id="house" hidden>\s*<h2>Casa e Alexa<\/h2>/);
-  assert.match(read('features', 'panel', 'renderer', 'layout.js'), /const TOPICS = \['decisions', 'messages', 'agenda', 'house', 'automations', 'recent'\]/);
+  assert.match(read('features', 'panel', 'renderer', 'layout.js'), /const TOPICS = \['decisions', 'messages', 'agenda', 'house', 'automations'\]/);
   assert.match(read('features', 'panel', 'renderer', 'core.js'), /P\.renderHouse\(\);\s*P\.renderAutomations\(\);/);
   assert.match(html, /<script src="\.\.\/\.\.\/home\/renderer\/house\.js"><\/script>/);
 });

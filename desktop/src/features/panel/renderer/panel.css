@@ -362,9 +362,8 @@ body[data-still] #panel[data-layout="wide"] #content, body[data-still] #panel[da
 #topics section:not([data-collapsed]) .topic-hint { display: none; }
 #panel[data-layout="wide"] .topic-hint { display: none; }
 
-#panel[data-layout="compact"]:not([data-focus="thread"]) #thread-section { padding: 34px 0 2px; border-top: 0; backdrop-filter: none; }
-#panel[data-layout="compact"]:not([data-focus="thread"]) #thread-section > h2 { position: absolute; right: 0; top: 2px; margin: 0; }
-#panel[data-layout="compact"]:not([data-focus="thread"]) .h-title { display: none; }
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread-section { padding: 14px 0 14px; backdrop-filter: none; }   /* a topic like the others: hairline, title, then what is inside */
+#panel[data-layout="compact"]:not([data-focus="thread"]) #thread-section > h2 { position: static; display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
 #panel[data-layout="compact"]:not([data-focus="thread"]) #thread { max-height: none; overflow: hidden; gap: 0; padding: 0; }
 #panel[data-layout="compact"]:not([data-focus="thread"]) #thread > .turn:not(:last-child) { display: none; }
 #panel[data-layout="compact"]:not([data-focus="thread"]) #thread > .turn:last-child { max-width: 100%; padding: 8px 12px; font-size: 14px; line-height: 1.4; }
@@ -467,3 +466,18 @@ body[data-still] #panel[data-layout="wide"] #content, body[data-still] #panel[da
 #panel[data-layout="compact"] #content { overflow-x: hidden; overflow-y: auto; }
 #panel[data-layout="compact"] #topics { overflow: visible; }
 #panel[data-layout="compact"] #thread-section { position: static; z-index: auto; margin-top: auto; background: none; box-shadow: none; }
+
+/* ---------------------------------------------------------------------------------------------------------------- the header: back, title, bell, three dots, close
+   The bell opens the recent notices, the three dots hold the rest (size of the window, Ajustes). Both open as little windows under the header. */
+#open-notices.bell[data-state="notice"]::after, #open-notices.bell[data-state="request"]::after { right: 5px; top: 5px; }
+#open-notices[aria-expanded="true"], #open-menu[aria-expanded="true"] { background: var(--surface-2); color: var(--text); }
+#panel[data-screen="settings"] #open-menu { display: none; }   /* the options are on their own page already */
+.pop { --pop-bg: #f7f9fc; position: absolute; z-index: 20; top: 62px; right: 10px; width: min(320px, calc(100% - 20px)); max-height: 60%; overflow-y: auto; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 16px; background: var(--pop-bg); box-shadow: 0 12px 32px rgba(8, 14, 30, 0.35); }
+@media (prefers-color-scheme: dark) { .pop { --pop-bg: #16213a; } }
+.pop[hidden] { display: none; }
+.pop > h2 { margin: 0 0 8px; font-size: 15px; }
+.pop-menu { width: min(260px, calc(100% - 20px)); padding: 6px; }
+.menu-item { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 42px; padding: 0 12px; border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; font-size: 14.5px; text-align: left; cursor: pointer; }
+.menu-item:hover, .menu-item:focus-visible { background: var(--surface-2); }
+.menu-item[hidden] { display: none; }
+.menu-item svg { flex: none; width: 20px; height: 20px; color: var(--muted); }

@@ -76,6 +76,9 @@
     mark.dataset.state = bell.state;                  // idle (outline) | notice (red) | request (yellow)
     mark.setAttribute('aria-label', bell.label);
     mark.title = bell.label;
+    const btn = $('open-notices');   // the bell of the header: same state, with a dot when there is news
+    btn.dataset.state = bell.state;
+    btn.setAttribute('aria-label', bell.state === 'idle' ? 'Avisos recentes' : `Avisos recentes: ${bell.label}`);
     const badge = $('fold-left-badge');  // the list of decisions is on the left: when it is minimized the number stays on its button
     badge.hidden = !(n > 0);
     badge.textContent = String(n);
