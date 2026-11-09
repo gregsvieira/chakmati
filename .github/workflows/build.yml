@@ -11,6 +11,11 @@ on:
       - 'uv.lock'
       - '.github/workflows/build.yml'
 
+# A new push to the same branch cancels the build still running for the old one: each run makes four installers of 100+ MB.
+concurrency:
+  group: build-installers-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     strategy:
@@ -41,3 +46,5 @@ jobs:
           name: chakmati-${{ matrix.platform }}-${{ matrix.arch }}
           path: desktop/dist/${{ matrix.artifact }}
           if-no-files-found: error
+          retention-days: 3        # the installers are for trying a branch: they expire after 3 days instead of 90 (the storage quota of the repository filled up and every upload failed)
+          compression-level: 0     # .pkg, .exe and .deb are already compressed: zipping them again only costs time
