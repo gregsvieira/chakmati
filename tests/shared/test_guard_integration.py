@@ -23,7 +23,7 @@ class Provider:
         return [MARIA]
 
     async def get_messages(self, chat_id, last=20):
-        return [Message("m1", chat_id, "Maria", HOSTILE, TS, False)]
+        return [Message(f"m{i}", chat_id, "Maria", HOSTILE, TS, False) for i in range(1, 4)]   # three: a shorter chat is shown as it is, without the model
 
     async def send_text(self, chat_id, text):
         self.sent.append((chat_id, text))
