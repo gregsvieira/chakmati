@@ -21,7 +21,8 @@
   const list = document.querySelector('.rail ol');
   const stepsAll = [...document.querySelectorAll('.step')];
   const items = [];
-  const PITCH = 56;   // pixels between two buttons
+  const STEP = 12;     // degrees between two buttons along the arc
+  const GAP = 30;      // pixels between the circle and the buttons
   if (list) {
     for (const step of stepsAll) {
       const li = document.createElement('li');
@@ -46,11 +47,19 @@
     return centers.length - 1;
   }
   function roll(pos, active) {
+    const stage = list.closest('.stage').getBoundingClientRect();
+    const circle = document.querySelector('.halo').getBoundingClientRect();   // where the circle is now (it drifts with the scroll)
+    const cx = circle.left + circle.width / 2 - stage.left;
+    const cy = circle.top + circle.height / 2 - stage.top;
+    const radius = circle.width / 2 + GAP + 18;
     items.forEach((it, i) => {
       const d = Math.abs(i - pos);
-      const scale = 0.72 + 0.68 * Math.max(0, 1 - d);   // 1.4 when it is the one being read, 0.72 from a step away
-      it.li.style.transform = `translateY(${((i - pos) * PITCH).toFixed(1)}px) scale(${scale.toFixed(3)})`;
-      it.li.style.opacity = String(Math.max(0.25, 1 - 0.5 * d).toFixed(2));
+      const angle = ((i - pos) * STEP * Math.PI) / 180;   // 0 = the middle of the circle's right side; later parts go down the arc, earlier ones up
+      const scale = 0.72 + 0.68 * Math.max(0, 1 - d);     // 1.4 when it is the one being read, 0.72 from a step away
+      it.li.style.transform = `translate(${(cx + radius * Math.cos(angle)).toFixed(1)}px, ${(cy + radius * Math.sin(angle)).toFixed(1)}px) scale(${scale.toFixed(3)})`;
+      const fade = Math.min(1, Math.max(0, (6.5 - d) / 2));   // gone at the far ends of the arc, so it never wraps round the whole circle
+      it.li.style.opacity = (Math.max(0.25, 1 - 0.5 * d) * fade).toFixed(2);
+      it.li.style.visibility = fade === 0 ? 'hidden' : 'visible';
       if (i === active) it.a.setAttribute('aria-current', 'true'); else it.a.removeAttribute('aria-current');
     });
   }
@@ -102,10 +111,11 @@
   // requestAnimationFrame: it is eight measurements, and a frame that never comes (a hidden tab, a slow computer) must not leave the wrong face.
   const frame = () => {
     pick();
-    roll(position(), stepsAll.indexOf(shownStep));
-    if (still) return;
-    const room = document.documentElement.scrollHeight - window.innerHeight;
-    root.style.setProperty('--p', room > 0 ? (window.scrollY / room).toFixed(4) : '0');   // 0 at the top, 1 at the end
+    if (!still) {
+      const room = document.documentElement.scrollHeight - window.innerHeight;
+      root.style.setProperty('--p', room > 0 ? (window.scrollY / room).toFixed(4) : '0');   // 0 at the top, 1 at the end
+    }
+    if (list) roll(position(), stepsAll.indexOf(shownStep));   // after --p: the circle's place is read from the page
   };
   window.addEventListener('scroll', frame, { passive: true });
   window.addEventListener('resize', frame);
