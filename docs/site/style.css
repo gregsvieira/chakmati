@@ -34,11 +34,17 @@ a { color: var(--petrol); }
 .stage { position: sticky; top: 0; height: 100vh; display: grid; place-items: center; overflow: hidden; align-self: start; }
 .stage-inner { position: relative; display: grid; justify-items: center; gap: 18px; width: 100%; padding: 0 16px; }
 .figure { position: relative; height: min(64vh, 560px); aspect-ratio: 472 / 891; transform: translate3d(0, calc(var(--p, 0) * 14px), 0); }
-/* the circle behind him: it follows him and only drifts a little (the parallax is bounded: --p goes from 0 to 1 over the whole page) */
-.halo {
-  position: absolute; left: 50%; top: 40%; width: 150%; aspect-ratio: 1; border-radius: 50%; background: var(--halo); opacity: 0.5;
-  transform: translate3d(-50%, calc(-50% + var(--p, 0) * -46px), 0); transition: background 0.5s ease;
+/* the circle behind him, with one icon per part of the page around it: it follows him and only drifts a little (--p goes from 0 to 1 over the whole page) */
+.orbit { position: absolute; left: 50%; top: 40%; width: 150%; aspect-ratio: 1; transform: translate3d(-50%, calc(-50% + var(--p, 0) * -46px), 0); }
+.orbit.front { z-index: 3; }   /* the icons are above the figure: one lit at the bottom must not hide behind his bow tie */
+.halo { position: absolute; inset: 0; border-radius: 50%; background: var(--halo); opacity: 0.5; transition: background 0.5s ease; }
+.orbit.front a {
+  position: absolute; width: 42px; height: 42px; margin: -21px 0 0 -21px; display: grid; place-items: center; border-radius: 50%; text-decoration: none; font-size: 21px; line-height: 1;
+  background: var(--card); border: 1px solid var(--rule); opacity: 0.3; filter: grayscale(0.7); transform: scale(0.88);
+  transition: opacity 0.35s ease, transform 0.35s ease, filter 0.35s ease, box-shadow 0.35s ease;
 }
+.orbit.front a:hover, .orbit.front a:focus-visible { opacity: 0.7; }
+.orbit.front a[aria-current="true"] { opacity: 1; filter: none; transform: scale(1.3); box-shadow: 0 0 0 4px var(--petrol), var(--shadow); z-index: 2; }
 .figure img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity 0.12s linear; filter: drop-shadow(0 14px 18px rgba(20, 33, 61, 0.28)); }
 .figure img.on { opacity: 1; }
 .mood-name {
@@ -99,6 +105,8 @@ footer { padding: 40px 6vw 60px; text-align: center; color: var(--muted); font-s
   .mood-name { min-width: 0; font-size: 15px; padding: 8px 14px; text-align: left; }
   .mood-name small { display: none; }
   .dots { display: none; }
+  .orbit { width: 170%; top: 50%; }
+  .orbit.front { display: none; }   /* the strip on a phone is too small for the icons */
   .story { padding: 0 20px; }
   .step { min-height: 70vh; padding: 6vh 0; }
   .step.hero { min-height: 62vh; }
@@ -109,6 +117,7 @@ footer { padding: 40px 6vw 60px; text-align: center; color: var(--muted); font-s
   html { scroll-behavior: auto; }
   .figure img, .halo { transition: none; }
   .figure, .dot { transform: none !important; }
-  .halo { transform: translate3d(-50%, -50%, 0) !important; }
+  .orbit { transform: translate3d(-50%, -50%, 0) !important; }
+  .orbit.front a { transition: none; }
 }
 @media print { .stage { position: static; height: auto; } .layout { display: block; } .step { min-height: 0; padding: 20px 0; } }

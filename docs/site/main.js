@@ -17,6 +17,25 @@
   const lazy = () => imgs.forEach(load);
   (window.requestIdleCallback || ((f) => setTimeout(f, 1200)))(lazy);
 
+  // one icon per part of the page, around the circle behind him: the one of the part being read is lit, the others fade. Each is a link to its part.
+  const ring = document.querySelector('.orbit.front');
+  const links = [];
+  const stepsAll = [...document.querySelectorAll('.step')];
+  if (ring) {
+    stepsAll.forEach((step, i) => {
+      const a = document.createElement('a');
+      const angle = (-90 + (360 / stepsAll.length) * i) * Math.PI / 180;   // the first at the top, then clockwise
+      a.href = `#${step.id}`;
+      a.textContent = step.dataset.icon;
+      a.title = step.dataset.label;
+      a.setAttribute('aria-label', step.dataset.label);
+      a.style.left = `${50 + 50 * Math.cos(angle)}%`;
+      a.style.top = `${50 + 50 * Math.sin(angle)}%`;
+      ring.append(a);
+      links.push(a);
+    });
+  }
+
   let current = 'smile';
   let shownStep = null;
   let timer = null;
@@ -31,7 +50,8 @@
     if (step === shownStep) return;
     shownStep = step;
     const mood = step.dataset.mood;
-    label(step.dataset.name, step.dataset.sub);   // two parts of the page may share a face and still say different things
+    label(step.dataset.name, step.dataset.sub);
+    links.forEach((a, i) => { if (stepsAll[i] === step) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current'); });   // two parts of the page may share a face and still say different things
     if (mood === current) return;
     current = mood;
     if (halo) halo.style.background = HALO[mood] || HALO.smile;
@@ -71,6 +91,5 @@
   window.addEventListener('scroll', frame, { passive: true });
   window.addEventListener('resize', frame);
   window.addEventListener('load', frame);
-  shownStep = steps[0];
   frame();
 })();

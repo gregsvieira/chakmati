@@ -16,13 +16,14 @@
       <div class="dots" aria-hidden="true"><span class="dot a"></span><span class="dot b"></span><span class="dot c"></span></div>
       <div class="stage-inner">
         <div class="figure" role="img" aria-label="O Chakmati, um boneco azul de cartola, com a expressão do momento">
-          <span class="halo" aria-hidden="true"></span>
+          <div class="orbit" aria-hidden="true"><span class="halo"></span></div>
           <img data-mood="smile" src="img/smile.png" alt="" class="on" width="472" height="891" fetchpriority="high">
           <img data-mood="bored" data-src="img/bored.png" alt="" width="472" height="891">
           <img data-mood="thinking" data-src="img/thinking.png" alt="" width="472" height="891">
           <img data-mood="angry" data-src="img/angry.png" alt="" width="472" height="891">
           <img data-mood="drunk" data-src="img/drunk.png" alt="" width="472" height="891">
           <img data-mood="sleeping" data-src="img/sleeping.png" alt="" width="472" height="891">
+          <nav class="orbit front" aria-label="Partes da página"></nav>
         </div>
         <p class="mood-name" id="mood-name" aria-live="off">Feliz em te conhecer<small>é assim que ele fica quando você chega</small></p>
       </div>
@@ -30,7 +31,7 @@
 
     <main class="story" id="story">
 
-      <section class="step hero" data-mood="smile" data-name="Feliz em te conhecer" data-sub="é assim que ele fica quando você chega">
+      <section class="step hero" id="inicio" data-icon="👋" data-label="Apresentação" data-mood="smile" data-name="Feliz em te conhecer" data-sub="é assim que ele fica quando você chega">
         <p class="eyebrow">Conheça o Chakmati</p>
         <h1>Um ajudante que mora no seu computador.</h1>
         <p class="lead">Você escreve ou fala do jeito que fala no dia a dia. Ele entende, faz o trabalho chato e avisa quando termina. Sem termos difíceis, sem mexer em configuração.</p>
@@ -41,7 +42,7 @@
         <p><a class="cta" href="#comecar">Quero começar</a></p>
       </section>
 
-      <section class="step" data-mood="bored" data-name="Quietinho, esperando" data-sub="ele só trabalha quando você chama">
+      <section class="step" id="facil" data-icon="⌨️" data-label="Fácil de usar" data-mood="bored" data-name="Quietinho, esperando" data-sub="ele só trabalha quando você chama">
         <p class="eyebrow">Fácil de usar</p>
         <h2>Você chama, ele vem. Você manda parar, ele para.</h2>
         <p class="lead">Nada de aprender comandos. Basta pedir, como pediria a uma pessoa.</p>
@@ -52,7 +53,7 @@
         </ul>
       </section>
 
-      <section class="step" data-mood="smile" data-name="Falando do seu jeito" data-sub="seis sotaques para escolher">
+      <section class="step" id="personalidades" data-icon="🗣️" data-label="Personalidades" data-mood="smile" data-name="Falando do seu jeito" data-sub="seis sotaques para escolher">
         <p class="eyebrow">Personalidades</p>
         <h2>Ele fala com o sotaque que você escolher.</h2>
         <p class="lead">A resposta é a mesma, só muda o jeito de dizer. Veja a mesma pergunta em cada personalidade:</p>
@@ -72,7 +73,7 @@
         <p class="note">O sotaque só entra em respostas curtas de conversa. Listas, resumos, mensagens e datas ficam exatamente como são: o jeito de falar nunca muda um fato.</p>
       </section>
 
-      <section class="step" data-mood="thinking" data-name="Pensando…" data-sub="pesquisando e lendo para você">
+      <section class="step" id="pesquisa" data-icon="🔎" data-label="Pesquisa e arquivos" data-mood="thinking" data-name="Pensando…" data-sub="pesquisando e lendo para você">
         <p class="eyebrow">Pesquisa e leitura</p>
         <h2>Pergunte. Ele pesquisa, lê e conta o essencial.</h2>
         <p class="lead">Aquele texto enorme, aquela dúvida que exigiria dez páginas abertas: ele faz o trabalho de ler.</p>
@@ -85,7 +86,7 @@
         <p class="note">Ele é um ajudante, não um oráculo: os resumos dizem “gerado por IA, pode conter erros”, e é para valer. Confira o que for importante.</p>
       </section>
 
-      <section class="step" data-mood="smile" data-name="Contente em ajudar" data-sub="com o WhatsApp em dia">
+      <section class="step" id="whatsapp" data-icon="💬" data-label="WhatsApp" data-mood="smile" data-name="Contente em ajudar" data-sub="com o WhatsApp em dia">
         <p class="eyebrow">WhatsApp</p>
         <h2>Quem escreveu? O que disse? Ele conta.</h2>
         <p class="lead">Em vez de abrir conversa por conversa, pergunte: “tenho mensagens novas?”.</p>
@@ -97,7 +98,7 @@
         <p class="note">Aviso importante: o WhatsApp não permite oficialmente programas como este. Para evitar risco de bloqueio, use um número secundário e poucas mensagens.</p>
       </section>
 
-      <section class="step" data-mood="drunk" data-name="Em clima de festa" data-sub="música e casa inteligente">
+      <section class="step" id="casa" data-icon="🏠" data-label="Casa e Alexa" data-mood="drunk" data-name="Em clima de festa" data-sub="música e casa inteligente">
         <p class="eyebrow">Casa e Alexa</p>
         <h2>Música na sala sem levantar do sofá.</h2>
         <p class="lead">Se você tem uma Alexa (Echo), o Chakmati controla a música dela por você.</p>
@@ -108,7 +109,7 @@
         <p class="note">Às vezes a Amazon limita os pedidos e a Alexa para de informar o que está tocando. Pedir música continua funcionando.</p>
       </section>
 
-      <section class="step" data-mood="angry" data-name="Firme na segurança" data-sub="ele não faz nada escondido">
+      <section class="step" id="confianca" data-icon="🛡️" data-label="Confiança" data-mood="angry" data-name="Firme na segurança" data-sub="ele não faz nada escondido">
         <p class="eyebrow">Confiança</p>
         <h2>Ele pergunta antes. Sempre.</h2>
         <p class="lead">Um ajudante só serve se você confia nele. Por isso o Chakmati é chato, no bom sentido.</p>
@@ -120,7 +121,7 @@
         </ul>
       </section>
 
-      <section class="step" data-mood="sleeping" data-name="Zzz… gastando pouco" data-sub="feito para computadores simples">
+      <section class="step" id="simples" data-icon="💻" data-label="Computador simples" data-mood="sleeping" data-name="Zzz… gastando pouco" data-sub="feito para computadores simples">
         <p class="eyebrow">Para qualquer computador</p>
         <h2>Não precisa de máquina potente.</h2>
         <p class="lead">O instalador olha o seu computador e escolhe o tamanho certo do “cérebro”. Quanto mais fraco o computador, mais leve é a escolha.</p>
@@ -133,7 +134,7 @@
         <p class="note">Com pouca memória, o modelo leve erra mais em tarefas no computador (criar pastas e arquivos). Conversa e pesquisa funcionam bem.</p>
       </section>
 
-      <section class="step" id="comecar" data-mood="smile" data-name="Vamos começar?" data-sub="três passos">
+      <section class="step" id="comecar" data-icon="🚀" data-label="Como começar" data-mood="smile" data-name="Vamos começar?" data-sub="três passos">
         <p class="eyebrow">Como começar</p>
         <h2>Três passos, sem pressa.</h2>
         <ol class="steps">
@@ -142,7 +143,11 @@
           <li><b>Chame o Chakmati</b> e peça a primeira coisa. Se não souber o quê, comece por “o que você sabe fazer?”.</li>
         </ol>
         <p class="note">O instalador do Mac já foi testado. As versões de Windows e Ubuntu ainda estão em teste. Os instaladores ainda não são assinados: o sistema mostra um aviso na primeira abertura, e no Mac é só clicar com o botão direito e escolher “Abrir”.</p>
-        <h2 style="margin-top:34px">Dúvidas comuns</h2>
+      </section>
+
+      <section class="step" id="duvidas" data-mood="thinking" data-name="Tirando dúvidas" data-sub="o que todo mundo pergunta" data-icon="❓" data-label="Dúvidas comuns">
+        <p class="eyebrow">Dúvidas</p>
+        <h2>Dúvidas comuns</h2>
         <details><summary>Preciso saber de tecnologia?</summary><p>Não. O assistente de instalação fala em português simples e o Chakmati responde do mesmo jeito. Os botões têm nomes como “Parar” e “Ampliar”.</p></details>
         <details><summary>O Chakmati lê tudo que tenho no computador?</summary><p>Não. Ele só lê o que você anexa na conversa e trabalha na pasta de trabalho dele (Documentos/Chakmati). Qualquer ação que mude algo precisa da sua aprovação.</p></details>
         <details><summary>E se ele errar?</summary><p>Pode acontecer, principalmente em computadores bem simples. Resumos trazem o aviso de que podem conter erros, e respostas sobre arquivos mostram a fonte para você conferir.</p></details>
