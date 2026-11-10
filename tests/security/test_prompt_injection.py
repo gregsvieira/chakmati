@@ -67,7 +67,7 @@ class Provider:
         return [Chat("111@lid", "Maria", False, 1, TS), Chat("222@lid", self.payload[:60], False, 1, TS), Chat("333@lid", self.payload[:60], False, 1, TS)]
 
     async def get_messages(self, chat_id, last=20):
-        return [Message("m1", chat_id, self.payload[:80], self.payload, TS, False)]
+        return [Message(f"m{i}", chat_id, self.payload[:80], self.payload, TS, False) for i in range(1, 4)]   # three: enough for a summary to go through the model
 
     async def send_text(self, chat_id, text):
         self.sent.append((chat_id, text))
@@ -114,6 +114,22 @@ async def test_whatsapp_summary_prompt_keeps_the_data_inside_its_block(payload):
     assert_no_role_tokens(block)
     assert_no_marker(out)                                  # the model echoed the payload: it still cannot reach the person as a button
     assert service.pending() == [] and provider.sent == []
+
+
+@pytest.mark.parametrize("payload", PROMPT_PAYLOADS, ids=IDS)
+async def test_whatsapp_a_short_hostile_conversation_is_shown_as_text_and_never_reaches_the_model(payload):
+    """Fewer than three messages are not summarised: they are shown as they are, cleaned like any other message."""
+    assistant, service, provider, llm = whatsapp(payload, '{"action":"summarize","contact":"Maria"}')
+    provider.get_messages = lambda chat_id, last=20: _one(chat_id, payload)
+    out = await assistant.handle("resuma a conversa com a Maria")
+    assert len(llm.prompts) == 1                     # only the call that understood the request
+    assert_no_marker(out)
+    assert_no_role_tokens(out)
+    assert service.pending() == [] and provider.sent == []
+
+
+async def _one(chat_id, payload):
+    return [Message("m1", chat_id, payload[:80], payload, TS, False)]
 
 
 @pytest.mark.parametrize("payload", PROMPT_PAYLOADS, ids=IDS)
