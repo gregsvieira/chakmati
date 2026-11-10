@@ -66,7 +66,7 @@ test('the two boxes are never open together', () => {
   assert.equal(els['wa-dock'].hidden, true);
 });
 
-test('a direct reply goes to WhatsApp as typed, then the box folds and the conversation reloads', async () => {
+test('a direct reply goes to WhatsApp as typed, then the box stays open for the next message and the conversation reloads', async () => {
   const { els, sent, calls, open } = build();
   open();
   els['dock-direct'].listeners.click[0]();
@@ -74,10 +74,14 @@ test('a direct reply goes to WhatsApp as typed, then the box folds and the conve
   els['wa-reply'].requestSubmit();
   await new Promise((r) => setImmediate(r));
   assert.deepEqual(sent, [['1@lid', 'chego em 10 min']]);
-  assert.equal(els['wa-reply'].hidden, true);
-  assert.equal(els['wa-dock'].hidden, false);
+  assert.equal(els['wa-reply'].hidden, false);   // still open: the conversation goes on
+  assert.equal(els['wa-dock'].hidden, true);
+  assert.equal(els.focused, 'wa-reply-input');
   assert.equal(els['wa-reply-input'].value, '');
   assert.equal(calls.reloaded, 1);
+  els['reply-collapse'].listeners.click[0]();   // it folds only when the person folds it
+  assert.equal(els['wa-reply'].hidden, true);
+  assert.equal(els['wa-dock'].hidden, false);
 });
 
 test('a failed direct reply keeps the text and the box, and says why', async () => {

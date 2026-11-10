@@ -1,6 +1,6 @@
 // Inside a WhatsApp conversation the two text boxes never show together, and both start folded into one bar:
 //   "Peça algo ao Chakmati"  (opens the usual command line; after the request is sent it folds again and a shortcut to the Chakmati's conversation appears)
-//   "Responder mensagem diretamente" (opens a box whose text goes straight to WhatsApp, not through the Chakmati; it folds after sending)
+//   "Responder mensagem diretamente" (opens a box whose text goes straight to WhatsApp, not through the Chakmati; it stays open after sending, so the conversation can go on)
 // In the big window the conversation takes the middle column and the sides (topics, the Chakmati's screen) stay where they are.
 
 (function () {
@@ -73,7 +73,7 @@
     if (!res || res.error) { note((res && res.error) || 'Não consegui enviar a mensagem.'); return; }   // the text stays in the box
     $('wa-reply-input').value = '';
     grow();
-    setMode('collapsed');
+    $('wa-reply-input').focus();   // the box stays open for the next message: it folds only when the person folds it (or leaves the conversation)
     if (P.reloadChat) P.reloadChat();
   }
 
