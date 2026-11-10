@@ -9,6 +9,7 @@
     set(key, value) { try { window.localStorage.setItem(key, JSON.stringify(value)); } catch { /* private window or storage off: the choice just is not remembered */ } },
   };
   const TOPICS = ['decisions', 'messages', 'agenda', 'house', 'automations'];   // (the recent notices live under the bell in the header)
+  const ACCORDION = TOPICS.filter((t) => t !== 'decisions');
   // Which topics are folded: in the small card they start folded (one line each, with a hint of what is inside), in the big window open (there is room).
   // Each layout remembers its own choices.
   const foldedBy = {
@@ -113,10 +114,11 @@
       title.append(hint);
       const sync = () => { if (folded.has(id)) section.dataset.collapsed = '1'; else delete section.dataset.collapsed; title.setAttribute('aria-expanded', String(!folded.has(id))); };
       const toggle = () => {
-        const set = foldedBy[layoutNow()];
-        if (set.has(id)) set.delete(id); else set.add(id);
-        store.set(`chakmati.folded-${layoutNow()}`, [...set]);
-        sync();
+        const key = layoutNow();
+        const set = window.Accordion.toggled(foldedBy[key], id, ACCORDION, key === 'compact' && ACCORDION.includes(id));   // small card: opening one folds the others (not the approvals: a request waiting for the person stays in view)
+        foldedBy[key] = set;
+        store.set(`chakmati.folded-${key}`, [...set]);
+        syncTopics();
         if (!set.has(id)) setTimeout(() => section.scrollIntoView({ block: 'nearest' }), 30);   // opened: shown above the conversation strip (scroll-padding), never under it
       };
       title.addEventListener('click', toggle);
