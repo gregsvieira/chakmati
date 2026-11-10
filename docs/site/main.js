@@ -17,22 +17,41 @@
   const lazy = () => imgs.forEach(load);
   (window.requestIdleCallback || ((f) => setTimeout(f, 1200)))(lazy);
 
-  // one icon per part of the page, around the circle behind him: the one of the part being read is lit, the others fade. Each is a link to its part.
-  const ring = document.querySelector('.orbit.front');
-  const links = [];
+  // the column of buttons (one per part of the page): built from the parts, so the two never disagree. Each button is a link to its part.
+  const list = document.querySelector('.rail ol');
   const stepsAll = [...document.querySelectorAll('.step')];
-  if (ring) {
-    stepsAll.forEach((step, i) => {
+  const items = [];
+  const PITCH = 56;   // pixels between two buttons
+  if (list) {
+    for (const step of stepsAll) {
+      const li = document.createElement('li');
       const a = document.createElement('a');
-      const angle = (-90 + (360 / stepsAll.length) * i) * Math.PI / 180;   // the first at the top, then clockwise
       a.href = `#${step.id}`;
       a.textContent = step.dataset.icon;
       a.title = step.dataset.label;
       a.setAttribute('aria-label', step.dataset.label);
-      a.style.left = `${50 + 50 * Math.cos(angle)}%`;
-      a.style.top = `${50 + 50 * Math.sin(angle)}%`;
-      ring.append(a);
-      links.push(a);
+      li.append(a);
+      list.append(li);
+      items.push({ li, a });
+    }
+  }
+  // where the reading is, as a fraction of a part (2.5 = halfway from the third part to the fourth): the column rolls with it
+  function position() {
+    const middle = window.innerHeight * 0.5;
+    const centers = stepsAll.map((s) => { const r = s.getBoundingClientRect(); return r.top + r.height / 2; });
+    if (middle <= centers[0]) return 0;
+    for (let i = 0; i < centers.length - 1; i++) {
+      if (middle < centers[i + 1]) return i + (middle - centers[i]) / (centers[i + 1] - centers[i]);
+    }
+    return centers.length - 1;
+  }
+  function roll(pos, active) {
+    items.forEach((it, i) => {
+      const d = Math.abs(i - pos);
+      const scale = 0.72 + 0.68 * Math.max(0, 1 - d);   // 1.4 when it is the one being read, 0.72 from a step away
+      it.li.style.transform = `translateY(${((i - pos) * PITCH).toFixed(1)}px) scale(${scale.toFixed(3)})`;
+      it.li.style.opacity = String(Math.max(0.25, 1 - 0.5 * d).toFixed(2));
+      if (i === active) it.a.setAttribute('aria-current', 'true'); else it.a.removeAttribute('aria-current');
     });
   }
 
@@ -51,7 +70,6 @@
     shownStep = step;
     const mood = step.dataset.mood;
     label(step.dataset.name, step.dataset.sub);
-    links.forEach((a, i) => { if (stepsAll[i] === step) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current'); });   // two parts of the page may share a face and still say different things
     if (mood === current) return;
     current = mood;
     if (halo) halo.style.background = HALO[mood] || HALO.smile;
@@ -84,6 +102,7 @@
   // requestAnimationFrame: it is eight measurements, and a frame that never comes (a hidden tab, a slow computer) must not leave the wrong face.
   const frame = () => {
     pick();
+    roll(position(), stepsAll.indexOf(shownStep));
     if (still) return;
     const room = document.documentElement.scrollHeight - window.innerHeight;
     root.style.setProperty('--p', room > 0 ? (window.scrollY / room).toFixed(4) : '0');   // 0 at the top, 1 at the end
