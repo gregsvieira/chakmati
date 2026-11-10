@@ -407,6 +407,9 @@ body[data-still] #panel[data-layout="wide"] #content, body[data-still] #panel[da
 .house-state[data-playing] { color: inherit; opacity: .85; }
 .house-body { padding: 4px 14px 14px; display: grid; gap: 12px; justify-items: center; text-align: center; }
 .house-now { margin: 0; font-size: 13px; color: var(--muted); }
+.info-btn { margin-left: 6px; width: 18px; height: 18px; padding: 0; border: 1px solid currentColor; border-radius: 50%; background: none; color: inherit; font: italic 700 12px/1 Georgia, serif; cursor: pointer; vertical-align: middle; }
+.info-btn:hover { background: var(--surface-2); color: var(--text); }
+.pop.tip { padding: 9px 12px; font-size: 13px; line-height: 1.4; text-align: left; z-index: 30; max-height: none; overflow: visible; }
 .house-buttons { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
 .house-buttons .ghost.small { min-width: 36px; height: 36px; padding: 0 10px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; }
 .house-buttons .ghost.small:last-child { flex-basis: auto; margin-top: 2px; padding: 0 16px; }
