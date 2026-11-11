@@ -122,3 +122,25 @@
   window.addEventListener('load', frame);
   frame();
 })();
+
+// Reveal on scroll: phrases and cards fade up when they enter the screen. Without JavaScript (or with reduced motion) everything is simply shown.
+(function () {
+  'use strict';
+  if (!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const items = [...document.querySelectorAll('.step > *:not(.cards):not(.steps), .cards li, .steps li, .step details')];
+  document.documentElement.classList.add('reveal-on');
+  const seen = new Map();   // parent -> how many siblings already queued in this burst, so cards come one after another
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      const p = e.target.parentElement;
+      const n = seen.get(p) || 0;
+      seen.set(p, n + 1);
+      setTimeout(() => seen.set(p, Math.max(0, (seen.get(p) || 1) - 1)), 400);
+      e.target.style.setProperty('--d', n * 120 + 'ms');
+      e.target.classList.add('in');
+      io.unobserve(e.target);
+    }
+  }, { threshold: 0.15, rootMargin: '0px 0px -8% 0px' });
+  items.forEach((el) => { el.classList.add('rv'); io.observe(el); });
+})();
