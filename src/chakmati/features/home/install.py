@@ -191,7 +191,13 @@ class HomeInstaller:
             if not await self._docker.daemon_ready():
                 if not self._docker.desktop_app() or not await self._docker.open_desktop() or not await self._docker.wait_for_daemon():
                     return
-            if await self._docker.container() == "stopped":
+            state = await self._docker.container()
+            if state != "none" and await self._docker.moved():
+                # the container still points at the old folder (.lite-agent): its settings now live in the new one, so it is made again over it. The image is already here and
+                # nothing is lost, because the settings are in the folder, not in the container.
+                await self._docker.remove()
+                await self._docker.create()
+            elif state == "stopped":
                 await self._docker.start()
         except Exception:
             log.exception("could not switch the Home Assistant on")

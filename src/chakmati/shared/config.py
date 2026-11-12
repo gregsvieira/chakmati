@@ -1,6 +1,13 @@
 import os
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+from chakmati.shared.migrate import data_dir
+
+
+def _data(*parts: str):
+    """A path inside the data folder, worked out when the settings are made (after the old folder was moved, if it had to be)."""
+    return field(default_factory=lambda: os.path.join(data_dir(), *parts))
 
 
 class _Env:
@@ -49,26 +56,26 @@ class Settings:
     whatsapp_backend: str = "off"  # "off" | "openwa"
     openwa_url: str = "http://127.0.0.1:8081"
     embed_model: str = ""  # an Ollama embedding model (e.g. nomic-embed-text) that also matches the MEANING of a question to the pieces of an attached file; empty = words only (lighter)
-    attachments_dir: str = os.path.expanduser("~/.lite-agent/attachments")  # the text of files attached to the conversation (swept after a week)
+    attachments_dir: str = _data("attachments")  # the text of files attached to the conversation (swept after a week)
     workspace: str = os.path.expanduser("~/Documents/Chakmati")  # the only folder where the agent creates files
-    openwa_home: str = os.path.expanduser("~/.lite-agent/openwa")  # where OpenWA is installed (its browser is used for voice notes)
+    openwa_home: str = _data("openwa")  # where OpenWA is installed (its browser is used for voice notes)
     browser_backend: str = "off"  # "off" | "chrome" (a visible Chrome driven with Playwright; needs `uv sync --extra browser`)
-    browser_profile: str = os.path.expanduser("~/.lite-agent/browser")  # the agent's own Chrome profile (never the person's)
-    browser_frames_dir: str = os.path.expanduser("~/.lite-agent/frames")  # the screenshot of every step of a browser job
+    browser_profile: str = _data("browser")  # the agent's own Chrome profile (never the person's)
+    browser_frames_dir: str = _data("frames")  # the screenshot of every step of a browser job
     browser_max_steps: int = 12
     browser_headless: bool = True  # no Chrome window for the person; the screenshots are the view. False = watch it work
     home_backend: str = "off"  # "off" | "homeassistant" (also the way to reach Alexa-compatible devices)
     home_url: str = "http://homeassistant.local:8123"
-    home_token_file: str = os.path.expanduser("~/.lite-agent/home_token.txt")  # the older way: a long-lived token pasted by hand
-    home_config_dir: str = os.path.expanduser("~/.lite-agent/homeassistant")  # where the Home Assistant the Chakmati installed keeps its settings
-    home_docker_file: str = os.path.expanduser("~/.lite-agent/home_docker.json")  # says the Chakmati installed it (so it switches it on at start)
-    home_auth_file: str = os.path.expanduser("~/.lite-agent/home_auth.json")  # what the connect flow in Ajustes writes (address and renewable tokens)
+    home_token_file: str = _data("home_token.txt")  # the older way: a long-lived token pasted by hand
+    home_config_dir: str = _data("homeassistant")  # where the Home Assistant the Chakmati installed keeps its settings
+    home_docker_file: str = _data("home_docker.json")  # says the Chakmati installed it (so it switches it on at start)
+    home_auth_file: str = _data("home_auth.json")  # what the connect flow in Ajustes writes (address and renewable tokens)
     openwa_api_key: str = ""
-    openwa_api_key_file: str = os.path.expanduser("~/.lite-agent/openwa/api_key.txt")
+    openwa_api_key_file: str = _data("openwa", "api_key.txt")
     whatsapp_max_sends_per_hour: int = 20
     notices_enabled: bool = True
-    automations_dir: str = os.path.expanduser("~/.lite-agent/automations")  # recordings of voice automations
-    voices_dir: str = os.path.expanduser("~/.lite-agent/voices")  # where the downloaded enhanced voice lives
+    automations_dir: str = _data("automations")  # recordings of voice automations
+    voices_dir: str = _data("voices")  # where the downloaded enhanced voice lives
     stt_language: str = "pt"  # the language of the microphone ("pt", or "auto" to let the model guess)
     stt_model: str = "base"  # faster-whisper model for "listen and speak"; "off" disables it
     whatsapp_poll_seconds: float = 10.0

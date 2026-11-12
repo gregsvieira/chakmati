@@ -25,6 +25,7 @@ from chakmati.features.automations.ticker import AutomationTicker
 from chakmati.features.whatsapp.watcher import WhatsAppWatcher
 from chakmati.shared.notices import ApprovalWatcher, NoticeBoard, Notifier
 from chakmati.shared.config import Settings
+from chakmati.shared.migrate import migrate_data_dir
 from chakmati.shared import extras
 from chakmati.app.engine import Engine
 from chakmati.shared.gate import build_gate
@@ -184,6 +185,7 @@ def build_app(settings: Settings | None = None) -> FastAPI:
 
 
 def main() -> None:
+    migrate_data_dir()   # ~/.lite-agent became ~/.chakmati-agent: moved before anything reads the settings
     # Loopback only: the engine is unauthenticated and must not be network-reachable.
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")  # the engine's own notes (the browser's human check, ...) reach the log, not only uvicorn's
     uvicorn.run(build_app(), host="127.0.0.1", port=8765)

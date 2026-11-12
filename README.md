@@ -35,7 +35,7 @@ something is a proposal the person approves), and text from third parties throug
 Installable plugins, added without touching the project's code, are **not implemented**: this is a proposal that only makes sense if people want to build them. The sketch:
 
 - a manifest (`plugin.json`): `id`, `name`, `version`, the route keywords, the permissions it asks for (network hosts, file reading), the actions it can propose, and its entry point;
-- a user folder (for example `~/.lite-agent/plugins`), discovered at start and listed in Ajustes, each one with an on/off switch;
+- a user folder (for example `~/.chakmati-agent/plugins`), discovered at start and listed in Ajustes, each one with an on/off switch;
 - every action a plugin takes is a proposal in the approvals inbox, and what a plugin returns is treated as third-party text.
 
 If you want to build one, open an issue telling what you have in mind: that decides the design. The same text, with a manifest draft, is on the technical page (`docs/site/tecnico.html`).
@@ -95,7 +95,7 @@ event cannot instruct the agent. Proposals expire after 1 hour. To cancel, menti
 Off by default. **Read this first:** OpenWA drives WhatsApp Web, which WhatsApp's terms do not allow; the linked number can be
 banned. Use a secondary number, keep volumes low, never expose OpenWA beyond 127.0.0.1.
 
-    scripts/openwa.sh setup      # once: installs OpenWA and its own Node.js under ~/.lite-agent/openwa (system Node untouched)
+    scripts/openwa.sh setup      # once: installs OpenWA and its own Node.js under ~/.chakmati-agent/openwa (system Node untouched)
     scripts/openwa.sh start      # opens a window with a QR code: WhatsApp > Linked devices > Link a device
     CHAKMATI_WHATSAPP_BACKEND=openwa uv run python -m chakmati.main
 
@@ -128,9 +128,9 @@ Off by default. Needs Chrome installed and `uv sync --extra browser`; turn it on
          -d '{"text":"use o navegador para pesquisar a capital da Austrália"}'
 
 Ask for it by name ("use o navegador...", "pelo Chrome...", "navegue até..."). A headless Chrome (no window opens; `CHAKMATI_BROWSER_HEADLESS=0` shows it; its own profile in
-`~/.lite-agent/browser`, never yours) opens and works one step at a time; each step emits a `screenshot` event
+`~/.chakmati-agent/browser`, never yours) opens and works one step at a time; each step emits a `screenshot` event
 (`job_id`, `step`, `url`, `title`, `note`) and the picture is at `GET /jobs/<id>/frames/<step>` (JPEG; the last 20 jobs are kept in
-`~/.lite-agent/frames`). The desktop panel shows the latest screenshot with what it was doing, replaced at each step.
+`~/.chakmati-agent/frames`). The desktop panel shows the latest screenshot with what it was doing, replaced at each step.
 It drives Chrome with Playwright (`channel="chrome"`): no driver to match to the browser's version, nothing extra to download.
 Safety: only public http(s) addresses open (never localhost, the home network or `file:`), passwords are never typed, page text is
 quoted as data and never obeyed, and the model can only pick from a fixed set of actions (goto, click, type, scroll, back, done).
@@ -229,19 +229,19 @@ normally give it). Nothing else is changed; the texts are constants in that file
 Chakmati talks to **Home Assistant**, where each Echo shows up as a `media_player` (with Home Assistant's own *Alexa Devices* integration, which signs in with your Amazon e-mail, password and the code of the 2-step verification).
 **Ajustes has one section for this, "Assistente de Casa e Alexa", with one button: "Conectar Home Assistant"** (once connected it says so and offers "Desconectar"). The button opens a modal that does the work:
 1. It looks for a Home Assistant (the usual names, this computer, and a quick look at port 8123 on the rest of the own network, about 3 seconds). If it finds one: "Conectar" opens ITS login page in the browser, the person only taps "Aprovar" (Home Assistant's own sign-in, the one
-   its phone app uses), and the engine keeps the tokens in `~/.lite-agent/home_auth.json` (only the person's user can read it; the access token lasts 30 minutes and is renewed by itself; it works at once, with no restart).
+   its phone app uses), and the engine keeps the tokens in `~/.chakmati-agent/home_auth.json` (only the person's user can read it; the access token lasts 30 minutes and is renewed by itself; it works at once, with no restart).
 2. If it finds none, the modal says what it will do on THIS computer (the list depends on what is there) and waits for "Começar": install Docker Desktop if it is missing (the system asks for the administrator password; Windows may ask to restart), open Docker if it is off, download Home Assistant
-   (`ghcr.io/home-assistant/home-assistant:stable`, about 1 GB) and run it in a container published on this computer only (`127.0.0.1:8123`, settings in `~/.lite-agent/homeassistant`), (the Alexa integration is Home Assistant's own, so nothing else is downloaded),
+   (`ghcr.io/home-assistant/home-assistant:stable`, about 1 GB) and run it in a container published on this computer only (`127.0.0.1:8123`, settings in `~/.chakmati-agent/homeassistant`), (the Alexa integration is Home Assistant's own, so nothing else is downloaded),
    start everything and check it. Each step is a plain sentence in the modal; it can be closed and the work goes on in the background.
 3. Only then does the modal ask for a name and a password (used once, kept nowhere): it creates the owner (user `chakmati`) through Home Assistant's own onboarding API and connects, with no sign-in to approve.
 When the Chakmati starts it switches the container on again (Docker Desktop too) if it was the one that installed it, but never downloads or creates anything at start. All the commands are fixed calls with no shell (`features/home/docker.py`, `docker_setup.py`), and Docker's installer comes only from `desktop.docker.com` over https.
-The older way still works: `CHAKMATI_HOME_BACKEND=homeassistant`, `CHAKMATI_HOME_URL` and a long-lived token in `~/.lite-agent/home_token.txt`.
+The older way still works: `CHAKMATI_HOME_BACKEND=homeassistant`, `CHAKMATI_HOME_URL` and a long-lived token in `~/.chakmati-agent/home_token.txt`.
 **A paid AI in front of the local model** (the installer's first screen: "Quero rodar com a minha assinatura de IA paga"): the person flags it, picks the provider (Anthropic or OpenAI), pastes an **API key** and the model name. It has to be an API key, which is billed apart, by use: the providers' chat subscriptions give no access to an API. The main process checks the key with the provider's own models list, stores it encrypted with the system's store (Electron `safeStorage`, in `cloud-key.bin`; never in `settings.json`) and hands it to the engine only in its environment at start (`CHAKMATI_CLOUD_API_KEY`). The engine (`shared/cloud_llm.py`) calls the paid AI first; on a limit (HTTP 429/402, credit too low) the local model answers for as long as the provider said to wait (`Retry-After`, or 15 minutes) and the paid one is tried again after that; a refused key pauses it for an hour; any other failure only moves that one call to the local model. With only the paid AI flagged there is no local model to fall back to (and none is downloaded).
 
 **In the installer:** when the engine and the model are installed, the last screen of the setup wizard offers "Conectar a casa e a Alexa (opcional)": the same flow, started with the engine the wizard turns on for it (and turns off again before the app opens), so the Chakmati opens already connected. Skipping it changes nothing; it stays in Ajustes.
 
 **Linking the Alexa** (the last page of the modal, or "Conectar a Alexa" in Ajustes while no speaker is there): the person types the Amazon e-mail and password and the one-time code of the 2-step verification **in the modal**. The Chakmati drives the setup of Home Assistant's own *Alexa Devices* integration through its API (`features/home/alexa_setup.py`); that integration signs in to Amazon by itself, so there is no sign-in page, no window and no browser (the earlier community integration signed in through a page that Home Assistant relayed from Amazon, which Amazon refused). The country of the account is found by the integration. The Chakmati only reads the state of the setup while it waits (a POST to a setup in progress would reset it).
-**What is kept, said plainly:** the e-mail, the password and the code go from the modal to the engine and from there to Home Assistant over this computer's loopback, in one request; the Chakmati never stores or logs them (the page clears the fields the moment they are sent). Home Assistant itself keeps the e-mail and the password, in its own settings folder on this computer (`~/.lite-agent/homeassistant`), because the integration needs them to sign in again when Amazon asks; that file is not encrypted. The code is used once. The Amazon account needs the 2-step verification turned on.
+**What is kept, said plainly:** the e-mail, the password and the code go from the modal to the engine and from there to Home Assistant over this computer's loopback, in one request; the Chakmati never stores or logs them (the page clears the fields the moment they are sent). Home Assistant itself keeps the e-mail and the password, in its own settings folder on this computer (`~/.chakmati-agent/homeassistant`), because the integration needs them to sign in again when Amazon asks; that file is not encrypted. The code is used once. The Amazon account needs the 2-step verification turned on.
 
 ### Personalities
 
@@ -294,8 +294,9 @@ the installed app yet.
 
 The installers are **not signed**: Windows (SmartScreen) and macOS (Gatekeeper) warn on the first open. On macOS:
 right-click the app and choose Open. Where things live (remove these folders to uninstall completely): the app's data
-folder (`~/Library/Application Support/Chakmati`, `%APPDATA%\Chakmati`, `~/.config/Chakmati`), plus `~/.lite-agent`
-(voice, WhatsApp and browser files; the folder keeps its old name so existing data is not orphaned) and the Ollama models.
+folder (`~/Library/Application Support/Chakmati`, `%APPDATA%\Chakmati`, `~/.config/Chakmati`), plus `~/.chakmati-agent`
+(voice, WhatsApp and browser files) and the Ollama models. That folder used to be called `~/.lite-agent`: on the first start after the rename the engine **moves** it to the new name
+(nothing is copied or lost: keys, tokens, the WhatsApp login and the Home Assistant settings come along, and the Home Assistant container is made again over the moved folder).
 
 `.github/workflows/build.yml` builds all of them on GitHub (manual, or on pull requests that touch `desktop/` or the engine).
 Only the macOS arm64 build was checked by hand; the Windows and Ubuntu builds are untested until that workflow runs.
@@ -396,7 +397,7 @@ Run only these: `pytest tests/security -q`.
 | `CHAKMATI_EXPLAIN_MODEL` | empty = the chat model; a stronger model for working out exam questions, e.g. `deepseek-r1:14b` |
 | `CHAKMATI_WHATSAPP_BACKEND` | `off` (`openwa`) |
 | `CHAKMATI_OPENWA_URL` | `http://127.0.0.1:8081` |
-| `CHAKMATI_OPENWA_API_KEY` | empty = read `~/.lite-agent/openwa/api_key.txt` (`CHAKMATI_OPENWA_API_KEY_FILE`) |
+| `CHAKMATI_OPENWA_API_KEY` | empty = read `~/.chakmati-agent/openwa/api_key.txt` (`CHAKMATI_OPENWA_API_KEY_FILE`) |
 | `CHAKMATI_WHATSAPP_MAX_SENDS_PER_HOUR` | `20` |
 | `CHAKMATI_CONTACT` | `https://github.com/gregsvieira`: added to the User-Agent (Wikipedia rejects anonymous bots); empty = none |
 

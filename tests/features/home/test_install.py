@@ -267,6 +267,14 @@ class FakeDocker:
         self.did.append("restart")
         return self._restart
 
+    async def moved(self):
+        return getattr(self, "is_moved", False)
+
+    async def remove(self):
+        self.did.append("remove")
+        self.state = "none"
+        return True
+
 
 class FakeSetup:
     """DockerSetup without the download or the administrator window: records, and installs Docker into the FakeDocker when asked to."""
@@ -562,3 +570,12 @@ def test_the_whole_install_through_the_routes(tmp_path):
         done = client.post("/home/install/account", json={"name": "Maria", "password": "senha-forte-1"}, headers=UI)
         assert done.status_code == 200 and done.json()["state"] == "done" and auth.oauth
         assert client.get("/home/status").json()["configured"] is True
+
+
+async def test_a_container_that_keeps_its_settings_in_the_old_folder_is_made_again_over_the_new_one(tmp_path):
+    d = FakeDocker(container="running")
+    d.is_moved = True                                                       # the data folder was renamed from .lite-agent: the container still points at the old path
+    installer, *_ = make_installer(tmp_path, d)
+    installer._mark_managed()
+    await installer.ensure_up()
+    assert d.did == ["remove", "create"]                                    # removed and made again over the same settings folder; nothing is pulled or downloaded

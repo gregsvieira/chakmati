@@ -51,7 +51,7 @@ class WebVoiceSender:
 
     async def available(self) -> bool | None:
         """True when the page can send voice notes; None when it could not be reached (OpenWA down, not logged in)."""
-        if not (Path(self._home) / "run" / "_IGNORE_lite-agent" / "DevToolsActivePort").is_file():
+        if not (Path(self._home) / "run" / "_IGNORE_chakmati-agent" / "DevToolsActivePort").is_file():
             return None
         try:
             self._answer(*await self._run(self._argv("check"), b""))
