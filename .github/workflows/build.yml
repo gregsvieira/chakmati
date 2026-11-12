@@ -31,8 +31,8 @@ jobs:
       run:
         working-directory: desktop
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -41,7 +41,7 @@ jobs:
       - run: npm test
       - run: node scripts/fetch-uv.js --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
       - run: npx electron-builder ${{ matrix.flags }} --publish never
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: chakmati-${{ matrix.platform }}-${{ matrix.arch }}
           path: desktop/dist/${{ matrix.artifact }}
