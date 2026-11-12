@@ -39,7 +39,7 @@
         <div class="chips">
           <span class="chip">Electron</span><span class="chip">Python 3.11+</span><span class="chip">FastAPI</span><span class="chip">uvicorn</span><span class="chip">httpx</span><span class="chip">Ollama</span><span class="chip">SQLite</span><span class="chip">Playwright</span><span class="chip">BM25</span><span class="chip">OCR</span><span class="chip">SSE</span>
         </div>
-        <p><a class="cta" href="#arquitetura">Ver a arquitetura</a> <a class="cta ghost" href="index.html">← Versão para gente normal</a></p>
+        <p class="tech-link tight"><a class="cta ghost small" href="index.html">← Versão para gente normal</a> <a class="cta small" href="#arquitetura">Ver a arquitetura</a></p>
       </section>
 
       <section class="step" id="arquitetura" data-icon="🏗️" data-label="Arquitetura" data-mood="thinking" data-name="Desenhando as peças" data-sub="três camadas, todas na sua máquina">
@@ -100,6 +100,7 @@
         <div class="term" id="sse-demo" role="img" aria-label="Exemplo de eventos SSE chegando: route, job, status, vários delta e done"><pre class="code"></pre></div>
         <ul class="cards">
           <li data-icon="📡"><b>SSE, não WebSocket</b><span>Cada linha é <code>data: {json}</code>, com tipos <code>route</code>, <code>job</code>, <code>status</code>, <code>delta</code>, <code>done</code> e <code>error</code>. Quem reconecta no meio recebe o texto desde o início (<code>GET /jobs/&lt;id&gt;/stream</code>).</span></li>
+          <li data-icon="🤔"><b>Por que SSE e não WebSocket</b><span><b>1. O fluxo é de um lado só.</b> O texto desce do motor para a tela; o que sobe (o pedido, o Parar, o “aprovar”) é uma chamada HTTP comum. WebSocket é uma conversa nos dois sentidos que aqui não existe. <b>2. Segurança.</b> A API só aceita escrita com um cabeçalho que uma página de outro site não consegue enviar sem um preflight de CORS, e o motor nunca o libera. O WebSocket não passa por CORS, e o motor ficaria aberto a qualquer página que o navegador do usuário abrisse. <b>3. Retomar de graça.</b> Cada trabalho vive no SQLite com seu texto parcial, e quem reconecta lê <code>GET /jobs/&lt;id&gt;/stream</code> e recebe tudo desde o início, sem protocolo de reconexão próprio. <b>4. Menos peça.</b> É HTTP puro (FastAPI e o navegador já falam), casa linha a linha com o NDJSON do Ollama e não pede biblioteca nem estado de conexão a mais.</span></li>
           <li data-icon="🧱"><b>Saída com gramática</b><span>Quando a resposta precisa ser estruturada, vai um JSON Schema no campo <code>format</code> do Ollama (decodificação restrita por gramática) e <code>temperature</code> 0. A resposta não pode ser prosa nem uma ação desconhecida.</span></li>
           <li data-icon="🍽️"><b>Menu tipado de passos</b><span>O modelo escolhe entre <code>mkdir</code>, <code>copy</code>, <code>move</code>, <code>list</code>, <code>show</code>, <code>create_file</code> e <code>command</code>; o código escreve o comando, com aspas. Erro de digitação de <code>cp</code> deixa de ser possível.</span></li>
           <li data-icon="🪶"><b>Feito para modelos pequenos</b><span>Modelos de até cerca de 4B ganham prompt mais curto com exemplos, pedidos com “depois” ou “então” são lidos uma parte por vez, e o que dá para decidir por regra nem passa pelo modelo.</span></li>
