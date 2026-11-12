@@ -9,3 +9,4 @@ bench_runs*.json
 desktop/node_modules/
 desktop/dist/
 desktop/build/bin/
+.DS_Store
