@@ -260,12 +260,11 @@ footer { padding: 40px 6vw 60px; text-align: center; color: var(--muted); font-s
 .wa-time { flex: none; font-size: 0.72rem; font-variant-numeric: tabular-nums; opacity: 0.85; }
 @media (prefers-reduced-motion: reduce) { .wa-robot, .wa-bell svg, .wa-msg, .wa-widget, .wa-panel, .wa-bubble { animation: none; transition: none; } }
 
-/* ---------- download: the first step has an arrow; clicking it slides the part to the left and the systems appear on the right ---------- */
-.dl { display: grid; grid-template-columns: 1fr 0fr; gap: 0; transition: grid-template-columns 0.5s cubic-bezier(0.2, 0.7, 0.2, 1), gap 0.5s; align-items: center; }
-.dl.open { grid-template-columns: 1fr minmax(180px, 0.6fr); gap: 20px; }
-.dl-main { min-width: 0; }
-.dl-options { min-width: 0; overflow: hidden; opacity: 0; transform: translateX(24px); transition: opacity 0.4s ease 0.15s, transform 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) 0.1s; display: grid; gap: 12px; visibility: hidden; }
-.dl.open .dl-options { opacity: 1; transform: none; visibility: visible; }
+/* ---------- download: the arrow on the first step opens Mac / Windows / Ubuntu right below it ---------- */
+.dl-options { display: grid; grid-template-rows: 0fr; margin: -4px 0 12px; transition: grid-template-rows 0.5s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.dl.open .dl-options { grid-template-rows: 1fr; }
+.dl-inner { min-height: 0; overflow: hidden; display: grid; gap: 10px; opacity: 0; transform: translateY(-10px); visibility: hidden; transition: opacity 0.35s ease 0.12s, transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) 0.1s, visibility 0s 0.5s; padding: 0 10px 12px; margin: 0 -10px; }
+.dl.open .dl-inner { opacity: 1; transform: none; visibility: visible; transition-delay: 0.12s, 0.1s, 0s; padding-top: 4px; }
 .dl-title { margin: 0; font: 700 1rem var(--font-head); }
 .dl-os { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--card); border: 1px solid var(--rule); border-radius: 16px; color: var(--ink); text-decoration: none; box-shadow: 0 4px 14px rgba(20, 33, 61, 0.06); transition: border-color 0.2s, transform 0.2s; }
 .dl-os:hover, .dl-os:focus-visible { border-color: var(--petrol); transform: translateX(4px); }
@@ -279,5 +278,9 @@ footer { padding: 40px 6vw 60px; text-align: center; color: var(--muted); font-s
 @keyframes dl-nudge { 50% { transform: translateX(5px); } }
 .dl.open .dl-trigger { border-color: var(--petrol); }
 .dl.open .dl-arrow { animation: none; transform: rotate(180deg); }
-@media (max-width: 760px) { .dl, .dl.open { grid-template-columns: 1fr; } .dl-options { display: none; } .dl.open .dl-options { display: grid; margin-top: 16px; } }
-@media (prefers-reduced-motion: reduce) { .dl, .dl-options { transition: none; } .dl-arrow { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .dl-options, .dl-inner { transition: none; } .dl-arrow { animation: none; } }
+
+/* with the systems showing, only the first step stays: steps 2 and 3 fold away */
+.dl .steps li:not(.dl-trigger) { max-height: 220px; transition: max-height 0.45s ease, opacity 0.3s ease, transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1), padding 0.45s ease, margin 0.45s ease, border-width 0.45s ease; }
+.dl.open .steps li:not(.dl-trigger) { max-height: 0; opacity: 0; overflow: hidden; padding-top: 0; padding-bottom: 0; margin: -6px 0; border-width: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .dl .steps li:not(.dl-trigger) { transition: none; } }
