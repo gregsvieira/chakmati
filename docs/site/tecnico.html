@@ -57,6 +57,7 @@
           <li data-icon="🍰"><b>Fatias verticais (feature slices)</b><span>Cada capacidade (<code>agenda</code>, <code>browser</code>, <code>files</code>, <code>research</code>, <code>whatsapp</code>, <code>home</code>...) é uma pasta com seu domínio e seu próprio roteador <code>api.py</code>. Uma capacidade nova é uma pasta nova.</span></li>
           <li data-icon="📏"><b>Regras checadas por teste</b><span>Uma feature importa só <code>shared</code> e ela mesma, nunca outra feature. <code>shared</code> nunca importa feature. <code>tests/test_architecture.py</code> reprova o build se alguém quebrar isso.</span></li>
           <li data-icon="🧩"><b>Raiz de composição</b><span><code>main.py</code> monta cada serviço a partir das configurações e sobe o servidor; <code>app/api.py</code> monta os roteadores.</span></li>
+          <li data-icon="🪶"><b>Modelos pequenos locais</b><span>Além do LLM de conversa (Qwen3.5 ou <code>granite4:3b</code>, conforme a memória do computador), cada tarefa tem seu modelo pequeno: <code>Whisper base</code> ouve a voz (~140 MB), o Piper com a voz <code>jeff</code> em pt-BR fala (~60 MB) e o <code>nomic-embed-text</code>, via Ollama, é opcional e faz embeddings para casar o sentido dos arquivos. Também opcionais: <code>deepseek-r1</code> para explicar provas e o Laya (não recomendado).</span></li>
           <li data-icon="🚧"><b>Guards em código</b><span>Entre a pessoa, o LLM e o que o app executa há guards que não dependem de o modelo se comportar: limpam o texto de fora (<code>neutralize</code>, <code>fence</code>), validam o que o modelo devolve (JSON Schema, menu de passos) e só deixam agir o que a pessoa aprova (caixa de aprovações, <code>ui_only</code>). Todos estão na seção <a href="#guards">Guards no LLM</a>.</span></li>
         </ul>
       </section>
@@ -66,7 +67,7 @@
         <h2>O modelo sugere. O código decide.</h2>
         <p class="lead">O mapa curto: a pessoa fala com o Desktop, o Desktop com o motor, e o motor com o LLM, as ferramentas e o banco. Os guards cercam o motor, e quem aprova o que muda algo é a pessoa.</p>
         <figure class="arch">
-          <img src="img/arquitetura-resumida.webp" width="1129" height="1322" loading="lazy" alt="Arquitetura resumida: a pessoa fala com o Desktop (Electron); o Desktop conversa com o motor Python por HTTP e SSE em 127.0.0.1; guards de entrada, saída e ação cercam o motor, que só sugere e deixa a pessoa aprovar; o motor chama o LLM (Ollama local, com IA paga opcional), as ferramentas e o banco SQLite.">
+          <img src="img/arquitetura-resumida.webp" width="1127" height="1348" loading="lazy" alt="Arquitetura resumida: a pessoa fala com o Desktop (Electron); o Desktop conversa com o motor Python por HTTP e SSE em 127.0.0.1; guards de entrada, saída e ação cercam o motor, que só sugere e deixa a pessoa aprovar; o motor chama o LLM (Ollama local, com nomic-embed-text opcional e IA paga opcional), as ferramentas (com Piper e Whisper para a voz) e o banco SQLite.">
           <figcaption><b>Versão resumida.</b> O modelo só sugere. O código decide, e a pessoa aprova o que muda algo. Clique para ampliar.</figcaption>
         </figure>
       </section>
@@ -74,9 +75,9 @@
       <section class="step" id="arquitetura-detalhe" data-icon="🔬" data-label="Arquitetura detalhada" data-mood="bored" data-name="Todas as peças" data-sub="o mapa completo">
         <p class="eyebrow">Arquitetura · detalhada</p>
         <h2>Todas as peças e os serviços locais.</h2>
-        <p class="lead">O mesmo mapa por dentro: o que há no Desktop, no motor (gate, jobs, aprovações, guards, features, <code>shared</code>) e os serviços locais que o motor usa.</p>
+        <p class="lead">O mesmo mapa por dentro: o que há no Desktop, no motor (gate, jobs, aprovações, guards, features, <code>shared</code>), os modelos pequenos locais e os serviços que o motor usa.</p>
         <figure class="arch">
-          <img src="img/arquitetura-detalhada.webp" width="1651" height="1462" loading="lazy" alt="Arquitetura detalhada: Desktop (robô, painel, assistente de instalação, ajustes) ligado por HTTP e SSE ao motor Python, com gate, jobs, aprovações, personalidades, streaming, guards, cliente LLM, IA paga opcional, as fatias de features, a camada shared, e os serviços locais: Ollama, OpenWA, Home Assistant, Chrome, busca, voz, OCR, agenda e dados.">
+          <img src="img/arquitetura-detalhada.webp" width="1652" height="1462" loading="lazy" alt="Arquitetura detalhada: Desktop (robô, painel, assistente de instalação, ajustes) ligado por HTTP e SSE ao motor Python, com gate, jobs, aprovações, personalidades, streaming, guards, cliente LLM, IA paga opcional, as fatias de features, a camada shared, os modelos pequenos locais (Whisper, Piper, nomic-embed-text e outros) e os serviços locais: Ollama, OpenWA, Home Assistant, Chrome, busca, voz, OCR, agenda e dados.">
           <figcaption><b>Versão detalhada.</b> Todas as peças e os serviços locais que o motor usa. Clique para ampliar.</figcaption>
         </figure>
       </section>
@@ -109,8 +110,8 @@
 
       <section class="step" id="arquivos" data-icon="📄" data-label="Arquivos e RAG" data-mood="thinking" data-name="Lendo e indexando" data-sub="só os trechos que importam">
         <p class="eyebrow">Arquivos e RAG</p>
-        <h2>RAG leve: recupera por BM25, sem embeddings.</h2>
-        <p class="lead">Em vez de mandar o arquivo inteiro ao modelo, o Chakmati recupera os trechos que respondem à pergunta. Funciona em computadores modestos porque não há banco vetorial nem modelo de embeddings.</p>
+        <h2>RAG leve: BM25 por padrão, embeddings opcionais.</h2>
+        <p class="lead">Em vez de mandar o arquivo inteiro ao modelo, o Chakmati recupera os trechos que respondem à pergunta. Funciona em computadores modestos porque, por padrão, não há banco vetorial nem modelo de embeddings: só palavras (BM25).</p>
         <div class="flow row">
           <div class="node"><b>1. Extrair</b><span><code>pypdf</code>, <code>python-docx</code>, <code>openpyxl</code>, <code>python-pptx</code>. Só o texto é guardado, nunca o original.</span></div>
           <div class="arrow">→</div>
@@ -122,6 +123,7 @@
         </div>
         <ul class="cards">
           <li data-icon="🧹"><b>Pouca memória, pouco disco</b><span>Arquivo lido uma vez ao anexar, limite de 20 MB e 1,5 milhão de caracteres, texto extraído guardado com id aleatório e apagado depois de 7 dias.</span></li>
+          <li data-icon="🧬"><b>Embeddings, se a pessoa ligar</b><span>Com um modelo de embeddings configurado (<code>nomic-embed-text</code>, via Ollama em <code>/api/embed</code>), o motor soma a similaridade por cosseno entre a pergunta e cada trecho. Serve para casar o <i>sentido</i>, até entre idiomas. Vem desligado: num computador modesto, nada a mais roda.</span></li>
           <li data-icon="🔀"><b>O mesmo ranqueador, em dois lugares</b><span><code>shared/bm25.py</code> serve tanto os arquivos anexados quanto os trechos de páginas da pesquisa na web.</span></li>
         </ul>
       </section>
