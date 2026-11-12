@@ -192,19 +192,45 @@
 
       <section class="step" id="experimentos" data-icon="🧪" data-label="Testes e experimentos" data-mood="bored" data-name="Testando de verdade" data-sub="nem toda ideia boa funciona">
         <p class="eyebrow">Testes e experimentos</p>
-        <h2>Testei o Laya para usar menos LLM. Não ajudou as respostas.</h2>
-        <p class="lead">O Laya é um modelo open source (Apache-2.0, da Convai Innovations) que dá uma probabilidade em uma única passada, sem gerar texto. A ideia era usá-lo para decidir coisas pequenas e chamar o LLM menos vezes. Medi em quatro lugares.</p>
+        <h2>Laya (Jev OpenSource) para usar menos LLM. Não rolou.</h2>
+        <p class="lead">O Laya é um modelo open source que dá uma probabilidade em uma única passada, sem gerar texto. A ideia era usá-lo para decidir coisas pequenas e chamar o LLM menos vezes e mais assertivamente. Medi em quatro lugares.</p>
         <ul class="cards">
           <li data-icon="🧭"><b>1. Escolher a rota da mensagem</b><span>Como <i>gate</i>, acertou 57% contra 100% das regras em 14 casos (a comparação não é justa: os casos usam o vocabulário das regras). Levou ~74 ms em média, até 0,8 s na primeira chamada. As regras seguem como padrão.</span></li>
           <li data-icon="🔎"><b>2. Filtrar resultados de busca</b><span>Em 80 resultados reais, ranqueou bem (o modelo multilingual separou bem o que era de outro assunto) mas como filtro foi mau negócio: com corte 0,2 derrubou 5 de 10 irrelevantes e também 16 de 70 relevantes. O buscador já devolvia 87,5% de resultados relevantes.</span></li>
           <li data-icon="📑"><b>3. Escolher os trechos que respondem</b><span>Em “versão estável atual do Python” e do Node, o Laya mediu o <i>assunto</i>, não a <i>resposta</i>: subiu trechos de “como ver a versão instalada”. A resposta saiu desatualizada ou ausente. O BM25 fez igual ou melhor a 0,1 ms por trecho, contra 30 a 60 ms do Laya (100 a 400 vezes mais lento).</span></li>
           <li data-icon="✂️"><b>4. Podar o rascunho do próprio modelo</b><span>Ele colocou afirmações plausíveis, mas erradas, no mesmo nível ou acima das corretas: mede relevância, não verdade. O laço de poda ficou desligado por padrão.</span></li>
         </ul>
-        <p class="note">Em resumo: o Laya é rápido (15 a 75 ms) e bom em separar o relevante do irrelevante, mas, no Chakmati, não melhorou as respostas e a economia de LLM não apareceu. Virou um extra opcional, desligado, e o instalador o marca como não recomendado.</p>
+        <p class="note">Em resumo: o Laya é bem rápido (15 a 75 ms) e bom em separar o relevante do irrelevante, mas, no Chakmati, não melhorou as respostas e a economia de LLM não apareceu. Virou um extra opcional, desligado, e o instalador o marca como não recomendado.</p>
         <ul class="cards">
           <li data-icon="🧰"><b>O que ficou no lugar</b><span>Regras para o que dá para decidir sem modelo e BM25 em Python puro para escolher trechos. Em um teste de dois casos, embeddings (<code>nomic-embed-text</code>) acertaram um deles, mas custam mais tempo e um modelo a mais.</span></li>
           <li data-icon="⚠️"><b>Os limites desses testes</b><span>Amostras pequenas (14 casos, 8 buscas, 2 perguntas de versão, 32 trechos), rótulos feitos à mão e um único buscador. É indicativo, não conclusivo. Os dados e os scripts estão no repositório (<code>docs/superpowers/results</code>).</span></li>
-          <li data-icon="💡"><b>Ainda não testado</b><span>Usar o Laya só como pré-filtro barato, deixando o LLM julgar apenas o que sobra.</span></li>
+          <li data-icon="💡"><b>Testado também</b><span>Usar o Laya só como pré-filtro barato, deixando o LLM julgar apenas o que sobra, não compensou.</span></li>
+        </ul>
+
+        <h2>Speech-to-Speech (STS).</h2>
+        <p class="lead">Um modelo de fala para fala não transcreve o áudio para só depois elaborar a resposta: ele ouve e responde em áudio, direto. A ideia era dar à pessoa a experiência de conversar por voz com uma IA.</p>
+        <p class="note">Em resumo: ainda não são modelos maduros para usar em produção em um contexto em que quero reduzir ao máximo o uso de RAM, rodando em processamento leve, e ao mesmo tempo dar à pessoa a experiência de interagir com uma IA por voz.</p>
+        <ul class="cards">
+          <li data-icon="🧰"><b>O que ficou no lugar</b><span>Um caminho em etapas, tudo local: reconhecimento de voz com <code>faster-whisper</code>, o LLM para pensar a resposta e síntese de voz com Piper TTS.</span></li>
+        </ul>
+
+        <h2>Outros TTS.</h2>
+        <p class="lead">Além do Piper, que ficou, testei outras vozes sintetizadas. Nenhuma delas entrou no Chakmati.</p>
+        <ul class="cards">
+          <li data-icon="🗣️"><b>OmniVoice</b><span>Testado, não adotado: usa mais RAM e tem menos performance.</span></li>
+          <li data-icon="🎭"><b>drama3</b><span>Testado, não adotado: usa mais RAM e tem menos performance.</span></li>
+          <li data-icon="🪶"><b>Pocket TTS</b><span>Testado, não adotado: usa mais RAM e tem menos performance. O Chakmati não usa ele hoje.</span></li>
+          <li data-icon="📚"><b>MOSS-TTS</b><span>Testado, não adotado: usa mais RAM e tem menos performance.</span></li>
+          <li data-icon="🧰"><b>O que ficou no lugar</b><span>Piper TTS com a voz <code>pt_BR-jeff-medium</code>: ~60 MB, roda na CPU, conferida por SHA-256 e só baixada com a aprovação da pessoa.</span></li>
+        </ul>
+
+        <h2>LLMs para outras funções.</h2>
+        <p class="lead">Testei vários tamanhos da família Qwen3.5 em pedidos de computador (criar, copiar e mover arquivos), em conversa e em pesquisa, com temperatura 0.</p>
+        <ul class="cards">
+          <li data-icon="🧪"><b>Qwen3.5 2B: mais erros</b><span>Acertou 4 de 10 pedidos de computador, pior que o modelo menor (0,8B, com 7 de 10). Ficou fora da escada de modelos do instalador.</span></li>
+          <li data-icon="🪶"><b>Qwen3.5 0,8B</b><span>7 de 10 em pedidos de computador e 4 de 4 em conversa: bom para conversar, fraco para comandos. É o nível leve, com aviso. Com a gramática e o menu tipado de passos, subiu para 22 de 24 em um segundo teste de 24 pedidos.</span></li>
+          <li data-icon="🧰"><b>O que ficou no lugar</b><span>Uma escada por memória: 0,8B (leve), <code>granite4:3b</code> (24 de 24 no segundo teste), 4B (9 de 10) e o modelo completo (10 de 10).</span></li>
+          <li data-icon="⚠️"><b>Os limites desses testes</b><span>Uma rodada, no Mac do autor. Em PC sem GPU a velocidade cai, e os limites de memória ainda precisam ser reconferidos em Windows e Ubuntu de verdade.</span></li>
         </ul>
       </section>
 

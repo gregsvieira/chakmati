@@ -320,3 +320,6 @@ pre.code { margin: 14px 0; padding: 14px 16px; overflow-x: auto; background: #0f
 .tech-link { margin: 14vh 0 0; }
 .cta.ghost.small { padding: 6px 14px; font-size: 0.8rem; border-width: 1.5px; opacity: 0.85; }
 .cta.ghost.small:hover { opacity: 1; }
+
+/* the experiments section has several topics: room above each new title */
+#experimentos h2:not(:first-of-type) { margin-top: 64px; }
