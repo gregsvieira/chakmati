@@ -18,7 +18,7 @@
 
 **Instaladores sem assinatura.** Os instaladores ainda não são assinados digitalmente: o sistema vai mostrar um aviso na primeira abertura. Baixe só do repositório oficial.
 
-**Independência e homenagem.** Projeto independente e gratuito, sem vínculo oficial com a TV Cultura, com o programa Castelo Rá-Tim-Bum ou com o espólio de Cláudio Chakmati. É uma homenagem ao personagem do programa.
+**Independência e homenagem.** Projeto independente e gratuito, sem vínculo oficial com a TV Cultura, com o programa Castelo Rá-Tim-Bum ou com o espólio de Cláudio Chakmati. É uma homenagem ao personagem do programa. Estou aberto ao contato: se a proprietária dos direitos do personagem quiser que a homenagem seja removida, basta me avisar pelas Issues do repositório (https://github.com/gregsvieira/chakmati/issues) ou pelo meu perfil no GitHub (https://github.com/gregsvieira), e eu atendo ao pedido.
 
 ## English
 
@@ -36,4 +36,4 @@
 
 **Unsigned installers.** The installers are not yet digitally signed: the system will warn you on first open. Download only from the official repository.
 
-**Independence and tribute.** Independent, free project, with no official connection to TV Cultura, to the program Castelo Rá-Tim-Bum or to the estate of Cláudio Chakmati. It is a tribute to the program's character.
+**Independence and tribute.** Independent, free project, with no official connection to TV Cultura, to the program Castelo Rá-Tim-Bum or to the estate of Cláudio Chakmati. It is a tribute to the program's character. I am open to contact: if the owner of the rights to the character wishes the tribute to be removed, just let me know through the repository's Issues (https://github.com/gregsvieira/chakmati/issues) or my GitHub profile (https://github.com/gregsvieira), and I will honor the request.

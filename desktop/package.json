@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Floating robot assistant for Chakmati",
-  "author": "Gregory Vieira <89167868+gregsvieira@users.noreply.github.com>",
+  "author": "Gregory Vieira",
   "homepage": "https://github.com/gregsvieira/chakmati",
   "main": "src/main.js",
   "type": "commonjs",

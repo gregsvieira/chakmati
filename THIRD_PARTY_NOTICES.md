@@ -184,11 +184,15 @@ each package's own license file is in its distribution.
 | x-wr-timezone | 2.0.1 | GNU Lesser General Public License v3 or later (LGPLv3+) | https://github.com/niccokunzmann/x-wr-timezone |
 | xlsxwriter | 3.3.0 | BSD-2-Clause | https://github.com/jmcnamara/XlsxWriter |
 
-## 7. Desktop (Node) packages
+## 7. The character images
+
+The images of the character (`desktop/src/shared/ui/moods/*.png` and `docs/site/img/*.png`) were created by the author with the AI 3D tool **Meshy** (https://www.meshy.ai), and are used under Meshy's terms for the author's plan. (If those terms ask for credit, the credit is: "Created with Meshy".) The character itself is a tribute, see the note at the end of this file.
+
+## 8. Desktop (Node) packages
 
 `electron` (MIT) is shipped as described in section 1. `electron-builder` (MIT) is a build tool and is not shipped.
 
 ---
 
-Independent, free project, with no official connection to TV Cultura, to the program Castelo Rá-Tim-Bum or to the estate of Cláudio Chakmati. It is a tribute to the program's character.
-Projeto independente e gratuito, sem vínculo oficial com a TV Cultura, com o programa Castelo Rá-Tim-Bum ou com o espólio de Cláudio Chakmati. É uma homenagem ao personagem do programa.
+Independent, free project, with no official connection to TV Cultura, to the program Castelo Rá-Tim-Bum or to the estate of Cláudio Chakmati. It is a tribute to the program's character. I am open to contact: if the owner of the rights to the character wishes the tribute to be removed, just let me know through the repository's Issues (https://github.com/gregsvieira/chakmati/issues) or my GitHub profile (https://github.com/gregsvieira), and I will honor the request.
+Projeto independente e gratuito, sem vínculo oficial com a TV Cultura, com o programa Castelo Rá-Tim-Bum ou com o espólio de Cláudio Chakmati. É uma homenagem ao personagem do programa. Estou aberto ao contato: se a proprietária dos direitos do personagem quiser que a homenagem seja removida, basta me avisar pelas Issues do repositório (https://github.com/gregsvieira/chakmati/issues) ou pelo meu perfil no GitHub (https://github.com/gregsvieira), e eu atendo ao pedido.
