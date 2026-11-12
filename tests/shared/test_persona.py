@@ -3,7 +3,7 @@ import pytest
 from chakmati.app.engine import SYSTEM_PROMPTS, Engine
 from chakmati.shared.gate.base import GateResult, Route
 from chakmati.shared.jobs import JobStore
-from chakmati.shared.persona import AWAKE_SECONDS, LISTENING_PROMPTS, PERSONA, wake_reply
+from chakmati.shared.persona import AWAKE_SECONDS, LISTENING_PROMPTS, PERSONA, standard_prompts, wake_reply
 from chakmati.features.research.tool import COMPOSE_SYSTEM
 from chakmati.features.whatsapp.assistant import SUMMARY_SYSTEM
 
@@ -105,3 +105,9 @@ async def test_the_wait_for_a_command_reports_the_seconds_left_and_one_command_e
     assert engine.awake_for == AWAKE_SECONDS - 5
     await engine.handle("que dia é hoje")
     assert engine.awake_for == 0  # one command, then back to sleep
+
+
+def test_with_the_pronouns_ela_the_standard_phrase_with_gender_is_feminine():
+    assert standard_prompts("ela") == ("Fala mãezôna!", "Fala que te escuto!", "Fala aê!", "Chora!")
+    for who in ("none", "ele", "elu"):
+        assert standard_prompts(who) == LISTENING_PROMPTS

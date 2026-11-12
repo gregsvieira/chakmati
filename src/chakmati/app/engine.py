@@ -11,7 +11,7 @@ from chakmati.features.chat import patriot
 from chakmati.features.chat.canned import canned_answer
 from chakmati.shared import personality as personalities
 from chakmati.shared import pronouns as pronoun_sets
-from chakmati.shared.persona import AWAKE_SECONDS, PERSONA, wake_reply
+from chakmati.shared.persona import AWAKE_SECONDS, PERSONA, standard_prompts, wake_reply
 from chakmati.shared.timeguard import calendar_facts, needs_today, needs_web, today_line
 from chakmati.shared.gate.base import Gate, Route
 from chakmati.shared.jobs import Job, JobStore
@@ -214,7 +214,7 @@ class Engine:
         return max(0.0, self._awake_until - self._now())
 
     def _wake(self, text: str) -> str | None:
-        greeting = wake_reply(text, prompts=personalities.listening_prompts(self._personality, self._pronouns))
+        greeting = wake_reply(text, prompts=personalities.listening_prompts(self._personality, self._pronouns) or standard_prompts(self._pronouns))
         self._awake_until = self._now() + AWAKE_SECONDS if greeting else 0.0  # any other message is the command: waiting ends
         return greeting
 

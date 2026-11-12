@@ -6,6 +6,16 @@ const STARTUP_GREETINGS = [
   'Klift, kloft, stão! fala paizão!',
 ];
 
-const pickGreeting = (random = Math.random) => STARTUP_GREETINGS[Math.min(STARTUP_GREETINGS.length - 1, Math.floor(random() * STARTUP_GREETINGS.length))];
+// When the person's pronouns are "ela" the one that calls her "paizão" says it in the feminine instead; the other two are gender-free.
+const FEMININE_GREETINGS = Object.freeze({
+  'Klift, kloft, stão! fala paizão!': 'Klift, kloft, stôna! Fala mãezôna!',
+});
 
-module.exports = { STARTUP_GREETINGS, pickGreeting };
+const greetingsFor = (pronouns) => (pronouns === 'ela' ? STARTUP_GREETINGS.map((g) => FEMININE_GREETINGS[g] || g) : STARTUP_GREETINGS);
+
+const pickGreeting = (random = Math.random, pronouns = 'none') => {
+  const list = greetingsFor(pronouns);
+  return list[Math.min(list.length - 1, Math.floor(random() * list.length))];
+};
+
+module.exports = { STARTUP_GREETINGS, FEMININE_GREETINGS, greetingsFor, pickGreeting };

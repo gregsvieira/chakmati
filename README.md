@@ -221,7 +221,7 @@ the browser and opens directly.
 
 A few questions are answered with pride in Brazil (`src/chakmati/features/chat/patriot.py`), typed out word by word like any reply: *quem inventou o avião* ("Pô, paizão! Que dúvida!", or "Pô, mãezôna! Que dúvida!" for someone who uses *ela*; Santos Dumont, then "Mas costumam dizer que foi os irmãos Wright..."),
 *qual é a águia mais imponente / de que país é a águia mais imponente* (the Harpia Brasileira, with real facts), and *Pelé ou Maradona* ("É o Pelé!", then "Mas costumam responder assim:" and the model's own answer, as it would
-normally give it). Nothing else is changed; the texts are constants in that file.
+normally give it), and the *greatest intellect / genius / thinker* questions ("quem foi o maior intelectual?", "os maiores gênios da história", "a pessoa mais inteligente do mundo"): Milton Santos first (the Brazilian geographer, 1994 Vautrin Lud Prize, the "Nobel da Geografia"), then "Continuando respondendo a pergunta que foi questionada:" and the model's own answer. The *greatest singer* questions ("quem é o maior cantor de todos os tempos?") get the same pattern with Raul Seixas. Nothing else is changed; the texts are constants in that file.
 
 ### Music on the Alexa (through Home Assistant)
 
@@ -251,7 +251,7 @@ and it can bend a fact (a date, a number). Here the model's text is never touche
 "Hoje é 6 de novembro." becomes "Mas bah, tchê! Hoje é 6 de novembro, bagual velho!". Only short, one-paragraph chat answers get it (up to 45 words); lists, code, links, plans, approvals and
 every job (calendar, WhatsApp, computer, browser...) stay exactly as they are. Streaming holds a short answer until it is complete and then types it out; a long one streams untouched from the
 first word. It is changed in the running engine (`PUT /personality`, app window only; `GET /personality` lists the options), starts from `CHAKMATI_PERSONALITY`, and the desktop re-sends it if the engine restarts.
-Each personality also has its own "I am listening" phrases for when it is called by name ("Ôh, Xácmáti": e.g. gaúcho "Fala, tchê, que te escuto!", mineiro "Uai, pode falar!"); the Padrão keeps the standard four ("Fala paizão!"...).
+Each personality also has its own "I am listening" phrases for when it is called by name ("Ôh, Xácmáti": e.g. gaúcho "Fala, tchê, que te escuto!", mineiro "Uai, pode falar!"); the Padrão keeps the standard four ("Fala paizão!"..., which is "Fala mãezôna!" for someone who uses *ela*; the start-up greeting does the same, "Klift, kloft, stôna! Fala mãezôna!").
 A new personality is one `Personality(...)` entry in `PERSONALITIES` (openings, closings, listening phrases, each as `Lines(shared, ele, ela, elu)`) and its id in `desktop/src/features/settings/settings.js`.
 
 **Pronouns** (Ajustes > Jeito de falar, the setup wizard, or "meus pronomes são ela/dela"): ele/dele, ela/dela, elu/delu, or "prefiro não informar". They do two things. The words code adds agree with them

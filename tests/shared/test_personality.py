@@ -11,7 +11,7 @@ from chakmati.shared import personality, pronouns
 from chakmati.shared.config import Settings
 from chakmati.shared.gate.base import GateResult, Route
 from chakmati.shared.jobs import JobStore
-from chakmati.shared.persona import LISTENING_PROMPTS, wake_reply
+from chakmati.shared.persona import LISTENING_PROMPTS, wake_reply, standard_prompts
 
 
 class Rng:
@@ -319,6 +319,15 @@ async def test_the_engine_calls_back_in_the_chosen_personality_and_stays_awake()
     e.set_personality("mineiro")
     events = [ev async for ev in e.handle_stream("oh xacmati")]
     assert events[-1]["result"] in personality.listening_prompts("mineiro", "ela")
+
+
+async def test_the_default_personality_calls_back_in_the_feminine_for_ela_and_keeps_paizao_for_the_others():
+    e = engine("padrao", pronouns_id="ela")
+    seen = {(await e.handle("Ôh, Xácmáti")).text for _ in range(120)}
+    assert seen <= set(standard_prompts("ela")) and "Fala paizão!" not in seen and "Fala mãezôna!" in seen
+    e = engine("padrao", pronouns_id="ele")
+    seen = {(await e.handle("Ôh, Xácmáti")).text for _ in range(120)}
+    assert seen <= set(LISTENING_PROMPTS) and "Fala mãezôna!" not in seen
 
 
 async def test_a_call_is_never_dressed_with_an_opening_or_a_closing():
