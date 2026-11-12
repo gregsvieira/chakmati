@@ -6,6 +6,7 @@ async function execute(step, runners, onProgress) {
   switch (step.kind) {
     case 'check-ollama': return runners.checkOllama();
     case 'pull-model': return runners.pullModel(step.model, onProgress);
+    case 'shortcut': return runners.createDesktopShortcut();
     case 'setting': return undefined; // only changes settings, which are saved at the end
     case 'sync-engine': return runners.syncEngine([], onProgress);
     case 'sync-extras': return runners.syncEngine(step.extras, onProgress);

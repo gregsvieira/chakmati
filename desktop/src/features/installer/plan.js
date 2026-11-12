@@ -45,7 +45,7 @@ function buildPlan({ hw, verdict, selected = [], engine = null, profile = null, 
   for (const id of chosen) {
     const option = OPTIONS.find((o) => o.id === id);
     if (!option) throw new Error(`Item desconhecido: ${id}`);
-    if (!option.platforms.includes(hw.platform) || (engine && option.needsRepo)) throw new Error(`Item indisponível neste sistema: ${id}`);
+    if (!option.platforms.includes(hw.platform) || (engine && option.needsRepo) || (!engine && option.needsPackaged)) throw new Error(`Item indisponível neste sistema: ${id}`);
   }
   const cloudLine = cloudStep(cloud);
   const useLocal = !cloudLine || cloudLine.local;   // the local model is installed unless the person chose to run only on the paid AI
@@ -83,7 +83,7 @@ function buildPlan({ hw, verdict, selected = [], engine = null, profile = null, 
       approval: { source: 'ollama.com (pelo Ollama instalado neste computador)', sizeMb: thinker.diskMb }, settings: {},
     }] : []),
     ...picked.filter((o) => o.id !== 'reasoning').map((o) => ({
-      id: o.id, kind: 'setting', label: `Ativar: ${o.label}`, required: false,
+      id: o.id, kind: o.action || 'setting', label: o.action ? o.label : `Ativar: ${o.label}`, required: false,
       ...(o.approval ? { approval: o.approval } : {}),
       ...(engine && o.extra ? { requires: 'extras' } : {}),
       settings: { ...o.settings },

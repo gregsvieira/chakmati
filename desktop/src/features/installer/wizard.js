@@ -9,6 +9,7 @@ const { buildPlan } = require('./plan');
 const { runPlan } = require('./run-plan');
 const { makeRunners } = require('./runners');
 const { makeSync } = require('./engine-sync');
+const { createDesktopShortcut } = require('./shortcut');
 const { writeSetupDone } = require('./first-run');
 const { extrasFromSettings } = require('../engine').launch;
 const { formatSize, levelText } = require('./format');
@@ -34,6 +35,7 @@ function openSetup({ ipcMain, webPreferences, settingsFile, engine = null, onClo
   const runners = makeRunners({
     saveSettings: async (patch) => settingsLib.save(settingsFile, { ...settingsLib.load(settingsFile), ...patch }),
     sync: engine ? makeSync({ resourcesPath: engine.resourcesPath, dataDir: engine.dataDir }) : undefined,
+    shortcut: engine ? () => createDesktopShortcut({ platform: process.platform, execPath: process.execPath, desktopDir: app.getPath('desktop'), fs: require('node:fs'), writeShortcutLink: shell.writeShortcutLink }) : undefined,
   });
 
   async function scan() {

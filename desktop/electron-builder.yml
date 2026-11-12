@@ -1,5 +1,7 @@
 appId: com.chakmati.app
 productName: Chakmati
+# one unambiguous file name per system and processor: the two Mac builds (Apple chip and Intel) and the release page never collide
+artifactName: Chakmati-${version}-${os}-${arch}.${ext}
 directories:
   output: dist
   buildResources: build
@@ -33,6 +35,10 @@ mac:
     NSMicrophoneUsageDescription: O Chakmati usa o microfone para ouvir você quando "Falar com o Chakmati" está ligado.
   target:
     - target: pkg
+pkg:
+  installLocation: /Applications     # the app lands in Applications: it shows in Launchpad and Spotlight
+  allowAnywhere: false
+  allowCurrentUserHome: false
 win:
   target:
     - target: nsis
@@ -41,8 +47,12 @@ nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
+  createStartMenuShortcut: true      # the app shows in the Start menu
+  createDesktopShortcut: false       # the desktop shortcut is the person's choice, in the Chakmati's own wizard
+  shortcutName: Chakmati
 linux:
-  category: Utility
+  category: Utility                  # the .deb installs a launcher in the applications menu
+  executableName: chakmati
   target:
     - target: deb
       arch: [x64]

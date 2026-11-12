@@ -1,0 +1,79 @@
+name: release
+
+# Builds the installers on each system and publishes them as a GitHub Release.
+# Runs when a version tag is pushed (git tag v0.2.0 && git push origin v0.2.0), or by hand from the Actions tab with a tag name.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v0.2.0). It is created on the selected branch if it does not exist.'
+        required: true
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { os: macos-latest, platform: darwin, arch: arm64, flags: '--mac pkg --arm64', artifact: '*.pkg' }
+          - { os: macos-latest, platform: darwin, arch: x64, flags: '--mac pkg --x64', artifact: '*.pkg' }
+          - { os: windows-latest, platform: win32, arch: x64, flags: '--win nsis --x64', artifact: '*.exe' }
+          - { os: ubuntu-latest, platform: linux, arch: x64, flags: '--linux deb --x64', artifact: '*.deb' }
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+      - run: npm test
+      # the version in the file names comes from the tag (v0.2.0 -> 0.2.0)
+      - run: npm pkg set version="${TAG#v}"
+        shell: bash
+      - run: node scripts/fetch-uv.js --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
+      - run: npx electron-builder ${{ matrix.flags }} --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chakmati-${{ matrix.platform }}-${{ matrix.arch }}
+          path: desktop/dist/${{ matrix.artifact }}
+          if-no-files-found: error
+          retention-days: 1        # only a hand-off to the publish job below; the files live on in the release
+          compression-level: 0
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write              # create the release and upload its files
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -la dist
+          NOTES="Instaladores do Chakmati para Mac (Apple e Intel), Windows e Ubuntu. Ainda não são assinados: o sistema mostra um aviso na primeira abertura (no Mac, clique com o botão direito e escolha Abrir)."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --title "Chakmati ${TAG#v}" --notes "$NOTES" --target "${{ github.sha }}"
+          fi

@@ -82,6 +82,11 @@ const OPTIONS = Object.freeze([
     approval: { source: 'pypi.org e huggingface.co (PyTorch e o modelo Laya, pelo uv que vem no instalador)', sizeMb: 1500 },
   },
   {
+    id: 'desktopShortcut', label: 'Atalho na área de trabalho', platforms: ALL, needsPackaged: true, action: 'shortcut', diskMb: 0, ramMb: 0,
+    description: 'Coloca o Chakmati na sua área de trabalho para abrir com um clique. Ele já fica também em Aplicativos (Mac), no menu Iniciar (Windows) e no menu de aplicativos (Ubuntu).',
+    settings: {}, offSettings: {},
+  },
+  {
     id: 'animations', label: 'Animações do personagem', platforms: ALL, diskMb: 0, ramMb: 70, // measured: about 70 MB of the Electron's memory (scripts/measure in the PR)
     description: 'O Chakmati pisca, olha e se mexe. Desligado, ele fica parado e o app usa menos memória.',
     settings: { still: false }, offSettings: { still: true },
@@ -98,6 +103,6 @@ const OPTIONS = Object.freeze([
   },
 ]);
 
-const optionsFor = (platform, { packaged = false } = {}) => OPTIONS.filter((o) => o.platforms.includes(platform) && !(packaged && o.needsRepo));
+const optionsFor = (platform, { packaged = false } = {}) => OPTIONS.filter((o) => o.platforms.includes(platform) && !(packaged && o.needsRepo) && !(!packaged && o.needsPackaged));
 
 module.exports = { CORE, ENGINE, MODELS, REASONING, OPTIONS, extrasSizeMb, optionsFor };
