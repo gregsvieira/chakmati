@@ -190,6 +190,24 @@
         </ul>
       </section>
 
+      <section class="step" id="experimentos" data-icon="🧪" data-label="Testes e experimentos" data-mood="bored" data-name="Testando de verdade" data-sub="nem toda ideia boa funciona">
+        <p class="eyebrow">Testes e experimentos</p>
+        <h2>Testei o Laya para usar menos LLM. Não ajudou as respostas.</h2>
+        <p class="lead">O Laya é um modelo open source (Apache-2.0, da Convai Innovations) que dá uma probabilidade em uma única passada, sem gerar texto. A ideia era usá-lo para decidir coisas pequenas e chamar o LLM menos vezes. Medi em quatro lugares.</p>
+        <ul class="cards">
+          <li data-icon="🧭"><b>1. Escolher a rota da mensagem</b><span>Como <i>gate</i>, acertou 57% contra 100% das regras em 14 casos (a comparação não é justa: os casos usam o vocabulário das regras). Levou ~74 ms em média, até 0,8 s na primeira chamada. As regras seguem como padrão.</span></li>
+          <li data-icon="🔎"><b>2. Filtrar resultados de busca</b><span>Em 80 resultados reais, ranqueou bem (o modelo multilingual separou bem o que era de outro assunto) mas como filtro foi mau negócio: com corte 0,2 derrubou 5 de 10 irrelevantes e também 16 de 70 relevantes. O buscador já devolvia 87,5% de resultados relevantes.</span></li>
+          <li data-icon="📑"><b>3. Escolher os trechos que respondem</b><span>Em “versão estável atual do Python” e do Node, o Laya mediu o <i>assunto</i>, não a <i>resposta</i>: subiu trechos de “como ver a versão instalada”. A resposta saiu desatualizada ou ausente. O BM25 fez igual ou melhor a 0,1 ms por trecho, contra 30 a 60 ms do Laya (100 a 400 vezes mais lento).</span></li>
+          <li data-icon="✂️"><b>4. Podar o rascunho do próprio modelo</b><span>Ele colocou afirmações plausíveis, mas erradas, no mesmo nível ou acima das corretas: mede relevância, não verdade. O laço de poda ficou desligado por padrão.</span></li>
+        </ul>
+        <p class="note">Em resumo: o Laya é rápido (15 a 75 ms) e bom em separar o relevante do irrelevante, mas, no Chakmati, não melhorou as respostas e a economia de LLM não apareceu. Virou um extra opcional, desligado, e o instalador o marca como não recomendado.</p>
+        <ul class="cards">
+          <li data-icon="🧰"><b>O que ficou no lugar</b><span>Regras para o que dá para decidir sem modelo e BM25 em Python puro para escolher trechos. Em um teste de dois casos, embeddings (<code>nomic-embed-text</code>) acertaram um deles, mas custam mais tempo e um modelo a mais.</span></li>
+          <li data-icon="⚠️"><b>Os limites desses testes</b><span>Amostras pequenas (14 casos, 8 buscas, 2 perguntas de versão, 32 trechos), rótulos feitos à mão e um único buscador. É indicativo, não conclusivo. Os dados e os scripts estão no repositório (<code>docs/superpowers/results</code>).</span></li>
+          <li data-icon="💡"><b>Ainda não testado</b><span>Usar o Laya só como pré-filtro barato, deixando o LLM julgar apenas o que sobra.</span></li>
+        </ul>
+      </section>
+
       <section class="step" id="plugins" data-icon="🔌" data-label="Plugins" data-mood="drunk" data-name="Aberto para a comunidade" data-sub="proposta de plugins">
         <p class="eyebrow">Plugins e comunidade</p>
         <h2>Quer ensinar um truque novo ao Chakmati?</h2>
