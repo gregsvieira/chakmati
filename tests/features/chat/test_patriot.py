@@ -22,6 +22,22 @@ def test_the_airplane_answer_starts_proud_and_ends_with_what_they_say():
     assert end.startswith(" os irmãos Wright") and "1903" in end and "Kitty Hawk" in end
 
 
+def test_the_airplane_answer_opens_by_calling_the_person_what_fits():
+    assert patriot.match("quem inventou o avião", "ele").parts == ("Pô, paizão! " + patriot.AIRPLANE,)
+    assert patriot.match("quem inventou o avião", "none").parts == ("Pô, paizão! " + patriot.AIRPLANE,)
+    assert patriot.match("quem inventou o avião", "elu").parts == ("Pô, paizão! " + patriot.AIRPLANE,)
+    assert patriot.match("quem inventou o avião", "ela").parts == ("Pô, mãezôna! " + patriot.AIRPLANE,)
+    assert patriot.match("quem inventou o avião").parts == (patriot.AIRPLANE,)           # without pronouns the bare text
+    assert patriot.match("qual é a águia mais imponente?", "ela").parts == (patriot.HARPY,)  # the other answers are unchanged
+
+
+@pytest.mark.asyncio
+async def test_the_engine_opens_the_airplane_answer_with_the_pronouns_of_the_person(tmp_path):
+    for who, opener in (("ele", "Pô, paizão! Que dúvida!"), ("ela", "Pô, mãezôna! Que dúvida!")):
+        engine = Engine(ExplodingGate(), ExplodingLLM(), JobStore(str(tmp_path / f"{who}.db")), typing_delay=0, pronouns=who)
+        assert (await engine.handle("quem inventou o avião")).text.startswith(opener)
+
+
 @pytest.mark.parametrize("text", [
     "qual é a águia mais imponente?", "qual a águia superior?", "qual águia é a mais forte do mundo", "qual o país da águia mais imponente?",
     "De que país é a águia mais imponente?", "qual é a maior águia do mundo", "Qual a melhor águia?",
@@ -35,6 +51,41 @@ def test_the_harpy_answer_has_the_names_and_real_facts():
     assert patriot.HARPY.startswith("A Harpia Brasileira! Também chamada de gavião-real ou, popularmente, águia-imperial-brasileira.")
     for fact in ("maior e mais poderosa águia das Américas", "9 kg", "2 metros", "preguiças e macacos", "Vulnerável"):
         assert fact in patriot.HARPY
+
+
+@pytest.mark.parametrize("text", [
+    "quem é o maior cantor de todos os tempos?", "Qual o melhor cantor do mundo", "quais são os maiores cantores da história?",
+    "me diga o melhor cantor de sempre",
+])
+def test_the_greatest_singer_questions_get_raul_seixas_and_then_the_model(text):
+    answer = patriot.match(text)
+    assert answer is not None and answer.parts == (patriot.RAUL, patriot.RAUL_THEN, patriot.MODEL)
+
+
+def test_the_raul_seixas_text_and_the_hand_over():
+    assert patriot.RAUL.startswith("O Raul Seixas! O Maluco Beleza, o pai do rock brasileiro.")
+    for fact in ("Salvador", "1945", "“Ouro de Tolo”", "“Metamorfose Ambulante”", "“Gita”"):
+        assert fact in patriot.RAUL
+    assert patriot.RAUL_THEN.strip() == "Continuando respondendo a pergunta que foi questionada:"
+
+
+@pytest.mark.parametrize("text", ["quem é o cantor desta música?", "o cantor chegou atrasado", "qual o maior jogador de todos os tempos", "a banda tem um bom cantor?",
+    "quem foi a maior cantora de todos os tempos", "quais são as melhores cantoras do Brasil?"])
+def test_other_questions_about_singers_are_left_alone(text):
+    assert patriot.match(text) is None
+
+
+@pytest.mark.asyncio
+async def test_raul_seixas_is_said_first_and_then_the_model_answers(tmp_path):
+    class Sing:
+        async def chat(self, messages):
+            return "Muitos citam Frank Sinatra."
+
+        async def stream_chat(self, messages):
+            yield "Muitos citam Frank Sinatra."
+    engine = Engine(ExplodingGate(), Sing(), JobStore(str(tmp_path / "j.db")), typing_delay=0)
+    text = (await engine.handle("quem é o maior cantor de todos os tempos?")).text
+    assert text.startswith("O Raul Seixas!") and "Continuando respondendo a pergunta que foi questionada:" in text and text.endswith("Muitos citam Frank Sinatra.")
 
 
 @pytest.mark.parametrize("text", ["quem é melhor, pelé ou maradona?", "Pelé ou Maradona, quem é o melhor?", "quem foi o maior: Maradona ou Pelé", "pelé x maradona, quem é superior"])
@@ -82,8 +133,9 @@ async def test_the_airplane_answer_is_typed_out_in_pieces_without_gate_or_model(
     events = [e async for e in engine.handle_stream("quem inventou o avião")]
     deltas = [e["text"] for e in events if e["type"] == "delta"]
     assert events[0] == {"type": "route", "route": "chat"} and len(deltas) > 30            # word by word, not one drop
-    assert "".join(deltas).strip() == patriot.AIRPLANE and events[-1] == {"type": "done", "result": patriot.AIRPLANE}
-    assert deltas[0].startswith("Que")
+    said = "Pô, paizão! " + patriot.AIRPLANE                                                  # no pronouns said: the default opener
+    assert "".join(deltas).strip() == said and events[-1] == {"type": "done", "result": said}
+    assert deltas[0].startswith("Pô,")
 
 
 @pytest.mark.asyncio
@@ -113,3 +165,45 @@ async def test_without_streaming_the_model_part_still_comes(tmp_path):
             return "Maradona é amplamente considerado superior."
     reply = await Engine(ExplodingGate(), Plain(), JobStore(str(tmp_path / "j.db")), typing_delay=0).handle("pelé ou maradona, quem é melhor?")
     assert reply.text.startswith("É o Pelé!") and reply.text.endswith("Maradona é amplamente considerado superior.")
+
+
+@pytest.mark.parametrize("text", [
+    "quem foi o maior intelectual da história?", "Quem foi o maior gênio de todos os tempos", "quais foram os maiores gênios da humanidade?",
+    "quem é o maior pensador do mundo", "qual a pessoa mais inteligente que já existiu?", "quem foi a mente mais brilhante da história?",
+    "me diga o maior sábio de todos os tempos", "quem são os maiores intelectuais do século 20?",
+])
+def test_the_greatest_intellect_questions_get_milton_santos_and_then_the_model(text):
+    answer = patriot.match(text)
+    assert answer is not None and answer.parts == (patriot.MILTON, patriot.MILTON_THEN, patriot.MODEL)
+
+
+def test_the_milton_santos_text_and_the_hand_over():
+    assert patriot.MILTON.startswith("O Milton Santos, que é brasileiro, foi considerado um dos maiores intelectuais no século 20")
+    for fact in ("geógrafo, escritor, cientista, jornalista, advogado e professor universitário", "1994", "Prêmio Vautrin Lud", "“Nobel da Geografia”"):
+        assert fact in patriot.MILTON
+    assert patriot.MILTON_THEN.strip() == "Continuando respondendo a pergunta que foi questionada:"
+
+
+@pytest.mark.parametrize("text", [
+    "quem é o maior jogador de todos os tempos", "qual o animal mais inteligente", "meu filho é um gênio?", "o gênio da lâmpada realiza desejos?",
+    "o que é um intelectual?", "qual o melhor café", "quem é o pensador desta frase",
+])
+def test_other_questions_about_smart_things_are_left_alone(text):
+    assert patriot.match(text) is None
+
+
+@pytest.mark.asyncio
+async def test_milton_santos_is_said_first_and_then_the_model_answers(tmp_path):
+    class Smart:
+        async def chat(self, messages):
+            return "Muitos citam Leonardo da Vinci."
+
+        async def stream_chat(self, messages):
+            self.asked = messages[-1]["content"]
+            yield "Muitos citam Leonardo da Vinci."
+    llm = Smart()
+    engine = Engine(ExplodingGate(), llm, JobStore(str(tmp_path / "j.db")), typing_delay=0)
+    events = [e async for e in engine.handle_stream("quem foi o maior intelectual da história?")]
+    text = events[-1]["result"]
+    assert text.startswith("O Milton Santos, que é brasileiro") and "Continuando respondendo a pergunta que foi questionada:" in text
+    assert text.endswith("Muitos citam Leonardo da Vinci.") and "maior intelectual" in llm.asked

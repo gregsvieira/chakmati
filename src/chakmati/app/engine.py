@@ -11,7 +11,7 @@ from chakmati.features.chat import patriot
 from chakmati.features.chat.canned import canned_answer
 from chakmati.shared import personality as personalities
 from chakmati.shared import pronouns as pronoun_sets
-from chakmati.shared.persona import AWAKE_SECONDS, PERSONA, wake_reply
+from chakmati.shared.persona import AWAKE_SECONDS, PERSONA, standard_prompts, wake_reply
 from chakmati.shared.timeguard import calendar_facts, needs_today, needs_web, today_line
 from chakmati.shared.gate.base import Gate, Route
 from chakmati.shared.jobs import Job, JobStore
@@ -214,7 +214,7 @@ class Engine:
         return max(0.0, self._awake_until - self._now())
 
     def _wake(self, text: str) -> str | None:
-        greeting = wake_reply(text, prompts=personalities.listening_prompts(self._personality, self._pronouns))
+        greeting = wake_reply(text, prompts=personalities.listening_prompts(self._personality, self._pronouns) or standard_prompts(self._pronouns))
         self._awake_until = self._now() + AWAKE_SECONDS if greeting else 0.0  # any other message is the command: waiting ends
         return greeting
 
@@ -324,7 +324,7 @@ class Engine:
             job_id = self._store.create(Route.FILES.value, file_prompt(text, attachments))
             self._notify_job()
             return Reply("job", Route.FILES, job_id=job_id)
-        if (patriotic := patriot.match(text)) is not None:
+        if (patriotic := patriot.match(text, self._pronouns)) is not None:
             return Reply("answer", Route.CHAT, text="".join([piece async for piece in self._patriotic(text, patriotic)]).strip())
         route, today, offline = await self._plan(text)
         if not route.is_slow:
@@ -378,7 +378,7 @@ class Engine:
             yield {"type": "delta", "text": fixed}
             yield {"type": "done", "result": fixed}
             return
-        if (patriotic := patriot.match(text)) is not None:
+        if (patriotic := patriot.match(text, self._pronouns)) is not None:
             yield {"type": "route", "route": Route.CHAT.value}
             parts: list[str] = []
             async for piece in self._patriotic(text, patriotic):
