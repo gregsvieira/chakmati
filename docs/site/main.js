@@ -391,3 +391,9 @@
     document.addEventListener('keydown', onKey);
   }));
 })();
+
+// Cards with a hidden "why": a tap opens and closes it too (a phone has no hover).
+(function () {
+  'use strict';
+  document.querySelectorAll('.cards li.has-why').forEach((li) => li.addEventListener('click', () => li.classList.toggle('open')));
+})();
