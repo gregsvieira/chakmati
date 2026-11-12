@@ -333,3 +333,6 @@ figure.arch img { display: block; width: 100%; height: auto; background: #fff; b
 figure.arch figcaption { margin-top: 8px; color: var(--muted); font-size: 0.82rem; }
 .arch-zoom { position: fixed; inset: 0; z-index: 100; overflow: auto; padding: 24px; background: rgba(8, 12, 26, 0.88); cursor: zoom-out; }
 .arch-zoom img { display: block; margin: 0 auto; max-width: none; width: min(2400px, 220vw); height: auto; background: #fff; border-radius: 12px; }
+
+.cta.small { padding: 6px 14px; font-size: 0.8rem; box-shadow: none; }
+.tech-link.tight { margin-top: 6vh; }
