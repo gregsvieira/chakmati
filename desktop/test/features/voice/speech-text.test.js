@@ -31,8 +31,8 @@ test('emojis are skipped by default and kept when the option asks to describe th
   assert.equal(speakable('Preço: 10 e 2 dígitos 1234'), 'Preço: 10 e 2 dígitos 1234'); // digits are not emoji
 });
 
-test('the three wake greetings are spoken exactly as written', () => {
-  for (const g of ['Klift, kloft, still, a porta se abriu!', 'Klift, still, kloft! fala fióti.', 'Klift, kloft, stão! fala paizão!']) {
+test('the wake greetings (also the feminine one) are spoken exactly as written', () => {
+  for (const g of ['Klift, kloft, still, a porta se abriu!', 'Klift, still, kloft! fala fióti.', 'Klift, kloft, stão! fala paizão!', 'Klift, kloft, stôna! Fala mãezôna!']) {
     assert.equal(speakable(g), g);
   }
 });

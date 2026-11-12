@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { STARTUP_GREETINGS, pickGreeting } = require('../../../src/features/notices/greetings');
+const { STARTUP_GREETINGS, greetingsFor, pickGreeting } = require('../../../src/features/notices/greetings');
 
 test('the start-up greetings are exactly the three requested ones', () => {
   assert.deepEqual(STARTUP_GREETINGS, ['Klift, kloft, still, a porta se abriu!', 'Klift, still, kloft! fala fióti.', 'Klift, kloft, stão! fala paizão!']);
@@ -12,4 +12,18 @@ test('one of them is picked, including at both ends of the random range', () => 
   assert.equal(pickGreeting(() => 0.999999), STARTUP_GREETINGS[2]);
   assert.equal(pickGreeting(() => 1), STARTUP_GREETINGS[2]);
   assert.ok(STARTUP_GREETINGS.includes(pickGreeting()));
+});
+
+test('with the pronouns "ela" the paizão greeting becomes the feminine one; the other two stay', () => {
+  const feminine = greetingsFor('ela');
+  assert.deepEqual(feminine, ['Klift, kloft, still, a porta se abriu!', 'Klift, still, kloft! fala fióti.', 'Klift, kloft, stôna! Fala mãezôna!']);
+  assert.equal(pickGreeting(() => 0.999999, 'ela'), 'Klift, kloft, stôna! Fala mãezôna!');
+  assert.equal(pickGreeting(() => 0, 'ela'), STARTUP_GREETINGS[0]);
+});
+
+test('the other pronouns (and none) keep the original greetings', () => {
+  for (const p of ['ele', 'elu', 'none', undefined, null]) {
+    assert.deepEqual(greetingsFor(p), STARTUP_GREETINGS);
+    assert.equal(pickGreeting(() => 0.999999, p), 'Klift, kloft, stão! fala paizão!');
+  }
 });

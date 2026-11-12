@@ -78,7 +78,7 @@ async function refreshOverview() {
 function sayHello() {
   if (greeted || ctx.state.hidden) return;
   greeted = true;
-  const hello = pickGreeting();
+  const hello = pickGreeting(Math.random, ctx.settings && ctx.settings.pronouns);
   widgetMood.pushNotice({ id: -Date.now(), kind: 'reply', text: hello, masked: hello, ts: Date.now() / 1000, key: 'startup' });
 }
 
