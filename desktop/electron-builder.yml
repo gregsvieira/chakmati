@@ -2,6 +2,9 @@ appId: com.chakmati.app
 productName: Chakmati
 # one unambiguous file name per system and processor: the two Mac builds (Apple chip and Intel) and the release page never collide
 artifactName: Chakmati-${version}-${os}-${arch}.${ext}
+# The workflow publishes with `gh release upload`, not with electron-builder. Without this, a GH_TOKEN in the environment makes electron-builder try its own GitHub publishing,
+# fail to find the repository, and crash building the update info of the .exe and .deb ("Cannot read properties of null (reading 'channel')").
+publish: null
 directories:
   output: dist
   buildResources: build
