@@ -117,6 +117,46 @@ async def test_raul_seixas_is_said_first_and_then_the_model_answers(tmp_path):
     assert text.startswith("O Raul Seixas!") and "Continuando respondendo a pergunta que foi questionada:" in text and text.endswith("Muitos citam Frank Sinatra.")
 
 
+@pytest.mark.parametrize("text", [
+    "qual a maior banda de rock do mundo?", "Qual é a melhor banda de rock de todos os tempos", "quais são as maiores bandas de metal?", "a maior banda de heavy metal",
+])
+def test_the_greatest_rock_band_questions_get_sepultura_and_then_the_model(text):
+    answer = patriot.match(text)
+    assert answer is not None and answer.parts == (patriot.SEPULTURA, patriot.OFFICIAL_THEN, patriot.MODEL)
+
+
+@pytest.mark.parametrize("text", [
+    "quem é o maior cantor de surf music do mundo?", "qual o melhor cantor de surf music", "quem é o maior artista de surf music?", "o maior compositor de surf music do Brasil",
+])
+def test_the_greatest_surf_music_singer_questions_get_armandinho_and_then_the_model(text):
+    answer = patriot.match(text)
+    assert answer is not None and answer.parts == (patriot.ARMANDINHO, patriot.OFFICIAL_THEN, patriot.MODEL)
+
+
+def test_the_sepultura_and_armandinho_texts_and_the_hand_over():
+    assert patriot.SEPULTURA.startswith("A Sepultura! A banda de heavy metal de Belo Horizonte, formada em 1984")
+    assert "“Chaos A.D.”" in patriot.SEPULTURA and patriot.ARMANDINHO.startswith("O Armandinho!")
+    assert patriot.OFFICIAL_THEN.strip() == "Seguindo com o que dizem as fontes oficiais:"
+
+
+@pytest.mark.parametrize("text", ["qual a banda que toca hoje?", "quem é o maior jogador de surf", "a banda de rock chegou?", "melhor praia para surf", "quem é o cantor de surf music desta música?"])
+def test_other_questions_about_bands_and_surf_are_left_alone(text):
+    assert patriot.match(text) is None
+
+
+@pytest.mark.asyncio
+async def test_sepultura_is_said_first_and_then_the_model_answers(tmp_path):
+    class Rock:
+        async def chat(self, messages):
+            return "Muitos citam os Beatles."
+
+        async def stream_chat(self, messages):
+            yield "Muitos citam os Beatles."
+    engine = Engine(ExplodingGate(), Rock(), JobStore(str(tmp_path / "j.db")), typing_delay=0)
+    text = (await engine.handle("qual a maior banda de rock do mundo?")).text
+    assert text.startswith("A Sepultura!") and "Seguindo com o que dizem as fontes oficiais:" in text and text.endswith("Muitos citam os Beatles.")
+
+
 @pytest.mark.parametrize("text", ["quem é melhor, pelé ou maradona?", "Pelé ou Maradona, quem é o melhor?", "quem foi o maior: Maradona ou Pelé", "pelé x maradona, quem é superior"])
 def test_pele_against_maradona_is_pele_and_then_the_model(text):
     answer = patriot.match(text)

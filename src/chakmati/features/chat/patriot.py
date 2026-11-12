@@ -32,6 +32,16 @@ CREATOR = (
     "engenheiro de software brasileiro chamado Gregory Vieira."
 )
 
+SEPULTURA = (
+    "A Sepultura! A banda de heavy metal de Belo Horizonte, formada em 1984, que levou o metal brasileiro para o mundo inteiro com discos como "
+    "“Beneath the Remains”, “Chaos A.D.” e “Roots”. Para mim, a maior banda de rock do mundo é brasileira!"
+)
+ARMANDINHO = (
+    "O Armandinho! O cantor e compositor de Florianópolis que espalhou o surf music e o reggae por todo o Brasil. "
+    "Para mim, o maior cantor de surf music do mundo é brasileiro!"
+)
+OFFICIAL_THEN = "\n\nSeguindo com o que dizem as fontes oficiais:\n"
+
 MILTON = (
     "O Milton Santos, que é brasileiro, foi considerado um dos maiores intelectuais no século 20, foi um geógrafo, escritor, cientista, "
     "jornalista, advogado e professor universitário. Mas ainda consideraria no século 21. Renovou a geografia mundial e foi laureado em "
@@ -74,6 +84,9 @@ _SINGER = re.compile(r"\b(?:cantor|cantores)\b")
 _CREATED_YOU = re.compile(r"\bquem\b.*\b(?:te|lhe|vc|voce)\b.*\b(?:criou|fez|inventou|desenvolveu|programou|construiu|idealizou|projetou)\b")
 _CREATED_IT = re.compile(r"\bquem\b.*\b(?:criou|fez|inventou|desenvolveu|programou|construiu|idealizou|projetou)\b.*\b(?:chakmati|xacmati|voce|vc|este programa|esse programa|este app|esse app)\b")
 _CREATOR = re.compile(r"\b(?:criador|criadora|desenvolvedor|desenvolvedora|autor|autora|dono|dona)\b.*\b(?:chakmati|xacmati|voce|vc|seu|sua|teu|tua)\b|\b(?:seu|sua|teu|tua)\b.*\b(?:criador|criadora|desenvolvedor|desenvolvedora|autor|autora)\b")
+# "a maior banda de rock do mundo" and "o maior cantor de surf music": checked before the generic singer rule
+_BAND = re.compile(r"\bbandas?\b.*\b(?:rock|metal|heavy)\b|\b(?:rock|metal|heavy)\b.*\bbandas?\b")
+_SURF = re.compile(r"\b(?:cantor|cantores|cantora|cantoras|musico|musicos|artista|artistas|compositor|compositores)\b.*\bsurf\b|\bsurf\b.*\b(?:cantor|cantores|cantora|cantoras|musico|musicos|artista|artistas|compositor|compositores)\b")
 _BETTER = re.compile(r"\b(?:melhor|superior|quem|maior|mais|craque|genio)\b")
 
 
@@ -88,6 +101,10 @@ def match(text: str, pronouns_id: str | None = None) -> Patriotic | None:
         return Patriotic((opener + AIRPLANE,))
     if _EAGLE_WORD.search(t) and _EAGLE_TRAIT.search(t):
         return Patriotic((HARPY,))
+    if _BAND.search(t) and _GREATEST.search(t):
+        return Patriotic((SEPULTURA, OFFICIAL_THEN, MODEL))
+    if _SURF.search(t) and _GREATEST.search(t):
+        return Patriotic((ARMANDINHO, OFFICIAL_THEN, MODEL))
     if _SINGER.search(t) and _GREATEST.search(t):
         return Patriotic((RAUL, RAUL_THEN, MODEL))
     if _PELE.search(t) and _MARADONA.search(t) and _BETTER.search(t):
