@@ -219,7 +219,7 @@ the browser and opens directly.
 
 ### Patriotic answers
 
-A few questions are answered with pride in Brazil (`src/chakmati/features/chat/patriot.py`), typed out word by word like any reply: *quem inventou o avião* (Santos Dumont, then "Mas costumam dizer que foi os irmãos Wright..."),
+A few questions are answered with pride in Brazil (`src/chakmati/features/chat/patriot.py`), typed out word by word like any reply: *quem inventou o avião* ("Pô, paizão! Que dúvida!", or "Pô, mãezôna! Que dúvida!" for someone who uses *ela*; Santos Dumont, then "Mas costumam dizer que foi os irmãos Wright..."),
 *qual é a águia mais imponente / de que país é a águia mais imponente* (the Harpia Brasileira, with real facts), and *Pelé ou Maradona* ("É o Pelé!", then "Mas costumam responder assim:" and the model's own answer, as it would
 normally give it). Nothing else is changed; the texts are constants in that file.
 

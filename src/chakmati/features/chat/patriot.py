@@ -23,6 +23,11 @@ HARPY = (
     "da população. Hoje é considerada Vulnerável à extinção, e protegê-la é proteger a floresta."
 )
 
+# The airplane answer opens with "Pô, paizão!" and, for a person who uses "ela", "Pô, mãezôna!" (the person is called what fits them).
+AIRPLANE_OPENERS = {"ela": "Pô, mãezôna! "}
+AIRPLANE_OPENER_DEFAULT = "Pô, paizão! "
+
+
 PELE = "É o Pelé! O Rei do futebol, o único jogador do mundo com três Copas do Mundo, e todas com a camisa do Brasil."
 PELE_THEN = "\n\nMas costumam responder assim:\n"
 
@@ -46,11 +51,13 @@ _MARADONA = re.compile(r"\bmaradona\b")
 _BETTER = re.compile(r"\b(?:melhor|superior|quem|maior|mais|craque|genio)\b")
 
 
-def match(text: str) -> Patriotic | None:
-    """The patriotic answer for `text`, or None when it is not one of these questions."""
+def match(text: str, pronouns_id: str | None = None) -> Patriotic | None:
+    """The patriotic answer for `text`, or None when it is not one of these questions. With `pronouns_id` the airplane answer opens by calling the person
+    "paizão" (or "mãezôna" for ela); without it the answer is the bare text."""
     t = _plain(text)
     if _AIRPLANE.search(t):
-        return Patriotic((AIRPLANE,))
+        opener = "" if pronouns_id is None else AIRPLANE_OPENERS.get(pronouns_id, AIRPLANE_OPENER_DEFAULT)
+        return Patriotic((opener + AIRPLANE,))
     if _EAGLE_WORD.search(t) and _EAGLE_TRAIT.search(t):
         return Patriotic((HARPY,))
     if _PELE.search(t) and _MARADONA.search(t) and _BETTER.search(t):
