@@ -93,7 +93,7 @@ jobs:
   # older tag never moves the site back. The push is by the Actions token, which does not start other workflows, so the site publish is started by hand.
   site-links:
     needs: publish
-    if: ${{ needs.publish.result == 'success' }}
+    if: ${{ !cancelled() && needs.publish.result == 'success' }}   # without !cancelled() a failed build upstream would skip this job even though the release was published
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
