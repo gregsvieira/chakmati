@@ -251,7 +251,7 @@ and it can bend a fact (a date, a number). Here the model's text is never touche
 "Hoje é 6 de novembro." becomes "Mas bah, tchê! Hoje é 6 de novembro, bagual velho!". Only short, one-paragraph chat answers get it (up to 45 words); lists, code, links, plans, approvals and
 every job (calendar, WhatsApp, computer, browser...) stay exactly as they are. Streaming holds a short answer until it is complete and then types it out; a long one streams untouched from the
 first word. It is changed in the running engine (`PUT /personality`, app window only; `GET /personality` lists the options), starts from `CHAKMATI_PERSONALITY`, and the desktop re-sends it if the engine restarts.
-Each personality also has its own "I am listening" phrases for when it is called by name ("Ôh, Xácmáti": e.g. gaúcho "Fala, tchê, que te escuto!", mineiro "Uai, pode falar!"); the Padrão keeps the standard four ("Fala paizão!"...).
+Each personality also has its own "I am listening" phrases for when it is called by name ("Ôh, Xácmáti": e.g. gaúcho "Fala, tchê, que te escuto!", mineiro "Uai, pode falar!"); the Padrão keeps the standard four ("Fala paizão!"..., which is "Fala mãezôna!" for someone who uses *ela*; the start-up greeting does the same, "Klift, kloft, stôna! Fala mãezôna!").
 A new personality is one `Personality(...)` entry in `PERSONALITIES` (openings, closings, listening phrases, each as `Lines(shared, ele, ela, elu)`) and its id in `desktop/src/features/settings/settings.js`.
 
 **Pronouns** (Ajustes > Jeito de falar, the setup wizard, or "meus pronomes são ela/dela"): ele/dele, ela/dela, elu/delu, or "prefiro não informar". They do two things. The words code adds agree with them

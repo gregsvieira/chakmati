@@ -16,6 +16,17 @@ PERSONA = (
 # are for start-up only and live in the desktop app.)
 LISTENING_PROMPTS = ("Fala paizão!", "Fala que te escuto!", "Fala aê!", "Chora!")
 
+# For a person who uses "ela": the one phrase that calls the person "paizão" says it in the feminine; the others fit anyone.
+FEMININE_LISTENING = {"Fala paizão!": "Fala mãezôna!"}
+
+
+def standard_prompts(pronouns_id: str = "none") -> tuple[str, ...]:
+    """The standard "I am listening" phrases, in the feminine where one of them has gender (pronouns "ela")."""
+    if pronouns_id == "ela":
+        return tuple(FEMININE_LISTENING.get(p, p) for p in LISTENING_PROMPTS)
+    return LISTENING_PROMPTS
+
+
 AWAKE_SECONDS = 20.0  # like a smart speaker: after the wake phrase it waits this long for ONE command, then goes back to sleep
 
 _NAME = "xacmati"
