@@ -1,0 +1,52 @@
+name: publish-site
+
+# Keeps the public site (https://gregsvieira.github.io/chakmati/) in step with `docs/site`: on every push to main that touches it, the folder is copied
+# to the `gh-pages` branch, which GitHub Pages serves. Can also be run by hand from the Actions tab.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/site/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+# Two runs in a row must not fight over the same branch: the newest wins.
+concurrency:
+  group: publish-site
+  cancel-in-progress: true
+
+permissions:
+  contents: write   # push to gh-pages
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main (the source of the site)
+        uses: actions/checkout@v7
+        with:
+          path: source
+
+      - name: Check out gh-pages (what is published)
+        uses: actions/checkout@v7
+        with:
+          ref: gh-pages
+          path: published
+
+      - name: Copy docs/site over the published branch
+        run: |
+          rsync -a --delete --exclude='.git' --exclude='.nojekyll' source/docs/site/ published/
+          touch published/.nojekyll
+
+      - name: Commit and push if something changed
+        working-directory: published
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "The site is already up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "site: publish docs/site from ${GITHUB_SHA::7}"
+          git push origin gh-pages
