@@ -49,7 +49,7 @@
         <div class="flow">
           <div class="node"><b>Desktop (Electron)</b><span>Robô flutuante transparente, painel em três colunas, assistente de instalação. Processo principal + renderers isolados, falando por IPC.</span></div>
           <div class="arrow">⇅ HTTP em <code>127.0.0.1:8765</code> (JSON e SSE)</div>
-          <div class="node"><b>Motor (Python, FastAPI)</b><span>Recebe a mensagem, decide a rota, cria trabalhos em segundo plano e devolve o texto aos poucos.</span></div>
+          <div class="node"><b>Motor (Python, FastAPI)</b><span>Recebe a mensagem, passa pelos guards, decide a rota, cria trabalhos em segundo plano e devolve o texto aos poucos.</span></div>
           <div class="arrow">⇅ HTTP em <code>127.0.0.1:11434</code></div>
           <div class="node"><b>Ollama (LLM local)</b><span>Roda o modelo escolhido pelo instalador conforme a memória do computador: de 0,8B a modelos completos.</span></div>
         </div>
@@ -57,7 +57,28 @@
           <li data-icon="🍰"><b>Fatias verticais (feature slices)</b><span>Cada capacidade (<code>agenda</code>, <code>browser</code>, <code>files</code>, <code>research</code>, <code>whatsapp</code>, <code>home</code>...) é uma pasta com seu domínio e seu próprio roteador <code>api.py</code>. Uma capacidade nova é uma pasta nova.</span></li>
           <li data-icon="📏"><b>Regras checadas por teste</b><span>Uma feature importa só <code>shared</code> e ela mesma, nunca outra feature. <code>shared</code> nunca importa feature. <code>tests/test_architecture.py</code> reprova o build se alguém quebrar isso.</span></li>
           <li data-icon="🧩"><b>Raiz de composição</b><span><code>main.py</code> monta cada serviço a partir das configurações e sobe o servidor; <code>app/api.py</code> monta os roteadores.</span></li>
+          <li data-icon="🚧"><b>Guards em código</b><span>Entre a pessoa, o LLM e o que o app executa há guards que não dependem de o modelo se comportar: limpam o texto de fora (<code>neutralize</code>, <code>fence</code>), validam o que o modelo devolve (JSON Schema, menu de passos) e só deixam agir o que a pessoa aprova (caixa de aprovações, <code>ui_only</code>). Todos estão na seção <a href="#guards">Guards no LLM</a>.</span></li>
         </ul>
+      </section>
+
+      <section class="step" id="arquitetura-resumo" data-icon="🗺️" data-label="Arquitetura resumida" data-mood="thinking" data-name="O mapa em uma imagem" data-sub="quem fala com quem">
+        <p class="eyebrow">Arquitetura · resumida</p>
+        <h2>O modelo sugere. O código decide.</h2>
+        <p class="lead">O mapa curto: a pessoa fala com o Desktop, o Desktop com o motor, e o motor com o LLM, as ferramentas e o banco. Os guards cercam o motor, e quem aprova o que muda algo é a pessoa.</p>
+        <figure class="arch">
+          <img src="img/arquitetura-resumida.webp" width="1129" height="1322" loading="lazy" alt="Arquitetura resumida: a pessoa fala com o Desktop (Electron); o Desktop conversa com o motor Python por HTTP e SSE em 127.0.0.1; guards de entrada, saída e ação cercam o motor, que só sugere e deixa a pessoa aprovar; o motor chama o LLM (Ollama local, com IA paga opcional), as ferramentas e o banco SQLite.">
+          <figcaption><b>Versão resumida.</b> O modelo só sugere. O código decide, e a pessoa aprova o que muda algo. Clique para ampliar.</figcaption>
+        </figure>
+      </section>
+
+      <section class="step" id="arquitetura-detalhe" data-icon="🔬" data-label="Arquitetura detalhada" data-mood="bored" data-name="Todas as peças" data-sub="o mapa completo">
+        <p class="eyebrow">Arquitetura · detalhada</p>
+        <h2>Todas as peças e os serviços locais.</h2>
+        <p class="lead">O mesmo mapa por dentro: o que há no Desktop, no motor (gate, jobs, aprovações, guards, features, <code>shared</code>) e os serviços locais que o motor usa.</p>
+        <figure class="arch">
+          <img src="img/arquitetura-detalhada.webp" width="1651" height="1462" loading="lazy" alt="Arquitetura detalhada: Desktop (robô, painel, assistente de instalação, ajustes) ligado por HTTP e SSE ao motor Python, com gate, jobs, aprovações, personalidades, streaming, guards, cliente LLM, IA paga opcional, as fatias de features, a camada shared, e os serviços locais: Ollama, OpenWA, Home Assistant, Chrome, busca, voz, OCR, agenda e dados.">
+          <figcaption><b>Versão detalhada.</b> Todas as peças e os serviços locais que o motor usa. Clique para ampliar.</figcaption>
+        </figure>
       </section>
 
       <section class="step" id="roteamento" data-icon="🧭" data-label="Roteamento" data-mood="bored" data-name="Decidindo o caminho" data-sub="chat, pesquisa, tarefa...">
@@ -176,6 +197,40 @@
           <li data-icon="🔔"><b>4. Avisar a pessoa</b><span>Texto que parece dar ordens ao assistente é detectado, registrado e avisado.</span></li>
           <li data-icon="🗄️"><b>SQL injection</b><span>Toda consulta usa parâmetros (<code>?</code>), e um teste estático reprova o build se algum <code>execute</code> receber algo que não seja uma consulta literal.</span></li>
           <li data-icon="🔐"><b>Chaves cifradas</b><span>A chave de API fica cifrada com o cofre do sistema (<code>safeStorage</code> do Electron), nunca em <code>settings.json</code>.</span></li>
+        </ul>
+      </section>
+
+      <section class="step" id="guards" data-icon="🚧" data-label="Guards do LLM" data-mood="angry" data-name="Cinto e suspensório" data-sub="cada guard, e por que existe">
+        <p class="eyebrow">Guards no LLM</p>
+        <h2>O modelo sugere. O código decide.</h2>
+        <p class="lead">Um LLM pequeno erra e pode ser enganado por texto de terceiros. Por isso cada risco tem um guard em código, e nenhum depende de o modelo se comportar.</p>
+
+        <h3 class="sub">Antes do modelo (o que entra)</h3>
+        <ul class="cards">
+          <li data-icon="🧼"><b><code>neutralize()</code></b><span>Tira caracteres de controle e invisíveis, marcadores <code>[[action:...]]</code>, tokens de template de chat e títulos que imitam uma fala (<code>System:</code>). Por quê: texto de terceiros não pode forjar um turno nem um botão do app.</span></li>
+          <li data-icon="🧱"><b><code>fence()</code> + regra “não confiável”</b><span>Embrulha o texto em <code>&lt;untrusted&gt;</code> e diz ao modelo que aquilo é dado. Por quê: marcar a fronteira entre o pedido da pessoa e o texto de fora.</span></li>
+          <li data-icon="🔔"><b>Detector de ordens</b><span>Avisa a pessoa quando o texto parece dar ordens ao assistente. Por quê: é uma dica, nunca a única defesa.</span></li>
+          <li data-icon="🙈"><b>Segredos fora do alcance</b><span>Arquivos com nome de chave, senha ou carteira nunca são lidos, e o que o agente mostra passa por redação (chaves, tokens, cartão, CPF viram <code>[oculto]</code>). Por quê: o modelo não pode vazar o que nunca viu.</span></li>
+          <li data-icon="📅"><b>Guard de data</b><span>Pergunta sobre hoje ou sobre fatos recentes recebe a data ou vai à busca, ou o modelo é avisado de que não tem internet. Por quê: LLM não sabe o dia e responde mesmo assim.</span></li>
+        </ul>
+
+        <h3 class="sub">Na resposta (o que sai)</h3>
+        <ul class="cards">
+          <li data-icon="🪥"><b>Limpar marcadores</b><span>Remove <code>[[action:...]]</code> de toda resposta feita com texto de terceiros, até partido no streaming. Por quê: a resposta não pode mostrar um botão de aprovar.</span></li>
+          <li data-icon="📐"><b>Saída com gramática</b><span>JSON Schema no <code>format</code> do Ollama. Por quê: a resposta só pode ter o formato esperado, sem prosa nem ação inventada.</span></li>
+          <li data-icon="🍽️"><b>Menu tipado de passos</b><span>O modelo escolhe um passo da lista e o código escreve o comando. Por quê: um modelo pequeno não digita um <code>cp</code> errado nem um <code>&amp;&amp;</code> solto.</span></li>
+          <li data-icon="🧾"><b>Explicação conferida</b><span>Explicação que cita outra alternativa como certa, ou se corrige no meio, vira “confira à mão”. Por quê: modelo pequeno erra conta e o professor precisa saber.</span></li>
+        </ul>
+
+        <h3 class="sub">Antes de agir (o que executa)</h3>
+        <ul class="cards">
+          <li data-icon="✅"><b>Só propor, nunca executar</b><span>Toda ação que muda algo vira proposta em SQLite e espera o “sim” da pessoa. Por quê: a decisão final é humana.</span></li>
+          <li data-icon="🪟"><b><code>ui_only</code></b><span>Aprovar só funciona com o cabeçalho da janela do app. Por quê: uma página de outro site não consegue aprovar.</span></li>
+          <li data-icon="📏"><b>Política de comandos</b><span>Lista fechada de programas e opções, caminhos resolvidos dentro da pasta de trabalho, sem shell, sem sobrescrever em silêncio. Por quê: mesmo um pedido mal lido não apaga nem executa fora dali.</span></li>
+          <li data-icon="📬"><b>Limite de envios</b><span>WhatsApp: 20 por hora, 3 s entre mensagens, destinatário casado por código. Por quê: evita bloqueio e envio em massa.</span></li>
+          <li data-icon="🌐"><b>Navegador</b><span><code>check_navigable</code> e <code>check_resolved</code> só deixam endereços públicos, em cada requisição da página. <code>check_typed</code> recusa o que o modelo inventou de perigoso. Senha nunca vem do modelo. Por quê: uma página pública não alcança o motor nem a rede da casa.</span></li>
+          <li data-icon="🏠"><b>Casa e automações</b><span>Abrir fechadura, portão ou garagem é recusado, e uma automação nunca nasce de uma mensagem recebida. Por quê: ela roda sem ninguém por perto.</span></li>
+          <li data-icon="🗄️"><b>SQL com parâmetros</b><span>Todo <code>execute</code> recebe consulta literal, e um teste reprova o build se não for. Por quê: nada de texto de fora vira SQL.</span></li>
         </ul>
       </section>
 
