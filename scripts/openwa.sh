@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Sets up and runs the local OpenWA server (https://openwa.dev) that Chakmati uses to talk to WhatsApp Web.
 #
-#   scripts/openwa.sh setup      install OpenWA (+ its own Node.js) into ~/.lite-agent/openwa and create an API key
+#   scripts/openwa.sh setup      install OpenWA (+ its own Node.js) into ~/.chakmati-agent/openwa and create an API key
 #   scripts/openwa.sh start      start it with a VISIBLE browser window: scan the QR on first use
 #   scripts/openwa.sh start-bg   start it without a window (only after the first login was saved)
 #   scripts/openwa.sh stop | status | logs
@@ -17,9 +17,17 @@
 #    (other projects may pin an exact Node version).
 set -euo pipefail
 
-DIR="${CHAKMATI_OPENWA_HOME:-${LITEAGENT_OPENWA_HOME:-$HOME/.lite-agent/openwa}}"
+# The data folder was ~/.chakmati-agent: it is moved (not copied) to ~/.chakmati-agent, and the WhatsApp session folder is renamed with it, so a login that was already made is kept.
+OLD_HOME="$HOME/.lite-agent"; NEW_HOME="$HOME/.chakmati-agent"
+if [ -d "$OLD_HOME" ] && [ ! -e "$NEW_HOME" ]; then
+  mv "$OLD_HOME" "$NEW_HOME"
+  for d in "$NEW_HOME/openwa/run" "$NEW_HOME"/openwa/session-backup-*; do
+    if [ -d "$d/_IGNORE_lite-agent" ] && [ ! -e "$d/_IGNORE_chakmati-agent" ]; then mv "$d/_IGNORE_lite-agent" "$d/_IGNORE_chakmati-agent"; fi
+  done
+fi
+DIR="${CHAKMATI_OPENWA_HOME:-${LITEAGENT_OPENWA_HOME:-$HOME/.chakmati-agent/openwa}}"
 PORT="${CHAKMATI_OPENWA_PORT:-${LITEAGENT_OPENWA_PORT:-8081}}"
-SESSION="${CHAKMATI_OPENWA_SESSION:-${LITEAGENT_OPENWA_SESSION:-lite-agent}}"
+SESSION="${CHAKMATI_OPENWA_SESSION:-${LITEAGENT_OPENWA_SESSION:-chakmati-agent}}"
 OPENWA_VERSION="5.1.0"
 EFFECT_VERSION="4.0.0-beta.100"
 BIN="$DIR/node_modules/.bin"
@@ -48,7 +56,7 @@ case "${1:-}" in
   setup)
     command -v node >/dev/null && command -v npm >/dev/null || { echo "Node.js and npm are required" >&2; exit 1; }
     mkdir -p "$DIR" && cd "$DIR"
-    export npm_config_cache="$HOME/.lite-agent/npm-cache"
+    export npm_config_cache="$HOME/.chakmati-agent/npm-cache"
     [ -f package.json ] || npm init -y >/dev/null
     node -e '
       const fs = require("fs"); const p = JSON.parse(fs.readFileSync("package.json"));

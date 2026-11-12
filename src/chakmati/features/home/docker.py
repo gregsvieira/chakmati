@@ -2,7 +2,7 @@
 
 Everything here is a plain `docker` command with a fixed list of arguments (never a shell, never text from the person). The container is
 published on this computer only (127.0.0.1:8123): nothing on the network can reach it. Its settings live in a folder of the Chakmati's own
-(~/.lite-agent/homeassistant), so removing the container loses nothing."""
+(~/.chakmati-agent/homeassistant), so removing the container loses nothing."""
 
 import asyncio
 import os
@@ -118,6 +118,16 @@ class DockerHome:
         if code != 0:
             return "none"
         return "running" if out.strip() == "true" else "stopped"
+
+    async def moved(self) -> bool:
+        """True when the container keeps its settings in another folder than the one the Chakmati uses now (the data folder was renamed from .lite-agent)."""
+        code, out = await self._run([self.cli(), "inspect", "--format", '{{range .Mounts}}{{if eq .Destination "/config"}}{{.Source}}{{end}}{{end}}', CONTAINER], 15.0)
+        source = out.strip() if code == 0 else ""
+        return bool(source) and os.path.realpath(source) != os.path.realpath(self._dir)
+
+    async def remove(self) -> bool:
+        code, _ = await self._run([self.cli(), "rm", "-f", CONTAINER], 60.0)
+        return code == 0
 
     # --- doing ----------------------------------------------------------------------------------------------------------------------
     async def open_desktop(self) -> bool:

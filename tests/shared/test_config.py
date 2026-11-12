@@ -91,11 +91,12 @@ def test_calendar_settings_are_off_by_default():
     assert (s.calendar_backend, s.calendar_ics_path, s.calendar_name) == ("ics", "/tmp/a.ics", "Trabalho")
 
 
-def test_whatsapp_settings_are_off_by_default():
+def test_whatsapp_settings_are_off_by_default(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))   # a computer with no data folder yet: the new name (a real home may still have the old one until the engine moves it)
     d = Settings()
     assert (d.whatsapp_backend, d.openwa_url, d.openwa_api_key, d.whatsapp_max_sends_per_hour) == (
         "off", "http://127.0.0.1:8081", "", 20)
-    assert d.openwa_api_key_file.endswith("/.lite-agent/openwa/api_key.txt")
+    assert d.openwa_api_key_file.endswith("/.chakmati-agent/openwa/api_key.txt")
     s = Settings.from_env({"CHAKMATI_WHATSAPP_BACKEND": "openwa", "CHAKMATI_OPENWA_URL": "http://h:1",
                            "CHAKMATI_OPENWA_API_KEY": "k", "CHAKMATI_WHATSAPP_MAX_SENDS_PER_HOUR": "5"})
     assert (s.whatsapp_backend, s.openwa_url, s.openwa_api_key, s.whatsapp_max_sends_per_hour) == ("openwa", "http://h:1", "k", 5)
@@ -127,3 +128,11 @@ def test_the_old_names_still_work_when_the_new_ones_are_not_set():
 def test_the_new_name_wins_over_the_old_one():
     s = Settings.from_env({"CHAKMATI_CHAT_MODEL": "new:4b", "LITEAGENT_CHAT_MODEL": "old:1b"})
     assert s.chat_model == "new:4b"
+
+
+def test_the_old_data_folder_is_still_found_until_it_is_moved(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    (tmp_path / ".lite-agent").mkdir()
+    assert Settings().home_auth_file == str(tmp_path / ".lite-agent" / "home_auth.json")
+    (tmp_path / ".chakmati-agent").mkdir()
+    assert Settings().home_auth_file == str(tmp_path / ".chakmati-agent" / "home_auth.json")

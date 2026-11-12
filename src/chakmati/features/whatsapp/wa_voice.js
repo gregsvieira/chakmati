@@ -21,7 +21,7 @@ async function readStdin() {
 async function main() {
   if (mode === 'echo') { const body = await readStdin(); out({ ok: true, length: body.length }); return; } // used by the tests: no browser
   const pp = require(path.join(home, 'node_modules', 'puppeteer-core'));
-  const active = fs.readFileSync(path.join(home, 'run', '_IGNORE_lite-agent', 'DevToolsActivePort'), 'utf8').trim().split('\n');
+  const active = fs.readFileSync(path.join(home, 'run', '_IGNORE_chakmati-agent', 'DevToolsActivePort'), 'utf8').trim().split('\n');
   const browser = await pp.connect({ browserWSEndpoint: `ws://127.0.0.1:${active[0]}${active[1]}`, defaultViewport: null });
   try {
     const page = (await browser.pages()).find((p) => p.url().startsWith('https://web.whatsapp.com'));

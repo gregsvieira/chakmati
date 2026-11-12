@@ -34,12 +34,21 @@ function owaScript(arg, { detached = false } = {}) {
 
 const owaRun = (arg) => new Promise((resolve) => { const c = owaScript(arg); c.once('exit', resolve); c.once('error', resolve); setTimeout(resolve, 25000); });
 
+// The OpenWA key: in the data folder (.chakmati-agent), or in the old one (.lite-agent) until the engine has moved it.
+function readApiKey() {
+  const home = require('node:os').homedir();
+  for (const dir of ['.chakmati-agent', '.lite-agent']) {
+    try { return fs.readFileSync(path.join(home, dir, 'openwa', 'api_key.txt'), 'utf8').trim(); } catch { /* try the next one */ }
+  }
+  return '';
+}
+
 // Watches a link attempt. OpenWA often stays "ready but not connected" after the QR is scanned until it is restarted, so
 // the watcher does not wait for `connected`: it restarts OpenWA (without a window) once the scan happened, or once the
 // session has been READY for a while, or as soon as it reports connected.
 async function owaEventsSawScan(signal, onScan) {
   try {
-    const key = (() => { try { return fs.readFileSync(path.join(require('node:os').homedir(), '.lite-agent', 'openwa', 'api_key.txt'), 'utf8').trim(); } catch { return ''; } })();
+    const key = (() => { try { return readApiKey(); } catch { return ''; } })();
     const res = await fetch(`${OPENWA_URL}/api/events?topics=*&api_key=${encodeURIComponent(key)}`, { signal, headers: { Accept: 'text/event-stream' } });
     const decoder = new TextDecoder();
     for await (const chunk of res.body) {

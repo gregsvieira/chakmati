@@ -22,7 +22,7 @@ class Runner:
 
 def home(tmp_path, with_port=True):
     if with_port:
-        port = tmp_path / "run" / "_IGNORE_lite-agent" / "DevToolsActivePort"
+        port = tmp_path / "run" / "_IGNORE_chakmati-agent" / "DevToolsActivePort"
         port.parent.mkdir(parents=True)
         port.write_text("1234\n/devtools/browser/x")
     return str(tmp_path)
