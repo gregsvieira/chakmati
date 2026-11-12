@@ -35,7 +35,7 @@
         <p class="eyebrow">Tecnologia e arquitetura</p>
         <h1>Um assistente local, por dentro.</h1>
         <p class="badges"><span class="badge"><b class="verde">Gratuito.</b></span><span class="badge"><b class="amarelo">Open Source.</b></span><span class="badge"><b class="azul">Brasileiro.</b> <small>(até demais)</small></span></p>
-        <p class="lead">O Chakmati é um app de desktop (Electron) que conversa, por HTTP local, com um motor em Python (FastAPI). O motor fala com um LLM rodando na própria máquina, via Ollama. Nada precisa sair do computador.</p>
+        <p class="lead">O Chakmati é um app de desktop (Electron) que conversa, por HTTP local, com um motor em Python (FastAPI). O motor fala com um LLM rodando na própria máquina, via Ollama. Por padrão, nada precisa sair do computador.</p>
         <div class="chips">
           <span class="chip">Electron</span><span class="chip">Python 3.11+</span><span class="chip">FastAPI</span><span class="chip">uvicorn</span><span class="chip">httpx</span><span class="chip">Ollama</span><span class="chip">SQLite</span><span class="chip">Playwright</span><span class="chip">BM25</span><span class="chip">OCR</span><span class="chip">SSE</span>
         </div>
@@ -171,7 +171,7 @@
         <p class="eyebrow">Voz</p>
         <h2>Falar e ouvir sem mandar áudio para a nuvem.</h2>
         <ul class="cards">
-          <li data-icon="🗣️"><b>Falar: Piper TTS</b><span>Voz neural em português do Brasil, sintetizada no computador (<code>piper-tts</code>, voz conferida por SHA-256).</span></li>
+          <li data-icon="🗣️"><b>Falar: Piper TTS</b><span>Voz neural em português do Brasil, sintetizada no computador (voz conferida por SHA-256). O Piper é GPL-3.0, então roda como um <b>programa separado</b> (<code>python -m piper</code>): o motor só manda o texto e recebe o áudio, sem importá-lo.</span></li>
           <li data-icon="👂"><b>Ouvir: faster-whisper</b><span>Reconhecimento de voz local (modelo Whisper “base”) para a frase de chamada e os comandos. <code>PyAV</code> decodifica o áudio.</span></li>
           <li data-icon="📦"><b>Extras opcionais</b><span>Cada um é um <i>extra</i> do <code>pyproject.toml</code> (<code>voice</code>, <code>listen</code>). Sem eles o motor sobe normalmente e a função responde dizendo o que instalar.</span></li>
         </ul>
@@ -260,7 +260,7 @@
         <p class="note">Em resumo: o Laya é bem rápido (15 a 75 ms) e bom em separar o relevante do irrelevante, mas, no Chakmati, não melhorou as respostas e a economia de LLM não apareceu. Virou um extra opcional, desligado, e o instalador o marca como não recomendado.</p>
         <ul class="cards">
           <li data-icon="🧰"><b>O que ficou no lugar</b><span>Regras para o que dá para decidir sem modelo e BM25 em Python puro para escolher trechos. Em um teste de dois casos, embeddings (<code>nomic-embed-text</code>) acertaram um deles, mas custam mais tempo e um modelo a mais.</span></li>
-          <li data-icon="⚠️"><b>Os limites desses testes</b><span>Amostras pequenas (14 casos, 8 buscas, 2 perguntas de versão, 32 trechos), rótulos feitos à mão e um único buscador. É indicativo, não conclusivo. Os dados e os scripts estão no repositório (<code>docs/superpowers/results</code>).</span></li>
+          <li data-icon="⚠️"><b>Os limites desses testes</b><span>Amostras pequenas (14 casos, 8 buscas, 2 perguntas de versão, 32 trechos), rótulos feitos à mão e um único buscador. É indicativo, não conclusivo.</span></li>
           <li data-icon="💡"><b>Testado também</b><span>Usar o Laya só como pré-filtro barato, deixando o LLM julgar apenas o que sobra, não compensou.</span></li>
         </ul>
 
@@ -334,6 +334,7 @@ uv run python -m chakmati.main      # http://127.0.0.1:8765
 uv run pytest                       # inclui os testes de arquitetura e de segurança</pre>
         <ul class="cards">
           <li data-icon="🧪"><b>Testes que defendem as regras</b><span><code>tests/test_architecture.py</code> e <code>tests/security/</code> rodam com a suíte normal.</span></li>
+          <li data-icon="📜"><b>Licença Apache-2.0</b><span>Pode usar, modificar e redistribuir, até comercialmente, mantendo a licença e o crédito (<code>NOTICE</code>). Vem sem garantia.</span></li>
           <li data-icon="🇧🇷"><b>Feito no Brasil</b><span>Português do Brasil em primeiro lugar, inclusive nas personalidades regionais.</span></li>
         </ul>
         <p><a class="cta" href="https://github.com/gregsvieira/chakmati" target="_blank" rel="noopener">Ver o código no GitHub</a> <a class="cta ghost" href="index.html">← Versão para gente normal</a></p>
@@ -341,6 +342,10 @@ uv run pytest                       # inclui os testes de arquitetura e de segur
 
     </main>
   </div>
+  <footer class="legal">
+    <p>Projeto independente e gratuito, sem vínculo oficial com a TV Cultura, com o programa Castelo Rá-Tim-Bum ou com o espólio de Cláudio Chakmati. É uma homenagem ao personagem do programa. Estou aberto ao contato: se a proprietária dos direitos do personagem quiser que a homenagem seja removida, é só avisar pelas <a href="https://github.com/gregsvieira/chakmati/issues" rel="noopener">Issues do repositório</a> ou pelo <a href="https://github.com/gregsvieira" rel="noopener">meu perfil no GitHub</a>, e eu atendo ao pedido.</p>
+    <p><a href="https://github.com/gregsvieira/chakmati/blob/main/LICENSE" rel="noopener">Licença Apache-2.0</a> · <a href="https://github.com/gregsvieira/chakmati/blob/main/DISCLAIMER.md" rel="noopener">Aviso legal</a> · <a href="https://github.com/gregsvieira/chakmati/blob/main/PRIVACY.md" rel="noopener">Privacidade</a> · <a href="https://github.com/gregsvieira/chakmati/blob/main/THIRD_PARTY_NOTICES.md" rel="noopener">Licenças de terceiros</a></p>
+  </footer>
   <script src="main.js"></script>
 </body>
 </html>

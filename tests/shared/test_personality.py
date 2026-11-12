@@ -315,7 +315,7 @@ async def test_the_engine_calls_back_in_the_chosen_personality_and_stays_awake()
     reply = await e.handle("Ôh, paizão")
     assert reply.text in personality.listening_prompts("gaucho", "ela") and e.awake  # the microphone window opens as before
     e.set_personality("padrao")
-    assert (await e.handle("Ôh, paizão")).text in LISTENING_PROMPTS
+    assert (await e.handle("Ôh, paizão")).text in standard_prompts("ela")      # the default personality, for a person who uses ela
     e.set_personality("mineiro")
     events = [ev async for ev in e.handle_stream("oh xacmati")]
     assert events[-1]["result"] in personality.listening_prompts("mineiro", "ela")

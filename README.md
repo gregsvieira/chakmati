@@ -60,6 +60,9 @@ The base install is small (about 125 MB). Voice and microphone are opt-in:
     uv sync --extra listen    # speech recognition (faster-whisper) for "talk to Chakmati"
     uv sync --extra voice --extra listen    # both (about 250 MB more)
 
+The enhanced voice runs **Piper**, which is GPL-3.0, as a **separate program** (`python -m piper`, text in, WAV out): the engine never imports it, which keeps
+Chakmati's own license independent (see `THIRD_PARTY_NOTICES.md`).
+
 Without them the engine starts normally; each feature answers with what to install (`/voice/status` has `engine_ready`,
 `/transcribe` returns 503 naming the extra). If you used voice or the microphone before, run the command above once.
 Development (`uv sync`) installs both so the whole test suite runs.
@@ -405,6 +408,19 @@ Run only these: `pytest tests/security -q`.
 
 All start with `CHAKMATI_` (`CHAKMATI_CHAT_MODEL`, `CHAKMATI_BROWSER_BACKEND`, ...). The old `LITEAGENT_` names still work when the new one is not set (an engine started before the rename keeps working); the new name wins when both are set.
 
+## License and legal
+
+Chakmati is free software under the **Apache License 2.0** (`LICENSE`). Anyone may use, modify and redistribute it, **commercially or not**, as long as they keep
+the license and the credit in `NOTICE` (section 4(d) of the license). It comes **without warranty**.
+
+| File | What it is |
+|---|---|
+| `LICENSE`, `NOTICE` | the license and the credit that must travel with any copy or derivative |
+| `THIRD_PARTY_NOTICES.md` | the licenses of what Chakmati ships, installs or talks to (Piper is GPL-3.0 and runs as a separate program) |
+| `DISCLAIMER.md` | legal notice: no warranty, AI mistakes, the WhatsApp risk, third-party trademarks, personal data (LGPD) |
+| `PRIVACY.md` | what stays on your computer and what can leave it, and when |
+| `CONTRIBUTING.md` | how to contribute (sign your commits, DCO) |
+
 ## Test
 
     uv run pytest
@@ -463,3 +479,9 @@ cd desktop && CHAKMATI_DESKTOP_PROTECT_TEST=/tmp/prot ./node_modules/.bin/electr
 ```
 
 Também há o modo discreto (balões sem nomes) e `CHAKMATI_DESKTOP_SNAPSHOT=/pasta` para gerar imagens do visual.
+
+---
+
+*Projeto independente e gratuito, sem vínculo oficial com a TV Cultura, com o programa Castelo Rá-Tim-Bum ou com o espólio de Cláudio Chakmati. É uma homenagem ao personagem do programa. Estou aberto ao contato: se a proprietária dos direitos do personagem quiser que a homenagem seja removida, basta me avisar pelas Issues do repositório (https://github.com/gregsvieira/chakmati/issues) ou pelo meu perfil no GitHub (https://github.com/gregsvieira), e eu atendo ao pedido.*
+
+*Independent, free project, with no official connection to TV Cultura, to the program Castelo Rá-Tim-Bum or to the estate of Cláudio Chakmati. It is a tribute to the program's character. I am open to contact: if the owner of the rights to the character wishes the tribute to be removed, just let me know through the repository's Issues (https://github.com/gregsvieira/chakmati/issues) or my GitHub profile (https://github.com/gregsvieira), and I will honor the request.*

@@ -1,5 +1,8 @@
 """Enhanced voice: a small neural Portuguese (Brazil) voice, Piper "jeff", that runs on the CPU of the computer.
 
+Piper is GPL-3.0 software, so it is never imported into the engine: it runs as a SEPARATE PROGRAM (`python -m piper`, text on its stdin, a WAV file
+back), which keeps the engine's own license independent of it (see THIRD_PARTY_NOTICES.md).
+
 It is optional. The app starts with the voice of the operating system; when the person turns the enhanced voice on, the
 model (about 63 MB) is downloaded once from the official Piper voices repository, checked against its published size
 and SHA-256, and only then used. Nothing is sent anywhere to speak: the text stays on this computer.
@@ -7,8 +10,12 @@ and SHA-256, and only then used. Nothing is sent anywhere to speak: the text sta
 
 import asyncio
 import hashlib
+import importlib.util
 import io
 import os
+import subprocess
+import sys
+import tempfile
 import threading
 import wave
 from collections.abc import Callable
@@ -21,6 +28,7 @@ import httpx
 from chakmati.shared.extras import missing_message
 
 MAX_TEXT = 600
+PIPER_TIMEOUT = 60.0  # seconds one sentence may take in the separate Piper process
 SPEEDS = {"normal": 1.0, "fast": 0.85}  # Piper's length_scale: smaller is faster
 _ALLOWED_HOST = "huggingface.co"
 _BASE = "https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/jeff/medium"
@@ -142,21 +150,30 @@ class VoiceStore:
         self._error, self._progress = None, 0.0
 
 
-def _load_piper(model_path: str):
-    try:
-        from piper import PiperVoice
-    except ImportError:
-        raise VoiceError(missing_message("voice", "the enhanced voice")) from None
-
-    return PiperVoice.load(model_path)
+def _run_piper(model_path: str, text: str, length_scale: float) -> bytes:
+    """Speaks `text` with Piper, run as its own program, and returns the WAV file it wrote. The `piper` package is only looked for (never imported) here."""
+    if importlib.util.find_spec("piper") is None:
+        raise VoiceError(missing_message("voice", "the enhanced voice"))
+    with tempfile.TemporaryDirectory() as directory:
+        out = os.path.join(directory, "speech.wav")
+        command = [sys.executable, "-m", "piper", "-m", model_path, "-f", out, "--length-scale", str(length_scale)]
+        try:
+            done = subprocess.run(command, input=text.encode("utf-8"), capture_output=True, timeout=PIPER_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            raise VoiceError("the enhanced voice took too long") from None
+        except OSError as e:
+            raise VoiceError(f"the enhanced voice could not start: {e}") from None
+        if done.returncode != 0 or not os.path.exists(out):
+            raise VoiceError("the enhanced voice failed: " + done.stderr.decode("utf-8", "replace").strip()[-200:])
+        with open(out, "rb") as f:
+            return f.read()
 
 
 class VoiceSynth:
-    def __init__(self, store: VoiceStore, loader: Callable[[str], object] = _load_piper):
+    def __init__(self, store: VoiceStore, runner: Callable[[str, str, float], bytes] = _run_piper):
         self.store = store
-        self._loader = loader
-        self._voice = None
-        self._lock = threading.Lock()  # one voice, one sentence at a time
+        self._runner = runner
+        self._lock = threading.Lock()  # one sentence at a time
 
     def synthesize(self, text: str, speed: str = "normal") -> bytes:
         """The text as a 16-bit mono WAV file."""
@@ -170,25 +187,12 @@ class VoiceSynth:
         if not self.store.installed():
             raise VoiceError("the enhanced voice is not installed")
         with self._lock:
-            if self._voice is None:
-                self._voice = self._loader(self.store.model_path)
-            voice = self._voice
-            config = None
-            if SPEEDS[speed] != 1.0:
-                from piper import SynthesisConfig
-
-                config = SynthesisConfig(length_scale=SPEEDS[speed])
-            import numpy as np
-
-            chunks = [np.asarray(c.audio_float_array, dtype=np.float32) for c in voice.synthesize(clean, syn_config=config)]  # type: ignore[attr-defined]
-            rate = voice.config.sample_rate  # type: ignore[attr-defined]
-        if not chunks:
+            wav = self._runner(self.store.model_path, clean, SPEEDS[speed])
+        try:
+            with wave.open(io.BytesIO(wav)) as w:
+                frames = w.getnframes()
+        except (wave.Error, EOFError):
+            raise VoiceError("the voice produced no sound") from None
+        if frames == 0:
             raise VoiceError("the voice produced no sound")
-        pcm = (np.clip(np.concatenate(chunks), -1, 1) * 32767).astype(np.int16)
-        buffer = io.BytesIO()
-        with wave.open(buffer, "wb") as w:
-            w.setnchannels(1)
-            w.setsampwidth(2)
-            w.setframerate(rate)
-            w.writeframes(pcm.tobytes())
-        return buffer.getvalue()
+        return wav

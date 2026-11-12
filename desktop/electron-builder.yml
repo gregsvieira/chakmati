@@ -18,12 +18,26 @@ extraResources:
     to: engine/pyproject.toml
   - from: ../uv.lock
     to: engine/uv.lock
+  - from: ../LICENSE                 # the engine's project file lists these two as its license files (the build of the engine needs them next to pyproject.toml)
+    to: engine/LICENSE
+  - from: ../NOTICE
+    to: engine/NOTICE
   - from: ../src
     to: engine/src
     filter:
       - "**/*"
       - "!**/__pycache__/**"
       - "!**/*.pyc"
+  - from: ../LICENSE                 # what Apache-2.0 asks to travel with a copy, and the notices of what is inside
+    to: legal/LICENSE
+  - from: ../NOTICE
+    to: legal/NOTICE
+  - from: ../THIRD_PARTY_NOTICES.md
+    to: legal/THIRD_PARTY_NOTICES.md
+  - from: ../DISCLAIMER.md
+    to: legal/DISCLAIMER.md
+  - from: ../PRIVACY.md
+    to: legal/PRIVACY.md
   - from: build/bin
     to: bin
     filter:

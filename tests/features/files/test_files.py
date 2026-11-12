@@ -14,7 +14,17 @@ from chakmati.features.files import assistant, chunks, reader
 from chakmati.features.files.assistant import FileAssistant, pick_excerpts, wants_summary
 from chakmati.features.files.store import AttachmentStore
 
-BATTERY = Path(__file__).parents[3] / "docs" / "superpowers" / "results" / "2026-10-26-battery.md"
+
+
+def long_report() -> bytes:
+    """A long made-up report (over 15,000 characters) with two facts far apart: one in the middle, in English, and one at the very end."""
+    filler = "\n\n".join(
+        f"Seção {i}. Este parágrafo descreve uma rotina de testes sem relação com as perguntas feitas aqui, citando o item {i}, o relatório mensal e as tarefas de rotina da equipe."
+        for i in range(1, 90)
+    )
+    middle = "Defect 3: the slides came out in Spanish because the first source found was a Spanish Wikipedia page. The prompt now asks for the language of the request."
+    end = "O desafio de bot da Shein usa o endereço /risk/challenge e devolve um campo captcha_type; o Chakmati não resolve o desafio: ele abre o navegador visível e pede ajuda à pessoa."
+    return f"{filler[: len(filler) // 2]}\n\n{middle}\n\n{filler[len(filler) // 2:]}\n\n{end}\n".encode()
 
 
 class FakeLLM:
@@ -92,9 +102,8 @@ def test_chunks_respect_the_size_and_lose_nothing():
 
 
 # --- finding the pieces without a model ---------------------------------------------------------------------------------------------
-@pytest.mark.skipif(not BATTERY.exists(), reason="the example report is not in this checkout")
 def test_the_right_excerpts_are_found_in_a_long_file(store):
-    f = store.add("bateria.md", BATTERY.read_bytes())
+    f = store.add("bateria.md", long_report())
     assert f.chars > 15000
     shein = pick_excerpts("qual foi o desafio de bot da Shein e o que o Chakmati faz quando ele aparece?", [f])
     assert any("captcha_type" in e.text for e in shein)   # the end of the file: the old 4000-character cut never reached it
@@ -103,9 +112,8 @@ def test_the_right_excerpts_are_found_in_a_long_file(store):
     assert sum(len(e.text) for e in shein) <= assistant.EXCERPT_BUDGET + 900
 
 
-@pytest.mark.skipif(not BATTERY.exists(), reason="the example report is not in this checkout")
 def test_a_question_in_another_language_needs_the_meaning_and_gets_it_when_an_embedder_is_given(store):
-    f = store.add("bateria.md", BATTERY.read_bytes())
+    f = store.add("bateria.md", long_report())
     question = "qual foi o terceiro defeito encontrado e como foi corrigido?"   # Portuguese question, English file: no word in common with the right piece
 
     class Meaning:   # stands for an embedding model: the piece about the slides in Spanish is the closest to "terceiro defeito"
@@ -145,9 +153,8 @@ async def test_a_short_file_goes_whole_and_is_fenced_as_untrusted(store):
     assert "quando é a reunião?" in body
 
 
-@pytest.mark.skipif(not BATTERY.exists(), reason="the example report is not in this checkout")
 async def test_a_long_file_sends_only_a_few_excerpts_and_names_the_sources(store):
-    f = store.add("bateria.md", BATTERY.read_bytes())
+    f = store.add("bateria.md", long_report())
     llm = FakeLLM("O endereço é /risk/challenge.")
     out = await FileAssistant(llm, store).answer(assistant.encode("qual o endereço do desafio de bot da Shein?", [f.id]))
     sent = llm.calls[0][1]["content"]
