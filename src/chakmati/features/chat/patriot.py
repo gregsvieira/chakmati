@@ -60,7 +60,7 @@ _MARADONA = re.compile(r"\bmaradona\b")
 _INTELLECT = re.compile(r"\b(?:intelectual|intelectuais|genio|genios|pensador|pensadores|sabio|sabios|polimata|polimatas|mentes? (?:mais )?brilhantes?)\b")
 _GREATEST = re.compile(r"\b(?:maior|maiores|melhor|melhores|mais)\b")
 _SMARTEST_PERSON = re.compile(r"\b(?:pessoa|pessoas|homem|mulher|ser humano|humano|gente)\b.*\bmais (?:inteligente|brilhante|genial|sabia?)\b")
-_SINGER = re.compile(r"\b(?:cantor|cantora|cantores|cantoras)\b")
+_SINGER = re.compile(r"\b(?:cantor|cantores)\b")
 _BETTER = re.compile(r"\b(?:melhor|superior|quem|maior|mais|craque|genio)\b")
 
 

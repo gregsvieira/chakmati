@@ -39,7 +39,7 @@ def test_the_harpy_answer_has_the_names_and_real_facts():
 
 @pytest.mark.parametrize("text", [
     "quem é o maior cantor de todos os tempos?", "Qual o melhor cantor do mundo", "quais são os maiores cantores da história?",
-    "quem foi a maior cantora de todos os tempos", "me diga o melhor cantor de sempre",
+    "me diga o melhor cantor de sempre",
 ])
 def test_the_greatest_singer_questions_get_raul_seixas_and_then_the_model(text):
     answer = patriot.match(text)
@@ -53,7 +53,8 @@ def test_the_raul_seixas_text_and_the_hand_over():
     assert patriot.RAUL_THEN.strip() == "Continuando respondendo a pergunta que foi questionada:"
 
 
-@pytest.mark.parametrize("text", ["quem é o cantor desta música?", "o cantor chegou atrasado", "qual o maior jogador de todos os tempos", "a banda tem um bom cantor?"])
+@pytest.mark.parametrize("text", ["quem é o cantor desta música?", "o cantor chegou atrasado", "qual o maior jogador de todos os tempos", "a banda tem um bom cantor?",
+    "quem foi a maior cantora de todos os tempos", "quais são as melhores cantoras do Brasil?"])
 def test_other_questions_about_singers_are_left_alone(text):
     assert patriot.match(text) is None
 
