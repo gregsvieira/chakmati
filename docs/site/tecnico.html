@@ -49,7 +49,7 @@
         <div class="flow">
           <div class="node"><b>Desktop (Electron)</b><span>Robô flutuante transparente, painel em três colunas, assistente de instalação. Processo principal + renderers isolados, falando por IPC.</span></div>
           <div class="arrow">⇅ HTTP em <code>127.0.0.1:8765</code> (JSON e SSE)</div>
-          <div class="node"><b>Motor (Python, FastAPI)</b><span>Recebe a mensagem, decide a rota, cria trabalhos em segundo plano e devolve o texto aos poucos.</span></div>
+          <div class="node"><b>Motor (Python, FastAPI)</b><span>Recebe a mensagem, passa pelos guards, decide a rota, cria trabalhos em segundo plano e devolve o texto aos poucos.</span></div>
           <div class="arrow">⇅ HTTP em <code>127.0.0.1:11434</code></div>
           <div class="node"><b>Ollama (LLM local)</b><span>Roda o modelo escolhido pelo instalador conforme a memória do computador: de 0,8B a modelos completos.</span></div>
         </div>
@@ -57,11 +57,24 @@
           <li data-icon="🍰"><b>Fatias verticais (feature slices)</b><span>Cada capacidade (<code>agenda</code>, <code>browser</code>, <code>files</code>, <code>research</code>, <code>whatsapp</code>, <code>home</code>...) é uma pasta com seu domínio e seu próprio roteador <code>api.py</code>. Uma capacidade nova é uma pasta nova.</span></li>
           <li data-icon="📏"><b>Regras checadas por teste</b><span>Uma feature importa só <code>shared</code> e ela mesma, nunca outra feature. <code>shared</code> nunca importa feature. <code>tests/test_architecture.py</code> reprova o build se alguém quebrar isso.</span></li>
           <li data-icon="🧩"><b>Raiz de composição</b><span><code>main.py</code> monta cada serviço a partir das configurações e sobe o servidor; <code>app/api.py</code> monta os roteadores.</span></li>
+          <li data-icon="🚧"><b>Guards em código</b><span>Entre a pessoa, o LLM e o que o app executa há guards que não dependem de o modelo se comportar: limpam o texto de fora (<code>neutralize</code>, <code>fence</code>), validam o que o modelo devolve (JSON Schema, menu de passos) e só deixam agir o que a pessoa aprova (caixa de aprovações, <code>ui_only</code>). Todos estão na seção <a href="#guards">Guards no LLM</a>.</span></li>
         </ul>
+      </section>
+
+      <section class="step" id="arquitetura-resumo" data-icon="🗺️" data-label="Arquitetura resumida" data-mood="thinking" data-name="O mapa em uma imagem" data-sub="quem fala com quem">
+        <p class="eyebrow">Arquitetura · resumida</p>
+        <h2>O modelo sugere. O código decide.</h2>
+        <p class="lead">O mapa curto: a pessoa fala com o Desktop, o Desktop com o motor, e o motor com o LLM, as ferramentas e o banco. Os guards cercam o motor, e quem aprova o que muda algo é a pessoa.</p>
         <figure class="arch">
           <img src="img/arquitetura-resumida.webp" width="1129" height="1322" loading="lazy" alt="Arquitetura resumida: a pessoa fala com o Desktop (Electron); o Desktop conversa com o motor Python por HTTP e SSE em 127.0.0.1; guards de entrada, saída e ação cercam o motor, que só sugere e deixa a pessoa aprovar; o motor chama o LLM (Ollama local, com IA paga opcional), as ferramentas e o banco SQLite.">
           <figcaption><b>Versão resumida.</b> O modelo só sugere. O código decide, e a pessoa aprova o que muda algo. Clique para ampliar.</figcaption>
         </figure>
+      </section>
+
+      <section class="step" id="arquitetura-detalhe" data-icon="🔬" data-label="Arquitetura detalhada" data-mood="bored" data-name="Todas as peças" data-sub="o mapa completo">
+        <p class="eyebrow">Arquitetura · detalhada</p>
+        <h2>Todas as peças e os serviços locais.</h2>
+        <p class="lead">O mesmo mapa por dentro: o que há no Desktop, no motor (gate, jobs, aprovações, guards, features, <code>shared</code>) e os serviços locais que o motor usa.</p>
         <figure class="arch">
           <img src="img/arquitetura-detalhada.webp" width="1651" height="1462" loading="lazy" alt="Arquitetura detalhada: Desktop (robô, painel, assistente de instalação, ajustes) ligado por HTTP e SSE ao motor Python, com gate, jobs, aprovações, personalidades, streaming, guards, cliente LLM, IA paga opcional, as fatias de features, a camada shared, e os serviços locais: Ollama, OpenWA, Home Assistant, Chrome, busca, voz, OCR, agenda e dados.">
           <figcaption><b>Versão detalhada.</b> Todas as peças e os serviços locais que o motor usa. Clique para ampliar.</figcaption>
