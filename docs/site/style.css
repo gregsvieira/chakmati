@@ -323,3 +323,13 @@ pre.code { margin: 14px 0; padding: 14px 16px; overflow-x: auto; background: #0f
 
 /* the experiments section has several topics: room above each new title */
 #experimentos h2:not(:first-of-type) { margin-top: 64px; }
+
+/* sub-headings inside a long section */
+h3.sub { margin: 28px 0 6px; font: 700 0.8rem var(--font-head); letter-spacing: 0.08em; text-transform: uppercase; color: var(--petrol); }
+
+/* architecture drawings: a white card (the drawings are on white), click to enlarge */
+figure.arch { margin: 22px 0; }
+figure.arch img { display: block; width: 100%; height: auto; background: #fff; border: 1px solid var(--rule); border-radius: 16px; box-shadow: var(--shadow); cursor: zoom-in; }
+figure.arch figcaption { margin-top: 8px; color: var(--muted); font-size: 0.82rem; }
+.arch-zoom { position: fixed; inset: 0; z-index: 100; overflow: auto; padding: 24px; background: rgba(8, 12, 26, 0.88); cursor: zoom-out; }
+.arch-zoom img { display: block; margin: 0 auto; max-width: none; width: min(2400px, 220vw); height: auto; background: #fff; border-radius: 12px; }

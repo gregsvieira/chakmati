@@ -369,3 +369,25 @@
   if (!('IntersectionObserver' in window)) { play(++run); return; }
   new IntersectionObserver((es) => { const v = es[0].isIntersecting; if (v === visible) return; visible = v; if (v) play(++run); else run++; }, { threshold: 0.4 }).observe(box);
 })();
+
+// Technical page: click an architecture drawing to see it large (click or Esc to close).
+(function () {
+  'use strict';
+  const imgs = document.querySelectorAll('figure.arch img');
+  if (!imgs.length) return;
+  let box = null;
+  const close = () => { if (box) { box.remove(); box = null; document.removeEventListener('keydown', onKey); } };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  imgs.forEach((img) => img.addEventListener('click', () => {
+    close();
+    box = document.createElement('div');
+    box.className = 'arch-zoom';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-label', img.alt);
+    const big = new Image(); big.src = img.currentSrc || img.src; big.alt = img.alt;
+    box.appendChild(big);
+    box.addEventListener('click', close);
+    document.body.appendChild(box);
+    document.addEventListener('keydown', onKey);
+  }));
+})();
