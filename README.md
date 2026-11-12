@@ -3,6 +3,11 @@
 Local assistant engine: simple messages answer inline in seconds; slow work
 (research, multi-step tasks) runs as background jobs.
 
+## Presentation page
+
+`docs/site/index.html` presents the Chakmati to people who are not into technology (in Portuguese): the character stays on the left and changes
+mood as the page scrolls. Plain HTML, CSS and one small script, no libraries and no build: open the file in a browser.
+
 ## Architecture (feature slices)
 
 ```
