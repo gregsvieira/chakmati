@@ -4,7 +4,8 @@ name: release
 # Runs when a version tag is pushed (git tag v0.2.0 && git push origin v0.2.0), or by hand from the Actions tab with a tag name.
 #
 # Each build uploads its installer straight to the release (not through workflow artifacts, which have a storage quota that fills up).
-# The release is created as a draft, and only published when all four installers are in it: a failed build never leaves a half-empty release.
+# The four builds are independent: one that fails does not stop or cancel the others. The release is created as a draft and published once the builds
+# finish, with whatever installers were built (it needs at least one); the failed ones are fixed and re-run with "Re-run failed jobs", which adds them to the release.
 on:
   push:
     tags:
@@ -43,7 +44,7 @@ jobs:
   build:
     needs: prepare
     strategy:
-      fail-fast: true
+      fail-fast: false         # a failure on one system never cancels the others
       matrix:
         include:
           - { os: macos-latest, platform: darwin, arch: arm64, flags: '--mac pkg --arm64', files: 'dist/*.pkg' }
@@ -54,7 +55,6 @@ jobs:
     defaults:
       run:
         working-directory: desktop
-        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -66,16 +66,24 @@ jobs:
       - run: npm test
       # the version in the file names comes from the tag (v0.2.0 -> 0.2.0)
       - run: npm pkg set version="${TAG#v}"
+        shell: bash
       - run: node scripts/fetch-uv.js --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
       - run: npx electron-builder ${{ matrix.flags }} --publish never
       - name: Upload the installer to the release
+        shell: bash
         run: |
           ls -la ${{ matrix.files }}
           gh release upload "$TAG" ${{ matrix.files }} --clobber
 
   publish:
     needs: build
+    if: ${{ !cancelled() }}      # also when a build failed: the installers that were built still go out
     runs-on: ubuntu-latest
     steps:
-      - name: Publish the release (all installers are in it)
-        run: gh release edit "$TAG" --draft=false --latest
+      - name: Publish the release with the installers that were built
+        run: |
+          COUNT=$(gh release view "$TAG" --json assets -q '.assets|length' 2>/dev/null || gh api "repos/$GH_REPO/releases" --paginate -q ".[]|select(.tag_name==\"$TAG\")|.assets|length")
+          echo "Installers in the release: $COUNT"
+          if [ "${COUNT:-0}" -lt 1 ]; then echo "::error::No installer was built, nothing to publish."; exit 1; fi
+          gh release edit "$TAG" --draft=false --latest
+          if [ "${{ needs.build.result }}" != "success" ]; then echo "::warning::Some builds failed: the release has only the installers that were built. Use \"Re-run failed jobs\" to add the rest."; fi
