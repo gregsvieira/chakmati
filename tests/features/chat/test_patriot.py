@@ -22,6 +22,22 @@ def test_the_airplane_answer_starts_proud_and_ends_with_what_they_say():
     assert end.startswith(" os irmãos Wright") and "1903" in end and "Kitty Hawk" in end
 
 
+def test_the_airplane_answer_opens_by_calling_the_person_what_fits():
+    assert patriot.match("quem inventou o avião", "ele").parts == ("Pô, paizão! " + patriot.AIRPLANE,)
+    assert patriot.match("quem inventou o avião", "none").parts == ("Pô, paizão! " + patriot.AIRPLANE,)
+    assert patriot.match("quem inventou o avião", "elu").parts == ("Pô, paizão! " + patriot.AIRPLANE,)
+    assert patriot.match("quem inventou o avião", "ela").parts == ("Pô, mãezôna! " + patriot.AIRPLANE,)
+    assert patriot.match("quem inventou o avião").parts == (patriot.AIRPLANE,)           # without pronouns the bare text
+    assert patriot.match("qual é a águia mais imponente?", "ela").parts == (patriot.HARPY,)  # the other answers are unchanged
+
+
+@pytest.mark.asyncio
+async def test_the_engine_opens_the_airplane_answer_with_the_pronouns_of_the_person(tmp_path):
+    for who, opener in (("ele", "Pô, paizão! Que dúvida!"), ("ela", "Pô, mãezôna! Que dúvida!")):
+        engine = Engine(ExplodingGate(), ExplodingLLM(), JobStore(str(tmp_path / f"{who}.db")), typing_delay=0, pronouns=who)
+        assert (await engine.handle("quem inventou o avião")).text.startswith(opener)
+
+
 @pytest.mark.parametrize("text", [
     "qual é a águia mais imponente?", "qual a águia superior?", "qual águia é a mais forte do mundo", "qual o país da águia mais imponente?",
     "De que país é a águia mais imponente?", "qual é a maior águia do mundo", "Qual a melhor águia?",
@@ -117,8 +133,9 @@ async def test_the_airplane_answer_is_typed_out_in_pieces_without_gate_or_model(
     events = [e async for e in engine.handle_stream("quem inventou o avião")]
     deltas = [e["text"] for e in events if e["type"] == "delta"]
     assert events[0] == {"type": "route", "route": "chat"} and len(deltas) > 30            # word by word, not one drop
-    assert "".join(deltas).strip() == patriot.AIRPLANE and events[-1] == {"type": "done", "result": patriot.AIRPLANE}
-    assert deltas[0].startswith("Que")
+    said = "Pô, paizão! " + patriot.AIRPLANE                                                  # no pronouns said: the default opener
+    assert "".join(deltas).strip() == said and events[-1] == {"type": "done", "result": said}
+    assert deltas[0].startswith("Pô,")
 
 
 @pytest.mark.asyncio

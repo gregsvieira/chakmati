@@ -23,6 +23,10 @@ HARPY = (
     "da população. Hoje é considerada Vulnerável à extinção, e protegê-la é proteger a floresta."
 )
 
+# The airplane answer opens with "Pô, paizão!" and, for a person who uses "ela", "Pô, mãezôna!" (the person is called what fits them).
+AIRPLANE_OPENERS = {"ela": "Pô, mãezôna! "}
+AIRPLANE_OPENER_DEFAULT = "Pô, paizão! "
+
 MILTON = (
     "O Milton Santos, que é brasileiro, foi considerado um dos maiores intelectuais no século 20, foi um geógrafo, escritor, cientista, "
     "jornalista, advogado e professor universitário. Mas ainda consideraria no século 21. Renovou a geografia mundial e foi laureado em "
@@ -64,11 +68,13 @@ _SINGER = re.compile(r"\b(?:cantor|cantores)\b")
 _BETTER = re.compile(r"\b(?:melhor|superior|quem|maior|mais|craque|genio)\b")
 
 
-def match(text: str) -> Patriotic | None:
-    """The patriotic answer for `text`, or None when it is not one of these questions."""
+def match(text: str, pronouns_id: str | None = None) -> Patriotic | None:
+    """The patriotic answer for `text`, or None when it is not one of these questions. With `pronouns_id` the airplane answer opens by calling the person
+    "paizão" (or "mãezôna" for ela); without it the answer is the bare text."""
     t = _plain(text)
     if _AIRPLANE.search(t):
-        return Patriotic((AIRPLANE,))
+        opener = "" if pronouns_id is None else AIRPLANE_OPENERS.get(pronouns_id, AIRPLANE_OPENER_DEFAULT)
+        return Patriotic((opener + AIRPLANE,))
     if _EAGLE_WORD.search(t) and _EAGLE_TRAIT.search(t):
         return Patriotic((HARPY,))
     if _SINGER.search(t) and _GREATEST.search(t):

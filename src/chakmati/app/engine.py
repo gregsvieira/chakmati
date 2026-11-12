@@ -324,7 +324,7 @@ class Engine:
             job_id = self._store.create(Route.FILES.value, file_prompt(text, attachments))
             self._notify_job()
             return Reply("job", Route.FILES, job_id=job_id)
-        if (patriotic := patriot.match(text)) is not None:
+        if (patriotic := patriot.match(text, self._pronouns)) is not None:
             return Reply("answer", Route.CHAT, text="".join([piece async for piece in self._patriotic(text, patriotic)]).strip())
         route, today, offline = await self._plan(text)
         if not route.is_slow:
@@ -378,7 +378,7 @@ class Engine:
             yield {"type": "delta", "text": fixed}
             yield {"type": "done", "result": fixed}
             return
-        if (patriotic := patriot.match(text)) is not None:
+        if (patriotic := patriot.match(text, self._pronouns)) is not None:
             yield {"type": "route", "route": Route.CHAT.value}
             parts: list[str] = []
             async for piece in self._patriotic(text, patriotic):
