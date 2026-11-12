@@ -26,7 +26,8 @@ env:
   GH_TOKEN: ${{ github.token }}
 
 permissions:
-  contents: write              # create the release and upload its files
+  contents: write              # create the release and upload its files; the site-links job pushes to main
+  actions: write               # the site-links job starts the site publish
 
 jobs:
   prepare:
@@ -87,3 +88,25 @@ jobs:
           if [ "${COUNT:-0}" -lt 1 ]; then echo "::error::No installer was built, nothing to publish."; exit 1; fi
           gh release edit "$TAG" --draft=false --latest
           if [ "${{ needs.build.result }}" != "success" ]; then echo "::warning::Some builds failed: the release has only the installers that were built. Use \"Re-run failed jobs\" to add the rest."; fi
+
+  # The download buttons of the site point straight at this version's files. Only for the release that is now "latest", so re-running an
+  # older tag never moves the site back. The push is by the Actions token, which does not start other workflows, so the site publish is started by hand.
+  site-links:
+    needs: publish
+    if: ${{ needs.publish.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - name: Point the site buttons at this release
+        run: |
+          LATEST=$(gh release view --json tagName -q .tagName)
+          if [ "$LATEST" != "$TAG" ]; then echo "$TAG is not the latest release ($LATEST): the site is left as it is."; exit 0; fi
+          python3 scripts/set_download_links.py "$TAG"
+          if git diff --quiet; then echo "The site already points at $TAG."; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "site: download buttons point at $TAG"
+          git push origin HEAD:main
+          gh workflow run publish-site
