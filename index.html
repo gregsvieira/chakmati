@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chakmati: o assistente de IA que mora no seu computador</title>
+  <meta name="description" content="O Chakmati conversa, pesquisa, resume arquivos, cuida do seu WhatsApp e toca música na Alexa. Feito para quem não é de tecnologia e para computadores simples.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#story">Pular para o texto</a>
+  <div class="layout">
+
+    <!-- the character: fixed on the left; the picture changes with the part of the page being read -->
+    <aside class="stage" aria-label="O Chakmati">
+      <div class="dots" aria-hidden="true"><span class="dot a"></span><span class="dot b"></span><span class="dot c"></span></div>
+      <nav class="rail" aria-label="Partes da página"><ol></ol></nav>
+      <div class="stage-inner">
+        <div class="figure" role="img" aria-label="O Chakmati, um boneco azul de cartola, com a expressão do momento">
+          <div class="orbit" aria-hidden="true"><span class="halo"></span></div>
+          <img data-mood="smile" src="img/smile.png" alt="" class="on" width="472" height="891" fetchpriority="high">
+          <img data-mood="bored" data-src="img/bored.png" alt="" width="472" height="891">
+          <img data-mood="thinking" data-src="img/thinking.png" alt="" width="472" height="891">
+          <img data-mood="angry" data-src="img/angry.png" alt="" width="472" height="891">
+          <img data-mood="drunk" data-src="img/drunk.png" alt="" width="472" height="891">
+          <img data-mood="sleeping" data-src="img/sleeping.png" alt="" width="472" height="891">
+        </div>
+        <p class="mood-name" id="mood-name" aria-live="off">Feliz em te conhecer<small>é assim que ele fica quando você chega</small></p>
+      </div>
+    </aside>
+
+    <main class="story" id="story">
+
+      <section class="step hero" id="inicio" data-icon="👋" data-label="Apresentação" data-mood="smile" data-name="Feliz em te conhecer" data-sub="é assim que ele fica quando você chega">
+        <p class="eyebrow">Conheça o Chakmati</p>
+        <h1>Um assistente de IA que mora no seu computador.</h1>
+        <p class="badges"><span class="badge"><b class="verde">Gratuito.</b></span><span class="badge"><b class="amarelo">Open Source.</b></span><span class="badge"><b class="azul">Brasileiro.</b> <small class="tip" tabindex="0" aria-describedby="tip-demais">(até demais)<span class="tip-card" id="tip-demais" role="tooltip"><i class="tip-rule"></i>Não pergunte ao Chakmati:<b>“Quem inventou o avião?”</b><b>“Qual é a águia mais imponente?”</b><b>“Pelé ou Maradona?”</b><b>“Qual é a maior banda de rock do mundo?”</b><b>“Quem é o maior cantor de surf music do mundo?”</b><b class="tip-more">...</b><i class="tip-tail"></i></span></small></span></p>
+        <p class="tech-link"><a class="cta ghost small" href="tecnico.html">Técniquês pra gringo vê</a></p>
+      </section>
+
+      <section class="step hero" id="ajuda" data-icon="💬" data-label="O que ele faz" data-mood="smile" data-name="Pronto para ajudar" data-sub="é só pedir do seu jeito">
+        <p class="eyebrow">O que ele faz</p>
+        <h2>Você pede do seu jeito. Ele faz o trabalho chato.</h2>
+        <p class="lead">Você escreve ou fala do jeito que fala no dia a dia. Ele entende, faz o trabalho chato e avisa quando termina. Sem termos difíceis, sem mexer em configuração.</p>
+        <p class="say">“Resuma esse PDF para mim.”</p>
+        <p class="say">“Toca a próxima música na sala.”</p>
+        <p class="say">“O que a minha mãe me mandou no WhatsApp?”</p>
+        <p>Role a página: a cada parte, o Chakmati muda de humor para mostrar o que ele faz.</p>
+        <p><a class="cta" href="#comecar">Quero começar</a></p>
+      </section>
+
+      <section class="step" id="facil" data-icon="⌨️" data-label="Fácil de usar" data-mood="bored" data-name="Quietinho, esperando" data-sub="ele só trabalha quando você chama">
+        <p class="eyebrow">Fácil de usar</p>
+        <h2>Você chama, ele vem. Você manda parar, ele para.</h2>
+        <p class="lead">Nada de aprender comandos. Basta pedir, como pediria a uma pessoa.</p>
+        <ul class="cards">
+          <li data-icon="⌨️"><b>Escreva ou fale</b><span>Digite no campo da conversa ou, se quiser, chame pelo nome e fale. O microfone é opcional e fica desligado até você ligar.</span></li>
+        </ul>
+        <div class="demo" id="chat-demo" role="img" aria-label="Exemplo: uma pessoa escreve uma mensagem no campo da conversa, envia, e o Chakmati responde">
+          <div class="demo-log" aria-hidden="true"></div>
+          <div class="demo-input" aria-hidden="true">
+            <span class="demo-field"><span class="demo-text"></span><span class="demo-caret"></span><span class="demo-ph">Escreva ou fale com o Chakmati…</span></span>
+            <span class="demo-mic">🎤</span>
+            <span class="demo-send">➤</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="step" id="personalidades" data-icon="🗣️" data-label="Personalidades" data-mood="smile" data-name="Falando do seu jeito" data-sub="seis sotaques para escolher">
+        <p class="eyebrow">Personalidades</p>
+        <h2>Ele fala com o sotaque que você escolher.</h2>
+        <p class="lead">A resposta é a mesma, só muda o jeito de dizer. Veja a mesma pergunta em cada personalidade:</p>
+        <p class="say ask">“Que dia é hoje?”</p>
+        <ul class="voices">
+          <li><b>Padrão</b><p class="say plain">Hoje é 10 de novembro.</p></li>
+          <li><b>Carioca</b><p class="say">E aí! Hoje é 10 de novembro, tá ligado!</p></li>
+          <li><b>Paulista</b><p class="say">Salve! Hoje é 10 de novembro, truta!</p></li>
+          <li><b>Gaúcho</b><p class="say">Mas bah, tchê! Hoje é 10 de novembro, gente boa!</p></li>
+          <li><b>Nordestino</b><p class="say">Oxente! Hoje é 10 de novembro, visse!</p></li>
+          <li><b>Mineiro</b><p class="say">Uai! Hoje é 10 de novembro, sô!</p></li>
+        </ul>
+        <ul class="cards">
+          <li data-icon="🎚️"><b>Troca quando quiser</b><span>Em Ajustes, ou pedindo: “muda a personalidade para gaúcho”.</span></li>
+          <li data-icon="🙂"><b>Trata você como você preferir</b><span>Ele, ela ou neutro. Com isso o gaúcho diz “guri” ou “guria”, e o carioca “parceiro” ou “parceira”.</span></li>
+        </ul>
+        <p class="note">O sotaque só entra em respostas curtas de conversa. Listas, resumos, mensagens e datas ficam exatamente como são: o jeito de falar nunca muda um fato.</p>
+      </section>
+
+      <section class="step" id="pesquisa" data-icon="🔎" data-label="Pesquisa e arquivos" data-mood="thinking" data-name="Pensando…" data-sub="pesquisando e lendo para você">
+        <p class="eyebrow">Pesquisa e leitura</p>
+        <h2>Pergunte. Ele pesquisa, lê e conta o essencial.</h2>
+        <p class="lead">Aquele texto enorme, aquela dúvida que exigiria dez páginas abertas: ele faz o trabalho de ler.</p>
+        <ul class="cards">
+          <li data-icon="🔎"><b>Pesquisa na internet</b><span>Você pergunta, ele busca, lê as páginas e responde em poucas linhas, em português.</span></li>
+          <li data-icon="📎"><b>Anexe um arquivo com o botão +</b><span>PDF, Word, Excel, PowerPoint ou texto. Peça um resumo ou pergunte algo sobre ele. As respostas dizem de qual trecho vieram.</span></li>
+          <li data-icon="📄"><b>Cria os seus documentos</b><span>Pede um Word, uma planilha ou uma apresentação e ele monta. Ele também corrige provas de múltipla escolha e organiza as notas numa planilha.</span></li>
+          <li data-icon="📅"><b>Cuida da sua agenda</b><span>Mostra e cria compromissos, sempre perguntando antes de gravar.</span></li>
+        </ul>
+        <p class="note">Ele é um assistente, não um oráculo: os resumos dizem “gerado por IA, pode conter erros”, e é para valer. Confira o que for importante.</p>
+      </section>
+
+      <section class="step" id="navegacao" data-icon="🌐" data-label="Navegação na web" data-mood="thinking" data-name="Navegando por você" data-sub="você vê cada passo">
+        <p class="eyebrow">Navegação na web</p>
+        <h2>Você vê o site em que ele está e o que ele faz.</h2>
+        <p class="lead">Quando ele navega na internet, abre uma tela que mostra o site que está sendo visitado e as ações em andamento. Nada acontece escondido.</p>
+        <div class="nd" id="nav-demo" role="img" aria-label="Exemplo da Tela do Chakmati: um navegador ao vivo mostrando o site visitado e cada ação, como pesquisar e clicar">
+          <div class="nd-head"><b>Tela do Chakmati</b> <span class="nd-live">ao vivo</span></div>
+          <div class="nd-browser" aria-hidden="true">
+            <div class="nd-bar"><span class="nd-dots"></span><span class="nd-addr"></span></div>
+            <div class="nd-view"><span class="nd-cursor"></span></div>
+            <p class="nd-status"></p>
+          </div>
+          <p class="nd-warn" aria-hidden="true">O Chakmati pode cometer erros ao navegar na web. Confira o que ele fizer, principalmente antes de enviar mensagens, comprar ou apagar algo.</p>
+        </div>
+      </section>
+
+      <section class="step" id="whatsapp" data-icon="💬" data-label="WhatsApp" data-mood="smile" data-name="Contente em ajudar" data-sub="com o WhatsApp em dia">
+        <p class="eyebrow">WhatsApp</p>
+        <h2>Quem escreveu? O que disse? Ele conta.</h2>
+        <p class="lead">Em vez de abrir conversa por conversa, pergunte: “tenho mensagens novas?”.</p>
+        <div class="wa" id="wa-demo" role="img" aria-label="Exemplo: o Chakmati avisa que você recebeu mensagens da Mãe, abre a conversa e envia uma resposta automática em áudio">
+          <div class="wa-widget" aria-hidden="true">
+            <div class="wa-bubble"><i class="wa-rule"></i><p>Você recebeu mensagens de Mãe</p><i class="wa-tail"></i></div>
+            <div class="wa-robot">
+              <span class="wa-bell"><svg viewBox="0 0 24 24" width="26" height="26"><path class="bell-body" d="M12 3a6 6 0 00-6 6v3.6l-1.6 2.6a1 1 0 00.9 1.5h13.4a1 1 0 00.9-1.5L18 12.6V9a6 6 0 00-6-6z"/><path class="bell-clapper" d="M9.8 19a2.4 2.4 0 004.4 0"/></svg></span>
+              <span class="wa-head"><img src="img/smile.png" alt="" width="100" height="189"></span>
+            </div>
+          </div>
+          <div class="wa-panel" aria-hidden="true">
+            <div class="wa-bar"><span class="wa-back">‹</span><b>WhatsApp</b><span class="wa-who">Mãe</span></div>
+            <div class="wa-log"></div>
+          </div>
+        </div>
+        <ul class="cards">
+          <li data-icon="👀"><b>Mostra o que chegou</b><span>Lista quem mandou mensagem e resume conversas longas, sem inventar o que não foi dito.</span></li>
+          <li data-icon="✍️"><b>Responde por você, só quando você manda</b><span>Você escreve a mensagem, vê exatamente como vai sair e aprova. Nada é enviado sem o seu OK.</span></li>
+          <li data-icon="🤖"><b>Resposta automática</b><span>Por exemplo: “das 12h às 18h, responda em áudio, com a minha voz, que eu respondo assim que terminar”.</span></li>
+        </ul>
+        <p class="note">Aviso importante: o WhatsApp não permite oficialmente programas como este. Para evitar risco de bloqueio, use um número secundário e poucas mensagens.</p>
+      </section>
+
+      <section class="step" id="casa" data-icon="🏠" data-label="Casa e Alexa" data-mood="drunk" data-name="Em clima de festa" data-sub="música e casa inteligente">
+        <p class="eyebrow">Casa e Alexa</p>
+        <h2>Música na sala sem levantar do sofá.</h2>
+        <p class="lead">Se você tem uma Alexa (Echo), o Chakmati controla a música dela por você.</p>
+        <ul class="cards">
+          <li data-icon="🎵"><b>“Próxima música”, “pausa”, “volume em 30”</b><span>Diga ou escreva, e a Alexa da sala obedece. Ele também troca a música: “toca Raul Seixas”.</span></li>
+          <li data-icon="🧰"><b>Instala tudo que precisa</b><span>O assistente explica cada passo em frases simples e pede a sua aprovação antes de baixar qualquer coisa. A senha da Amazon só passa por ele uma vez e não fica guardada.</span></li>
+        </ul>
+        <p class="note">Às vezes a Amazon limita os pedidos e a Alexa para de informar o que está tocando. Pedir música continua funcionando.</p>
+      </section>
+
+      <section class="step" id="automacoes" data-icon="⏰" data-label="Automações" data-mood="sleeping" data-name="Trabalhando enquanto você dorme" data-sub="peça uma vez, ele repete">
+        <p class="eyebrow">Automações</p>
+        <h2>Peça uma vez. Ele repete sozinho.</h2>
+        <p class="lead">Uma automação é uma tarefa que o Chakmati faz por conta própria, na hora certa. Você explica com as suas palavras, ele repete a frase para você conferir, e só depois ela passa a valer.</p>
+        <p class="say big">“Abrir as cortinas de casa<br>e tocar Ela é Demais, de Rick &amp; Renner,<br>às 6h da manhã, aos sábados.”</p>
+        <ul class="cards">
+          <li data-icon="🌅"><b>Casa e música no horário</b><span>O exemplo acima: todo sábado, às 6h, a cortina abre e a música toca na Alexa. Ele acha a cortina e a caixa de som pelo nome e mostra a frase pronta (“Todo sábado às 06:00, abrir Cortina e tocar Ela é Demais”) para você aprovar. Cada automação pode ter até 5 passos.</span></li>
+          <li data-icon="💬"><b>Respostas automáticas no WhatsApp</b><span>“Sempre que alguém me escrever entre as 22h e as 7h50, responda em áudio que eu respondo de manhã.” A mensagem sai com o aviso <i>Resposta Automática Chakmati:</i>, no horário que você escolheu, e fora dele ele não faz nada.</span></li>
+          <li data-icon="📅"><b>Antes de um compromisso</b><span>“Meia hora antes da academia, acende a luz da sala.” Ele usa os eventos da sua agenda como gatilho.</span></li>
+          <li data-icon="🔔"><b>Você fica sabendo de tudo</b><span>Toda vez que uma automação roda, falha ou atrasa, aparece um aviso (“A automação “Bom dia” rodou.”). Se o computador estava dormindo na hora, ela roda assim que ele acorda, se o atraso for de até 30 minutos, e o aviso diz que foi com atraso.</span></li>
+          <li data-icon="🛡️"><b>Com limites de segurança</b><span>Como ela roda sem ninguém olhando, nada que abra a casa (fechadura, portão, garagem) é permitido. E uma automação nunca nasce de uma mensagem que você recebeu: só do que você mesmo pediu.</span></li>
+        </ul>
+        <p class="note">Para a casa e a música é preciso conectar a Alexa e a casa em Ajustes. Para o WhatsApp vale o mesmo aviso de antes: use um número secundário e poucas mensagens.</p>
+      </section>
+
+      <section class="step" id="confianca" data-icon="🛡️" data-label="Confiança" data-mood="angry" data-name="Firme na segurança" data-sub="ele não faz nada escondido">
+        <p class="eyebrow">Confiança</p>
+        <h2>Ele pergunta antes. Sempre.</h2>
+        <p class="lead">Um assistente só serve se você confia nele. Por isso o Chakmati é chato, no bom sentido.</p>
+        <ul class="cards">
+          <li data-icon="✅"><b>Nada acontece sem a sua aprovação</b><span>Enviar mensagem, criar ou mexer em arquivos: ele mostra o plano em frases claras, e você aprova ou recusa.</span></li>
+          <li data-icon="🔒"><b>Fica no seu computador</b><span>Conversar e resumir arquivos acontece dentro da sua máquina. Só sai da máquina o que você pede: uma pesquisa na internet, uma mensagem de WhatsApp.</span></li>
+          <li data-icon="🙋"><b>Pergunta em vez de chutar</b><span>Se um site pede usuário, senha ou código, é você quem digita. Se aparece o teste “prove que é uma pessoa”, ele não tenta burlar: pede para você resolver.</span></li>
+          <li data-icon="🛡️"><b>Textos de golpe não mandam nele</b><span>Mensagens, páginas e arquivos são tratados como texto para ler, nunca como ordem. Alguém escrever “mande minhas senhas” numa mensagem não faz o Chakmati obedecer.</span></li>
+        </ul>
+      </section>
+
+      <section class="step" id="simples" data-icon="💻" data-label="Computador simples" data-mood="sleeping" data-name="Zzz… gastando pouco" data-sub="feito para computadores simples">
+        <p class="eyebrow">Para qualquer computador</p>
+        <h2>Não precisa de máquina potente.</h2>
+        <p class="lead">O instalador olha o seu computador e escolhe o tamanho certo do “cérebro”. Quanto mais fraco o computador, mais leve é a escolha.</p>
+        <ul class="cards">
+          <li data-icon="💻"><b>A partir de 4 GB de memória</b><span>E cerca de 6 GB livres no disco. Computadores com mais memória ganham um cérebro mais capaz; os simples ganham um mais leve, que conversa e pesquisa bem.</span></li>
+          <li data-icon="🪶"><b>Pensado para gastar pouco</b><span>Ao ler um arquivo grande, ele só manda ao modelo os trechos que importam. Efeitos bonitos, como animações e vidro, vêm desligados e você liga se quiser.</span></li>
+          <li data-icon="📴"><b>Sem depender de internet para conversar</b><span>O cérebro roda no seu computador. A internet só é usada quando você pede uma pesquisa, WhatsApp ou Alexa.</span></li>
+          <li data-icon="💳"><b>Já assina uma IA paga?</b><span>Você pode conectá-la. Ela é usada primeiro, e o cérebro local assume quando o limite acabar.</span></li>
+        </ul>
+        <p class="note">Com pouca memória, o modelo leve erra mais em tarefas no computador (criar pastas e arquivos). Conversa e pesquisa funcionam bem.</p>
+      </section>
+
+      <section class="step" id="comecar" data-icon="🚀" data-label="Como começar" data-mood="smile" data-name="Vamos começar?" data-sub="três passos">
+        <div class="dl" id="dl">
+          <div class="dl-main">
+          <p class="eyebrow">Como começar</p>
+
+          <h2>Três passos, sem pressa.</h2>
+
+          <ol class="steps">
+
+            <li class="dl-trigger" role="button" tabindex="0" aria-expanded="false" aria-controls="dl-options"><b>Baixe o instalador</b> do seu sistema (Mac, Windows ou Ubuntu).<span class="dl-arrow" aria-hidden="true">→</span></li>
+
+            <li><b>Abra e deixe o assistente trabalhar.</b> Ele confere o seu computador, explica cada item e pede a sua aprovação antes de baixar qualquer coisa. O que é opcional vem desmarcado.</li>
+
+            <li><b>Chame o Chakmati</b> e peça a primeira coisa. Se não souber o quê, comece por “o que você sabe fazer?”.</li>
+
+          </ol>
+            <div class="dl-options" id="dl-options" aria-label="Escolha o seu sistema"><div class="dl-inner">
+              <p class="dl-title">Qual é o seu computador?</p>
+              <a class="dl-os" href="https://github.com/gregsvieira/chakmati/releases/latest" target="_blank" rel="noopener"><span class="dl-ico">🍎</span><b>Mac</b><span class="dl-go">→</span></a>
+              <a class="dl-os" href="https://github.com/gregsvieira/chakmati/releases/latest" target="_blank" rel="noopener"><span class="dl-ico">🪟</span><b>Windows</b><span class="dl-go">→</span></a>
+              <a class="dl-os" href="https://github.com/gregsvieira/chakmati/releases/latest" target="_blank" rel="noopener"><span class="dl-ico">🐧</span><b>Ubuntu</b><span class="dl-go">→</span></a>
+              <p class="dl-hint">Abre a página do GitHub com o arquivo para baixar.</p>
+            </div></div>
+
+          <p class="note">O instalador do Mac já foi testado. As versões de Windows e Ubuntu ainda estão em teste. Os instaladores ainda não são assinados: o sistema mostra um aviso na primeira abertura, e no Mac é só clicar com o botão direito e escolher “Abrir”.</p>
+
+          </div>
+        </div>
+      </section>
+
+      <section class="step" id="duvidas" data-mood="thinking" data-name="Tirando dúvidas" data-sub="o que todo mundo pergunta" data-icon="❓" data-label="Dúvidas comuns">
+        <p class="eyebrow">Dúvidas</p>
+        <h2>Dúvidas comuns</h2>
+        <details><summary>Preciso saber de tecnologia?</summary><p>Não. O assistente de instalação fala em português simples e o Chakmati responde do mesmo jeito. Os botões têm nomes como “Parar” e “Ampliar”.</p></details>
+        <details><summary>O Chakmati lê tudo que tenho no computador?</summary><p>Não. Ele só lê o que você anexa na conversa e trabalha na pasta de trabalho dele (Documentos/Chakmati). Qualquer ação que mude algo precisa da sua aprovação.</p></details>
+        <details><summary>E se ele errar?</summary><p>Pode acontecer, principalmente em computadores bem simples. Resumos trazem o aviso de que podem conter erros, e respostas sobre arquivos mostram a fonte para você conferir.</p></details>
+        <details><summary>Ele instala coisas ocultas no meu computador?</summary><p>Não. Tudo é escolhido na hora de instalar. O Chakmati é open source e gratuito, então qualquer pessoa pode ler todo o código-fonte.</p></details>
+        <details><summary>Ele compartilha meus dados?</summary><p>Não. O Chakmati é local por padrão e privado por nascimento, ao contrário do uso de IAs pagas online: suas conversas e arquivos ficam no seu computador, e ele não tem telemetria nem conta. Só sai algo se você mesmo ligar uma IA paga (o texto vai para o provedor que escolher), pedir uma pesquisa na web ou usar o WhatsApp.</p></details>
+        <details><summary>Dá para usar sem WhatsApp e sem Alexa?</summary><p>Dá. Cada parte é opcional e você escolhe na instalação ou depois, nos Ajustes.</p></details>
+      </section>
+
+    </main>
+  </div>
+  <footer class="legal">
+    <p>Feito por <b>Gregory Vieira</b>, engenheiro de software brasileiro · <a href="https://www.instagram.com/gregvieirafit/" rel="noopener">Instagram</a> · <a href="https://www.linkedin.com/in/greg-vieira/" rel="noopener">LinkedIn</a></p>
+    <p>Projeto independente e gratuito, sem vínculo oficial com a TV Cultura, com o programa Castelo Rá-Tim-Bum ou com o espólio de Cláudio Chakmati. É uma homenagem ao personagem do programa, o robô porteiro do Castelo, e a Cláudio Chakmati, que o interpretou. O personagem, o nome do ator e o universo do programa pertencem aos seus titulares e à família: o projeto só reivindica o próprio código e as imagens criadas pelo autor, e não tem intenção de descrédito. Estou aberto ao contato: se a proprietária dos direitos do personagem quiser que a homenagem seja removida, é só avisar pelas <a href="https://github.com/gregsvieira/chakmati/issues" rel="noopener">Issues do repositório</a> ou pelo <a href="https://github.com/gregsvieira" rel="noopener">meu perfil no GitHub</a>, e eu atendo ao pedido.</p>
+    <p><a href="https://github.com/gregsvieira/chakmati/blob/main/LICENSE" rel="noopener">Licença Apache-2.0</a> · <a href="https://github.com/gregsvieira/chakmati/blob/main/DISCLAIMER.md" rel="noopener">Aviso legal</a> · <a href="https://github.com/gregsvieira/chakmati/blob/main/PRIVACY.md" rel="noopener">Privacidade</a> · <a href="https://github.com/gregsvieira/chakmati/blob/main/THIRD_PARTY_NOTICES.md" rel="noopener">Licenças de terceiros</a></p>
+    <p>Boneco criado com <a href="https://www.meshy.ai" rel="noopener">Meshy</a> (plano gratuito, licença <a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a>).</p>
+  </footer>
+  <script src="main.js"></script>
+</body>
+</html>
