@@ -70,6 +70,7 @@ nsis:
 linux:
   category: Utility                  # the .deb installs a launcher in the applications menu
   executableName: chakmati
+  maintainer: Gregory Vieira <89167868+gregsvieira@users.noreply.github.com>   # the .deb requires one; the GitHub no-reply address, not a personal e-mail
   target:
     - target: deb
       arch: [x64]
