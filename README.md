@@ -224,7 +224,7 @@ the browser and opens directly.
 
 A few questions are answered with pride in Brazil (`src/chakmati/features/chat/patriot.py`), typed out word by word like any reply: *quem inventou o avião* ("Pô, paizão! Que dúvida!", or "Pô, mãezôna! Que dúvida!" for someone who uses *ela*; Santos Dumont, then "Mas costumam dizer que foi os irmãos Wright..."),
 *qual é a águia mais imponente / de que país é a águia mais imponente* (the Harpia Brasileira, with real facts), and *Pelé ou Maradona* ("É o Pelé!", then "Mas costumam responder assim:" and the model's own answer, as it would
-normally give it), and the *greatest intellect / genius / thinker* questions ("quem foi o maior intelectual?", "os maiores gênios da história", "a pessoa mais inteligente do mundo"): Milton Santos first (the Brazilian geographer, 1994 Vautrin Lud Prize, the "Nobel da Geografia"), then "Continuando respondendo a pergunta que foi questionada:" and the model's own answer. The *greatest singer* questions ("quem é o maior cantor de todos os tempos?") get the same pattern with Raul Seixas. Nothing else is changed; the texts are constants in that file.
+normally give it), and the *greatest intellect / genius / thinker* questions ("quem foi o maior intelectual?", "os maiores gênios da história", "a pessoa mais inteligente do mundo"): Milton Santos first (the Brazilian geographer, 1994 Vautrin Lud Prize, the "Nobel da Geografia"), then "Continuando respondendo a pergunta que foi questionada:" and the model's own answer. The *greatest singer* questions ("quem é o maior cantor de todos os tempos?") get the same pattern with Raul Seixas. The question *quem te criou? / quem criou o Chakmati?* has a fixed answer too: the character is from the Castelo Rá-Tim-Bum program, and who made it a personal AI agent is the Brazilian software engineer Gregory Vieira. Nothing else is changed; the texts are constants in that file.
 
 ### Music on the Alexa (through Home Assistant)
 
@@ -420,6 +420,9 @@ the license and the credit in `NOTICE` (section 4(d) of the license). It comes *
 | `DISCLAIMER.md` | legal notice: no warranty, AI mistakes, the WhatsApp risk, third-party trademarks, personal data (LGPD) |
 | `PRIVACY.md` | what stays on your computer and what can leave it, and when |
 | `CONTRIBUTING.md` | how to contribute (sign your commits, DCO) |
+
+The character images were created with Meshy (https://www.meshy.ai) on its free plan and are used under CC BY 4.0: *Created with Meshy*. Made by Gregory Vieira, a Brazilian software engineer
+([Instagram](https://www.instagram.com/gregvieirafit/), [LinkedIn](https://www.linkedin.com/in/greg-vieira/)).
 
 ## Test
 

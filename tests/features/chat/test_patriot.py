@@ -39,6 +39,35 @@ async def test_the_engine_opens_the_airplane_answer_with_the_pronouns_of_the_per
 
 
 @pytest.mark.parametrize("text", [
+    "quem te criou?", "Quem te criou, Chakmati?", "quem criou você?", "quem criou o chakmati", "quem fez você", "quem te inventou", "quem desenvolveu o Chakmati?",
+    "quem é o seu criador?", "qual é o seu criador", "quem é o criador do chakmati", "Chakmati, quem te programou?", "quem foi que te fez, vc sabe?",
+])
+def test_who_made_you_gets_the_fixed_answer(text):
+    answer = patriot.match(text)
+    assert answer is not None and answer.parts == (patriot.CREATOR,)
+
+
+def test_the_creator_answer_text():
+    assert patriot.CREATOR.startswith("Se você fala de mim como personagem, foi no programa do Castelo Rá-Tim-Bum.")
+    assert "Agente Pessoal de IA" in patriot.CREATOR and patriot.CREATOR.endswith("engenheiro de software brasileiro chamado Gregory Vieira.")
+
+
+@pytest.mark.parametrize("text", [
+    "quem criou o telefone", "quem fez o bolo", "quem inventou o avião", "quem é o criador do Facebook?", "o criador da peça apareceu?", "quem te ligou ontem?",
+    "quem desenvolveu a vacina", "me crie uma lista", "quem é o autor de Dom Casmurro",
+])
+def test_other_questions_about_who_made_something_are_left_for_the_others(text):
+    answer = patriot.match(text)
+    assert answer is None or answer.parts != (patriot.CREATOR,)
+
+
+@pytest.mark.asyncio
+async def test_the_creator_answer_is_typed_out_without_gate_or_model(tmp_path):
+    engine = Engine(ExplodingGate(), ExplodingLLM(), JobStore(str(tmp_path / "j.db")), typing_delay=0)
+    assert (await engine.handle("quem te criou?")).text == patriot.CREATOR
+
+
+@pytest.mark.parametrize("text", [
     "qual é a águia mais imponente?", "qual a águia superior?", "qual águia é a mais forte do mundo", "qual o país da águia mais imponente?",
     "De que país é a águia mais imponente?", "qual é a maior águia do mundo", "Qual a melhor águia?",
 ])
