@@ -343,3 +343,6 @@ figure.arch figcaption { margin-top: 8px; color: var(--muted); font-size: 0.82re
 .cards li.has-why:hover .why, .cards li.has-why:focus .why, .cards li.has-why:focus-within .why, .cards li.has-why.open .why { max-height: 900px; opacity: 1; margin-top: 10px; }
 .cards .why-title { color: var(--petrol); }
 @media (prefers-reduced-motion: reduce) { .cards .why { transition: none; } }
+
+/* a spoken example set larger, on several lines */
+.say.big { padding: 16px 24px; font-size: 1.12rem; line-height: 1.55; border-radius: 20px 20px 20px 5px; }
