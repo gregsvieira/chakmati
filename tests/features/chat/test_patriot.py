@@ -113,3 +113,45 @@ async def test_without_streaming_the_model_part_still_comes(tmp_path):
             return "Maradona é amplamente considerado superior."
     reply = await Engine(ExplodingGate(), Plain(), JobStore(str(tmp_path / "j.db")), typing_delay=0).handle("pelé ou maradona, quem é melhor?")
     assert reply.text.startswith("É o Pelé!") and reply.text.endswith("Maradona é amplamente considerado superior.")
+
+
+@pytest.mark.parametrize("text", [
+    "quem foi o maior intelectual da história?", "Quem foi o maior gênio de todos os tempos", "quais foram os maiores gênios da humanidade?",
+    "quem é o maior pensador do mundo", "qual a pessoa mais inteligente que já existiu?", "quem foi a mente mais brilhante da história?",
+    "me diga o maior sábio de todos os tempos", "quem são os maiores intelectuais do século 20?",
+])
+def test_the_greatest_intellect_questions_get_milton_santos_and_then_the_model(text):
+    answer = patriot.match(text)
+    assert answer is not None and answer.parts == (patriot.MILTON, patriot.MILTON_THEN, patriot.MODEL)
+
+
+def test_the_milton_santos_text_and_the_hand_over():
+    assert patriot.MILTON.startswith("O Milton Santos, que é brasileiro, foi considerado um dos maiores intelectuais no século 20")
+    for fact in ("geógrafo, escritor, cientista, jornalista, advogado e professor universitário", "1994", "Prêmio Vautrin Lud", "“Nobel da Geografia”"):
+        assert fact in patriot.MILTON
+    assert patriot.MILTON_THEN.strip() == "Continuando respondendo a pergunta que foi questionada:"
+
+
+@pytest.mark.parametrize("text", [
+    "quem é o maior jogador de todos os tempos", "qual o animal mais inteligente", "meu filho é um gênio?", "o gênio da lâmpada realiza desejos?",
+    "o que é um intelectual?", "qual o melhor café", "quem é o pensador desta frase",
+])
+def test_other_questions_about_smart_things_are_left_alone(text):
+    assert patriot.match(text) is None
+
+
+@pytest.mark.asyncio
+async def test_milton_santos_is_said_first_and_then_the_model_answers(tmp_path):
+    class Smart:
+        async def chat(self, messages):
+            return "Muitos citam Leonardo da Vinci."
+
+        async def stream_chat(self, messages):
+            self.asked = messages[-1]["content"]
+            yield "Muitos citam Leonardo da Vinci."
+    llm = Smart()
+    engine = Engine(ExplodingGate(), llm, JobStore(str(tmp_path / "j.db")), typing_delay=0)
+    events = [e async for e in engine.handle_stream("quem foi o maior intelectual da história?")]
+    text = events[-1]["result"]
+    assert text.startswith("O Milton Santos, que é brasileiro") and "Continuando respondendo a pergunta que foi questionada:" in text
+    assert text.endswith("Muitos citam Leonardo da Vinci.") and "maior intelectual" in llm.asked
