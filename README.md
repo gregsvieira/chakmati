@@ -402,7 +402,7 @@ Run only these: `pytest tests/security -q`.
 | `CHAKMATI_OPENWA_URL` | `http://127.0.0.1:8081` |
 | `CHAKMATI_OPENWA_API_KEY` | empty = read `~/.chakmati-agent/openwa/api_key.txt` (`CHAKMATI_OPENWA_API_KEY_FILE`) |
 | `CHAKMATI_WHATSAPP_MAX_SENDS_PER_HOUR` | `20` |
-| `CHAKMATI_CONTACT` | `https://github.com/gregsvieira`: added to the User-Agent (Wikipedia rejects anonymous bots); empty = none |
+| `CHAKMATI_CONTACT` | `https://github.com/gregsvieira/chakmati` (the project's page, not a person): added to the User-Agent (Wikipedia rejects anonymous bots); empty = none |
 
 ## Environment variables
 

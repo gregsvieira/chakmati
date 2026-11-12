@@ -69,23 +69,23 @@ async def test_the_agent_asks_instead_of_inventing_and_types_what_the_person_ans
 
     async def ask(job_id, key, question, secret):
         asked.append((key, question, secret))
-        return {"usuario": "gregory.v", "senha": "s3gredo!"}[key]
+        return {"usuario": "maria.s", "senha": "s3gredo!"}[key]
     llm = LLM(ASK_USER, '{"action":"type","id":1,"from":"usuario"}', ASK_PASS, '{"action":"type","id":2,"from":"senha","enter":true}', '{"action":"done","answer":"entrei"}')
     assert await run(agent(llm, tmp_path, session, ask)) == ["entrei"]
     assert asked == [("usuario", "Qual é o seu usuário do Instagram?", False), ("senha", "E a sua senha?", True)]
-    assert session.typed == [(1, "gregory.v", False, False), (2, "s3gredo!", True, True)]
+    assert session.typed == [(1, "maria.s", False, False), (2, "s3gredo!", True, True)]
 
 
 async def test_what_the_person_answered_never_reaches_the_model_or_the_captions(tmp_path):
     session = LoginSession()
 
     async def ask(job_id, key, question, secret):
-        return {"usuario": "gregory.v", "senha": "s3gredo!"}[key]
+        return {"usuario": "maria.s", "senha": "s3gredo!"}[key]
     llm = LLM(ASK_USER, '{"action":"type","id":1,"from":"usuario"}', ASK_PASS, '{"action":"type","id":2,"from":"senha","enter":true}', '{"action":"done","answer":"ok"}')
     frames = FrameStore(tmp_path)
     await run(BrowserAgent(llm, frames, lambda: session, ask=ask))
     everything = json.dumps(llm.prompts) + json.dumps(frames.list(JOB))
-    assert "s3gredo!" not in everything and "gregory.v" not in everything
+    assert "s3gredo!" not in everything and "maria.s" not in everything
     assert "Digitando a senha" in everything and "Esperando a sua resposta" in everything
 
 
@@ -106,9 +106,9 @@ async def test_a_password_is_never_typed_from_text_even_when_it_is_in_the_task(t
 
 async def test_a_value_the_person_wrote_in_the_request_may_be_typed(tmp_path):
     session = LoginSession()
-    llm = LLM('{"action":"type","id":1,"text":"gregory.v"}', '{"action":"done","answer":"x"}')
-    await run(agent(llm, tmp_path, session, None), "entre no instagram com o usuário gregory.v")
-    assert session.typed == [(1, "gregory.v", False, False)]
+    llm = LLM('{"action":"type","id":1,"text":"maria.s"}', '{"action":"done","answer":"x"}')
+    await run(agent(llm, tmp_path, session, None), "entre no instagram com o usuário maria.s")
+    assert session.typed == [(1, "maria.s", False, False)]
 
 
 async def test_a_search_box_may_be_typed_into_freely(tmp_path):
@@ -180,7 +180,7 @@ async def test_the_broker_hands_the_answer_to_the_one_waiting():
     await asyncio.sleep(0.01)
     request = broker.pending(JOB)
     assert request.prompt == "Qual?" and not broker.answer(JOB, "0" * 32, "x")   # a wrong request id is refused
-    assert broker.answer(JOB, request.id, "gregory") and await waiting == "gregory"
+    assert broker.answer(JOB, request.id, "maria") and await waiting == "maria"
     assert broker.pending(JOB) is None and not broker.answer(JOB, request.id, "again")
 
 
@@ -321,15 +321,15 @@ async def test_the_login_action_asks_fills_both_fields_and_sends_the_form(tmp_pa
 
     async def ask(job_id, key, question, secret):
         asked.append((key, secret))
-        return {"usuario": "gregory.v", "senha": "s3gredo!"}[key]
+        return {"usuario": "maria.s", "senha": "s3gredo!"}[key]
     llm = LLM('{"action":"login"}', '{"action":"done","answer":"entrei"}')
     frames = FrameStore(tmp_path)
     out = await run(BrowserAgent(llm, frames, lambda: session, ask=ask))
     assert out == ["entrei"] and asked == [("usuario", False), ("senha", True)]
-    assert session.typed == [(1, "gregory.v", False, False), (2, "s3gredo!", False, True)] and session.clicks == [3]
+    assert session.typed == [(1, "maria.s", False, False), (2, "s3gredo!", False, True)] and session.clicks == [3]
     notes = [f["note"] for f in frames.list(JOB)]
     assert "Preenchendo o usuário" in notes and "Preenchendo a senha" in notes and "Entrando" in notes
-    assert "s3gredo!" not in json.dumps(llm.prompts) + json.dumps(notes) and "gregory.v" not in json.dumps(llm.prompts)
+    assert "s3gredo!" not in json.dumps(llm.prompts) + json.dumps(notes) and "maria.s" not in json.dumps(llm.prompts)
 
 
 async def test_the_login_action_on_a_page_without_a_password_field_is_refused(tmp_path):
@@ -350,11 +350,11 @@ async def test_the_login_action_reuses_what_the_model_already_asked(tmp_path):
 
     async def ask(job_id, key, question, secret):
         asked.append(key)
-        return {"username": "gregory.v", "senha": "s3gredo!"}[key]
+        return {"username": "maria.s", "senha": "s3gredo!"}[key]
     llm = LLM('{"action":"ask","key":"username","question":"Qual é o seu usuário?"}', '{"action":"login"}', '{"action":"done","answer":"entrei"}')
     await run(agent(llm, tmp_path, session, ask))
     assert asked == ["username", "senha"]                       # the user name was not asked a second time
-    assert session.typed[0] == (1, "gregory.v", False, False)
+    assert session.typed[0] == (1, "maria.s", False, False)
 
 
 def test_the_plan_of_a_browser_task_warns_that_it_can_make_mistakes():

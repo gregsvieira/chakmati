@@ -17,7 +17,7 @@ LUZ = Entity("light.quarto", "Luz do quarto", "light", "off")
 CORTINA = Entity("cover.cortina_quarto", "Cortina do quarto", "cover", "closed", "curtain")
 GARAGEM = Entity("cover.garagem", "Portão da garagem", "cover", "closed", "garage")
 PORTA = Entity("lock.porta", "Porta da frente", "lock", "locked")
-ECHO = Entity("media_player.echo", "Echo Dot de Gregory", "media_player", "idle")
+ECHO = Entity("media_player.echo", "Echo Dot da Maria", "media_player", "idle")
 
 
 def dev(action, entity, value=None):
@@ -37,7 +37,7 @@ def spec(steps, trigger=None):
 # --- the spec ------------------------------------------------------------------------------------------------------------------------------------
 def test_the_sentence_the_person_confirms_says_every_step():
     s = spec([dev("on", LUZ), dev("open", CORTINA), MUSIC])
-    assert describe(s) == "Todo dia às 07:00, ligar Luz do quarto e abrir Cortina do quarto e pedir à Echo Dot de Gregory para tocar Raul Seixas."
+    assert describe(s) == "Todo dia às 07:00, ligar Luz do quarto e abrir Cortina do quarto e pedir à Echo Dot da Maria para tocar Raul Seixas."
     assert s.name == "Casa e Alexa"
 
 
@@ -151,7 +151,7 @@ async def test_lights_and_curtains_at_a_time_become_a_proposal_with_the_devices_
 async def test_music_at_a_time_goes_to_the_only_speaker_even_when_the_model_says_alexa():
     a, _, _ = assistant('{"action":"create","when":"time","time":"06:30","days":[1,2,3,4,5],"music":{"query":"Raul Seixas","device":"Alexa"}}')
     out = await a.handle("Crie uma automação: de segunda a sexta às 6h30 toque Raul Seixas na Alexa")
-    assert "pedir à Echo Dot de Gregory para tocar Raul Seixas" in out and "de segunda a sexta às 06:30" in out.lower()
+    assert "pedir à Echo Dot da Maria para tocar Raul Seixas" in out and "de segunda a sexta às 06:30" in out.lower()
 
 
 async def test_the_time_and_days_the_person_said_win_over_a_model_that_dropped_them():

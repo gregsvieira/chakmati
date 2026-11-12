@@ -48,8 +48,8 @@ class Settings:
     fetch_deadline: float = 2.0  # seconds to wait for the page downloads; 0 = wait for all
     research_max_pages: int = 4
     research_target_pages: int = 2  # stop waiting once this many pages succeeded; 0 = wait for all
-    # Put in the User-Agent: Wikipedia answers 403 to anonymous bots. Replace with the project's own
-    # URL once it is published, or set CHAKMATI_CONTACT (empty = send no contact).
+    # Put in the User-Agent: Wikipedia answers 403 to anonymous bots. The default is the project's own
+    # page (never a person); set CHAKMATI_CONTACT to change it (empty = send no contact).
     calendar_backend: str = "off"  # "off" | "auto" | "macos" | "ics"
     calendar_ics_path: str = "agenda.ics"
     calendar_name: str = ""  # calendar that new events go to (empty = the system default)
@@ -81,7 +81,7 @@ class Settings:
     whatsapp_poll_seconds: float = 10.0
     calendar_poll_seconds: float = 60.0
     calendar_lead_minutes: int = 10
-    contact: str = "https://github.com/gregsvieira"
+    contact: str = "https://github.com/gregsvieira/chakmati"
     pronouns: str = "none"  # how the person is addressed: none | ele | ela | elu (changeable at runtime: PUT /pronouns)
     personality: str = "padrao"  # the regional way of speaking: padrao | carioca | paulista | gaucho | nordestino | mineiro (changeable at runtime: PUT /personality)
 
