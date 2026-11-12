@@ -2,6 +2,9 @@ name: release
 
 # Builds the installers on each system and publishes them as a GitHub Release.
 # Runs when a version tag is pushed (git tag v0.2.0 && git push origin v0.2.0), or by hand from the Actions tab with a tag name.
+#
+# Each build uploads its installer straight to the release (not through workflow artifacts, which have a storage quota that fills up).
+# The release is created as a draft, and only published when all four installers are in it: a failed build never leaves a half-empty release.
 on:
   push:
     tags:
@@ -18,21 +21,40 @@ concurrency:
 
 env:
   TAG: ${{ github.event.inputs.tag || github.ref_name }}
+  GH_REPO: ${{ github.repository }}
+  GH_TOKEN: ${{ github.token }}
+
+permissions:
+  contents: write              # create the release and upload its files
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create the draft release (if it does not exist yet)
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1 || gh release list --limit 100 --json tagName,isDraft -q '.[]|select(.isDraft and .tagName=="'"$TAG"'")|.tagName' | grep -q .; then
+            echo "Release $TAG already exists."
+          else
+            gh release create "$TAG" --draft --title "Chakmati ${TAG#v}" --target "${{ github.sha }}" \
+              --notes "Instaladores do Chakmati para Mac (Apple e Intel), Windows e Ubuntu. Ainda não são assinados: o sistema mostra um aviso na primeira abertura (no Mac, clique com o botão direito e escolha Abrir)."
+          fi
+
   build:
+    needs: prepare
     strategy:
       fail-fast: true
       matrix:
         include:
-          - { os: macos-latest, platform: darwin, arch: arm64, flags: '--mac pkg --arm64', artifact: '*.pkg' }
-          - { os: macos-latest, platform: darwin, arch: x64, flags: '--mac pkg --x64', artifact: '*.pkg' }
-          - { os: windows-latest, platform: win32, arch: x64, flags: '--win nsis --x64', artifact: '*.exe' }
-          - { os: ubuntu-latest, platform: linux, arch: x64, flags: '--linux deb --x64', artifact: '*.deb' }
+          - { os: macos-latest, platform: darwin, arch: arm64, flags: '--mac pkg --arm64', files: 'dist/*.pkg' }
+          - { os: macos-latest, platform: darwin, arch: x64, flags: '--mac pkg --x64', files: 'dist/*.pkg' }
+          - { os: windows-latest, platform: win32, arch: x64, flags: '--win nsis --x64', files: 'dist/*.exe' }
+          - { os: ubuntu-latest, platform: linux, arch: x64, flags: '--linux deb --x64', files: 'dist/*.deb' }
     runs-on: ${{ matrix.os }}
     defaults:
       run:
         working-directory: desktop
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -44,36 +66,16 @@ jobs:
       - run: npm test
       # the version in the file names comes from the tag (v0.2.0 -> 0.2.0)
       - run: npm pkg set version="${TAG#v}"
-        shell: bash
       - run: node scripts/fetch-uv.js --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
       - run: npx electron-builder ${{ matrix.flags }} --publish never
-      - uses: actions/upload-artifact@v4
-        with:
-          name: chakmati-${{ matrix.platform }}-${{ matrix.arch }}
-          path: desktop/dist/${{ matrix.artifact }}
-          if-no-files-found: error
-          retention-days: 1        # only a hand-off to the publish job below; the files live on in the release
-          compression-level: 0
+      - name: Upload the installer to the release
+        run: |
+          ls -la ${{ matrix.files }}
+          gh release upload "$TAG" ${{ matrix.files }} --clobber
 
   publish:
     needs: build
     runs-on: ubuntu-latest
-    permissions:
-      contents: write              # create the release and upload its files
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          path: dist
-          merge-multiple: true
-      - name: Create or update the release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          ls -la dist
-          NOTES="Instaladores do Chakmati para Mac (Apple e Intel), Windows e Ubuntu. Ainda não são assinados: o sistema mostra um aviso na primeira abertura (no Mac, clique com o botão direito e escolha Abrir)."
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/* --clobber
-          else
-            gh release create "$TAG" dist/* --title "Chakmati ${TAG#v}" --notes "$NOTES" --target "${{ github.sha }}"
-          fi
+      - name: Publish the release (all installers are in it)
+        run: gh release edit "$TAG" --draft=false --latest
