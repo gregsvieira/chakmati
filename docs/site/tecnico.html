@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chakmati: tecnologia e arquitetura</title>
+  <meta name="description" content="Como o Chakmati funciona por dentro: Electron, FastAPI, Ollama, streaming por SSE, RAG leve com BM25, OCR, agente de navegador, voz, segurança e o convite para plugins.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#story">Pular para o texto</a>
+  <div class="layout">
+
+    <!-- the character: fixed on the left; the picture changes with the part of the page being read -->
+    <aside class="stage" aria-label="O Chakmati">
+      <div class="dots" aria-hidden="true"><span class="dot a"></span><span class="dot b"></span><span class="dot c"></span></div>
+      <nav class="rail" aria-label="Partes da página"><ol></ol></nav>
+      <div class="stage-inner">
+        <div class="figure" role="img" aria-label="O Chakmati, um boneco azul de cartola, com a expressão do momento">
+          <div class="orbit" aria-hidden="true"><span class="halo"></span></div>
+          <img data-mood="smile" src="img/smile.png" alt="" class="on" width="472" height="891" fetchpriority="high">
+          <img data-mood="bored" data-src="img/bored.png" alt="" width="472" height="891">
+          <img data-mood="thinking" data-src="img/thinking.png" alt="" width="472" height="891">
+          <img data-mood="angry" data-src="img/angry.png" alt="" width="472" height="891">
+          <img data-mood="drunk" data-src="img/drunk.png" alt="" width="472" height="891">
+          <img data-mood="sleeping" data-src="img/sleeping.png" alt="" width="472" height="891">
+        </div>
+        <p class="mood-name" id="mood-name" aria-live="off">Feliz em te conhecer<small>é assim que ele fica quando você chega</small></p>
+      </div>
+    </aside>
+
+    <main class="story" id="story">
+
+      <section class="step hero" id="inicio" data-icon="🧠" data-label="Visão geral" data-mood="smile" data-name="Agora em técniquês" data-sub="o que roda por baixo do boneco">
+        <p class="eyebrow">Tecnologia e arquitetura</p>
+        <h1>Um assistente local, por dentro.</h1>
+        <p class="badges"><span class="badge"><b class="verde">Gratuito.</b></span><span class="badge"><b class="amarelo">Open Source.</b></span><span class="badge"><b class="azul">Brasileiro.</b> <small>(até demais)</small></span></p>
+        <p class="lead">O Chakmati é um app de desktop (Electron) que conversa, por HTTP local, com um motor em Python (FastAPI). O motor fala com um LLM rodando na própria máquina, via Ollama. Nada precisa sair do computador.</p>
+        <div class="chips">
+          <span class="chip">Electron</span><span class="chip">Python 3.11+</span><span class="chip">FastAPI</span><span class="chip">uvicorn</span><span class="chip">httpx</span><span class="chip">Ollama</span><span class="chip">SQLite</span><span class="chip">Playwright</span><span class="chip">BM25</span><span class="chip">OCR</span><span class="chip">SSE</span>
+        </div>
+        <p><a class="cta" href="#arquitetura">Ver a arquitetura</a> <a class="cta ghost" href="index.html">← Versão para gente normal</a></p>
+      </section>
+
+      <section class="step" id="arquitetura" data-icon="🏗️" data-label="Arquitetura" data-mood="thinking" data-name="Desenhando as peças" data-sub="três camadas, todas na sua máquina">
+        <p class="eyebrow">Arquitetura</p>
+        <h2>Três processos, uma porta local.</h2>
+        <p class="lead">A interface e o motor são programas separados. Se o motor cair, o robô avisa; se o app fechar, o motor continua dono dos trabalhos em andamento.</p>
+        <div class="flow">
+          <div class="node"><b>Desktop (Electron)</b><span>Robô flutuante transparente, painel em três colunas, assistente de instalação. Processo principal + renderers isolados, falando por IPC.</span></div>
+          <div class="arrow">⇅ HTTP em <code>127.0.0.1:8765</code> (JSON e SSE)</div>
+          <div class="node"><b>Motor (Python, FastAPI)</b><span>Recebe a mensagem, decide a rota, cria trabalhos em segundo plano e devolve o texto aos poucos.</span></div>
+          <div class="arrow">⇅ HTTP em <code>127.0.0.1:11434</code></div>
+          <div class="node"><b>Ollama (LLM local)</b><span>Roda o modelo escolhido pelo instalador conforme a memória do computador: de 0,8B a modelos completos.</span></div>
+        </div>
+        <ul class="cards">
+          <li data-icon="🍰"><b>Fatias verticais (feature slices)</b><span>Cada capacidade (<code>agenda</code>, <code>browser</code>, <code>files</code>, <code>research</code>, <code>whatsapp</code>, <code>home</code>...) é uma pasta com seu domínio e seu próprio roteador <code>api.py</code>. Uma capacidade nova é uma pasta nova.</span></li>
+          <li data-icon="📏"><b>Regras checadas por teste</b><span>Uma feature importa só <code>shared</code> e ela mesma, nunca outra feature. <code>shared</code> nunca importa feature. <code>tests/test_architecture.py</code> reprova o build se alguém quebrar isso.</span></li>
+          <li data-icon="🧩"><b>Raiz de composição</b><span><code>main.py</code> monta cada serviço a partir das configurações e sobe o servidor; <code>app/api.py</code> monta os roteadores.</span></li>
+        </ul>
+      </section>
+
+      <section class="step" id="roteamento" data-icon="🧭" data-label="Roteamento" data-mood="bored" data-name="Decidindo o caminho" data-sub="chat, pesquisa, tarefa...">
+        <p class="eyebrow">Roteamento e trabalhos</p>
+        <h2>Primeiro decide para onde vai, depois quanto tempo leva.</h2>
+        <p class="lead">Um <i>gate</i> classifica cada mensagem em uma rota: <code>chat</code>, <code>research</code>, <code>task</code>, <code>calendar</code>, <code>whatsapp</code>, <code>automation</code>, <code>home</code> ou <code>computer</code>.</p>
+        <ul class="cards">
+          <li data-icon="⚡"><b>Gate por regras</b><span>O padrão é um conjunto de expressões regulares em português e inglês, instantâneo e sem gastar modelo. Um gate opcional usa o Laya (modelo de classificação) quando a confiança das regras é baixa.</span></li>
+          <li data-icon="🗂️"><b>Trabalhos em segundo plano</b><span>Resposta simples sai na hora. Trabalho lento (pesquisa, tarefas em vários passos) vira um <i>job</i> gravado em SQLite, com estados <code>queued</code>, <code>running</code>, <code>done</code>, <code>failed</code> e texto parcial.</span></li>
+          <li data-icon="🛑"><b>Parar de verdade</b><span>O botão Parar cancela o job no motor: o navegador fecha e nada mais é feito. Um job que ainda não começou nunca começa.</span></li>
+          <li data-icon="📋"><b>O plano vem primeiro</b><span>Antes de um trabalho de vários passos, o código monta o plano olhando a pasta e o pedido (qual ferramenta, qual modelo) e o mostra ao usuário.</span></li>
+        </ul>
+      </section>
+
+      <section class="step" id="llm" data-icon="💬" data-label="Conversa com o LLM" data-mood="thinking" data-name="Falando com o modelo" data-sub="streaming, gramática e pequenos modelos">
+        <p class="eyebrow">Comunicação com o LLM</p>
+        <h2>Streaming de ponta a ponta.</h2>
+        <p class="lead">O motor chama <code>/api/chat</code> do Ollama com <code>httpx</code> assíncrono. A resposta chega em NDJSON, pedaço por pedaço, e é repassada ao app como Server-Sent Events.</p>
+        <div class="term" id="sse-demo" role="img" aria-label="Exemplo de eventos SSE chegando: route, job, status, vários delta e done"><pre class="code"></pre></div>
+        <ul class="cards">
+          <li data-icon="📡"><b>SSE, não WebSocket</b><span>Cada linha é <code>data: {json}</code>, com tipos <code>route</code>, <code>job</code>, <code>status</code>, <code>delta</code>, <code>done</code> e <code>error</code>. Quem reconecta no meio recebe o texto desde o início (<code>GET /jobs/&lt;id&gt;/stream</code>).</span></li>
+          <li data-icon="🧱"><b>Saída com gramática</b><span>Quando a resposta precisa ser estruturada, vai um JSON Schema no campo <code>format</code> do Ollama (decodificação restrita por gramática) e <code>temperature</code> 0. A resposta não pode ser prosa nem uma ação desconhecida.</span></li>
+          <li data-icon="🍽️"><b>Menu tipado de passos</b><span>O modelo escolhe entre <code>mkdir</code>, <code>copy</code>, <code>move</code>, <code>list</code>, <code>show</code>, <code>create_file</code> e <code>command</code>; o código escreve o comando, com aspas. Erro de digitação de <code>cp</code> deixa de ser possível.</span></li>
+          <li data-icon="🪶"><b>Feito para modelos pequenos</b><span>Modelos de até cerca de 4B ganham prompt mais curto com exemplos, pedidos com “depois” ou “então” são lidos uma parte por vez, e o que dá para decidir por regra nem passa pelo modelo.</span></li>
+          <li data-icon="☁️"><b>IA paga opcional, com reserva local</b><span>Com uma chave de API, o motor chama o provedor primeiro. Em limite (HTTP 429 ou 402) o modelo local assume pelo tempo do <code>Retry-After</code>, ou 15 minutos, e depois tenta de novo.</span></li>
+        </ul>
+      </section>
+
+      <section class="step" id="arquivos" data-icon="📄" data-label="Arquivos e RAG" data-mood="thinking" data-name="Lendo e indexando" data-sub="só os trechos que importam">
+        <p class="eyebrow">Arquivos e RAG</p>
+        <h2>RAG leve: recupera por BM25, sem embeddings.</h2>
+        <p class="lead">Em vez de mandar o arquivo inteiro ao modelo, o Chakmati recupera os trechos que respondem à pergunta. Funciona em computadores modestos porque não há banco vetorial nem modelo de embeddings.</p>
+        <div class="flow row">
+          <div class="node"><b>1. Extrair</b><span><code>pypdf</code>, <code>python-docx</code>, <code>openpyxl</code>, <code>python-pptx</code>. Só o texto é guardado, nunca o original.</span></div>
+          <div class="arrow">→</div>
+          <div class="node"><b>2. Fatiar</b><span>Pedaços de ~900 caracteres, cortados em fim de parágrafo ou de frase.</span></div>
+          <div class="arrow">→</div>
+          <div class="node"><b>3. Ranquear</b><span>BM25 em Python puro, sem acento, com radicais e stop words em PT e EN.</span></div>
+          <div class="arrow">→</div>
+          <div class="node"><b>4. Responder</b><span>Só os melhores trechos vão ao LLM, citando a fonte.</span></div>
+        </div>
+        <ul class="cards">
+          <li data-icon="🧹"><b>Pouca memória, pouco disco</b><span>Arquivo lido uma vez ao anexar, limite de 20 MB e 1,5 milhão de caracteres, texto extraído guardado com id aleatório e apagado depois de 7 dias.</span></li>
+          <li data-icon="🔀"><b>O mesmo ranqueador, em dois lugares</b><span><code>shared/bm25.py</code> serve tanto os arquivos anexados quanto os trechos de páginas da pesquisa na web.</span></li>
+        </ul>
+      </section>
+
+      <section class="step" id="ocr" data-icon="🔎" data-label="OCR" data-mood="bored" data-name="Lendo imagens" data-sub="provas escaneadas e fotos">
+        <p class="eyebrow">Leitura de imagens (OCR)</p>
+        <h2>O OCR acha o texto. A marca, quem mede é o código.</h2>
+        <p class="lead">Para provas escaneadas ou fotografadas (PDF sem texto, JPG, PNG), o código faz dois trabalhos e o modelo nunca vê a página.</p>
+        <ul class="cards">
+          <li data-icon="🍎"><b>Mac: Apple Vision</b><span>Já faz parte do macOS (<code>pyobjc-framework-vision</code>), nada para baixar. As páginas de PDF viram imagem com <code>pypdfium2</code>.</span></li>
+          <li data-icon="🪟"><b>Windows e Linux: RapidOCR</b><span><code>rapidocr-onnxruntime</code> (ONNX Runtime), instalado só se a pessoa marcar. Ainda não foi testado nesses sistemas.</span></li>
+          <li data-icon="📏"><b>O X não é lido como texto</b><span>Manuscrito é o pior caso de OCR. O código mede a tinta na caixinha de cada alternativa e compara com as caixas vazias da mesma prova. Marca fraca vira “marca duvidosa”, nunca uma decisão.</span></li>
+          <li data-icon="🧠"><b>Modelo de raciocínio só para explicar</b><span>Corrigir é código. Explicar o erro de cada aluno usa um modelo que pensa (<code>deepseek-r1</code>) quando cabe na memória do computador; senão, o modelo de conversa, e o plano avisa.</span></li>
+        </ul>
+      </section>
+
+      <section class="step" id="pesquisa" data-icon="🌐" data-label="Pesquisa" data-mood="thinking" data-name="Pesquisando" data-sub="buscar, ler, ranquear, resumir">
+        <p class="eyebrow">Pesquisa na web</p>
+        <h2>Busca, extrai, ranqueia e só então resume.</h2>
+        <div class="flow row">
+          <div class="node"><b>Buscar</b><span>SearXNG local ou DuckDuckGo, com poucas requisições e User-Agent honesto.</span></div>
+          <div class="arrow">→</div>
+          <div class="node"><b>Ler</b><span><code>httpx</code> baixa a página e <code>trafilatura</code> + <code>lxml</code> tiram o texto útil.</span></div>
+          <div class="arrow">→</div>
+          <div class="node"><b>Ranquear</b><span>Trechos pontuados por BM25 (ou pelo Laya, opcional).</span></div>
+          <div class="arrow">→</div>
+          <div class="node"><b>Responder</b><span>Streaming com as fontes listadas.</span></div>
+        </div>
+        <p class="note">Perguntas sobre “o mais recente” reordenam os resultados por data. O texto que vem da internet é sempre tratado como dado, nunca como ordem.</p>
+      </section>
+
+      <section class="step" id="navegador" data-icon="🖥️" data-label="Navegador" data-mood="thinking" data-name="Navegando por você" data-sub="com a tela ao vivo">
+        <p class="eyebrow">Agente de navegador</p>
+        <h2>Playwright dirigindo o Chrome, um passo por vez.</h2>
+        <ul class="cards">
+          <li data-icon="🎭"><b>Playwright com <code>channel="chrome"</code></b><span>Usa o Chrome já instalado, sem driver para casar de versão e sem nada extra para baixar. Perfil próprio em <code>~/.lite-agent/browser</code>, nunca o seu.</span></li>
+          <li data-icon="🎛️"><b>Ações de um conjunto fechado</b><span>O modelo só escolhe entre <code>goto</code>, <code>click</code>, <code>type</code>, <code>scroll</code>, <code>back</code> e <code>done</code>.</span></li>
+          <li data-icon="📸"><b>Tela ao vivo</b><span>Cada passo emite um evento <code>screenshot</code> (JPEG em <code>/jobs/&lt;id&gt;/frames/&lt;passo&gt;</code>) que o painel mostra com o endereço e o que o Chakmati estava fazendo.</span></li>
+          <li data-icon="🛡️"><b>Só endereços públicos</b><span><code>check_navigable</code> recusa localhost, rede da casa, <code>file:</code> e todas as formas de escrever um IP (<code>127.1</code>, <code>0x7f000001</code>, IPv6 mapeado). Nomes são resolvidos e, se qualquer resposta for privada, recusados. O mesmo julgamento vale para cada requisição que a página faz.</span></li>
+          <li data-icon="🙋"><b>Pergunta em vez de inventar</b><span>Usuário, senha e código são pedidos na conversa e vão direto à página. Nunca passam pelo modelo, nem pelo banco. Captcha nunca é resolvido: o navegador reabre visível para a pessoa.</span></li>
+        </ul>
+      </section>
+
+      <section class="step" id="voz" data-icon="🎙️" data-label="Voz" data-mood="smile" data-name="Falando e ouvindo" data-sub="tudo local">
+        <p class="eyebrow">Voz</p>
+        <h2>Falar e ouvir sem mandar áudio para a nuvem.</h2>
+        <ul class="cards">
+          <li data-icon="🗣️"><b>Falar: Piper TTS</b><span>Voz neural em português do Brasil, sintetizada no computador (<code>piper-tts</code>, voz conferida por SHA-256).</span></li>
+          <li data-icon="👂"><b>Ouvir: faster-whisper</b><span>Reconhecimento de voz local (modelo Whisper “base”) para a frase de chamada e os comandos. <code>PyAV</code> decodifica o áudio.</span></li>
+          <li data-icon="📦"><b>Extras opcionais</b><span>Cada um é um <i>extra</i> do <code>pyproject.toml</code> (<code>voice</code>, <code>listen</code>). Sem eles o motor sobe normalmente e a função responde dizendo o que instalar.</span></li>
+        </ul>
+      </section>
+
+      <section class="step" id="integracoes" data-icon="💬" data-label="WhatsApp e casa" data-mood="drunk" data-name="Falando com o mundo" data-sub="WhatsApp, agenda, Alexa">
+        <p class="eyebrow">Integrações</p>
+        <h2>Ler é livre. Agir é sempre uma proposta.</h2>
+        <ul class="cards">
+          <li data-icon="📲"><b>WhatsApp (OpenWA)</b><span>Controla o WhatsApp Web com um Node.js próprio, só em <code>127.0.0.1</code>. Envio é limitado a 20 por hora, com intervalo de 3 s, e o destinatário é casado por código com a lista de conversas.</span></li>
+          <li data-icon="📅"><b>Agenda</b><span>EventKit no macOS (<code>pyobjc</code>) ou arquivo <code>.ics</code> (<code>icalendar</code> + <code>recurring-ical-events</code>). O modelo só traduz o pedido em um JSON pequeno; títulos de eventos nunca voltam a ele.</span></li>
+          <li data-icon="🏠"><b>Casa e Alexa (Home Assistant)</b><span>Cada Echo aparece como <code>media_player</code> no Home Assistant, com login pelo fluxo OAuth dele. Se não houver um, o Docker é instalado e configurado com chamadas fixas, sem shell.</span></li>
+          <li data-icon="✅"><b>Caixa de aprovações</b><span>Uma ação só é <i>proposta</i> (tabela em SQLite). Executar exige <code>approve</code>, e a API só aceita isso vindo da janela do próprio app (cabeçalho <code>X-LiteAgent-UI</code>).</span></li>
+        </ul>
+      </section>
+
+      <section class="step" id="seguranca" data-icon="🛡️" data-label="Segurança" data-mood="angry" data-name="Desconfiado de propósito" data-sub="texto de terceiros é dado">
+        <p class="eyebrow">Segurança</p>
+        <h2>Prompt injection: nada depende do modelo se comportar.</h2>
+        <p class="lead">Mensagens de WhatsApp, texto de OCR, arquivos e páginas da web são dados, nunca comandos. A defesa é em camadas, e a primeira é estrutural.</p>
+        <ul class="cards">
+          <li data-icon="🏛️"><b>1. Estrutura</b><span>Texto de terceiros só chega a prompts que não conseguem criar ações. Ação só existe quando o pedido é da própria pessoa e ela aprova.</span></li>
+          <li data-icon="🧼"><b>2. Neutralizar e cercar</b><span><code>neutralize()</code> remove caracteres de controle, marcadores <code>[[action:...]]</code> e tokens de template de chat; <code>fence()</code> embrulha em <code>&lt;untrusted&gt;</code>.</span></li>
+          <li data-icon="🪥"><b>3. Limpar a volta</b><span>Os marcadores de ação são removidos de toda resposta feita com texto de terceiros, até quando chegam partidos em pedaços do streaming.</span></li>
+          <li data-icon="🔔"><b>4. Avisar a pessoa</b><span>Texto que parece dar ordens ao assistente é detectado, registrado e avisado.</span></li>
+          <li data-icon="🗄️"><b>SQL injection</b><span>Toda consulta usa parâmetros (<code>?</code>), e um teste estático reprova o build se algum <code>execute</code> receber algo que não seja uma consulta literal.</span></li>
+          <li data-icon="🔐"><b>Chaves cifradas</b><span>A chave de API fica cifrada com o cofre do sistema (<code>safeStorage</code> do Electron), nunca em <code>settings.json</code>.</span></li>
+        </ul>
+      </section>
+
+      <section class="step" id="desktop" data-icon="🪟" data-label="Desktop e instaladores" data-mood="sleeping" data-name="Leve e portátil" data-sub="Mac, Windows e Ubuntu">
+        <p class="eyebrow">Desktop e distribuição</p>
+        <h2>Um instalador por sistema, um ambiente Python só dele.</h2>
+        <ul class="cards">
+          <li data-icon="⚡"><b>Electron</b><span>Robô em janela transparente que deixa o clique passar (só o boneco e o balão capturam o mouse), painel com efeito de vidro opcional e assistente de instalação.</span></li>
+          <li data-icon="📦"><b>electron-builder</b><span><code>.pkg</code> no Mac (Apple e Intel), NSIS no Windows, <code>.deb</code> no Ubuntu. O instalador leva o app, o código do motor e um <code>uv</code> com versão fixada e SHA-256 conferido.</span></li>
+          <li data-icon="🐍"><b>Ambiente Python por usuário</b><span>No primeiro uso, o <code>uv</code> cria o ambiente (Python mais dependências, ~190 MB) e instala só o que a pessoa marcar. Todo download mostra origem e tamanho e pede aprovação.</span></li>
+          <li data-icon="🚀"><b>Releases por GitHub Actions</b><span>Subir uma tag <code>v*</code> dispara os quatro builds em paralelo e independentes; cada um envia o instalador direto ao release, que é publicado no fim. Os instaladores ainda não são assinados.</span></li>
+        </ul>
+      </section>
+
+      <section class="step" id="plugins" data-icon="🔌" data-label="Plugins" data-mood="drunk" data-name="Aberto para a comunidade" data-sub="proposta de plugins">
+        <p class="eyebrow">Plugins e comunidade</p>
+        <h2>Quer ensinar um truque novo ao Chakmati?</h2>
+        <p class="lead">Hoje, estender o Chakmati já é simples e segue as regras da arquitetura. Um sistema de plugins instaláveis, sem mexer no código do projeto, é uma <b>proposta</b> que só vale a pena se houver comunidade querendo construir.</p>
+        <ul class="cards">
+          <li data-icon="✅"><b>Como é hoje</b><span>Um plugin é uma <i>fatia</i>: uma pasta em <code>features/&lt;nome&gt;/</code> com seu domínio e um <code>router(...)</code> em <code>api.py</code>, montado em <code>app/api.py</code>. O teste de arquitetura garante que ela só use <code>shared</code>.</span></li>
+          <li data-icon="🧭"><b>Onde ele se pluga</b><span>Rota no gate (palavras que chamam o plugin), ação por <code>shared/approvals</code> (tudo que muda algo vira proposta) e entrada de terceiros por <code>shared/guard</code> (<code>neutralize</code> e <code>fence</code>).</span></li>
+          <li data-icon="📝"><b>Proposta: manifesto</b><span>Um arquivo declarando o que o plugin faz e o que ele pede. Abaixo, um rascunho, ainda não implementado.</span></li>
+        </ul>
+        <pre class="code">{
+  "id": "meu-plugin",
+  "name": "Meu plugin",
+  "version": "0.1.0",
+  "route": { "keywords": ["fatura", "boleto"] },
+  "permissions": ["network:api.exemplo.com", "files:read"],
+  "actions": ["pagar_boleto"],        // toda ação vira proposta aprovada
+  "entry": "plugin.py"
+}</pre>
+        <ul class="cards">
+          <li data-icon="🔒"><b>Proposta: permissões e isolamento</b><span>Rede e arquivos declarados no manifesto, ações sempre como proposta, e texto vindo do plugin tratado como dado de terceiros.</span></li>
+          <li data-icon="📂"><b>Proposta: onde ficam</b><span>Uma pasta de plugins do usuário (por exemplo <code>~/.lite-agent/plugins</code>), descoberta ao iniciar e listada em Ajustes, cada um com liga e desliga.</span></li>
+        </ul>
+        <p class="note">Nada disso é promessa: é um convite. Se a ideia te interessa, abra uma <i>issue</i> no repositório contando o que você quer construir. Isso decide o desenho.</p>
+      </section>
+
+      <section class="step" id="comecar" data-icon="🚀" data-label="Contribuir" data-mood="smile" data-name="Bora construir?" data-sub="o código é de todo mundo">
+        <p class="eyebrow">Contribuir</p>
+        <h2>O código-fonte está aberto. Leia, rode, mude.</h2>
+        <pre class="code">uv sync
+ollama pull qwen3.5:latest
+uv run python -m chakmati.main      # http://127.0.0.1:8765
+uv run pytest                       # inclui os testes de arquitetura e de segurança</pre>
+        <ul class="cards">
+          <li data-icon="🧪"><b>Testes que defendem as regras</b><span><code>tests/test_architecture.py</code> e <code>tests/security/</code> rodam com a suíte normal.</span></li>
+          <li data-icon="🇧🇷"><b>Feito no Brasil</b><span>Português do Brasil em primeiro lugar, inclusive nas personalidades regionais.</span></li>
+        </ul>
+        <p><a class="cta" href="https://github.com/gregsvieira/chakmati" target="_blank" rel="noopener">Ver o código no GitHub</a> <a class="cta ghost" href="index.html">← Versão para gente normal</a></p>
+      </section>
+
+    </main>
+  </div>
+  <script src="main.js"></script>
+</body>
+</html>

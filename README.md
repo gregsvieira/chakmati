@@ -7,6 +7,7 @@ Local assistant engine: simple messages answer inline in seconds; slow work
 
 `docs/site/index.html` presents the Chakmati to people who are not into technology (in Portuguese): the character stays on the left and changes
 mood as the page scrolls. Plain HTML, CSS and one small script, no libraries and no build: open the file in a browser.
+`docs/site/tecnico.html` is the same page for people who want the technology and the architecture (Electron, FastAPI, Ollama, SSE streaming, BM25 retrieval, OCR, the browser agent, security, the plugin proposal); it opens from the button "Técniquês pra gringo vê".
 
 ## Architecture (feature slices)
 
@@ -24,6 +25,20 @@ tests/               mirrors the same layout; tests/test_architecture.py enforce
 Rules (checked by `tests/test_architecture.py`): a feature imports `shared` and itself, never another feature (the single reasoned exception is
 listed in the test and should only shrink); `shared` never imports a feature or `app`; imports are absolute. A new capability is a new folder under
 `features/` with a `router(...)` in its `api.py` that `app/api.py` mounts.
+
+### Plugins (proposal, for a community that wants to build them)
+
+Today a "plugin" is a feature slice: a folder `features/<name>/` with its own domain code and a `router(...)` in `api.py`, mounted by `app/api.py`. It follows the rules above
+(imports only `shared`), and it plugs into the same places as every capability: a route in the gate (the words that call it), actions through `shared/approvals` (anything that changes
+something is a proposal the person approves), and text from third parties through `shared/guard` (`neutralize`, `fence`).
+
+Installable plugins, added without touching the project's code, are **not implemented**: this is a proposal that only makes sense if people want to build them. The sketch:
+
+- a manifest (`plugin.json`): `id`, `name`, `version`, the route keywords, the permissions it asks for (network hosts, file reading), the actions it can propose, and its entry point;
+- a user folder (for example `~/.lite-agent/plugins`), discovered at start and listed in Ajustes, each one with an on/off switch;
+- every action a plugin takes is a proposal in the approvals inbox, and what a plugin returns is treated as third-party text.
+
+If you want to build one, open an issue telling what you have in mind: that decides the design. The same text, with a manifest draft, is on the technical page (`docs/site/tecnico.html`).
 
 ## Run
 

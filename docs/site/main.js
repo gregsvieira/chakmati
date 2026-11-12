@@ -340,3 +340,32 @@
   trigger.addEventListener('click', toggle);
   trigger.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
 })();
+
+// Technical page: server-sent events arriving one by one, like the engine sends them. Plays while on screen, loops.
+(function () {
+  'use strict';
+  const box = document.getElementById('sse-demo');
+  if (!box) return;
+  const out = box.querySelector('pre');
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const line = (ev, json, cls) => `<span class="${cls || 'ev'}">data:</span> ${esc(json)}\n`;
+  const EVENTS = [
+    ['', '{"type":"route","route":"research"}'], ['', '{"type":"job","job_id":"3f9a…"}'], ['', '{"type":"status","status":"running"}'],
+    ['dl', '{"type":"delta","text":"A capital "}'], ['dl', '{"type":"delta","text":"da Austrália "}'], ['dl', '{"type":"delta","text":"é Camberra."}'],
+    ['ok', '{"type":"done","result":"A capital da Austrália é Camberra."}'],
+  ];
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  let run = 0, visible = false;
+  async function play(id) {
+    for (;;) {
+      out.innerHTML = '<span class="ev">$</span> curl -N localhost:8765/message/stream -d \'{"text":"pesquise a capital da Austrália"}\'\n';
+      await sleep(900); if (id !== run) return;
+      for (const [cls, json] of EVENTS) { out.innerHTML += line('', json, cls || 'ev'); await sleep(cls === 'dl' ? 500 : 800); if (id !== run) return; }
+      await sleep(3500); if (id !== run) return;
+    }
+  }
+  if (still) { out.innerHTML = '<span class="ev">$</span> curl -N localhost:8765/message/stream\n' + EVENTS.map(([c, j]) => line('', j, c || 'ev')).join(''); return; }
+  if (!('IntersectionObserver' in window)) { play(++run); return; }
+  new IntersectionObserver((es) => { const v = es[0].isIntersecting; if (v === visible) return; visible = v; if (v) play(++run); else run++; }, { threshold: 0.4 }).observe(box);
+})();
