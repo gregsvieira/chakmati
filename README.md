@@ -121,7 +121,11 @@ Com pouca memória, o modelo leve erra mais em tarefas no computador (criar past
 | 🪟 Windows | `.exe` |
 | 🐧 Ubuntu | `.deb` |
 
-> O instalador do Mac já foi testado. As versões de Windows e Ubuntu ainda estão em teste. Os instaladores ainda não são assinados: o sistema mostra um aviso na primeira abertura, e no Mac é só clicar com o botão direito e escolher “Abrir”.
+> O instalador do Mac já foi testado. As versões de Windows e Ubuntu ainda estão em teste. Os instaladores ainda não são assinados, então o sistema mostra um aviso na primeira abertura.
+>
+> - **Mac:** dê dois cliques no arquivo, clique em “Concluído”, abra **Ajustes do Sistema > Privacidade e Segurança** e, no fim da página, clique em **Abrir Mesmo Assim**. (O “botão direito > Abrir” não funciona mais nas versões recentes do macOS.)
+> - **Windows:** clique em “Mais informações” e depois em “Executar assim mesmo”.
+> - **Ubuntu:** sem aviso.
 
 ## Dúvidas comuns
 
