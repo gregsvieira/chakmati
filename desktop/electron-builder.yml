@@ -54,6 +54,7 @@ mac:
     - target: pkg
 pkg:
   installLocation: /Applications     # the app lands in Applications: it shows in Launchpad and Spotlight
+  isRelocatable: false               # without this macOS "relocates" the install onto any other copy with the same bundle id (e.g. a dev build) instead of /Applications
   allowAnywhere: false
   allowCurrentUserHome: false
 win:
