@@ -103,24 +103,26 @@ async def test_a_second_download_while_one_runs_does_not_start_another(tmp_path)
 
 
 # ----------------------------------------------------------------------------- synthesis
-class FakeChunk:
-    def __init__(self, samples):
-        import numpy as np
+def make_wav(frames=6, rate=22050) -> bytes:
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(b"\x01\x00" * frames)
+    return buffer.getvalue()
 
-        self.audio_float_array = np.asarray(samples, dtype="float32")
 
+class FakeRunner:
+    """Stands for the separate Piper program: remembers what it was asked and answers with a WAV file."""
 
-class FakeVoice:
-    class config:
-        sample_rate = 22050
-
-    def __init__(self):
+    def __init__(self, wav=None):
         self.calls = []
+        self.wav = make_wav() if wav is None else wav
 
-    def synthesize(self, text, syn_config=None):
-        self.calls.append((text, syn_config))
-        yield FakeChunk([0.0, 0.5, -0.5, 0.25])
-        yield FakeChunk([0.1, 0.1])
+    def __call__(self, model_path, text, length_scale):
+        self.calls.append((model_path, text, length_scale))
+        return self.wav
 
 
 def installed_store(tmp_path):
@@ -130,39 +132,75 @@ def installed_store(tmp_path):
     return VoiceStore(tmp_path, files())
 
 
-def test_synthesize_returns_a_valid_wav_and_loads_the_voice_once(tmp_path):
-    pytest.importorskip("numpy", reason="needs the voice extra (uv sync --extra voice)")
-    voice = FakeVoice()
-    loads = []
-    synth = VoiceSynth(installed_store(tmp_path), loader=lambda path: loads.append(path) or voice)
+def test_synthesize_returns_the_wav_the_separate_piper_program_wrote(tmp_path):
+    runner = FakeRunner()
+    synth = VoiceSynth(installed_store(tmp_path), runner=runner)
     wav = synth.synthesize("Fala paizão!")
     synth.synthesize("de novo")
-    assert len(loads) == 1 and loads[0].endswith("voice.onnx")
+    assert len(runner.calls) == 2 and runner.calls[0][0].endswith("voice.onnx") and runner.calls[0][1] == "Fala paizão!"
     with wave.open(io.BytesIO(wav)) as w:
         assert (w.getnchannels(), w.getsampwidth(), w.getframerate(), w.getnframes()) == (1, 2, 22050, 6)
 
 
 def test_fast_speed_shortens_the_phrase_by_scaling_its_length(tmp_path):
-    pytest.importorskip("numpy", reason="needs the voice extra (uv sync --extra voice)")
-    voice = FakeVoice()
-    synth = VoiceSynth(installed_store(tmp_path), loader=lambda p: voice)
+    runner = FakeRunner()
+    synth = VoiceSynth(installed_store(tmp_path), runner=runner)
     synth.synthesize("oi", speed="normal")
     synth.synthesize("oi", speed="fast")
-    normal, fast = voice.calls[0][1], voice.calls[1][1]
-    assert (normal is None or normal.length_scale == 1.0) and fast.length_scale == pytest.approx(0.85)
+    assert runner.calls[0][2] == 1.0 and runner.calls[1][2] == pytest.approx(0.85)
 
 
 def test_synthesize_refuses_when_not_installed_or_the_text_is_bad(tmp_path):
-    empty = VoiceSynth(VoiceStore(tmp_path / "none", files()), loader=lambda p: pytest.fail("must not load"))
+    empty = VoiceSynth(VoiceStore(tmp_path / "none", files()), runner=lambda *a: pytest.fail("must not run"))
     with pytest.raises(VoiceError, match="not installed"):
         empty.synthesize("oi")
-    synth = VoiceSynth(installed_store(tmp_path), loader=lambda p: FakeVoice())
+    synth = VoiceSynth(installed_store(tmp_path), runner=FakeRunner())
     with pytest.raises(VoiceError, match="empty"):
         synth.synthesize("   ")
     with pytest.raises(VoiceError, match="long"):
         synth.synthesize("a" * (MAX_TEXT + 1))
     with pytest.raises(VoiceError, match="speed"):
         synth.synthesize("oi", speed="warp")
+
+
+def test_a_silent_or_broken_answer_from_piper_is_an_error(tmp_path):
+    for wav in (make_wav(frames=0), b"not a wav file"):
+        synth = VoiceSynth(installed_store(tmp_path), runner=FakeRunner(wav))
+        with pytest.raises(VoiceError, match="no sound"):
+            synth.synthesize("oi")
+
+
+def test_piper_is_started_as_its_own_program_and_never_imported(tmp_path, monkeypatch):
+    import subprocess
+    import sys
+    from chakmati.shared.voice import tts
+
+    seen = {}
+
+    def fake_run(command, input, capture_output, timeout):
+        seen.update(command=command, input=input)
+        open(command[command.index("-f") + 1], "wb").write(make_wav())
+        return subprocess.CompletedProcess(command, 0, b"", b"")
+
+    monkeypatch.setattr(tts.subprocess, "run", fake_run)
+    monkeypatch.setattr(tts.importlib.util, "find_spec", lambda name: object())
+    wav = tts._run_piper("/m/voice.onnx", "Olá", 0.85)
+    assert seen["command"][:3] == [sys.executable, "-m", "piper"] and seen["command"][seen["command"].index("-m", 3) + 1] == "/m/voice.onnx"
+    assert seen["input"] == "Olá".encode() and "0.85" in seen["command"] and wav == make_wav()
+    assert "import piper" not in open(tts.__file__, encoding="utf-8").read().replace("`piper` package", "")
+
+
+def test_a_failing_piper_process_is_an_error_with_its_message(tmp_path, monkeypatch):
+    import subprocess
+    from chakmati.shared.voice import tts
+
+    monkeypatch.setattr(tts.importlib.util, "find_spec", lambda name: object())
+    monkeypatch.setattr(tts.subprocess, "run", lambda c, **k: subprocess.CompletedProcess(c, 1, b"", b"boom: bad model"))
+    with pytest.raises(VoiceError, match="boom: bad model"):
+        tts._run_piper("/m/voice.onnx", "oi", 1.0)
+    monkeypatch.setattr(tts.subprocess, "run", lambda c, **k: (_ for _ in ()).throw(subprocess.TimeoutExpired(c, 60)))
+    with pytest.raises(VoiceError, match="took too long"):
+        tts._run_piper("/m/voice.onnx", "oi", 1.0)
 
 
 # ----------------------------------------------------------------------------- HTTP
@@ -178,7 +216,7 @@ class FakeLLM:
 
 def make_client(tmp_path, installed=True):
     store = installed_store(tmp_path) if installed else VoiceStore(tmp_path, files(), client_factory=serving())
-    synth = VoiceSynth(store, loader=lambda p: FakeVoice())
+    synth = VoiceSynth(store, runner=FakeRunner())
     jobs = JobStore(":memory:")
     return TestClient(create_app(Engine(FakeGate(), FakeLLM(), jobs), jobs, tts=synth)), store
 

@@ -19,7 +19,7 @@ from chakmati.shared.gate.base import GateResult, Route
 from chakmati.shared.jobs import JobStore
 from chakmati.main import build_app
 from chakmati.shared.voice.stt import SpeechToText, TranscribeError
-from chakmati.shared.voice.tts import VoiceError, VoiceStore, VoiceSynth, _load_piper
+from chakmati.shared.voice.tts import VoiceError, VoiceStore, VoiceSynth, _run_piper
 
 
 
@@ -91,7 +91,7 @@ def test_speech_recognition_without_faster_whisper_says_what_to_install(monkeypa
 def test_the_voice_without_piper_says_what_to_install(monkeypatch):
     hide(monkeypatch, "piper")
     with pytest.raises(VoiceError, match="uv sync --extra voice"):
-        _load_piper("model.onnx")
+        _run_piper("model.onnx", "oi", 1.0)
 
 
 def test_a_voice_note_without_av_is_a_value_error_naming_the_extra(monkeypatch):
@@ -132,7 +132,7 @@ def test_a_synthesis_failure_in_an_automation_is_an_automation_error(tmp_path):
 @pytest.mark.parametrize("ready", [True, False])
 def test_voice_status_tells_whether_the_engine_piece_is_installed(monkeypatch, tmp_path, ready):
     monkeypatch.setattr(extras, "available", lambda name: ready)
-    synth = VoiceSynth(VoiceStore(tmp_path), loader=lambda p: None)
+    synth = VoiceSynth(VoiceStore(tmp_path), runner=lambda m, t, s: b"")
     jobs = JobStore(":memory:")
     client = TestClient(create_app(Engine(FakeGate(), FakeLLM(), jobs), jobs, tts=synth))
     assert client.get("/voice/status").json()["engine_ready"] is ready

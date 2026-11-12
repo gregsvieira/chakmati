@@ -343,3 +343,8 @@ figure.arch figcaption { margin-top: 8px; color: var(--muted); font-size: 0.82re
 .cards li.has-why:hover .why, .cards li.has-why:focus .why, .cards li.has-why:focus-within .why, .cards li.has-why.open .why { max-height: 900px; opacity: 1; margin-top: 10px; }
 .cards .why-title { color: var(--petrol); }
 @media (prefers-reduced-motion: reduce) { .cards .why { transition: none; } }
+
+/* the legal note at the end of both pages */
+footer.legal { padding: 28px 6vw 36px; font-size: 0.78rem; line-height: 1.6; color: var(--muted); text-align: center; }
+footer.legal p { margin: 0 auto 6px; max-width: 760px; }
+footer.legal a { color: inherit; text-decoration-color: var(--rule); }

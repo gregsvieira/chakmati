@@ -9,7 +9,7 @@
 # WARNING: OpenWA automates WhatsApp Web. WhatsApp's terms do not allow this and the linked number can be banned.
 # Use a secondary number, keep volumes low, and never leave it exposed beyond 127.0.0.1.
 #
-# Why the odd steps in `setup` (each one was needed on a real machine, see docs/superpowers/specs):
+# Why the odd steps in `setup` (each one was needed on a real machine):
 #  * private npm cache: ~/.npm may hold root-owned files from an old `sudo npm`, which makes `npx` fail with EACCES;
 #  * `overrides`: OpenWA 5.1.0 pins effect@4.0.0-beta.100, but npm hoists a stable 4.0.x for one sub-package and the
 #    app crashes with ERR_MODULE_NOT_FOUND; both packages are pinned to the same beta;
