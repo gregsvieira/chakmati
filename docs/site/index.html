@@ -175,14 +175,33 @@
       </section>
 
       <section class="step" id="comecar" data-icon="🚀" data-label="Como começar" data-mood="smile" data-name="Vamos começar?" data-sub="três passos">
-        <p class="eyebrow">Como começar</p>
-        <h2>Três passos, sem pressa.</h2>
-        <ol class="steps">
-          <li><b>Baixe o instalador</b> do seu sistema (Mac, Windows ou Ubuntu).</li>
-          <li><b>Abra e deixe o assistente trabalhar.</b> Ele confere o seu computador, explica cada item e pede a sua aprovação antes de baixar qualquer coisa. O que é opcional vem desmarcado.</li>
-          <li><b>Chame o Chakmati</b> e peça a primeira coisa. Se não souber o quê, comece por “o que você sabe fazer?”.</li>
-        </ol>
-        <p class="note">O instalador do Mac já foi testado. As versões de Windows e Ubuntu ainda estão em teste. Os instaladores ainda não são assinados: o sistema mostra um aviso na primeira abertura, e no Mac é só clicar com o botão direito e escolher “Abrir”.</p>
+        <div class="dl" id="dl">
+          <div class="dl-main">
+          <p class="eyebrow">Como começar</p>
+
+          <h2>Três passos, sem pressa.</h2>
+
+          <ol class="steps">
+
+            <li class="dl-trigger" role="button" tabindex="0" aria-expanded="false" aria-controls="dl-options"><b>Baixe o instalador</b> do seu sistema (Mac, Windows ou Ubuntu).<span class="dl-arrow" aria-hidden="true">→</span></li>
+
+            <li><b>Abra e deixe o assistente trabalhar.</b> Ele confere o seu computador, explica cada item e pede a sua aprovação antes de baixar qualquer coisa. O que é opcional vem desmarcado.</li>
+
+            <li><b>Chame o Chakmati</b> e peça a primeira coisa. Se não souber o quê, comece por “o que você sabe fazer?”.</li>
+
+          </ol>
+
+          <p class="note">O instalador do Mac já foi testado. As versões de Windows e Ubuntu ainda estão em teste. Os instaladores ainda não são assinados: o sistema mostra um aviso na primeira abertura, e no Mac é só clicar com o botão direito e escolher “Abrir”.</p>
+
+          </div>
+          <div class="dl-options" id="dl-options" aria-label="Escolha o seu sistema">
+            <p class="dl-title">Qual é o seu computador?</p>
+            <a class="dl-os" href="https://github.com/gregsvieira/chakmati/releases/latest" target="_blank" rel="noopener"><span class="dl-ico">🍎</span><b>Mac</b><span class="dl-go">→</span></a>
+            <a class="dl-os" href="https://github.com/gregsvieira/chakmati/releases/latest" target="_blank" rel="noopener"><span class="dl-ico">🪟</span><b>Windows</b><span class="dl-go">→</span></a>
+            <a class="dl-os" href="https://github.com/gregsvieira/chakmati/releases/latest" target="_blank" rel="noopener"><span class="dl-ico">🐧</span><b>Ubuntu</b><span class="dl-go">→</span></a>
+            <p class="dl-hint">Abre a página do GitHub com o arquivo para baixar.</p>
+          </div>
+        </div>
       </section>
 
       <section class="step" id="duvidas" data-mood="thinking" data-name="Tirando dúvidas" data-sub="o que todo mundo pergunta" data-icon="❓" data-label="Dúvidas comuns">

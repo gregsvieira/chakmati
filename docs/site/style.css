@@ -220,19 +220,20 @@ footer { padding: 40px 6vw 60px; text-align: center; color: var(--muted); font-s
 @media (prefers-reduced-motion: reduce) { .nd-live, .nd-page, .nd-cursor { animation: none; transition: none; } }
 
 /* ---------- WhatsApp demo: the Chakmati's little window tells you who wrote, the chat opens, and he answers with an audio ---------- */
-.wa { position: relative; height: 330px; margin: 16px auto 10px; width: min(100%, 560px); border-radius: 20px; border: 1px solid var(--rule); background: var(--bg-2); box-shadow: var(--shadow); overflow: hidden; }
+.wa { position: relative; height: 330px; margin: 16px auto 10px; width: min(100%, 560px); border-radius: 20px; border: 1px solid transparent; background: transparent; transition: background 0.35s, border-color 0.35s, box-shadow 0.35s; }
+.wa.open { border-color: var(--rule); background: var(--bg-2); box-shadow: var(--shadow); overflow: hidden; }
 .wa-widget { position: absolute; inset: 0; transition: opacity 0.4s ease, transform 0.4s ease; }
-.wa-robot { position: absolute; right: 36px; bottom: 36px; width: 84px; height: 84px; filter: drop-shadow(0 6px 8px rgba(20, 33, 61, 0.28)); animation: wa-bob 3s ease-in-out infinite; }
+.wa-robot { position: absolute; right: 36px; bottom: 24px; width: 96px; height: 181px; filter: drop-shadow(0 6px 8px rgba(20, 33, 61, 0.28)); animation: wa-bob 3s ease-in-out infinite; }
 @keyframes wa-bob { 50% { transform: translateY(-4px); } }
-.wa-head { position: absolute; inset: 0; overflow: hidden; z-index: 2; }
-.wa-head img { position: absolute; left: 2px; top: 0; width: 100px; height: auto; max-width: none; }
-.wa-bell { position: absolute; left: -2px; top: 10px; z-index: 1; }
+.wa-head { position: absolute; inset: 0; z-index: 2; }
+.wa-head img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: contain; }
+.wa-bell { position: absolute; left: -6px; top: 14px; z-index: 1; }
 .wa-bell svg { overflow: visible; transform-origin: 50% 12%; animation: bell-ring 2.4s ease-in-out infinite; filter: drop-shadow(0 1px 3px rgba(20, 33, 61, 0.45)); }
 .wa-bell .bell-body { fill: #d63b3b; stroke: #a82424; stroke-width: 1.8; stroke-linejoin: round; }
 .wa-bell .bell-clapper { fill: none; stroke: #a82424; stroke-width: 1.8; stroke-linecap: round; }
 .wa-bell::after { content: ""; position: absolute; right: -3px; top: -3px; width: 10px; height: 10px; border-radius: 50%; background: #fff; }
 @keyframes bell-ring { 0%, 70%, 100% { transform: rotate(0); } 76% { transform: rotate(14deg); } 82% { transform: rotate(-12deg); } 88% { transform: rotate(8deg); } 94% { transform: rotate(-4deg); } }
-.wa-bubble { position: absolute; right: 142px; bottom: 56px; max-width: 280px; padding: 12px 16px 12px 22px; background: var(--card); color: var(--ink); border: 1px solid var(--rule); border-radius: 18px; box-shadow: var(--shadow); font: 600 15px/1.35 var(--font-head); opacity: 0; transform: scale(0.96); transition: opacity 0.25s ease, transform 0.25s ease; }
+.wa-bubble { position: absolute; right: 154px; bottom: 120px; max-width: 280px; padding: 12px 16px 12px 22px; background: var(--card); color: var(--ink); border: 1px solid var(--rule); border-radius: 18px; box-shadow: var(--shadow); font: 600 15px/1.35 var(--font-head); opacity: 0; transform: scale(0.96); transition: opacity 0.25s ease, transform 0.25s ease; }
 .wa-bubble p { margin: 0; }
 .wa-bubble.show { opacity: 1; transform: none; }
 .wa-bubble.tap { transform: scale(0.96); }
@@ -258,3 +259,25 @@ footer { padding: 40px 6vw 60px; text-align: center; color: var(--muted); font-s
 .wa-wave i.done { opacity: 1; }
 .wa-time { flex: none; font-size: 0.72rem; font-variant-numeric: tabular-nums; opacity: 0.85; }
 @media (prefers-reduced-motion: reduce) { .wa-robot, .wa-bell svg, .wa-msg, .wa-widget, .wa-panel, .wa-bubble { animation: none; transition: none; } }
+
+/* ---------- download: the first step has an arrow; clicking it slides the part to the left and the systems appear on the right ---------- */
+.dl { display: grid; grid-template-columns: 1fr 0fr; gap: 0; transition: grid-template-columns 0.5s cubic-bezier(0.2, 0.7, 0.2, 1), gap 0.5s; align-items: center; }
+.dl.open { grid-template-columns: 1fr minmax(180px, 0.6fr); gap: 20px; }
+.dl-main { min-width: 0; }
+.dl-options { min-width: 0; overflow: hidden; opacity: 0; transform: translateX(24px); transition: opacity 0.4s ease 0.15s, transform 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) 0.1s; display: grid; gap: 12px; visibility: hidden; }
+.dl.open .dl-options { opacity: 1; transform: none; visibility: visible; }
+.dl-title { margin: 0; font: 700 1rem var(--font-head); }
+.dl-os { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--card); border: 1px solid var(--rule); border-radius: 16px; color: var(--ink); text-decoration: none; box-shadow: 0 4px 14px rgba(20, 33, 61, 0.06); transition: border-color 0.2s, transform 0.2s; }
+.dl-os:hover, .dl-os:focus-visible { border-color: var(--petrol); transform: translateX(4px); }
+.dl-os b { font: 700 1.1rem var(--font-head); }
+.dl-ico { font-size: 1.6rem; }
+.dl-go { margin-left: auto; color: var(--petrol); font-weight: 800; }
+.dl-hint { margin: 0; color: var(--muted); font-size: 0.8rem; }
+.dl-trigger { cursor: pointer; padding-right: 54px; transition: border-color 0.2s, background 0.2s; }
+.dl-trigger:hover, .dl-trigger:focus-visible { border-color: var(--petrol); }
+.dl-arrow { position: absolute; right: 16px; top: 50%; margin-top: -17px; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: var(--petrol); color: var(--petrol-ink); font-weight: 800; animation: dl-nudge 1.6s ease-in-out infinite; }
+@keyframes dl-nudge { 50% { transform: translateX(5px); } }
+.dl.open .dl-trigger { border-color: var(--petrol); }
+.dl.open .dl-arrow { animation: none; transform: rotate(180deg); }
+@media (max-width: 760px) { .dl, .dl.open { grid-template-columns: 1fr; } .dl-options { display: none; } .dl.open .dl-options { display: grid; margin-top: 16px; } }
+@media (prefers-reduced-motion: reduce) { .dl, .dl-options { transition: none; } .dl-arrow { animation: none; } }

@@ -329,3 +329,14 @@
     if (v) play(++run); else run++;
   }, { threshold: 0.4 }).observe(box);
 })();
+
+// Download: the arrow on the first step slides the part to the left and shows Mac / Windows / Ubuntu (each one a link to the GitHub page with the file).
+(function () {
+  'use strict';
+  const wrap = document.getElementById('dl');
+  const trigger = wrap && wrap.querySelector('.dl-trigger');
+  if (!trigger) return;
+  const toggle = () => { const open = wrap.classList.toggle('open'); trigger.setAttribute('aria-expanded', String(open)); };
+  trigger.addEventListener('click', toggle);
+  trigger.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+})();
