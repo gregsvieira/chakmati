@@ -54,9 +54,15 @@
         <p class="lead">Nada de aprender comandos. Basta pedir, como pediria a uma pessoa.</p>
         <ul class="cards">
           <li data-icon="⌨️"><b>Escreva ou fale</b><span>Digite no campo da conversa ou, se quiser, chame pelo nome e fale. O microfone é opcional e fica desligado até você ligar.</span></li>
-          <li data-icon="🛑"><b>Botão Parar</b><span>Enquanto ele trabalha, o botão de enviar vira um quadrado vermelho. Um toque e ele para tudo, sem deixar nada pela metade.</span></li>
-          <li data-icon="🔔"><b>Um sino que avisa</b><span>Se chegou novidade ou se ele precisa de uma resposta sua, o sino aparece. Sem novidade, ele some e não atrapalha.</span></li>
         </ul>
+        <div class="demo" id="chat-demo" role="img" aria-label="Exemplo: uma pessoa escreve uma mensagem no campo da conversa, envia, e o Chakmati responde">
+          <div class="demo-log" aria-hidden="true"></div>
+          <div class="demo-input" aria-hidden="true">
+            <span class="demo-field"><span class="demo-text"></span><span class="demo-caret"></span><span class="demo-ph">Escreva ou fale com o Chakmati…</span></span>
+            <span class="demo-mic">🎤</span>
+            <span class="demo-send">➤</span>
+          </div>
+        </div>
       </section>
 
       <section class="step" id="personalidades" data-icon="🗣️" data-label="Personalidades" data-mood="smile" data-name="Falando do seu jeito" data-sub="seis sotaques para escolher">
@@ -96,12 +102,34 @@
         <p class="eyebrow">Navegação na web</p>
         <h2>Você vê o site em que ele está e o que ele faz.</h2>
         <p class="lead">Quando ele navega na internet, abre uma tela que mostra o site que está sendo visitado e as ações em andamento. Nada acontece escondido.</p>
+        <div class="nd" id="nav-demo" role="img" aria-label="Exemplo da Tela do Chakmati: um navegador ao vivo mostrando o site visitado e cada ação, como pesquisar e clicar">
+          <div class="nd-head"><b>Tela do Chakmati</b> <span class="nd-live">ao vivo</span></div>
+          <div class="nd-browser" aria-hidden="true">
+            <div class="nd-bar"><span class="nd-dots"></span><span class="nd-addr"></span></div>
+            <div class="nd-view"><span class="nd-cursor"></span></div>
+            <p class="nd-status"></p>
+          </div>
+          <p class="nd-warn" aria-hidden="true">O Chakmati pode cometer erros ao navegar na web. Confira o que ele fizer, principalmente antes de enviar mensagens, comprar ou apagar algo.</p>
+        </div>
       </section>
 
       <section class="step" id="whatsapp" data-icon="💬" data-label="WhatsApp" data-mood="smile" data-name="Contente em ajudar" data-sub="com o WhatsApp em dia">
         <p class="eyebrow">WhatsApp</p>
         <h2>Quem escreveu? O que disse? Ele conta.</h2>
         <p class="lead">Em vez de abrir conversa por conversa, pergunte: “tenho mensagens novas?”.</p>
+        <div class="wa" id="wa-demo" role="img" aria-label="Exemplo: o Chakmati avisa que você recebeu mensagens da Mãe, abre a conversa e envia uma resposta automática em áudio">
+          <div class="wa-widget" aria-hidden="true">
+            <div class="wa-bubble"><i class="wa-rule"></i><p>Você recebeu mensagens de Mãe</p><i class="wa-tail"></i></div>
+            <div class="wa-robot">
+              <span class="wa-bell"><svg viewBox="0 0 24 24" width="26" height="26"><path class="bell-body" d="M12 3a6 6 0 00-6 6v3.6l-1.6 2.6a1 1 0 00.9 1.5h13.4a1 1 0 00.9-1.5L18 12.6V9a6 6 0 00-6-6z"/><path class="bell-clapper" d="M9.8 19a2.4 2.4 0 004.4 0"/></svg></span>
+              <span class="wa-head"><img src="img/smile.png" alt="" width="100" height="189"></span>
+            </div>
+          </div>
+          <div class="wa-panel" aria-hidden="true">
+            <div class="wa-bar"><span class="wa-back">‹</span><b>WhatsApp</b><span class="wa-who">Mãe</span></div>
+            <div class="wa-log"></div>
+          </div>
+        </div>
         <ul class="cards">
           <li data-icon="👀"><b>Mostra o que chegou</b><span>Lista quem mandou mensagem e resume conversas longas, sem inventar o que não foi dito.</span></li>
           <li data-icon="✍️"><b>Responde por você, só quando você manda</b><span>Você escreve a mensagem, vê exatamente como vai sair e aprova. Nada é enviado sem o seu OK.</span></li>
