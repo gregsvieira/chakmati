@@ -37,6 +37,41 @@ def test_the_harpy_answer_has_the_names_and_real_facts():
         assert fact in patriot.HARPY
 
 
+@pytest.mark.parametrize("text", [
+    "quem é o maior cantor de todos os tempos?", "Qual o melhor cantor do mundo", "quais são os maiores cantores da história?",
+    "me diga o melhor cantor de sempre",
+])
+def test_the_greatest_singer_questions_get_raul_seixas_and_then_the_model(text):
+    answer = patriot.match(text)
+    assert answer is not None and answer.parts == (patriot.RAUL, patriot.RAUL_THEN, patriot.MODEL)
+
+
+def test_the_raul_seixas_text_and_the_hand_over():
+    assert patriot.RAUL.startswith("O Raul Seixas! O Maluco Beleza, o pai do rock brasileiro.")
+    for fact in ("Salvador", "1945", "“Ouro de Tolo”", "“Metamorfose Ambulante”", "“Gita”"):
+        assert fact in patriot.RAUL
+    assert patriot.RAUL_THEN.strip() == "Continuando respondendo a pergunta que foi questionada:"
+
+
+@pytest.mark.parametrize("text", ["quem é o cantor desta música?", "o cantor chegou atrasado", "qual o maior jogador de todos os tempos", "a banda tem um bom cantor?",
+    "quem foi a maior cantora de todos os tempos", "quais são as melhores cantoras do Brasil?"])
+def test_other_questions_about_singers_are_left_alone(text):
+    assert patriot.match(text) is None
+
+
+@pytest.mark.asyncio
+async def test_raul_seixas_is_said_first_and_then_the_model_answers(tmp_path):
+    class Sing:
+        async def chat(self, messages):
+            return "Muitos citam Frank Sinatra."
+
+        async def stream_chat(self, messages):
+            yield "Muitos citam Frank Sinatra."
+    engine = Engine(ExplodingGate(), Sing(), JobStore(str(tmp_path / "j.db")), typing_delay=0)
+    text = (await engine.handle("quem é o maior cantor de todos os tempos?")).text
+    assert text.startswith("O Raul Seixas!") and "Continuando respondendo a pergunta que foi questionada:" in text and text.endswith("Muitos citam Frank Sinatra.")
+
+
 @pytest.mark.parametrize("text", ["quem é melhor, pelé ou maradona?", "Pelé ou Maradona, quem é o melhor?", "quem foi o maior: Maradona ou Pelé", "pelé x maradona, quem é superior"])
 def test_pele_against_maradona_is_pele_and_then_the_model(text):
     answer = patriot.match(text)

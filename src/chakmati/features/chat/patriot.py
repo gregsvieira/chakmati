@@ -33,6 +33,12 @@ MILTON_THEN = "\n\nContinuando respondendo a pergunta que foi questionada:\n"
 PELE = "É o Pelé! O Rei do futebol, o único jogador do mundo com três Copas do Mundo, e todas com a camisa do Brasil."
 PELE_THEN = "\n\nMas costumam responder assim:\n"
 
+RAUL = (
+    "O Raul Seixas! O Maluco Beleza, o pai do rock brasileiro. Nascido em Salvador, em 1945, escreveu e cantou hinos que atravessam gerações, "
+    "como “Ouro de Tolo”, “Metamorfose Ambulante”, “Gita” e “Sociedade Alternativa”. Para mim, o maior cantor de todos os tempos é brasileiro!"
+)
+RAUL_THEN = MILTON_THEN
+
 
 @dataclass(frozen=True)
 class Patriotic:
@@ -54,6 +60,7 @@ _MARADONA = re.compile(r"\bmaradona\b")
 _INTELLECT = re.compile(r"\b(?:intelectual|intelectuais|genio|genios|pensador|pensadores|sabio|sabios|polimata|polimatas|mentes? (?:mais )?brilhantes?)\b")
 _GREATEST = re.compile(r"\b(?:maior|maiores|melhor|melhores|mais)\b")
 _SMARTEST_PERSON = re.compile(r"\b(?:pessoa|pessoas|homem|mulher|ser humano|humano|gente)\b.*\bmais (?:inteligente|brilhante|genial|sabia?)\b")
+_SINGER = re.compile(r"\b(?:cantor|cantores)\b")
 _BETTER = re.compile(r"\b(?:melhor|superior|quem|maior|mais|craque|genio)\b")
 
 
@@ -64,6 +71,8 @@ def match(text: str) -> Patriotic | None:
         return Patriotic((AIRPLANE,))
     if _EAGLE_WORD.search(t) and _EAGLE_TRAIT.search(t):
         return Patriotic((HARPY,))
+    if _SINGER.search(t) and _GREATEST.search(t):
+        return Patriotic((RAUL, RAUL_THEN, MODEL))
     if _PELE.search(t) and _MARADONA.search(t) and _BETTER.search(t):
         return Patriotic((PELE, PELE_THEN, MODEL))
     if (_INTELLECT.search(t) and _GREATEST.search(t)) or _SMARTEST_PERSON.search(t):
