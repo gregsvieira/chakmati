@@ -17,4 +17,4 @@ There is no CLA. Instead every commit must carry a `Signed-off-by` line, by `git
 
 ## Plugins
 
-Installable plugins are a proposal (see the technical page and the README). If you want to build one, open an issue first and say what you have in mind: it decides the design.
+Installable plugins are a proposal (see the technical page and `docs/DEVELOPER.md`). If you want to build one, open an issue first and say what you have in mind: it decides the design.
