@@ -27,6 +27,11 @@ HARPY = (
 AIRPLANE_OPENERS = {"ela": "Pô, mãezôna! "}
 AIRPLANE_OPENER_DEFAULT = "Pô, paizão! "
 
+CREATOR = (
+    "Se você fala de mim como personagem, foi no programa do Castelo Rá-Tim-Bum. Agora, quem me transformou num Agente Pessoal de IA foi o "
+    "engenheiro de software brasileiro chamado Gregory Vieira."
+)
+
 MILTON = (
     "O Milton Santos, que é brasileiro, foi considerado um dos maiores intelectuais no século 20, foi um geógrafo, escritor, cientista, "
     "jornalista, advogado e professor universitário. Mas ainda consideraria no século 21. Renovou a geografia mundial e foi laureado em "
@@ -65,6 +70,10 @@ _INTELLECT = re.compile(r"\b(?:intelectual|intelectuais|genio|genios|pensador|pe
 _GREATEST = re.compile(r"\b(?:maior|maiores|melhor|melhores|mais)\b")
 _SMARTEST_PERSON = re.compile(r"\b(?:pessoa|pessoas|homem|mulher|ser humano|humano|gente)\b.*\bmais (?:inteligente|brilhante|genial|sabia?)\b")
 _SINGER = re.compile(r"\b(?:cantor|cantores)\b")
+# "Quem te criou?", "quem criou o Chakmati", "quem é o seu criador": the questions about who made the Chakmati
+_CREATED_YOU = re.compile(r"\bquem\b.*\b(?:te|lhe|vc|voce)\b.*\b(?:criou|fez|inventou|desenvolveu|programou|construiu|idealizou|projetou)\b")
+_CREATED_IT = re.compile(r"\bquem\b.*\b(?:criou|fez|inventou|desenvolveu|programou|construiu|idealizou|projetou)\b.*\b(?:chakmati|xacmati|voce|vc|este programa|esse programa|este app|esse app)\b")
+_CREATOR = re.compile(r"\b(?:criador|criadora|desenvolvedor|desenvolvedora|autor|autora|dono|dona)\b.*\b(?:chakmati|xacmati|voce|vc|seu|sua|teu|tua)\b|\b(?:seu|sua|teu|tua)\b.*\b(?:criador|criadora|desenvolvedor|desenvolvedora|autor|autora)\b")
 _BETTER = re.compile(r"\b(?:melhor|superior|quem|maior|mais|craque|genio)\b")
 
 
@@ -72,6 +81,8 @@ def match(text: str, pronouns_id: str | None = None) -> Patriotic | None:
     """The patriotic answer for `text`, or None when it is not one of these questions. With `pronouns_id` the airplane answer opens by calling the person
     "paizão" (or "mãezôna" for ela); without it the answer is the bare text."""
     t = _plain(text)
+    if _CREATED_YOU.search(t) or _CREATED_IT.search(t) or _CREATOR.search(t):
+        return Patriotic((CREATOR,))
     if _AIRPLANE.search(t):
         opener = "" if pronouns_id is None else AIRPLANE_OPENERS.get(pronouns_id, AIRPLANE_OPENER_DEFAULT)
         return Patriotic((opener + AIRPLANE,))

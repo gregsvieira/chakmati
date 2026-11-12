@@ -186,7 +186,9 @@ each package's own license file is in its distribution.
 
 ## 7. The character images
 
-The images of the character (`desktop/src/shared/ui/moods/*.png` and `docs/site/img/*.png`) were created by the author with the AI 3D tool **Meshy** (https://www.meshy.ai), and are used under Meshy's terms for the author's plan. (If those terms ask for credit, the credit is: "Created with Meshy".) The character itself is a tribute, see the note at the end of this file.
+The images of the character (`desktop/src/shared/ui/moods/*.png` and `docs/site/img/*.png`) were created by the author with the AI 3D tool **Meshy** (https://www.meshy.ai), on its **free plan**,
+whose outputs are offered under **Creative Commons Attribution 4.0 (CC BY 4.0)**, https://creativecommons.org/licenses/by/4.0/. That license asks for credit, so:
+**"Created with Meshy"** (https://www.meshy.ai). The character itself is a tribute, see the note at the end of this file.
 
 ## 8. Desktop (Node) packages
 
