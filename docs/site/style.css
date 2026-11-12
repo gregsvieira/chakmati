@@ -336,3 +336,10 @@ figure.arch figcaption { margin-top: 8px; color: var(--muted); font-size: 0.82re
 
 .cta.small { padding: 6px 14px; font-size: 0.8rem; box-shadow: none; }
 .tech-link.tight { margin-top: 6vh; }
+
+/* a card with an explanation that opens on hover (or focus, or a tap): the "why" is hidden until then */
+.cards li.has-why { cursor: help; outline-offset: 3px; }
+.cards .why { display: block; max-height: 0; overflow: hidden; opacity: 0; transition: max-height 0.45s ease, opacity 0.3s ease, margin 0.3s ease; }
+.cards li.has-why:hover .why, .cards li.has-why:focus .why, .cards li.has-why:focus-within .why, .cards li.has-why.open .why { max-height: 900px; opacity: 1; margin-top: 10px; }
+.cards .why-title { color: var(--petrol); }
+@media (prefers-reduced-motion: reduce) { .cards .why { transition: none; } }
