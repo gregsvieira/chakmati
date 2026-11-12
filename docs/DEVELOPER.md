@@ -297,8 +297,9 @@ engine with that `uv` (Python plus dependencies, about 190 MB) and installs only
 first. Voice and microphone add their Python packages (about 200 MB each, 230 MB together). WhatsApp is not offered in
 the installed app yet.
 
-The installers are **not signed**: Windows (SmartScreen) and macOS (Gatekeeper) warn on the first open. On macOS:
-right-click the app and choose Open. Where things live (remove these folders to uninstall completely): the app's data
+The installers are **not signed**: Windows (SmartScreen) and macOS (Gatekeeper) warn on the first open. On macOS
+(Sequoia and later, where right-click > Open no longer bypasses it): open the file, dismiss the warning, then System Settings >
+Privacy & Security > **Open Anyway**; or run `xattr -dr com.apple.quarantine <file>`. On Windows: More info > Run anyway. Where things live (remove these folders to uninstall completely): the app's data
 folder (`~/Library/Application Support/Chakmati`, `%APPDATA%\Chakmati`, `~/.config/Chakmati`), plus `~/.chakmati-agent`
 (voice, WhatsApp and browser files) and the Ollama models. That folder used to be called `~/.lite-agent`: on the first start after the rename the engine **moves** it to the new name
 (nothing is copied or lost: keys, tokens, the WhatsApp login and the Home Assistant settings come along, and the Home Assistant container is made again over the moved folder).
